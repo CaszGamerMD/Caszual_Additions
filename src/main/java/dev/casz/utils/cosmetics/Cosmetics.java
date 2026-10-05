@@ -52,7 +52,7 @@ public final class Cosmetics {
         if (stack.is(Items.BONE)) return true;
         if (stack.is(Items.BLAZE_POWDER)) return slot == EquipmentSlot.HEAD || slot == EquipmentSlot.FEET;
         if (stack.is(Items.ECHO_SHARD) || stack.is(Items.SLIME_BALL) || stack.is(Items.GUNPOWDER)) return slot == EquipmentSlot.FEET;
-        if (stack.is(Items.LIGHTNING_ROD)) return slot == EquipmentSlot.HEAD;
+        if (stack.is(Items.LIGHTNING_ROD.getFirst())) return slot == EquipmentSlot.HEAD;
         if (stack.is(Items.NAUTILUS_SHELL)) return true;
         var equippable = stack.get(DataComponents.EQUIPPABLE);
         return equippable != null && equippable.slot() == slot;
