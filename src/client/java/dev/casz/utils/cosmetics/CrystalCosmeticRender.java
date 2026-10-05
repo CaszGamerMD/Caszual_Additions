@@ -3,7 +3,7 @@ import java.util.ArrayList;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.player.PlayerModel;
+import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -15,7 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 public final class CrystalCosmeticRender {
     private CrystalCosmeticRender(){}
-    public static void spikes(ItemStack stack,PlayerModel model,PoseStack pose,SubmitNodeCollector collector,int light,int outline){
+    public static void spikes(ItemStack stack,HumanoidModel<?> model,PoseStack pose,SubmitNodeCollector collector,int light,int outline){
         var state=((BlockItem)stack.getItem()).getBlock().defaultBlockState();if(state.hasProperty(BlockStateProperties.FACING))state=state.setValue(BlockStateProperties.FACING,Direction.UP);
         var parts=new ArrayList<BlockStateModelPart>();Minecraft.getInstance().getModelManager().getBlockStateModelSet().get(state).collectParts(RandomSource.create(42),parts);
         pose.pushPose();model.head.translateAndRotate(pose);pose.scale(1f/.99f,1f/.99f,1f/.99f);
