@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "group": "colorful_rods",
+  "ingredients": [
+    "#colorful_rods:dyeable_end_rods",
+    "minecraft:white_dye"
+  ],
+  "result": {
+    "id": "colorful_rods:white_end_rod",
+    "count": 1
+  }
+}
