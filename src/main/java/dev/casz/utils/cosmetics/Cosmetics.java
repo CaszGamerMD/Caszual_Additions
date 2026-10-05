@@ -19,12 +19,17 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.gamerules.GameRules;
 
 public final class Cosmetics {
     public static final EquipmentSlot[] SLOTS = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
     private static final Map<EquipmentSlot, AttachmentType<ItemStack>> DATA = new EnumMap<>(EquipmentSlot.class);
+    public static final AttachmentType<Boolean> HIDE_ARMOR = AttachmentRegistry.create(
+        Identifier.fromNamespaceAndPath("caszutils", "hide_armor"),
+        builder -> builder.initializer(() -> false).persistent(com.mojang.serialization.Codec.BOOL)
+            .copyOnDeath().syncWith(net.minecraft.network.codec.ByteBufCodecs.BOOL, AttachmentSyncPredicate.all()));
     public static final ExtendedMenuType<CosmeticsMenu, Integer> MENU = Registry.register(BuiltInRegistries.MENU,
         Identifier.fromNamespaceAndPath("caszutils", "cosmetics"),
         new ExtendedMenuType<>((id, inventory, ignored) -> new CosmeticsMenu(id, inventory), StreamCodec.unit(0)));
@@ -39,14 +44,19 @@ public final class Cosmetics {
     public static void set(Player player, EquipmentSlot slot, ItemStack stack) {
         if (!ItemStack.matches(get(player, slot), stack)) player.setAttached(DATA.get(slot), stack.copy());
     }
+    public static boolean hideArmor(Player player) { return player.getAttachedOrElse(HIDE_ARMOR, false); }
+    public static void setHideArmor(Player player, boolean hide) { player.setAttached(HIDE_ARMOR, hide); }
     public static boolean accepts(ItemStack stack, EquipmentSlot slot) {
         if (stack.getItem() instanceof BlockItem) return true;
-        if (stack.is(net.minecraft.world.item.Items.STICK)) return slot == EquipmentSlot.CHEST;
+        if (stack.is(Items.STICK)) return slot == EquipmentSlot.CHEST;
+        if (stack.is(Items.BONE)) return true;
         var equippable = stack.get(DataComponents.EQUIPPABLE);
         return equippable != null && equippable.slot() == slot;
     }
     public static void initialize() {
         PayloadTypeRegistry.serverboundPlay().register(OpenCosmetics.TYPE, OpenCosmetics.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(ToggleArmorVisibility.TYPE, ToggleArmorVisibility.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(ToggleArmorVisibility.TYPE, (payload, context) -> setHideArmor(context.player(), payload.hidden()));
         ServerPlayNetworking.registerGlobalReceiver(OpenCosmetics.TYPE, (payload, context) -> {
             var player = context.player();
             if (player.isAlive() && !player.isSpectator()) player.openMenu(new Provider());
