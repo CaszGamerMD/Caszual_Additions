@@ -8,6 +8,8 @@ import net.minecraft.world.level.block.SkullBlock;
 
 public final class SpecialCosmetics {
     private SpecialCosmetics() {}
+    public static boolean isBone(ItemStack stack) { return stack.is(net.minecraft.world.item.Items.BONE); }
+    public static boolean isRodLike(ItemStack stack) { return isEndRod(stack) || isBone(stack); }
     public static boolean isEndRod(ItemStack stack) { return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof EndRodBlock; }
     public static boolean isPlayerHead(ItemStack stack) {
         return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof AbstractSkullBlock skull && skull.getType() == SkullBlock.Types.PLAYER;
@@ -25,5 +27,6 @@ public final class SpecialCosmetics {
         return head.is(net.minecraft.world.item.Items.CARVED_PUMPKIN) && chest.is(net.minecraft.world.item.Items.STICK)
             && legs.is(net.minecraft.world.item.Items.SNOW_BLOCK) && feet.is(net.minecraft.world.item.Items.SNOW_BLOCK);
     }
-    public static boolean rodLegs(ItemStack legs, ItemStack feet) { return isEndRod(legs) || isEndRod(feet); }
+    public static boolean rodLegs(ItemStack legs, ItemStack feet) { return isRodLike(legs) || isRodLike(feet); }
+    public static boolean isMobHead(ItemStack stack) { return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof AbstractSkullBlock && !isPlayerHead(stack); }
 }
