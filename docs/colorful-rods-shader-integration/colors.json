@@ -1,0 +1,18 @@
+{
+  "colorful_rods:white_end_rod": "#EEECE7",
+  "colorful_rods:orange_end_rod": "#F9801D",
+  "colorful_rods:magenta_end_rod": "#C74EBD",
+  "colorful_rods:light_blue_end_rod": "#3AB3DA",
+  "colorful_rods:yellow_end_rod": "#FED83D",
+  "colorful_rods:lime_end_rod": "#80C71F",
+  "colorful_rods:pink_end_rod": "#F38BAA",
+  "colorful_rods:gray_end_rod": "#474F52",
+  "colorful_rods:light_gray_end_rod": "#9D9D97",
+  "colorful_rods:cyan_end_rod": "#169C9C",
+  "colorful_rods:purple_end_rod": "#8932B8",
+  "colorful_rods:blue_end_rod": "#3C44AA",
+  "colorful_rods:brown_end_rod": "#835432",
+  "colorful_rods:green_end_rod": "#5E7C16",
+  "colorful_rods:red_end_rod": "#B02E26",
+  "colorful_rods:black_end_rod": "#252529"
+}
