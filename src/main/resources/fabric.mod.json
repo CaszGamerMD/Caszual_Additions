@@ -12,7 +12,9 @@
   "environment": "*",
   "entrypoints": {
     "main": ["com.caszgamermd.caszualadditions.CaszualAdditions"],
-    "jei_mod_plugin": ["com.caszgamermd.caszualadditions.compat.jei.CaszualJeiPlugin"]
+    "client": ["com.caszgamermd.caszualadditions.CaszualAdditionsClient"],
+    "jei_mod_plugin": ["com.caszgamermd.caszualadditions.compat.jei.CaszualJeiPlugin"],
+    "lambdynlights:initializer": ["dev.casz.utils.cosmetics.CosmeticDynamicLights"]
   },
   "depends": {
     "fabricloader": ">=0.19.5",
@@ -20,7 +22,9 @@
     "java": ">=25",
     "fabric-api": "*"
   },
+  "mixins": ["caszutils.client.mixins.json"],
   "suggests": {
-    "jei": "*"
+    "jei": "*",
+    "lambdynlights": ">=4.12.0"
   }
 }
