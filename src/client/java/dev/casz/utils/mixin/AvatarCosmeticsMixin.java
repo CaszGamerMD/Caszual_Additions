@@ -22,7 +22,7 @@ public abstract class AvatarCosmeticsMixin {
     @Inject(method="extractRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V",at=@At("TAIL"))
     private void caszutils$appearance(Avatar entity,AvatarRenderState state,float partial,CallbackInfo ci){
         if(!(entity instanceof Player player)) return;
-        boolean hide=AppearanceSettings.hideArmor();
+        boolean hide=Cosmetics.hideArmor(player);
         var head=Cosmetics.get(player,EquipmentSlot.HEAD); var chest=Cosmetics.get(player,EquipmentSlot.CHEST);
         var legs=Cosmetics.get(player,EquipmentSlot.LEGS); var feet=Cosmetics.get(player,EquipmentSlot.FEET);
         state.headEquipment=AppearanceRules.visible(head,state.headEquipment,hide); state.chestEquipment=AppearanceRules.visible(chest,state.chestEquipment,hide);
