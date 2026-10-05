@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "caszual_additions",
+  "version": "${version}",
+  "name": "Caszual Additions",
+  "description": "Quality-of-life additions and the hub for the Caszual mod family.",
+  "authors": ["CaszGamerMD"],
+  "contact": {
+    "sources": "https://github.com/CaszGamerMD/Caszual_Additions"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.caszgamermd.caszualadditions.CaszualAdditions"]
+  },
+  "depends": {
+    "fabricloader": ">=0.17.0",
+    "minecraft": "~26.2",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
