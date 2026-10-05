@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions;
 
 import dev.casz.utils.CaszUtils;
+import com.casz.colorfulrods.ColorfulRods;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
 
@@ -14,6 +15,7 @@ public final class CaszualAdditions implements ModInitializer {
     @Override
     public void onInitialize() {
         CaszUtils.initialize();
+        ColorfulRods.initialize();
         CaszualItemGroups.register();
     }
 }
