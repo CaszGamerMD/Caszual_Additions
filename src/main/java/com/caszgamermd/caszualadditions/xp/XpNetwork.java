@@ -13,7 +13,7 @@ public final class XpNetwork {
   } return out;
  }
  public static int stored(ServerLevel l,BlockPos p){return tanks(l,p).stream().mapToInt(XpTankBlockEntity::stored).sum();}
- public static int capacity(ServerLevel l,BlockPos p){return tanks(l,p).size()*100;}
+ public static int capacity(ServerLevel l,BlockPos p){return tanks(l,p).size()*XpTankBlockEntity.CAPACITY;}
  public static int extract(ServerLevel l,BlockPos p,int amount){int left=amount;for(var t:tanks(l,p)){int take=Math.min(left,t.stored());t.setStored(t.stored()-take);left-=take;if(left==0)break;}return amount-left;}
- public static int insert(ServerLevel l,BlockPos p,int amount){int left=amount;for(var t:tanks(l,p)){int put=Math.min(left,100-t.stored());t.setStored(t.stored()+put);left-=put;if(left==0)break;}return amount-left;}
+ public static int insert(ServerLevel l,BlockPos p,int amount){int left=amount;for(var t:tanks(l,p)){int put=Math.min(left,XpTankBlockEntity.CAPACITY-t.stored());t.setStored(t.stored()+put);left-=put;if(left==0)break;}return amount-left;}
 }
