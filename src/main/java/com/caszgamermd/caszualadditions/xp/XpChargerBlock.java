@@ -40,5 +40,9 @@ public final class XpChargerBlock extends Block implements EntityBlock {
   String item=c.item().isEmpty()?"empty":c.item().getHoverName().getString()+(c.item().isDamaged()?" ("+c.item().getDamageValue()+" damage)":" (repaired)");
   if(p instanceof ServerPlayer sp)sp.sendSystemMessage(Component.literal("XP Charger: "+item+" | XP "+stored+" / "+cap),true);
  }
+ @Override protected void affectNeighborsAfterRemoval(BlockState state,net.minecraft.server.level.ServerLevel level,BlockPos pos,boolean moved){
+  if(level.getBlockEntity(pos) instanceof XpChargerBlockEntity charger&&!charger.item().isEmpty())popResource(level,pos,charger.item().copy());
+  super.affectNeighborsAfterRemoval(state,level,pos,moved);
+ }
  @Override public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level,BlockState state,BlockEntityType<T> type){if(level.isClientSide())return null;return type==XpBlockEntities.CHARGER?(l,p,s,be)->XpRepair.tick((ServerLevel)l,(XpChargerBlockEntity)be):null;}
 }
