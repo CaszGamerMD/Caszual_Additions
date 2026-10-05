@@ -14,6 +14,24 @@
     },
     "fill=4": {
       "model": "caszual_additions:block/xp_tank_fill4"
+    },
+    "fill=5": {
+      "model": "caszual_additions:block/xp_tank_fill5"
+    },
+    "fill=6": {
+      "model": "caszual_additions:block/xp_tank_fill6"
+    },
+    "fill=7": {
+      "model": "caszual_additions:block/xp_tank_fill7"
+    },
+    "fill=8": {
+      "model": "caszual_additions:block/xp_tank_fill8"
+    },
+    "fill=9": {
+      "model": "caszual_additions:block/xp_tank_fill9"
+    },
+    "fill=10": {
+      "model": "caszual_additions:block/xp_tank_fill10"
     }
   }
 }
