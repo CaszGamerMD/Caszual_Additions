@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["IHI","GBG","IRI"],"key":{"I":"minecraft:iron_ingot","H":"minecraft:hopper","G":"minecraft:glass","B":"minecraft:experience_bottle","R":"minecraft:redstone"},"result":{"id":"caszual_additions:xp_drain","count":1}}
