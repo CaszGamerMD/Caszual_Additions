@@ -38,7 +38,7 @@ public final class XpChargerBlock extends Block implements EntityBlock {
  private static void status(Player p,ServerLevel l,BlockPos pos,XpChargerBlockEntity c){
   int stored=XpNetwork.stored(l,pos),cap=XpNetwork.capacity(l,pos);
   String item=c.item().isEmpty()?"empty":c.item().getHoverName().getString()+(c.item().isDamaged()?" ("+c.item().getDamageValue()+" damage)":" (repaired)");
-  p.displayClientMessage(Component.literal("XP Charger: "+item+" | XP "+stored+" / "+cap),true);
+  if(p instanceof ServerPlayer sp)sp.sendSystemMessage(Component.literal("XP Charger: "+item+" | XP "+stored+" / "+cap),true);
  }
  @Override public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level,BlockState state,BlockEntityType<T> type){if(level.isClientSide())return null;return type==XpBlockEntities.CHARGER?(l,p,s,be)->XpRepair.tick((ServerLevel)l,(XpChargerBlockEntity)be):null;}
 }
