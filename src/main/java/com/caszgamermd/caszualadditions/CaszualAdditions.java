@@ -1,7 +1,7 @@
 package com.caszgamermd.caszualadditions;
 
+import dev.casz.utils.CaszUtils;
 import net.fabricmc.api.ModInitializer;
-
 import net.minecraft.resources.Identifier;
 
 public final class CaszualAdditions implements ModInitializer {
@@ -13,6 +13,7 @@ public final class CaszualAdditions implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        CaszUtils.initialize();
         CaszualItemGroups.register();
     }
 }
