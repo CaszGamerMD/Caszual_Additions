@@ -26,7 +26,7 @@ public abstract class BlockCosmeticArmorMixin {
     private void caszutils$blockArmor(PoseStack pose,SubmitNodeCollector collector,ItemStack stack,EquipmentSlot slot,int light,HumanoidRenderState state,CallbackInfo ci){
         if(!(state instanceof AvatarRenderState)) return;
         if(SpecialCosmetics.isSnowGolem(state.headEquipment,state.chestEquipment,state.legsEquipment,state.feetEquipment)){ci.cancel();return;}
-        if(SpecialCosmetics.isEndRod(stack)||((slot==EquipmentSlot.LEGS||slot==EquipmentSlot.FEET)&&SpecialCosmetics.rodLegs(state.legsEquipment,state.feetEquipment))){ci.cancel();return;}
+        if(SpecialCosmetics.isRodLike(stack)||((slot==EquipmentSlot.LEGS||slot==EquipmentSlot.FEET)&&SpecialCosmetics.rodLegs(state.legsEquipment,state.feetEquipment))){ci.cancel();return;}
         if(slot==EquipmentSlot.HEAD||!(stack.getItem() instanceof BlockItem item)) return;
         var model=getArmorModel(state,slot); var texture=BlockOutfitTextures.texture(item.getBlock());
         collector.order(1).submitModel((Model)model,state,pose,RenderTypes.entityTranslucent(texture),light,OverlayTexture.NO_OVERLAY,-1,null,state.outlineColor,null); ci.cancel();
