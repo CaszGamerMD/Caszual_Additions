@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "caszutils:firefly_glass_box",
+    "minecraft:magenta_dye"
+  ],
+  "result": {
+    "id": "caszutils:magenta_firefly_glass_box",
+    "count": 1
+  }
+}
