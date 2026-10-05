@@ -37,6 +37,8 @@
     "colorful_rods:green_end_rod",
     "colorful_rods:red_end_rod",
     "colorful_rods:black_end_rod",
-    "colorful_rods:rgb_end_rod"
+    "colorful_rods:rgb_end_rod",
+    "caszual_additions:xp_tank",
+    "caszual_additions:xp_charger"
   ]
 }
