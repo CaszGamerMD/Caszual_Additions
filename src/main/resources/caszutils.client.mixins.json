@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "dev.casz.utils.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "FireflyBushMixin",
+    "ContainerScreenAccessor",
+    "AvatarCosmeticsMixin",
+    "PlayerCosmeticHeadMixin",
+    "BlockCosmeticArmorMixin",
+    "CosmeticSkullScaleMixin",
+    "EndRodAvatarRendererMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}
