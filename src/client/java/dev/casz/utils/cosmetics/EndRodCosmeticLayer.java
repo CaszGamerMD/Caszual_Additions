@@ -12,7 +12,16 @@ public final class EndRodCosmeticLayer extends RenderLayer<AvatarRenderState,Pla
     @Override public void submit(PoseStack pose,SubmitNodeCollector collector,int light,AvatarRenderState state,float yaw,float pitch){
         if(state.isSpectator||state.isInvisible)return;var model=getParentModel();pose.pushPose();model.root().translateAndRotate(pose);
         if(SpecialCosmetics.isSnowGolem(state.headEquipment,state.chestEquipment,state.legsEquipment,state.feetEquipment)){snow.body(model,pose,collector,light,state.outlineColor);pose.popPose();return;}
-        if(SpecialCosmetics.isBone(state.headEquipment)){ /* skull is supplied by the vanilla skeleton-skull head item in a follow-up render pass */ }
+        var boneHead=SpecialCosmetics.isBone(state.headEquipment); var boneChest=SpecialCosmetics.isBone(state.chestEquipment);
+        var boneLegs=SpecialCosmetics.isBone(state.legsEquipment)||SpecialCosmetics.isBone(state.feetEquipment);
+        if(boneHead||boneChest||boneLegs){
+            var bone=boneHead?state.headEquipment:boneChest?state.chestEquipment:SpecialCosmetics.isBone(state.legsEquipment)?state.legsEquipment:state.feetEquipment;
+            BoneCosmeticRender.skeleton(new BoneCosmeticRender.PlayerModelAccess(){
+                public net.minecraft.client.model.geom.ModelPart head(){return model.head;} public net.minecraft.client.model.geom.ModelPart body(){return model.body;}
+                public net.minecraft.client.model.geom.ModelPart leftArm(){return model.leftArm;} public net.minecraft.client.model.geom.ModelPart rightArm(){return model.rightArm;}
+                public net.minecraft.client.model.geom.ModelPart leftLeg(){return model.leftLeg;} public net.minecraft.client.model.geom.ModelPart rightLeg(){return model.rightLeg;}
+            },pose,collector,bone,boneHead,boneChest,boneLegs,light,state.outlineColor);
+        }
         if(SpecialCosmetics.isEndRod(state.headEquipment)){pose.pushPose();model.head.translateAndRotate(pose);pose.scale(1f/.99f,1f/.99f,1f/.99f);pose.translate(0,-.125f,.0625f);pose.mulPose(Axis.XP.rotationDegrees(45));pose.scale(1,-1,-1);EndRodRender.block(state.headEquipment,pose,collector,state.outlineColor);pose.popPose();}
         if(SpecialCosmetics.isCrystalCluster(state.headEquipment))CrystalCosmeticRender.spikes(state.headEquipment,model,pose,collector,light,state.outlineColor);
         if(SpecialCosmetics.isEndRod(state.chestEquipment)){float center=(slim?.5f:1f)/16f;EndRodRender.limb(state.chestEquipment,model.rightArm,pose,collector,-center,-.125f,state.outlineColor);EndRodRender.limb(state.chestEquipment,model.leftArm,pose,collector,center,-.125f,state.outlineColor);EndRodRender.ribCage(state.chestEquipment,model.body,pose,collector,state.outlineColor);}
