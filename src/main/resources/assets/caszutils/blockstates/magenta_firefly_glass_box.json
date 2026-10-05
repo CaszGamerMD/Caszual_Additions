@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "contains_bush=false": {
+      "model": "caszutils:block/magenta_firefly_glass_box"
+    },
+    "contains_bush=true": {
+      "model": "caszutils:block/magenta_firefly_glass_box_with_bush"
+    }
+  }
+}
