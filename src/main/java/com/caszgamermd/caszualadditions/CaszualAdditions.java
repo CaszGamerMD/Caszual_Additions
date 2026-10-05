@@ -3,6 +3,8 @@ package com.caszgamermd.caszualadditions;
 import dev.casz.utils.CaszUtils;
 import com.casz.colorfulrods.ColorfulRods;
 import net.fabricmc.api.ModInitializer;
+import com.caszgamermd.caszualadditions.xp.XpBlocks;
+import com.caszgamermd.caszualadditions.xp.XpBlockEntities;
 import net.minecraft.resources.Identifier;
 
 public final class CaszualAdditions implements ModInitializer {
@@ -16,6 +18,8 @@ public final class CaszualAdditions implements ModInitializer {
     public void onInitialize() {
         CaszUtils.initialize();
         ColorfulRods.initialize();
+        XpBlocks.initialize();
+        XpBlockEntities.initialize();
         CaszualItemGroups.register();
     }
 }
