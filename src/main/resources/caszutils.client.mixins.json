@@ -10,7 +10,8 @@
     "BlockCosmeticArmorMixin",
     "CosmeticSkullScaleMixin",
     "EndRodAvatarRendererMixin",
-    "ArmorStandCosmeticsMixin"
+    "ArmorStandCosmeticsMixin",
+    "ArmorStandModelCosmeticsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
