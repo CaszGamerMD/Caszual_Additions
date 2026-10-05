@@ -25,7 +25,7 @@ public final class CaszualItemGroups {
                 MAIN,
                 FabricCreativeModeTab.builder()
                         .title(Component.translatable("itemGroup.caszual_additions.main"))
-                        .icon(() -> new ItemStack(Items.WATERMELON_SLICE))
+                        .icon(() -> new ItemStack(Items.MELON_SLICE))
                         .displayItems((parameters, output) -> BuiltInRegistries.ITEM.forEach(item -> {
                             ItemStack stack = item.getDefaultInstance();
                             if (stack.is(CaszualTags.CASZUAL_CONTENT)) {
