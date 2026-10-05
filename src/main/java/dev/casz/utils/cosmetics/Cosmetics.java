@@ -51,12 +51,16 @@ public final class Cosmetics {
         if (stack.is(Items.STICK)) return slot == EquipmentSlot.CHEST;
         if (stack.is(Items.BONE)) return true;
         if (stack.is(Items.BLAZE_POWDER)) return slot == EquipmentSlot.HEAD || slot == EquipmentSlot.FEET;
+        if (stack.is(Items.ECHO_SHARD) || stack.is(Items.SLIME_BALL) || stack.is(Items.GUNPOWDER)) return slot == EquipmentSlot.FEET;
+        if (stack.is(Items.LIGHTNING_ROD)) return slot == EquipmentSlot.HEAD;
+        if (stack.is(Items.NAUTILUS_SHELL)) return true;
         var equippable = stack.get(DataComponents.EQUIPPABLE);
         return equippable != null && equippable.slot() == slot;
     }
     public static void initialize() {
         FlowerTrail.initialize();
         BlazePowderEffects.initialize();
+        FootstepEffects.initialize();
         PayloadTypeRegistry.serverboundPlay().register(OpenCosmetics.TYPE, OpenCosmetics.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(ToggleArmorVisibility.TYPE, ToggleArmorVisibility.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(ToggleArmorVisibility.TYPE, (payload, context) -> setHideArmor(context.player(), payload.hidden()));
