@@ -3,42 +3,43 @@ plugins {
     id 'maven-publish'
 }
 
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        caszual_additions {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
 version = project.mod_version
 group = project.maven_group
 
-base {
-    archivesName = project.archives_base_name
-}
+base { archivesName = project.archives_base_name }
 
 repositories {
     mavenCentral()
-    maven {
-        name = "BlameJared"
-        url = "https://maven.blamejared.com"
-    }
+    maven { name = "BlameJared"; url = "https://maven.blamejared.com" }
+    maven { url = uri('https://maven.gegy.dev') }
 }
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    clientCompileOnly 'dev.lambdaurora.lambdynamiclights:lambdynamiclights-api:4.12.4+26.2'
 
-    // JEI is optional for users. We compile against its API so Caszual-family
-    // items can all receive a common search alias when JEI is installed.
     modCompileOnlyApi "mezz.jei:jei-${project.minecraft_version}-fabric-api:${project.jei_version}"
     modRuntimeOnly "mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}"
 }
 
 processResources {
     inputs.property "version", project.version
-    filesMatching("fabric.mod.json") {
-        expand "version": project.version
-    }
+    filesMatching("fabric.mod.json") { expand "version": project.version }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
-}
+tasks.withType(JavaCompile).configureEach { it.options.release = 25 }
 
 java {
     withSourcesJar()
