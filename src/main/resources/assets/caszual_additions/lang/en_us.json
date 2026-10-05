@@ -1,5 +1,6 @@
 {
   "itemGroup.caszual_additions.main": "Caszual Additions",
   "block.caszual_additions.xp_tank": "XP Tank",
-  "block.caszual_additions.xp_charger": "XP Charger"
+  "block.caszual_additions.xp_charger": "XP Charger",
+  "block.caszual_additions.xp_drain": "XP Drain"
 }
