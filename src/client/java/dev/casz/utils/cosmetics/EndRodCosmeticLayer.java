@@ -24,6 +24,7 @@ public final class EndRodCosmeticLayer extends RenderLayer<AvatarRenderState,Pla
         }
         if(SpecialCosmetics.isEndRod(state.headEquipment)){pose.pushPose();model.head.translateAndRotate(pose);pose.scale(1f/.99f,1f/.99f,1f/.99f);pose.translate(0,-.125f,.0625f);pose.mulPose(Axis.XP.rotationDegrees(45));pose.scale(1,-1,-1);EndRodRender.block(state.headEquipment,pose,collector,state.outlineColor);pose.popPose();}
         if(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(state.headEquipment.getItem()).getPath().equals("lightning_rod"))HeadItemCosmeticRender.lightningRod(state.headEquipment,model.head,pose,collector,light,state.outlineColor);
+        if(FlowerCrownRender.isFlower(state.headEquipment))FlowerCrownRender.crown(state.headEquipment,model.head,pose,collector,light,state.outlineColor);
         if(SpecialCosmetics.isCrystalCluster(state.headEquipment))CrystalCosmeticRender.spikes(state.headEquipment,model,pose,collector,light,state.outlineColor);
         if(state.headEquipment.is(net.minecraft.world.item.Items.NAUTILUS_SHELL))OceanCosmeticRender.head(state.headEquipment,model.head,pose,collector,light,state.outlineColor);
         if(state.chestEquipment.is(net.minecraft.world.item.Items.NAUTILUS_SHELL))OceanCosmeticRender.chest(state.chestEquipment,model.body,model.leftArm,model.rightArm,pose,collector,light,state.outlineColor);
