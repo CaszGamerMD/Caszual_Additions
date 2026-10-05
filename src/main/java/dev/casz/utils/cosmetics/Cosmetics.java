@@ -54,6 +54,7 @@ public final class Cosmetics {
         return equippable != null && equippable.slot() == slot;
     }
     public static void initialize() {
+        FlowerTrail.initialize();
         PayloadTypeRegistry.serverboundPlay().register(OpenCosmetics.TYPE, OpenCosmetics.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(ToggleArmorVisibility.TYPE, ToggleArmorVisibility.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(ToggleArmorVisibility.TYPE, (payload, context) -> setHideArmor(context.player(), payload.hidden()));
