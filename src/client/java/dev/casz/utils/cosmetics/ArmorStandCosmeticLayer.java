@@ -10,6 +10,7 @@ public final class ArmorStandCosmeticLayer extends RenderLayer<ArmorStandRenderS
     @Override public void submit(PoseStack pose,SubmitNodeCollector collector,int light,ArmorStandRenderState state,float yaw,float pitch){
         if(state.isInvisible)return; var model=getParentModel(); pose.pushPose(); model.root().translateAndRotate(pose);
         var head=state.headEquipment; var chest=state.chestEquipment; var legs=state.legsEquipment; var feet=state.feetEquipment;
+        if(SpecialCosmetics.isSnowGolem(head,chest,legs,feet)){new SnowGolemCosmeticRender().body(model,pose,collector,light,state.outlineColor);pose.popPose();return;}
         if(SpecialCosmetics.isEndRod(head)){pose.pushPose();model.head.translateAndRotate(pose);pose.translate(0,-.125f,.0625f);pose.scale(1,-1,-1);EndRodRender.block(head,pose,collector,state.outlineColor);pose.popPose();}
         if(SpecialCosmetics.isCrystalCluster(head)) CrystalCosmeticRender.spikes(head,model,pose,collector,light,state.outlineColor);
         if(SpecialCosmetics.isEndRod(chest)){EndRodRender.limb(chest,model.rightArm,pose,collector,-.0625f,-.125f,state.outlineColor);EndRodRender.limb(chest,model.leftArm,pose,collector,.0625f,-.125f,state.outlineColor);EndRodRender.ribCage(chest,model.body,pose,collector,state.outlineColor);}
