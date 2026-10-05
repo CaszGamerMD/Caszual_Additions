@@ -12,9 +12,10 @@ import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.network.chat.Component;
 
 public final class CosmeticsClient {
-    public static Component armorLabel() { return Component.translatable(AppearanceSettings.hideArmor() ? "gui.caszutils.armor_hidden" : "gui.caszutils.armor_shown"); }
+    public static boolean armorHidden() { return net.minecraft.client.Minecraft.getInstance().player != null && Cosmetics.hideArmor(net.minecraft.client.Minecraft.getInstance().player); }
+    public static Component armorLabel() { return Component.translatable(armorHidden() ? "gui.caszutils.armor_hidden" : "gui.caszutils.armor_shown"); }
     public static Button armorButton(int x, int y, int width) {
-        var button = Button.builder(armorLabel(), b -> { AppearanceSettings.toggle(); b.setMessage(armorLabel()); }).bounds(x, y, width, 20).build();
+        var button = Button.builder(armorLabel(), b -> { boolean hidden=!armorHidden(); ClientPlayNetworking.send(new ToggleArmorVisibility(hidden)); Cosmetics.setHideArmor(net.minecraft.client.Minecraft.getInstance().player, hidden); b.setMessage(armorLabel()); }).bounds(x, y, width, 20).build();
         button.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.hide_hint"))); return button;
     }
     private static int buttonY(net.minecraft.client.gui.screens.Screen screen, ContainerScreenAccessor pos) {
@@ -22,7 +23,6 @@ public final class CosmeticsClient {
         return Math.min(screen.height - 22, pos.caszutils$top() + pos.caszutils$height() + gap);
     }
     public static void initialize() {
-        AppearanceSettings.load();
         BlockOutfitTextures.initialize();
         MenuScreens.register(Cosmetics.MENU, CosmeticsScreen::new);
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
