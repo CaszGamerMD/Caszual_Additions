@@ -1,4 +1,25 @@
 {
   "replace": false,
-  "values": []
+  "values": [
+    "caszutils:shortcakes",
+    "caszutils:stack_o_jacks",
+    "caszutils:vanilla_wafers",
+    "caszutils:firefly_glass_box",
+    "caszutils:white_firefly_glass_box",
+    "caszutils:orange_firefly_glass_box",
+    "caszutils:magenta_firefly_glass_box",
+    "caszutils:light_blue_firefly_glass_box",
+    "caszutils:yellow_firefly_glass_box",
+    "caszutils:lime_firefly_glass_box",
+    "caszutils:pink_firefly_glass_box",
+    "caszutils:gray_firefly_glass_box",
+    "caszutils:light_gray_firefly_glass_box",
+    "caszutils:cyan_firefly_glass_box",
+    "caszutils:purple_firefly_glass_box",
+    "caszutils:blue_firefly_glass_box",
+    "caszutils:brown_firefly_glass_box",
+    "caszutils:green_firefly_glass_box",
+    "caszutils:red_firefly_glass_box",
+    "caszutils:black_firefly_glass_box"
+  ]
 }
