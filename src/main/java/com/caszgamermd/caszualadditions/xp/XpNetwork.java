@@ -9,7 +9,7 @@ public final class XpNetwork {
   var out=new ArrayList<XpTankBlockEntity>();var seen=new HashSet<BlockPos>();var q=new ArrayDeque<BlockPos>();q.add(start);
   while(!q.isEmpty()&&seen.size()<4096){var p=q.removeFirst();if(!seen.add(p))continue;var be=level.getBlockEntity(p);
    if(be instanceof XpTankBlockEntity tank){out.add(tank);for(var d:Direction.values())q.add(p.relative(d));}
-   else if(p.equals(start)&&(be instanceof XpChargerBlockEntity||be instanceof XpDrainBlockEntity)){for(var d:Direction.values())q.add(p.relative(d));}
+   else if(p.equals(start)&&(be instanceof XpChargerBlockEntity||be instanceof XpDrainBlockEntity||be instanceof XpShowerBlockEntity)){for(var d:Direction.values())q.add(p.relative(d));}
   } return out;
  }
  public static int stored(ServerLevel l,BlockPos p){return tanks(l,p).stream().mapToInt(XpTankBlockEntity::stored).sum();}
