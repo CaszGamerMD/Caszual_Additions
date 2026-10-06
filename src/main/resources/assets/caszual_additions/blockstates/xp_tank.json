@@ -90,34 +90,34 @@
     },
     {
       "when": {
-        "north": "true"
+        "north": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_connector_north"
+        "model": "caszual_additions:block/xp_tank_outer_north"
       }
     },
     {
       "when": {
-        "south": "true"
+        "south": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_connector_south"
+        "model": "caszual_additions:block/xp_tank_outer_south"
       }
     },
     {
       "when": {
-        "west": "true"
+        "west": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_connector_west"
+        "model": "caszual_additions:block/xp_tank_outer_west"
       }
     },
     {
       "when": {
-        "east": "true"
+        "east": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_connector_east"
+        "model": "caszual_additions:block/xp_tank_outer_east"
       }
     }
   ]
