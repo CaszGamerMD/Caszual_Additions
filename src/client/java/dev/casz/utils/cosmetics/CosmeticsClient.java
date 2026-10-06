@@ -26,11 +26,11 @@ public final class CosmeticsClient {
             var hide=armorButton(positions.caszutils$left()+128,positions.caszutils$top()+22,20);
             hide.setMessage(Component.literal(armorHidden()?"C":"D"));
             hide.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.hide_hint")));
-            final boolean[] shown={true};
+            
             var toggle=Button.builder(Component.literal("B"),button->{
-                shown[0]=!shown[0];
-                int first=inventoryScreen.getMenu().slots.size()-4;
-                for(int i=first;i<inventoryScreen.getMenu().slots.size();i++)inventoryScreen.getMenu().slots.get(i).setActive(shown[0]);
+                
+                
+                if(ClientPlayNetworking.canSend(OpenCosmetics.TYPE))ClientPlayNetworking.send(OpenCosmetics.INSTANCE);
             }).bounds(positions.caszutils$left()+58,positions.caszutils$top()+80,20,20).build();
             toggle.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.cosmetic_hint")));
             Screens.getWidgets(screen).add(hide);Screens.getWidgets(screen).add(toggle);
