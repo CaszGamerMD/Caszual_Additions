@@ -11,7 +11,8 @@
     "CosmeticSkullScaleMixin",
     "EndRodAvatarRendererMixin",
     "ArmorStandCosmeticsMixin",
-    "ArmorStandModelCosmeticsMixin"
+    "ArmorStandModelCosmeticsMixin",
+    "MinecraftScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
