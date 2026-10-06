@@ -12,7 +12,7 @@ public abstract class PlayerCosmeticHeadMixin {
     private void caszutils$blockHead(AvatarRenderState state,CallbackInfo ci){
         var model=(PlayerModel)(Object)this; boolean block=SpecialCosmetics.hasBlockHead(state.headEquipment);
         boolean mobHead=SpecialCosmetics.isMobHead(state.headEquipment);
-        model.head.visible=!mobHead; model.hat.visible=!mobHead&&state.showHat; model.head.xScale=model.head.yScale=model.head.zScale=block&&!mobHead?.99f:1f;
+        boolean boneHead=SpecialCosmetics.isBone(state.headEquipment);\n        model.head.visible=!mobHead&&!boneHead; model.hat.visible=!mobHead&&!boneHead&&state.showHat; model.head.xScale=model.head.yScale=model.head.zScale=block&&!mobHead&&!boneHead?.99f:1f;
         boolean golem=SpecialCosmetics.isSnowGolem(state.headEquipment,state.chestEquipment,state.legsEquipment,state.feetEquipment);
         if(golem) model.head.y += 2.0f;
         boolean arms=golem||SpecialCosmetics.isRodLike(state.chestEquipment), legs=golem||SpecialCosmetics.rodLegs(state.legsEquipment,state.feetEquipment);
