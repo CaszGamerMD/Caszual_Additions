@@ -1,37 +1,124 @@
 {
-  "variants": {
-    "fill=0": {
-      "model": "caszual_additions:block/xp_tank_fill0"
+  "multipart": [
+    {
+      "when": {
+        "fill": "0"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill0"
+      }
     },
-    "fill=1": {
-      "model": "caszual_additions:block/xp_tank_fill1"
+    {
+      "when": {
+        "fill": "1"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill1"
+      }
     },
-    "fill=2": {
-      "model": "caszual_additions:block/xp_tank_fill2"
+    {
+      "when": {
+        "fill": "2"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill2"
+      }
     },
-    "fill=3": {
-      "model": "caszual_additions:block/xp_tank_fill3"
+    {
+      "when": {
+        "fill": "3"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill3"
+      }
     },
-    "fill=4": {
-      "model": "caszual_additions:block/xp_tank_fill4"
+    {
+      "when": {
+        "fill": "4"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill4"
+      }
     },
-    "fill=5": {
-      "model": "caszual_additions:block/xp_tank_fill5"
+    {
+      "when": {
+        "fill": "5"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill5"
+      }
     },
-    "fill=6": {
-      "model": "caszual_additions:block/xp_tank_fill6"
+    {
+      "when": {
+        "fill": "6"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill6"
+      }
     },
-    "fill=7": {
-      "model": "caszual_additions:block/xp_tank_fill7"
+    {
+      "when": {
+        "fill": "7"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill7"
+      }
     },
-    "fill=8": {
-      "model": "caszual_additions:block/xp_tank_fill8"
+    {
+      "when": {
+        "fill": "8"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill8"
+      }
     },
-    "fill=9": {
-      "model": "caszual_additions:block/xp_tank_fill9"
+    {
+      "when": {
+        "fill": "9"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill9"
+      }
     },
-    "fill=10": {
-      "model": "caszual_additions:block/xp_tank_fill10"
+    {
+      "when": {
+        "fill": "10"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_fill10"
+      }
+    },
+    {
+      "when": {
+        "north": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_connector_north"
+      }
+    },
+    {
+      "when": {
+        "south": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_connector_south"
+      }
+    },
+    {
+      "when": {
+        "west": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_connector_west"
+      }
+    },
+    {
+      "when": {
+        "east": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_connector_east"
+      }
     }
-  }
+  ]
 }
