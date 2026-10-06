@@ -18,25 +18,26 @@ public final class CosmeticsClient {
         var button = Button.builder(armorLabel(), b -> { boolean hidden=!armorHidden(); ClientPlayNetworking.send(new ToggleArmorVisibility(hidden)); Cosmetics.setHideArmor(net.minecraft.client.Minecraft.getInstance().player, hidden); b.setMessage(armorLabel()); }).bounds(x, y, width, 20).build();
         button.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.hide_hint"))); return button;
     }
-    private static int buttonY(net.minecraft.client.gui.screens.Screen screen, ContainerScreenAccessor pos) {
-        int gap = screen instanceof CreativeModeInventoryScreen ? 34 : 6;
-        return Math.min(screen.height - 22, pos.caszutils$top() + pos.caszutils$height() + gap);
-    }
     public static void initialize() {
         BlockOutfitTextures.initialize();
         MenuScreens.register(Cosmetics.MENU, CosmeticsScreen::new);
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (!(screen instanceof InventoryScreen) && !(screen instanceof CreativeModeInventoryScreen)) return;
             var positions = (ContainerScreenAccessor)screen;
-            var hide = armorButton(positions.caszutils$left(), buttonY(screen, positions), 86);
-            var open = Button.builder(Component.translatable("gui.caszutils.cosmetics"), button -> {
+            int recipeX = positions.caszutils$left() + 104;
+            int recipeY = positions.caszutils$top() + 22;
+            var hide = armorButton(recipeX + 24, recipeY, 20);
+            hide.setMessage(Component.literal(armorHidden() ? "⛓" : "◆"));
+            hide.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.hide_hint")));
+            var open = Button.builder(Component.literal("🖌"), button -> {
                 if (ClientPlayNetworking.canSend(OpenCosmetics.TYPE)) ClientPlayNetworking.send(OpenCosmetics.INSTANCE);
-            }).bounds(positions.caszutils$left() + 90, buttonY(screen, positions), 86, 20).build();
+            }).bounds(positions.caszutils$left() + 7, positions.caszutils$top() + 80, 20, 20).build();
             open.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.cosmetic_hint")));
             Screens.getWidgets(screen).add(hide); Screens.getWidgets(screen).add(open);
             ScreenEvents.beforeExtract(screen).register((s, graphics, mx, my, partial) -> {
-                hide.setPosition(positions.caszutils$left(), buttonY(screen, positions));
-                open.setPosition(positions.caszutils$left() + 90, buttonY(screen, positions));
+                hide.setPosition(positions.caszutils$left() + 128, positions.caszutils$top() + 22);
+                hide.setMessage(Component.literal(armorHidden() ? "⛓" : "◆"));
+                open.setPosition(positions.caszutils$left() + 7, positions.caszutils$top() + 80);
             });
         });
     }
