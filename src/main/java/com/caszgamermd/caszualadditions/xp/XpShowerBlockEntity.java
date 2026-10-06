@@ -16,7 +16,7 @@ public final class XpShowerBlockEntity extends BlockEntity {
   int moved=XpNetwork.extract(level,pos,1);if(moved<=0){shower.playerId=null;shower.setChanged();return;}p.giveExperiencePoints(moved);if(level.getGameTime()%2==0){
    double ground=pos.getY()-4.0;
    for(int dy=0;dy<4;dy++){var below=pos.below(dy+1);if(!level.getBlockState(below).getCollisionShape(level,below).isEmpty()){ground=below.getY()+1.0;break;}}
-   double start=pos.getY()+0.43;double end=Math.max(ground,start-4.0);int drops=Math.max(4,(int)((start-end)*5));
+   double start=pos.getY()+0.36;double end=Math.max(ground,start-4.0);int drops=Math.max(4,(int)((start-end)*5));
    for(int i=0;i<drops;i++){double y=start-(start-end)*(i/(double)Math.max(1,drops-1));level.sendParticles(ParticleTypes.HAPPY_VILLAGER,pos.getX()+0.5,y,pos.getZ()+0.5,1,.22,.02,.22,0.0);}
   }
  }
