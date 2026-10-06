@@ -16,7 +16,7 @@ public abstract class PlayerCosmeticHeadMixin {
         model.head.visible=!mobHead&&!boneHead; model.hat.visible=!mobHead&&!boneHead&&state.showHat; model.head.xScale=model.head.yScale=model.head.zScale=block&&!mobHead&&!boneHead?.99f:1f;
         boolean golem=SpecialCosmetics.isSnowGolem(state.headEquipment,state.chestEquipment,state.legsEquipment,state.feetEquipment);
         if(golem) model.head.y += 2.0f;
-        boolean arms=golem||SpecialCosmetics.isRodLike(state.chestEquipment), legs=golem||SpecialCosmetics.rodLegs(state.legsEquipment,state.feetEquipment);
+        boolean arms=golem||SpecialCosmetics.isRodLike(state.chestEquipment), legs=golem||SpecialCosmetics.specialLegs(state.legsEquipment,state.feetEquipment);
         if(arms){model.body.visible=model.jacket.visible=false;model.leftArm.visible=model.rightArm.visible=false;model.leftSleeve.visible=model.rightSleeve.visible=false;}
         if(legs){model.leftLeg.visible=model.rightLeg.visible=false;model.leftPants.visible=model.rightPants.visible=false;}
     }
