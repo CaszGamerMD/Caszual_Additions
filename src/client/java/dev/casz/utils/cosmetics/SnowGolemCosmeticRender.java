@@ -18,5 +18,6 @@ public final class SnowGolemCosmeticRender {
         for(boolean left:new boolean[]{false,true}){var arm=root.getChild(left?"left_arm":"right_arm");arm.resetPose();var source=left?player.leftArm:player.rightArm;arm.x=source.x;arm.y=source.y+3;arm.z=source.z;arm.xRot=source.xRot;arm.yRot+=source.yRot;arm.zRot+=source.zRot;submit(arm,pose,collector,light,outline);}
     }
     
+    public void hand(ModelPart playerArm,PoseStack pose,SubmitNodeCollector collector,int light){pose.pushPose();playerArm.translateAndRotate(pose);pose.mulPose(Axis.ZP.rotationDegrees(90));var arm=root.getChild("left_arm");arm.resetPose();arm.x=arm.y=arm.z=0;arm.xRot=arm.yRot=arm.zRot=0;submit(arm,pose,collector,light,0);pose.popPose();}
     private void submit(ModelPart part,PoseStack pose,SubmitNodeCollector collector,int light,int outline){pose.pushPose();part.translateAndRotate(pose);collector.order(1).submitModelPart(geometry.get(part),pose,RenderTypes.entityCutout(TEXTURE),light,OverlayTexture.NO_OVERLAY,null,-1,null,outline);pose.popPose();}
 }
