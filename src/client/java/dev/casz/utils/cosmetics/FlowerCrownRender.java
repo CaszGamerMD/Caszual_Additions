@@ -12,7 +12,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.FlowerBlock;
 public final class FlowerCrownRender {
  private FlowerCrownRender(){}
- public static boolean isFlower(ItemStack s){return s.getItem() instanceof BlockItem bi&&bi.getBlock() instanceof FlowerBlock;}
+ public static boolean isFlower(ItemStack s){return FlowerCosmetics.isFlower(s);}
  private static void flower(ItemStack s,ModelPart head,PoseStack p,SubmitNodeCollector c,int l,int o,float x,float z,float scale,float tilt){
   p.pushPose();head.translateAndRotate(p);p.translate(x,-.50f,z);p.mulPose(Axis.ZP.rotationDegrees(tilt));p.scale(scale,scale,scale);var r=new ItemStackRenderState();Minecraft.getInstance().getItemModelResolver().updateForTopItem(r,s,ItemDisplayContext.FIXED,null,null,0);r.submit(p,c,l,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,o);p.popPose();
  }
