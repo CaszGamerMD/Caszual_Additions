@@ -14,7 +14,8 @@ public final class XpDrainBlockEntity extends BlockEntity {
  public static void tick(ServerLevel level,BlockPos pos,XpDrainBlockEntity drain){
   if(XpNetwork.space(level,pos)<=0)return;
   var box=new AABB(pos).inflate(.75,.5,.75);
-  for(Player p:level.getEntitiesOfClass(Player.class,box)){
+  var playerPad=new AABB(pos.getX()+6.0/16.0,pos.getY(),pos.getZ()+6.0/16.0,pos.getX()+10.0/16.0,pos.getY()+1.0/16.0,pos.getZ()+10.0/16.0);
+  for(Player p:level.getEntitiesOfClass(Player.class,playerPad)){
    if(!p.isCrouching())continue;int available=XpPlayer.total(p);if(available<=0)continue;int moved=XpNetwork.insert(level,pos,Math.min(available,20));
    if(moved>0)XpPlayer.remove(p,moved);if(XpNetwork.space(level,pos)<=0)return;
   }
