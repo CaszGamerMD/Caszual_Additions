@@ -16,7 +16,7 @@ public final class CosmeticGuideScreen extends Screen {
   new Entry("Bone Skeleton","Sets",new ItemStack(Items.BONE),"All slots","Build a custom 3D skeleton outfit from bones."),
   new Entry("Flower Crown","Head",new ItemStack(Items.POPPY),"Head","Flowers become a crown and can add colored footstep dust."),
   new Entry("Crystal Spines","Head",new ItemStack(Items.AMETHYST_CLUSTER),"Head","Crystal clusters form a Godzilla-like crystal crest."),
-  new Entry("Lightning Rod Horn","Head",new ItemStack(Items.LIGHTNING_ROD),"Head","A shorter lightning-rod horn set into the head."),
+  new Entry("Lightning Rod Horn","Head",new ItemStack(Items.LIGHTNING_ROD.get(net.minecraft.world.level.block.WeatheringCopper.WeatherState.UNAFFECTED)),"Head","A shorter lightning-rod horn set into the head."),
   new Entry("Blaze","Effects",new ItemStack(Items.BLAZE_POWDER),"Head / Feet","Flame head effect or ember footsteps."),
   new Entry("Nautilus","Sets",new ItemStack(Items.NAUTILUS_SHELL),"All slots","Ocean-floor themed shell cosmetics."),
   new Entry("Echo Soul","Effects",new ItemStack(Items.ECHO_SHARD),"Feet","Sculk-like soul footsteps."),
