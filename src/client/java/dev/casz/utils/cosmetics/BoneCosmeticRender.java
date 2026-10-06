@@ -11,7 +11,7 @@ public final class BoneCosmeticRender {
     public static void bone(ItemStack stack, ModelPart part, PoseStack pose, SubmitNodeCollector collector, float x, float y, float scale, int light, int outline){
         pose.pushPose(); part.translateAndRotate(pose); pose.translate(x,y,0); pose.mulPose(Axis.ZP.rotationDegrees(90)); pose.scale(scale,scale,scale);
         var state=new net.minecraft.client.renderer.item.ItemStackRenderState();
-        Minecraft.getInstance().getItemModelResolver().updateForTopItem(state, stack, ItemDisplayContext.FIXED, null, null, 0);
+        Minecraft.getInstance().getItemModelResolver().updateForTopItem(state, stack, ItemDisplayContext.FIXED, Minecraft.getInstance().level, null, 0);
         state.submit(pose,collector,light,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,outline);
         pose.popPose();
     }
