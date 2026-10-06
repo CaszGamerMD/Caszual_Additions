@@ -25,11 +25,11 @@ public final class CosmeticsClient {
             if(!(screen instanceof InventoryScreen inventoryScreen))return;
             var positions=(ContainerScreenAccessor)screen;
             var hide=armorButton(positions.caszutils$left()+128,positions.caszutils$top()+22,20);
-            hide.setMessage(Component.literal(armorHidden()?"C":"D"));
+            hide.setMessage(Component.literal(armorHidden()?"▦":"◆"));
             hide.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.hide_hint")));
             
             final boolean[] shown={true};
-            var toggle=Button.builder(Component.literal("B"),button->{
+            var toggle=Button.builder(Component.literal("▰"),button->{
                 shown[0]=!shown[0];
                 int first=inventoryScreen.getMenu().slots.size()-4;
                 for(int i=0;i<4;i++){
@@ -42,7 +42,7 @@ public final class CosmeticsClient {
             Screens.getWidgets(screen).add(hide);Screens.getWidgets(screen).add(toggle);
             ScreenEvents.beforeExtract(screen).register((s,graphics,mx,my,partial)->{
                 hide.setPosition(positions.caszutils$left()+128,positions.caszutils$top()+22);
-                hide.setMessage(Component.literal(armorHidden()?"C":"D"));
+                hide.setMessage(Component.literal(armorHidden()?"▦":"◆"));
                 toggle.setPosition(positions.caszutils$left()+58,positions.caszutils$top()+80);
             });
         });
