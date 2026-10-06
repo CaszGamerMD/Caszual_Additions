@@ -14,9 +14,12 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 public final class XpShowerBlock extends Block implements EntityBlock {
+ private static final net.minecraft.world.phys.shapes.VoxelShape SHAPE=Block.box(0,8,0,16,16,16);
  public static final MapCodec<XpShowerBlock> CODEC=simpleCodec(XpShowerBlock::new);
  public XpShowerBlock(BlockBehaviour.Properties p){super(p);}
  @Override protected MapCodec<? extends Block> codec(){return CODEC;}
+ @Override protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){return SHAPE;}
+ @Override protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){return SHAPE;}
  @Override public BlockEntity newBlockEntity(BlockPos p,BlockState s){return new XpShowerBlockEntity(p,s);}
  @Override protected InteractionResult useWithoutItem(BlockState state,Level level,BlockPos pos,Player player,BlockHitResult hit){
   if(!level.isClientSide()&&player instanceof ServerPlayer sp&&level.getBlockEntity(pos) instanceof XpShowerBlockEntity shower)shower.toggle(sp);
