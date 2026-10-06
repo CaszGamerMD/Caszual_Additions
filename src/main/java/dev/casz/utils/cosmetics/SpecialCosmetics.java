@@ -27,6 +27,7 @@ public final class SpecialCosmetics {
         return head.is(net.minecraft.world.item.Items.CARVED_PUMPKIN) && chest.is(net.minecraft.world.item.Items.STICK)
             && legs.is(net.minecraft.world.item.Items.SNOW_BLOCK) && feet.is(net.minecraft.world.item.Items.SNOW_BLOCK);
     }
-    public static boolean rodLegs(ItemStack legs, ItemStack feet) { return isRodLike(legs) || isRodLike(feet); }
+    public static boolean rodLegs(ItemStack legs, ItemStack feet) { return isEndRod(legs) || isEndRod(feet); }
+    public static boolean specialLegs(ItemStack legs, ItemStack feet) { return rodLegs(legs, feet) || isBone(legs) || isBone(feet); }
     public static boolean isMobHead(ItemStack stack) { return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof AbstractSkullBlock && !isPlayerHead(stack); }
 }
