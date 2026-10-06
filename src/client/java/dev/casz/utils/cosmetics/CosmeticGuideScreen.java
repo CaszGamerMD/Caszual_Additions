@@ -11,6 +11,7 @@ import net.minecraft.world.item.ItemStack;
 public final class CosmeticGuideScreen extends Screen {
  private int index;
  private int category;
+ private final java.util.ArrayList<Button> categoryButtons=new java.util.ArrayList<>();
  public CosmeticGuideScreen(){super(Component.literal("Cosmetic Guide"));}
  private List<CosmeticGuideCatalog.Entry> visible(){
   var cat=CosmeticGuideCatalog.CATEGORIES[category];
@@ -19,6 +20,7 @@ public final class CosmeticGuideScreen extends Screen {
       .toList();
  }
  private void clamp(){var v=visible();if(v.isEmpty())index=0;else index=Math.floorMod(index,v.size());}
+ private void selectCategory(int value){category=value;index=0;for(int i=0;i<categoryButtons.size();i++)categoryButtons.get(i).active=i!=category;}
  @Override protected void init(){
   int l=width/2-130,t=height/2-104;
   addRenderableWidget(Button.builder(Component.literal("<"),b->{index--;clamp();}).bounds(l+12,t+184,22,18).build());
@@ -27,9 +29,12 @@ public final class CosmeticGuideScreen extends Screen {
   for(int i=0;i<CosmeticGuideCatalog.CATEGORIES.length;i++){
    final int n=i;
    int row=i/4,col=i%4;
-   addRenderableWidget(Button.builder(Component.literal(CosmeticGuideCatalog.CATEGORIES[i]),b->{category=n;index=0;})
-       .bounds(l+8+col*61,t+7+row*18,58,16).build());
+   var button=Button.builder(Component.literal(CosmeticGuideCatalog.CATEGORIES[i]),b->selectCategory(n))
+       .bounds(l+8+col*61,t+7+row*18,58,16).build();
+   categoryButtons.add(button);
+   addRenderableWidget(button);
   }
+  selectCategory(category);
  }
  private int wrapped(GuiGraphicsExtractor g,String text,int x,int y,int maxWidth,int color){
   var words=text.split(" ");
