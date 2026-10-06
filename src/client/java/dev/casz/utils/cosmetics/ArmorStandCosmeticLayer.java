@@ -19,7 +19,7 @@ public final class ArmorStandCosmeticLayer extends RenderLayer<ArmorStandRenderS
         if(SpecialCosmetics.rodLegs(legs,feet)){var rods=SpecialCosmetics.isEndRod(legs)?legs:feet;if(SpecialCosmetics.isEndRod(rods)){EndRodRender.limb(rods,model.rightLeg,pose,collector,0,0,state.outlineColor);EndRodRender.limb(rods,model.leftLeg,pose,collector,0,0,state.outlineColor);}}
         if(head.is(net.minecraft.world.item.Items.NAUTILUS_SHELL)) OceanCosmeticRender.head(head,model.head,pose,collector,light,state.outlineColor);
         if(chest.is(net.minecraft.world.item.Items.NAUTILUS_SHELL)) OceanCosmeticRender.chest(chest,model.body,model.leftArm,model.rightArm,pose,collector,light,state.outlineColor);
-        if(legs.is(net.minecraft.world.item.Items.NAUTILUS_SHELL)) OceanCosmeticRender.legs(legs,model.leftLeg,model.rightLeg,pose,collector,light,state.outlineColor);
+        if(legs.is(net.minecraft.world.item.Items.NAUTILUS_SHELL)) OceanCosmeticRender.legs(model.leftLeg,model.rightLeg,pose,collector,light,state.outlineColor);
         if(feet.is(net.minecraft.world.item.Items.NAUTILUS_SHELL)) OceanCosmeticRender.feet(feet,model.leftLeg,model.rightLeg,pose,collector,light,state.outlineColor);
         boolean bh=SpecialCosmetics.isBone(head),bc=SpecialCosmetics.isBone(chest),bl=SpecialCosmetics.isBone(legs)||SpecialCosmetics.isBone(feet);
         if(bh||bc||bl){var bone=bh?head:bc?chest:SpecialCosmetics.isBone(legs)?legs:feet;BoneCosmeticRender.skeleton(new BoneCosmeticRender.PlayerModelAccess(){
