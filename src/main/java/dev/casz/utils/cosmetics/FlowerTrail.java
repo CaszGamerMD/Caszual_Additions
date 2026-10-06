@@ -19,5 +19,5 @@ public final class FlowerTrail {
  );
  private FlowerTrail(){}
  public static void initialize(){ServerTickEvents.END_SERVER_TICK.register(server->{for(var level:server.getAllLevels())for(var p:level.players()){if(p.tickCount%3!=0||p.getDeltaMovement().horizontalDistanceSqr()<0.0025)continue;var feet=Cosmetics.get(p,EquipmentSlot.FEET);int rgb=color(feet);if(rgb<0)continue;level.sendParticles(new DustParticleOptions(rgb,.8f),p.getX(),p.getY()+.08,p.getZ(),2,.18,.04,.18,.005);}});}
- private static int color(ItemStack s){if(!(s.getItem() instanceof BlockItem bi)||!(bi.getBlock() instanceof FlowerBlock))return -1;String path=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).getPath();return COLORS.getOrDefault(path,0x7ED957);}
+ private static int color(ItemStack s){if(!FlowerCosmetics.isFlower(s))return -1;String path=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).getPath();return COLORS.getOrDefault(path,0x7ED957);}
 }
