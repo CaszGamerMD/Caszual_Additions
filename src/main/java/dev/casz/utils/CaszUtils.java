@@ -27,6 +27,7 @@ public final class CaszUtils {
     public static void initialize() {
         FireflyGlass.initialize();
         dev.casz.utils.cosmetics.Cosmetics.initialize();
+        dev.casz.utils.cosmetics.ArmorStandCosmeticInteraction.initialize();
         CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FOOD_AND_DRINKS).register(entries -> {
             entries.accept(SHORTCAKES);
             entries.accept(STACK_O_JACKS);
