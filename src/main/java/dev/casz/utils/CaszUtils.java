@@ -34,6 +34,8 @@ public final class CaszUtils {
             entries.accept(STACK_O_JACKS);
             entries.accept(VANILLA_WAFERS);
         });
+        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries ->
+            entries.accept(dev.casz.utils.cosmetics.CosmeticGuide.ITEM));
         org.slf4j.LoggerFactory.getLogger(MOD_ID).info("CaszUtils systems initialized inside Caszual Additions");
     }
 }
