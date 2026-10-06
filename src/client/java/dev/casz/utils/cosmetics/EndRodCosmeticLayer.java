@@ -7,7 +7,7 @@ import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 public final class EndRodCosmeticLayer extends RenderLayer<AvatarRenderState,PlayerModel>{
-    private final boolean slim;private final SnowGolemCosmeticRender snow=new SnowGolemCosmeticRender();
+    private final boolean slim;private final SnowGolemCosmeticRender snow=new SnowGolemCosmeticRender();private final BoneCosmeticRender bones=new BoneCosmeticRender();
     public EndRodCosmeticLayer(RenderLayerParent<AvatarRenderState,PlayerModel> renderer,boolean slim){super(renderer);this.slim=slim;}
     @Override public void submit(PoseStack pose,SubmitNodeCollector collector,int light,AvatarRenderState state,float yaw,float pitch){
         if(state.isSpectator||state.isInvisible)return;var model=getParentModel();pose.pushPose();model.root().translateAndRotate(pose);
@@ -16,7 +16,7 @@ public final class EndRodCosmeticLayer extends RenderLayer<AvatarRenderState,Pla
         var boneLegs=SpecialCosmetics.isBone(state.legsEquipment)||SpecialCosmetics.isBone(state.feetEquipment);
         if(boneHead||boneChest||boneLegs){
             var bone=boneHead?state.headEquipment:boneChest?state.chestEquipment:SpecialCosmetics.isBone(state.legsEquipment)?state.legsEquipment:state.feetEquipment;
-            BoneCosmeticRender.skeleton(new BoneCosmeticRender.PlayerModelAccess(){
+            bones.skeleton(new BoneCosmeticRender.PlayerModelAccess(){
                 public net.minecraft.client.model.geom.ModelPart head(){return model.head;} public net.minecraft.client.model.geom.ModelPart body(){return model.body;}
                 public net.minecraft.client.model.geom.ModelPart leftArm(){return model.leftArm;} public net.minecraft.client.model.geom.ModelPart rightArm(){return model.rightArm;}
                 public net.minecraft.client.model.geom.ModelPart leftLeg(){return model.leftLeg;} public net.minecraft.client.model.geom.ModelPart rightLeg(){return model.rightLeg;}
