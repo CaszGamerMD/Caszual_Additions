@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions.xp;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -12,14 +13,21 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.phys.BlockHitResult;
 public final class XpShowerBlock extends Block implements EntityBlock {
- private static final net.minecraft.world.phys.shapes.VoxelShape SHAPE=Block.box(0,8,0,16,16,16);
+ public static final DirectionProperty FACING=net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING;
+ private static final net.minecraft.world.phys.shapes.VoxelShape NS=net.minecraft.world.phys.shapes.Shapes.or(Block.box(6.5,6.5,0,9.5,9.5,12),Block.box(4.5,4.5,9,11.5,11.5,16));
+ private static final net.minecraft.world.phys.shapes.VoxelShape EW=net.minecraft.world.phys.shapes.Shapes.or(Block.box(0,6.5,6.5,12,9.5,9.5),Block.box(9,4.5,4.5,16,11.5,11.5));
  public static final MapCodec<XpShowerBlock> CODEC=simpleCodec(XpShowerBlock::new);
- public XpShowerBlock(BlockBehaviour.Properties p){super(p);}
+ public XpShowerBlock(BlockBehaviour.Properties p){super(p);registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));}
  @Override protected MapCodec<? extends Block> codec(){return CODEC;}
- @Override protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){return SHAPE;}
- @Override protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){return SHAPE;}
+ @Override protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){return (state.getValue(FACING).getAxis()==Direction.Axis.Z)?NS:EW;}
+ @Override protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){return (state.getValue(FACING).getAxis()==Direction.Axis.Z)?NS:EW;}
+ @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> b){b.add(FACING);}
+ @Override public BlockState getStateForPlacement(BlockPlaceContext ctx){return defaultBlockState().setValue(FACING,ctx.getHorizontalDirection().getOpposite());}
  @Override public BlockEntity newBlockEntity(BlockPos p,BlockState s){return new XpShowerBlockEntity(p,s);}
  @Override protected InteractionResult useWithoutItem(BlockState state,Level level,BlockPos pos,Player player,BlockHitResult hit){
   if(!level.isClientSide()&&player instanceof ServerPlayer sp&&level.getBlockEntity(pos) instanceof XpShowerBlockEntity shower)shower.toggle(sp);
