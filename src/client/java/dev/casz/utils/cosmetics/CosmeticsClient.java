@@ -1,6 +1,7 @@
 package dev.casz.utils.cosmetics;
 
 import dev.casz.utils.mixin.ContainerScreenAccessor;
+import dev.casz.utils.mixin.SlotAccessor;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
@@ -27,10 +28,15 @@ public final class CosmeticsClient {
             hide.setMessage(Component.literal(armorHidden()?"C":"D"));
             hide.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.hide_hint")));
             
+            final boolean[] shown={true};
             var toggle=Button.builder(Component.literal("B"),button->{
-                
-                
-                if(ClientPlayNetworking.canSend(OpenCosmetics.TYPE))ClientPlayNetworking.send(OpenCosmetics.INSTANCE);
+                shown[0]=!shown[0];
+                int first=inventoryScreen.getMenu().slots.size()-4;
+                for(int i=0;i<4;i++){
+                    var slot=(SlotAccessor)(Object)inventoryScreen.getMenu().slots.get(first+i);
+                    slot.caszutils$setX(shown[0]?59:-10000);
+                    slot.caszutils$setY(shown[0]?8+18*i:-10000);
+                }
             }).bounds(positions.caszutils$left()+58,positions.caszutils$top()+80,20,20).build();
             toggle.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.cosmetic_hint")));
             Screens.getWidgets(screen).add(hide);Screens.getWidgets(screen).add(toggle);
