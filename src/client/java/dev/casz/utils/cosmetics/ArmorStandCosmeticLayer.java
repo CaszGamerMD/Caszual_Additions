@@ -6,6 +6,7 @@ import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.state.ArmorStandRenderState;
 public final class ArmorStandCosmeticLayer extends RenderLayer<ArmorStandRenderState,ArmorStandArmorModel>{
+    private final BoneCosmeticRender bones=new BoneCosmeticRender();
     public ArmorStandCosmeticLayer(RenderLayerParent<ArmorStandRenderState,ArmorStandArmorModel> parent){super(parent);}
     @Override public void submit(PoseStack pose,SubmitNodeCollector collector,int light,ArmorStandRenderState state,float yaw,float pitch){
         if(state.isInvisible)return; var model=getParentModel(); pose.pushPose(); model.root().translateAndRotate(pose);
@@ -22,7 +23,7 @@ public final class ArmorStandCosmeticLayer extends RenderLayer<ArmorStandRenderS
         if(legs.is(net.minecraft.world.item.Items.NAUTILUS_SHELL)) OceanCosmeticRender.legs(model.leftLeg,model.rightLeg,pose,collector,light,state.outlineColor);
         if(feet.is(net.minecraft.world.item.Items.NAUTILUS_SHELL)) OceanCosmeticRender.feet(feet,model.leftLeg,model.rightLeg,pose,collector,light,state.outlineColor);
         boolean bh=SpecialCosmetics.isBone(head),bc=SpecialCosmetics.isBone(chest),bl=SpecialCosmetics.isBone(legs)||SpecialCosmetics.isBone(feet);
-        if(bh||bc||bl){var bone=bh?head:bc?chest:SpecialCosmetics.isBone(legs)?legs:feet;BoneCosmeticRender.skeleton(new BoneCosmeticRender.PlayerModelAccess(){
+        if(bh||bc||bl){var bone=bh?head:bc?chest:SpecialCosmetics.isBone(legs)?legs:feet;bones.skeleton(new BoneCosmeticRender.PlayerModelAccess(){
             public net.minecraft.client.model.geom.ModelPart head(){return model.head;} public net.minecraft.client.model.geom.ModelPart body(){return model.body;}
             public net.minecraft.client.model.geom.ModelPart leftArm(){return model.leftArm;} public net.minecraft.client.model.geom.ModelPart rightArm(){return model.rightArm;}
             public net.minecraft.client.model.geom.ModelPart leftLeg(){return model.leftLeg;} public net.minecraft.client.model.geom.ModelPart rightLeg(){return model.rightLeg;}
