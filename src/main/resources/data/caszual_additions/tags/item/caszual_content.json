@@ -41,6 +41,7 @@
     "caszual_additions:xp_tank",
     "caszual_additions:xp_charger",
     "caszual_additions:xp_drain",
-    "caszual_additions:xp_shower"
+    "caszual_additions:xp_shower",
+    "caszutils:cosmetic_guide"
   ]
 }
