@@ -26,7 +26,7 @@ public final class CosmeticGuide {
  }
  private CosmeticGuide(){}
  public static void initialize(){
-  net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry.playS2C().register(OpenGuide.TYPE,OpenGuide.CODEC);
+  net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry.clientboundPlay().register(OpenGuide.TYPE,OpenGuide.CODEC);
  }
  public static void open(ServerPlayer player){ServerPlayNetworking.send(player,new OpenGuide());}
 }
