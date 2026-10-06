@@ -14,11 +14,11 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.phys.BlockHitResult;
 public final class XpShowerBlock extends Block implements EntityBlock {
- public static final DirectionProperty FACING=net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING;
+ public static final EnumProperty<Direction> FACING=EnumProperty.create("facing",Direction.class,d->d.getAxis().isHorizontal());
  private static final net.minecraft.world.phys.shapes.VoxelShape NS=net.minecraft.world.phys.shapes.Shapes.or(Block.box(6.5,6.5,0,9.5,9.5,12),Block.box(4.5,4.5,9,11.5,11.5,16));
  private static final net.minecraft.world.phys.shapes.VoxelShape EW=net.minecraft.world.phys.shapes.Shapes.or(Block.box(0,6.5,6.5,12,9.5,9.5),Block.box(9,4.5,4.5,16,11.5,11.5));
  public static final MapCodec<XpShowerBlock> CODEC=simpleCodec(XpShowerBlock::new);
