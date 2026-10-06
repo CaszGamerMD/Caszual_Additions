@@ -7,6 +7,7 @@ import net.minecraft.client.particle.SingleQuadParticle;
 public final class CaszUtilsClient {
     public static void initialize() {
         dev.casz.utils.cosmetics.CosmeticsClient.initialize();
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(dev.casz.utils.cosmetics.CosmeticGuide.OpenGuide.TYPE, (payload, context) -> context.client().setScreen(new dev.casz.utils.cosmetics.CosmeticGuideScreen()));
         FireflyGlass.PARTICLES.forEach((color, type) -> {
             int rgb = color.getTextureDiffuseColor();
             ParticleProviderRegistry.getInstance().register(type, sprites -> {
