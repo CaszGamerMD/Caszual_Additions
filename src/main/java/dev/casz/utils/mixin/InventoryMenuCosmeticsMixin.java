@@ -35,7 +35,7 @@ public abstract class InventoryMenuCosmeticsMixin {
         var cosmetics=new CosmeticContainer();
         for(int i=0;i<4;i++){
             final int index=i;
-            addSlot(new Slot(cosmetics,i,-12,8+18*i){
+            addSlot(new Slot(cosmetics,i,59,8+18*i){
                 @Override public int getMaxStackSize(){return 1;}
                 @Override public boolean mayPlace(ItemStack stack){return Cosmetics.accepts(stack,Cosmetics.SLOTS[index]);}
             });
