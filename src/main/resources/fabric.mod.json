@@ -4,17 +4,27 @@
   "version": "${version}",
   "name": "Caszual Additions",
   "description": "Quality-of-life additions and the hub for the Caszual mod family.",
-  "authors": ["CaszGamerMD"],
+  "authors": [
+    "CaszGamerMD"
+  ],
   "contact": {
     "sources": "https://github.com/CaszGamerMD/Caszual_Additions"
   },
   "license": "MIT",
   "environment": "*",
   "entrypoints": {
-    "main": ["com.caszgamermd.caszualadditions.CaszualAdditions"],
-    "client": ["com.caszgamermd.caszualadditions.CaszualAdditionsClient"],
-    "jei_mod_plugin": ["com.caszgamermd.caszualadditions.compat.jei.CaszualJeiPlugin"],
-    "lambdynlights:initializer": ["dev.casz.utils.cosmetics.CosmeticDynamicLights"]
+    "main": [
+      "com.caszgamermd.caszualadditions.CaszualAdditions"
+    ],
+    "client": [
+      "com.caszgamermd.caszualadditions.CaszualAdditionsClient"
+    ],
+    "jei_mod_plugin": [
+      "com.caszgamermd.caszualadditions.compat.jei.CaszualJeiPlugin"
+    ],
+    "lambdynlights:initializer": [
+      "dev.casz.utils.cosmetics.CosmeticDynamicLights"
+    ]
   },
   "depends": {
     "fabricloader": ">=0.19.5",
@@ -22,7 +32,10 @@
     "java": ">=25",
     "fabric-api": "*"
   },
-  "mixins": ["caszutils.client.mixins.json"],
+  "mixins": [
+    "caszutils.mixins.json",
+    "caszutils.client.mixins.json"
+  ],
   "suggests": {
     "jei": "*",
     "lambdynlights": ">=4.12.0"
