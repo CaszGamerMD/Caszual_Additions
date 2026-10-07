@@ -28,10 +28,11 @@ public final class BoneCosmeticRender {
         var r = mesh.getRoot();
         r.addOrReplaceChild("head", CubeListBuilder.create().texOffs(0,0).addBox(-4,-8,-4,8,8,8,new CubeDeformation(0)), PartPose.offset(0,0,0));
         var torso = CubeListBuilder.create()
-            .texOffs(0,0).addBox(-1,-1,-1,2,12,2)
+            .texOffs(0,0).addBox(-1,-1,-1,2,14,2)
             .texOffs(0,0).addBox(-4,0,-1,8,2,2)
             .texOffs(0,0).addBox(-4,4,-1,8,2,2)
-            .texOffs(0,0).addBox(-4,8,-1,8,2,2);
+            .texOffs(0,0).addBox(-4,8,-1,8,2,2)
+            .texOffs(0,0).addBox(-4,11,-1,8,2,2);
         r.addOrReplaceChild("body", torso, PartPose.offset(0,0,0));
         r.addOrReplaceChild("right_arm", CubeListBuilder.create().texOffs(0,0).addBox(-1,-2,-1,2,12,2), PartPose.offset(-5,2,0));
         r.addOrReplaceChild("left_arm", CubeListBuilder.create().texOffs(0,0).addBox(-1,-2,-1,2,12,2), PartPose.offset(5,2,0));
@@ -41,7 +42,7 @@ public final class BoneCosmeticRender {
     }
 
     public void skeleton(PlayerModelAccess player, PoseStack pose, SubmitNodeCollector collector, ItemStack ignored, boolean showHead, boolean showChest, boolean showLegs, int light, int outline) {
-        if (showHead) submitAttached(head, player.head(), pose, collector, light, outline);
+        // Head is rendered by the vanilla skeleton-skull layer so it has a real face.
         if (showChest) {
             submitAttached(body, player.body(), pose, collector, light, outline);
             submitAttached(rightArm, player.rightArm(), pose, collector, light, outline);
