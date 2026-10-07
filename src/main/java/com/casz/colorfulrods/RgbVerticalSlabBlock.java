@@ -19,9 +19,19 @@ public final class RgbVerticalSlabBlock extends HorizontalDirectionalBlock {
     public RgbVerticalSlabBlock(BlockBehaviour.Properties p){super(p);registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));}
     @Override protected MapCodec<? extends HorizontalDirectionalBlock> codec(){return CODEC;}
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<net.minecraft.world.level.block.Block,BlockState> b){b.add(FACING);}
+    private static Direction topBottomFacing(BlockPlaceContext ctx){
+        var h=ctx.getClickLocation();
+        double x=h.x-Math.floor(h.x)-.5,z=h.z-Math.floor(h.z)-.5;
+        if(Math.abs(x)>.16||Math.abs(z)>.16){
+            if(Math.abs(x)>Math.abs(z))return x>0?Direction.EAST:Direction.WEST;
+            return z>0?Direction.SOUTH:Direction.NORTH;
+        }
+        return ctx.getHorizontalDirection().getOpposite();
+    }
     @Override public BlockState getStateForPlacement(BlockPlaceContext ctx){
         var face=ctx.getClickedFace();
-        return defaultBlockState().setValue(FACING,face.getAxis().isHorizontal()?face.getOpposite():ctx.getHorizontalDirection().getOpposite());
+        var facing=face.getAxis().isHorizontal()?face.getOpposite():topBottomFacing(ctx);
+        return defaultBlockState().setValue(FACING,facing);
     }
     @Override protected VoxelShape getShape(BlockState s,BlockGetter level,BlockPos pos,CollisionContext c){
         return switch(s.getValue(FACING)){case NORTH->NORTH;case SOUTH->SOUTH;case WEST->WEST;default->EAST;};
