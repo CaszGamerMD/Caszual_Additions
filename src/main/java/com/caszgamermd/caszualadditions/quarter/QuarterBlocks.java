@@ -10,7 +10,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -39,7 +38,7 @@ public final class QuarterBlocks {
 
         var itemKey = ResourceKey.create(Registries.ITEM, blockId);
         QUARTER_BLOCK_ITEM = Registry.register(BuiltInRegistries.ITEM, itemKey,
-                new BlockItem(QUARTER_BLOCK, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
+                new QuarterBlockItem(QUARTER_BLOCK, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
 
         QUARTER_BLOCK_ENTITY = Registry.register(
                 BuiltInRegistries.BLOCK_ENTITY_TYPE,
