@@ -1,10 +1,10 @@
 package dev.casz.utils.cosmetics;
 
 import dev.casz.utils.mixin.ContainerScreenAccessor;
+import dev.casz.utils.mixin.ScreenWidgetAccessor;
 import dev.casz.utils.mixin.SlotAccessor;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
-import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.MenuScreens;
@@ -12,38 +12,79 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 
 public final class CosmeticsClient {
-    public static boolean armorHidden(){return net.minecraft.client.Minecraft.getInstance().player!=null&&Cosmetics.hideArmor(net.minecraft.client.Minecraft.getInstance().player);}
-    public static Component armorLabel(){return Component.translatable(armorHidden()?"gui.caszutils.armor_hidden":"gui.caszutils.armor_shown");}
-    public static Button armorButton(int x,int y,int width){
-        var button=Button.builder(armorLabel(),b->{boolean hidden=!armorHidden();ClientPlayNetworking.send(new ToggleArmorVisibility(hidden));Cosmetics.setHideArmor(net.minecraft.client.Minecraft.getInstance().player,hidden);b.setMessage(armorLabel());}).bounds(x,y,width,20).build();
-        button.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.hide_hint")));return button;
+    private static final int COSMETIC_SLOT_X=-12;
+    private static final int HIDDEN_SLOT=-10000;
+
+    private CosmeticsClient(){}
+
+    public static boolean armorHidden(){
+        return net.minecraft.client.Minecraft.getInstance().player!=null
+            &&Cosmetics.hideArmor(net.minecraft.client.Minecraft.getInstance().player);
     }
+
+    public static Component armorLabel(){
+        return Component.translatable(armorHidden()?"gui.caszutils.armor_hidden":"gui.caszutils.armor_shown");
+    }
+
+    public static Button armorButton(int x,int y,int width){
+        var button=Button.builder(armorLabel(),b->{
+            var player=net.minecraft.client.Minecraft.getInstance().player;
+            if(player==null)return;
+            boolean hidden=!Cosmetics.hideArmor(player);
+            ClientPlayNetworking.send(new ToggleArmorVisibility(hidden));
+            Cosmetics.setHideArmor(player,hidden);
+            b.setMessage(Component.literal(hidden?"▦":"◆"));
+        }).bounds(x,y,width,20).build();
+        button.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.hide_hint")));
+        return button;
+    }
+
+    private static void placeCosmeticSlots(InventoryScreen screen,boolean shown){
+        int first=screen.getMenu().slots.size()-4;
+        if(first<0)return;
+        for(int i=0;i<4;i++){
+            var slot=(SlotAccessor)(Object)screen.getMenu().slots.get(first+i);
+            slot.caszutils$setX(shown?COSMETIC_SLOT_X:HIDDEN_SLOT);
+            slot.caszutils$setY(shown?8+18*i:HIDDEN_SLOT);
+        }
+    }
+
     public static void initialize(){
         BlockOutfitTextures.initialize();
         MenuScreens.register(Cosmetics.MENU,CosmeticsScreen::new);
+
         ScreenEvents.AFTER_INIT.register((client,screen,width,height)->{
             if(!(screen instanceof InventoryScreen inventoryScreen))return;
+
             var positions=(ContainerScreenAccessor)screen;
-            var hide=armorButton(positions.caszutils$left()+128,positions.caszutils$top()+22,20);
+            var widgets=(ScreenWidgetAccessor)(Object)screen;
+            final boolean[] shown={false};
+
+            placeCosmeticSlots(inventoryScreen,false);
+
+            // Vanilla recipe book is at roughly left+104/top+61 in the player inventory.
+            // Keep the armor visibility toggle immediately to its right.
+            var hide=armorButton(positions.caszutils$left()+126,positions.caszutils$top()+61,20);
             hide.setMessage(Component.literal(armorHidden()?"▦":"◆"));
             hide.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.hide_hint")));
-            
-            final boolean[] shown={true};
+
+            // Cosmetic slot visibility button: attached to the left edge directly below
+            // the cosmetic-slot column, aligned with the first normal inventory row.
             var toggle=Button.builder(Component.literal("▰"),button->{
                 shown[0]=!shown[0];
-                int first=inventoryScreen.getMenu().slots.size()-4;
-                for(int i=0;i<4;i++){
-                    var slot=(SlotAccessor)(Object)inventoryScreen.getMenu().slots.get(first+i);
-                    slot.caszutils$setX(shown[0]?59:-10000);
-                    slot.caszutils$setY(shown[0]?8+18*i:-10000);
-                }
-            }).bounds(positions.caszutils$left()+58,positions.caszutils$top()+80,20,20).build();
+                placeCosmeticSlots(inventoryScreen,shown[0]);
+                button.setMessage(Component.literal(shown[0]?"▣":"▰"));
+            }).bounds(positions.caszutils$left()-22,positions.caszutils$top()+83,20,20).build();
             toggle.setTooltip(Tooltip.create(Component.translatable("gui.caszutils.cosmetic_hint")));
-            Screens.getWidgets(screen).add(hide);Screens.getWidgets(screen).add(toggle);
+
+            widgets.caszutils$addRenderableWidget(hide);
+            widgets.caszutils$addRenderableWidget(toggle);
+
             ScreenEvents.beforeExtract(screen).register((s,graphics,mx,my,partial)->{
-                hide.setPosition(positions.caszutils$left()+128,positions.caszutils$top()+22);
+                hide.setPosition(positions.caszutils$left()+126,positions.caszutils$top()+61);
                 hide.setMessage(Component.literal(armorHidden()?"▦":"◆"));
-                toggle.setPosition(positions.caszutils$left()+58,positions.caszutils$top()+80);
+                toggle.setPosition(positions.caszutils$left()-22,positions.caszutils$top()+83);
+                placeCosmeticSlots(inventoryScreen,shown[0]);
             });
         });
     }
