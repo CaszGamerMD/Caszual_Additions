@@ -23,6 +23,8 @@ public final class CosmeticGuideScreen extends Screen {
  private void clamp(){var v=visible();if(v.isEmpty())index=0;else index=Math.floorMod(index,v.size());}
  private void selectCategory(int value){category=value;index=0;for(int i=0;i<categoryButtons.size();i++)categoryButtons.get(i).active=i!=category;}
  @Override protected void init(){
+  categoryButtons.clear();
+  CosmeticPreviewState.end();
   int l=width/2-130,t=height/2-104;
   addRenderableWidget(Button.builder(Component.literal("<"),b->{index--;clamp();}).bounds(l+12,t+184,22,18).build());
   addRenderableWidget(Button.builder(Component.literal(">"),b->{index++;clamp();}).bounds(l+224,t+184,22,18).build());
