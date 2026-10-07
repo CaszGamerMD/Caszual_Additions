@@ -7,6 +7,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -30,11 +31,13 @@ public abstract class InventoryMenuCosmeticsMixin {
             }
         }
         var cosmetics=new CosmeticContainer();
+        String[] icons={"helmet","chestplate","leggings","boots"};
         for(int i=0;i<4;i++){
             final int index=i;
             ((AbstractContainerMenuAccessor)(Object)this).caszutils$addSlot(new Slot(cosmetics,i,59,8+18*i){
                 @Override public int getMaxStackSize(){return 1;}
                 @Override public boolean mayPlace(ItemStack stack){return Cosmetics.accepts(stack,Cosmetics.SLOTS[index]);}
+                @Override public Identifier getNoItemIcon(){return Identifier.withDefaultNamespace("container/slot/"+icons[index]);}
             });
         }
     }
