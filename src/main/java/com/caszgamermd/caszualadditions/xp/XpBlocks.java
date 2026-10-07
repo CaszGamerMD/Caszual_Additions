@@ -12,10 +12,10 @@ public final class XpBlocks {
  public static Block XP_TANK, XP_CHARGER, XP_DRAIN, XP_SHOWER;
  private XpBlocks(){}
  public static void initialize(){
-  XP_TANK=register("xp_tank",new XpTankBlock(props("xp_tank").strength(2.0f)));
-  XP_CHARGER=register("xp_charger",new XpChargerBlock(props("xp_charger").strength(2.5f)));
-  XP_DRAIN=register("xp_drain",new XpDrainBlock(props("xp_drain").strength(2.0f)));
-  XP_SHOWER=register("xp_shower",new XpShowerBlock(props("xp_shower").strength(2.0f)));
+  XP_TANK=register("xp_tank",new XpTankBlock(props("xp_tank").strength(2.0f).noOcclusion()));
+  XP_CHARGER=register("xp_charger",new XpChargerBlock(props("xp_charger").strength(2.5f).noOcclusion()));
+  XP_DRAIN=register("xp_drain",new XpDrainBlock(props("xp_drain").strength(2.0f).noOcclusion()));
+  XP_SHOWER=register("xp_shower",new XpShowerBlock(props("xp_shower").strength(2.0f).noOcclusion()));
  }
  private static BlockBehaviour.Properties props(String name){return BlockBehaviour.Properties.of().setId(ResourceKey.create(Registries.BLOCK,CaszualAdditions.id(name)));}
  private static Block register(String name,Block block){
