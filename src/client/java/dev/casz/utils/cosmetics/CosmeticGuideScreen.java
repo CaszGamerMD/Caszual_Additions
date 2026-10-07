@@ -60,7 +60,7 @@ public final class CosmeticGuideScreen extends Screen {
   if(minecraft.player==null)return;
   try{
    CosmeticPreviewState.begin(minecraft.player,e.head(),e.chest(),e.legs(),e.feet());
-   InventoryScreen.extractEntityInInventoryFollowsMouse(g,l+18,t+58,l+111,t+171,38,.0625f,mx,my,minecraft.player);
+   InventoryScreen.extractEntityInInventoryFollowsMouse(g,l+18,t+92,l+111,t+174,32,.0625f,mx,my,minecraft.player);
   }finally{
    CosmeticPreviewState.end();
   }
@@ -78,7 +78,7 @@ public final class CosmeticGuideScreen extends Screen {
   g.text(font,Component.literal(CosmeticGuideCatalog.CATEGORIES[category]+"  "+(index+1)+"/"+entries.size()),l+12,t+58,0xff6a5132,false);
   g.text(font,Component.literal("Preview only - nothing is equipped"),l+12,t+71,0xff7a6244,false);
   g.text(font,Component.literal("Choose a category, then use <  >"),l+12,t+82,0xff7a6244,false);
-  preview(g,e,l,t+13,mx,my);
+  preview(g,e,l,t,mx,my);
   int x=fold+11,y=t+45,w=112;
   g.text(font,Component.literal(e.name()),x,y,0xff2f2116,false);
   y+=14;
