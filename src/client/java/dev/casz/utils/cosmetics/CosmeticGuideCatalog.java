@@ -61,7 +61,7 @@ public final class CosmeticGuideCatalog {
   one("Player Heads","Head",s(Items.PLAYER_HEAD),"Head","Player Head",
       "Player heads use their stored profile and replace the visible player head cleanly.",
       s(Items.PLAYER_HEAD),EMPTY,EMPTY,EMPTY),
-  one("Armor Cosmetics","Sets",s(Items.DIAMOND_CHESTPLATE),"Matching armor slot","Any equippable armor piece",
+  one("Armor Cosmetics","Sets",s(Items.DIAMOND_CHESTPLATE),"Head / Chest / Legs / Feet","Any equippable armor piece in its matching slot",
       "Armor placed in cosmetic slots is appearance-only, so your visible outfit can be different from the armor providing stats.",
       s(Items.DIAMOND_HELMET),s(Items.DIAMOND_CHESTPLATE),s(Items.DIAMOND_LEGGINGS),s(Items.DIAMOND_BOOTS)),
   one("Block Cosmetics","Sets",s(Items.DIAMOND_BLOCK),"Any slot","Any block item",
