@@ -32,7 +32,7 @@ public final class GenericQuarterBlockEntityRenderer
             GenericQuarterBlockEntityRenderState state,
             float tickProgress,
             Vec3 cameraPos,
-            @Nullable ModelFeatureRenderer.CrumblingOverlay crumblingOverlay
+            ModelFeatureRenderer.@Nullable CrumblingOverlay crumblingOverlay
     ) {
         BlockEntityRenderer.super.extractRenderState(blockEntity, state, tickProgress, cameraPos, crumblingOverlay);
         var blockState = blockEntity.getBlockState();
