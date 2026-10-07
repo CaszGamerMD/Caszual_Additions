@@ -22,7 +22,11 @@ public final class RgbVerticalStairsBlock extends HorizontalDirectionalBlock {
     public RgbVerticalStairsBlock(BlockBehaviour.Properties p){super(p);registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));}
     @Override protected MapCodec<? extends HorizontalDirectionalBlock> codec(){return CODEC;}
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<net.minecraft.world.level.block.Block,BlockState> b){b.add(FACING);}
-    @Override public BlockState getStateForPlacement(BlockPlaceContext ctx){return defaultBlockState().setValue(FACING,ctx.getHorizontalDirection().getOpposite());}
+    @Override public BlockState getStateForPlacement(BlockPlaceContext ctx){
+        var face=ctx.getClickedFace();
+        var facing=face.getAxis().isHorizontal()?face.getOpposite():ctx.getHorizontalDirection().getOpposite();
+        return defaultBlockState().setValue(FACING,facing);
+    }
     @Override protected VoxelShape getShape(BlockState s,BlockGetter level,BlockPos pos,CollisionContext c){
         return switch(s.getValue(FACING)){case NORTH->NORTH;case SOUTH->SOUTH;case WEST->WEST;default->EAST;};
     }
