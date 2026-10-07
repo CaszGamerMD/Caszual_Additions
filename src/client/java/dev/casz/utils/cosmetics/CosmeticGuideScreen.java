@@ -76,12 +76,15 @@ public final class CosmeticGuideScreen extends Screen {
   var e=entries.get(index);
   g.text(font,Component.literal("Cosmetic Guide"),l+12,t+45,0xff3b2b1c,false);
   g.text(font,Component.literal(CosmeticGuideCatalog.CATEGORIES[category]+"  "+(index+1)+"/"+entries.size()),l+12,t+58,0xff6a5132,false);
-  preview(g,e,l,t,mx,my);
+  g.text(font,Component.literal("Preview only - nothing is equipped"),l+12,t+71,0xff7a6244,false);
+  preview(g,e,l,t+8,mx,my);
   int x=fold+11,y=t+45,w=112;
   g.text(font,Component.literal(e.name()),x,y,0xff2f2116,false);
-  y+=15;
-  g.text(font,Component.literal("Slots: "+e.slots()),x,y,0xff4a3925,false);
   y+=14;
+  g.text(font,Component.literal("Example: "+e.item().getHoverName().getString()),x,y,0xff4a3925,false);
+  y+=12;
+  g.text(font,Component.literal("Slots: "+e.slots()),x,y,0xff4a3925,false);
+  y+=13;
   g.text(font,Component.literal("Required:"),x,y,0xff6a5132,false);
   y+=11;
   y=wrapped(g,e.required(),x,y,w,0xff4a3925)+3;
