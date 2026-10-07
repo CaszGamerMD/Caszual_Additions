@@ -12,7 +12,7 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 
 public final class CosmeticsClient {
-    private static final int COSMETIC_SLOT_X=-12;
+    private static final int COSMETIC_SLOT_X=-20;
     private static final int HIDDEN_SLOT=-10000;
 
     private CosmeticsClient(){}
@@ -85,6 +85,17 @@ public final class CosmeticsClient {
                 hide.setMessage(Component.literal(armorHidden()?"▦":"◆"));
                 toggle.setPosition(positions.caszutils$left()-22,positions.caszutils$top()+83);
                 placeCosmeticSlots(inventoryScreen,shown[0]);
+                if(shown[0]){
+                    int px=positions.caszutils$left()-22;
+                    int py=positions.caszutils$top()+6;
+                    graphics.fill(px,py,positions.caszutils$left(),py+74,0xff30303b);
+                    graphics.fill(px+1,py+1,positions.caszutils$left()-1,py+73,0xffc6c6c6);
+                    for(int i=0;i<4;i++){
+                        int sy=positions.caszutils$top()+8+18*i;
+                        graphics.fill(positions.caszutils$left()-21,sy-1,positions.caszutils$left()-2,sy+18,0xff373737);
+                        graphics.fill(positions.caszutils$left()-20,sy,positions.caszutils$left()-3,sy+17,0xff8b8b8b);
+                    }
+                }
             });
         });
     }
