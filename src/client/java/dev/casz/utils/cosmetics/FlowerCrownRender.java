@@ -126,6 +126,27 @@ public final class FlowerCrownRender {
   flower(s,h,p,c,l,o,.28f,-.58f,-.20f,.30f,-18,0,12);
  }
 
+ private static void sunflowerCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,0,-.70f,-.27f,.40f,-2,0,0);
+  flower(s,h,p,c,l,o,-.32f,-.54f,-.10f,.25f,-10,48,-16);
+  flower(s,h,p,c,l,o,.32f,-.54f,-.10f,.25f,-10,-48,16);
+ }
+
+ private static void tallSideCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,-.34f,-.60f,-.12f,.28f,-10,40,-18);
+  flower(s,h,p,c,l,o,-.18f,-.53f,-.28f,.24f,-8,12,-8);
+  flower(s,h,p,c,l,o,.18f,-.49f,-.27f,.21f,-8,-10,8);
+  flower(s,h,p,c,l,o,.34f,-.46f,.02f,.18f,0,-78,12);
+ }
+
+ private static void roseBushCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,-.30f,-.53f,-.22f,.27f,-14,0,-18);
+  flower(s,h,p,c,l,o,0,-.59f,-.31f,.30f,-6,0,0);
+  flower(s,h,p,c,l,o,.30f,-.53f,-.22f,.27f,-14,0,18);
+  flower(s,h,p,c,l,o,-.33f,-.46f,.13f,.20f,6,88,-12);
+  flower(s,h,p,c,l,o,.33f,-.46f,.13f,.20f,6,-88,12);
+ }
+
  private static void openEyeCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
   flower(s,h,p,c,l,o,0,-.58f,-.34f,.36f,-4,0,0);
   flower(s,h,p,c,l,o,-.31f,-.48f,-.16f,.22f,-10,35,-18);
@@ -172,6 +193,10 @@ public final class FlowerCrownRender {
    case "lily_of_the_valley" -> droopingCrown(stack,head,pose,collector,light,outline);
    case "wither_rose" -> witherCrown(stack,head,pose,collector,light,outline);
    case "torchflower" -> torchCrown(stack,head,pose,collector,light,outline);
+   case "sunflower" -> sunflowerCrown(stack,head,pose,collector,light,outline);
+   case "lilac", "peony" -> tallSideCrown(stack,head,pose,collector,light,outline);
+   case "rose_bush" -> roseBushCrown(stack,head,pose,collector,light,outline);
+   case "pitcher_plant" -> pomCrown(stack,head,pose,collector,light,outline);
    case "open_eyeblossom" -> openEyeCrown(stack,head,pose,collector,light,outline);
    case "closed_eyeblossom" -> closedEyeCrown(stack,head,pose,collector,light,outline);
    case "pink_petals" -> petalsCrown(stack,head,pose,collector,light,outline);
