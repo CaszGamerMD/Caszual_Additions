@@ -16,6 +16,12 @@ public final class CosmeticGuideCatalog {
  private static final ItemStack EMPTY=ItemStack.EMPTY;
  public static final String[] CATEGORIES={"All","Head","Chest","Legs","Feet","Sets","Effects"};
  public static final List<Entry> ENTRIES=List.of(
+  one("Getting Started","Guide",new ItemStack(CosmeticGuide.ITEM),"Cosmetic inventory","Place an accepted item into a cosmetic Head, Chest, Legs, or Feet slot",
+      "Cosmetics change appearance only. Your normal equipment can keep providing stats underneath the visible cosmetic outfit.",
+      EMPTY,EMPTY,EMPTY,EMPTY),
+  one("Armor Visibility","Guide",s(Items.DIAMOND_CHESTPLATE),"Display setting","Use the armor visibility toggle in the inventory",
+      "Hide normal armor when you want your skin or cosmetics unobstructed. Cosmetic items remain visible when normal armor is hidden.",
+      EMPTY,EMPTY,EMPTY,EMPTY),
   one("End Rod","Sets",s(Items.END_ROD),"Head / Legs / Feet","End Rod or any Caszual colored End Rod",
       "End rods become fitted body cosmetics. Colored rods keep their own color and RGB rods keep their animated look.",
       s(Items.END_ROD),EMPTY,s(Items.END_ROD),s(Items.END_ROD)),
