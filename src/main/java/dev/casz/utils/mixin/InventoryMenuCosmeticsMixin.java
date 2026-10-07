@@ -8,15 +8,12 @@ import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(InventoryMenu.class)
 public abstract class InventoryMenuCosmeticsMixin {
-    @Shadow protected abstract Slot addSlot(Slot slot);
-
     @Inject(method="<init>", at=@At("RETURN"))
     private void caszutils$addCosmeticSlots(Inventory inventory, boolean active, Player owner, CallbackInfo ci) {
         class CosmeticContainer extends SimpleContainer {
@@ -35,7 +32,7 @@ public abstract class InventoryMenuCosmeticsMixin {
         var cosmetics=new CosmeticContainer();
         for(int i=0;i<4;i++){
             final int index=i;
-            addSlot(new Slot(cosmetics,i,59,8+18*i){
+            ((AbstractContainerMenuAccessor)(Object)this).caszutils$addSlot(new Slot(cosmetics,i,59,8+18*i){
                 @Override public int getMaxStackSize(){return 1;}
                 @Override public boolean mayPlace(ItemStack stack){return Cosmetics.accepts(stack,Cosmetics.SLOTS[index]);}
             });
