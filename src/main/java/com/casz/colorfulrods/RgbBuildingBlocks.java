@@ -18,7 +18,8 @@ import net.minecraft.world.level.block.state.properties.WoodType;
 public final class RgbBuildingBlocks {
     public static final Map<String,Block> BLOCKS=new LinkedHashMap<>();
     public static Block RGB_BLOCK, RGB_SLAB, RGB_STAIRS, RGB_WALL, RGB_FENCE, RGB_DOOR, RGB_TRAPDOOR,
-        RGB_FENCE_GATE, RGB_BARS, RGB_VERTICAL_STAIRS, RGB_VERTICAL_SLAB, RGB_QUARTER_BLOCK;
+        RGB_FENCE_GATE, RGB_BARS, RGB_VERTICAL_STAIRS, RGB_VERTICAL_SLAB, RGB_QUARTER_BLOCK,
+        RGB_CARPET, RGB_VERTICAL_CARPET, RGB_WALLPAPER;
 
     private RgbBuildingBlocks(){}
 
@@ -47,5 +48,8 @@ public final class RgbBuildingBlocks {
         RGB_VERTICAL_STAIRS=register("rgb_vertical_stairs",Blocks.STONE_STAIRS,RgbVerticalStairsBlock::new);
         RGB_VERTICAL_SLAB=register("rgb_vertical_slab",Blocks.STONE_SLAB,RgbVerticalSlabBlock::new);
         RGB_QUARTER_BLOCK=register("rgb_quarter_block",Blocks.AMETHYST_BLOCK,RgbQuarterBlock::new);
+        RGB_CARPET=register("rgb_carpet",Blocks.WHITE_CARPET,CarpetBlock::new);
+        RGB_VERTICAL_CARPET=register("rgb_vertical_carpet",Blocks.WHITE_CARPET,RgbVerticalCarpetBlock::new);
+        RGB_WALLPAPER=register("rgb_wallpaper",Blocks.WHITE_CARPET,RgbWallpaperBlock::new);
     }
 }
