@@ -13,12 +13,18 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
 public final class FlowerCrownRender {
- private static final Identifier LEAF_TEXTURE=Identifier.withDefaultNamespace("textures/block/azalea_leaves.png");
+ private static final Identifier AZALEA=Identifier.withDefaultNamespace("textures/block/azalea_leaves.png");
+ private static final Identifier OAK=Identifier.withDefaultNamespace("textures/block/oak_leaves.png");
+ private static final Identifier CHERRY=Identifier.withDefaultNamespace("textures/block/cherry_leaves.png");
+ private static final Identifier DARK_OAK=Identifier.withDefaultNamespace("textures/block/dark_oak_leaves.png");
+ private static final Identifier PALE_OAK=Identifier.withDefaultNamespace("textures/block/pale_oak_leaves.png");
+ private static final Identifier MOSS=Identifier.withDefaultNamespace("textures/block/moss_block.png");
  private static final ModelPart BAND=createBand().bakeRoot().getChild("band");
 
  private FlowerCrownRender(){}
@@ -37,10 +43,19 @@ public final class FlowerCrownRender {
   return LayerDefinition.create(mesh,16,16);
  }
 
- private static void band(ModelPart head,PoseStack pose,SubmitNodeCollector collector,int light,int outline){
+ private static Identifier bandTexture(String name){
+  if(name.equals("wither_rose"))return DARK_OAK;
+  if(name.equals("pink_petals"))return CHERRY;
+  if(name.contains("eyeblossom"))return PALE_OAK;
+  if(name.equals("spore_blossom"))return MOSS;
+  if(name.equals("dandelion")||name.equals("oxeye_daisy")||name.equals("lily_of_the_valley"))return OAK;
+  return AZALEA;
+ }
+
+ private static void band(ModelPart head,PoseStack pose,SubmitNodeCollector collector,int light,int outline,Identifier texture){
   pose.pushPose();
   head.translateAndRotate(pose);
-  collector.order(1).submitModelPart(BAND,pose,RenderTypes.entityCutout(LEAF_TEXTURE),light,OverlayTexture.NO_OVERLAY,null,-1,null,outline);
+  collector.order(1).submitModelPart(BAND,pose,RenderTypes.entityCutout(texture),light,OverlayTexture.NO_OVERLAY,null,-1,null,outline);
   pose.popPose();
  }
 
@@ -59,18 +74,109 @@ public final class FlowerCrownRender {
   pose.popPose();
  }
 
+ private static void denseRing(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o,float scale){
+  flower(s,h,p,c,l,o,-.31f,-.48f,-.25f,scale,-8,0,-16);
+  flower(s,h,p,c,l,o,-.10f,-.51f,-.31f,scale+ .02f,-6,0,-5);
+  flower(s,h,p,c,l,o,.10f,-.51f,-.31f,scale+ .02f,-6,0,5);
+  flower(s,h,p,c,l,o,.31f,-.48f,-.25f,scale,-8,0,16);
+  flower(s,h,p,c,l,o,-.36f,-.48f,.02f,scale-.02f,0,78,-14);
+  flower(s,h,p,c,l,o,.36f,-.48f,.02f,scale-.02f,0,-78,14);
+  flower(s,h,p,c,l,o,-.20f,-.47f,.30f,scale-.03f,8,180,-8);
+  flower(s,h,p,c,l,o,.20f,-.47f,.30f,scale-.03f,8,180,8);
+ }
+
+ private static void tulipCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,-.30f,-.54f,-.22f,.27f,-16,0,-10);
+  flower(s,h,p,c,l,o,0,-.60f,-.30f,.34f,-5,0,0);
+  flower(s,h,p,c,l,o,.30f,-.54f,-.22f,.27f,-16,0,10);
+  flower(s,h,p,c,l,o,-.34f,-.49f,.10f,.22f,0,78,-12);
+  flower(s,h,p,c,l,o,.34f,-.49f,.10f,.22f,0,-78,12);
+ }
+
+ private static void pomCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,-.27f,-.58f,-.18f,.34f,-18,0,-12);
+  flower(s,h,p,c,l,o,0,-.65f,-.29f,.40f,-4,0,0);
+  flower(s,h,p,c,l,o,.27f,-.58f,-.18f,.34f,-18,0,12);
+ }
+
+ private static void sideSpray(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,-.34f,-.51f,-.14f,.28f,-12,35,-18);
+  flower(s,h,p,c,l,o,-.38f,-.57f,.02f,.25f,-4,70,-8);
+  flower(s,h,p,c,l,o,-.30f,-.50f,.18f,.22f,8,110,4);
+  flower(s,h,p,c,l,o,.18f,-.46f,-.28f,.19f,-8,0,8);
+ }
+
+ private static void droopingCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,-.30f,-.46f,-.18f,.22f,16,20,-22);
+  flower(s,h,p,c,l,o,-.38f,-.39f,.02f,.19f,28,72,-8);
+  flower(s,h,p,c,l,o,.30f,-.46f,-.18f,.22f,16,-20,22);
+  flower(s,h,p,c,l,o,.38f,-.39f,.02f,.19f,28,-72,8);
+ }
+
+ private static void witherCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,-.30f,-.48f,-.23f,.29f,-18,0,-24);
+  flower(s,h,p,c,l,o,.04f,-.54f,-.31f,.31f,-6,0,4);
+  flower(s,h,p,c,l,o,.34f,-.46f,.02f,.23f,4,-72,22);
+  flower(s,h,p,c,l,o,-.18f,-.44f,.29f,.20f,12,180,-12);
+ }
+
+ private static void torchCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,-.28f,-.58f,-.20f,.30f,-18,0,-12);
+  flower(s,h,p,c,l,o,0,-.69f,-.27f,.42f,-2,0,0);
+  flower(s,h,p,c,l,o,.28f,-.58f,-.20f,.30f,-18,0,12);
+ }
+
+ private static void openEyeCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,0,-.58f,-.34f,.36f,-4,0,0);
+  flower(s,h,p,c,l,o,-.31f,-.48f,-.16f,.22f,-10,35,-18);
+  flower(s,h,p,c,l,o,.31f,-.48f,-.16f,.22f,-10,-35,18);
+  flower(s,h,p,c,l,o,0,-.46f,.31f,.18f,10,180,0);
+ }
+
+ private static void closedEyeCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,-.28f,-.45f,-.24f,.20f,-18,0,-12);
+  flower(s,h,p,c,l,o,0,-.48f,-.30f,.22f,-12,0,0);
+  flower(s,h,p,c,l,o,.28f,-.45f,-.24f,.20f,-18,0,12);
+  flower(s,h,p,c,l,o,-.24f,-.43f,.28f,.17f,14,180,-8);
+  flower(s,h,p,c,l,o,.24f,-.43f,.28f,.17f,14,180,8);
+ }
+
+ private static void petalsCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,-.34f,-.42f,-.22f,.20f,58,0,-18);
+  flower(s,h,p,c,l,o,-.11f,-.46f,-.31f,.20f,62,0,-6);
+  flower(s,h,p,c,l,o,.11f,-.46f,-.31f,.20f,62,0,6);
+  flower(s,h,p,c,l,o,.34f,-.42f,-.22f,.20f,58,0,18);
+  flower(s,h,p,c,l,o,-.32f,-.41f,.17f,.18f,62,115,-12);
+  flower(s,h,p,c,l,o,.32f,-.41f,.17f,.18f,62,-115,12);
+ }
+
+ private static void sporeCrown(ItemStack s,ModelPart h,PoseStack p,SubmitNodeCollector c,int l,int o){
+  flower(s,h,p,c,l,o,0,-.54f,.26f,.34f,8,180,0);
+  flower(s,h,p,c,l,o,-.31f,-.45f,-.10f,.19f,24,55,-18);
+  flower(s,h,p,c,l,o,.31f,-.45f,-.10f,.19f,24,-55,18);
+ }
+
  public static void crown(ItemStack stack,ModelPart head,PoseStack pose,SubmitNodeCollector collector,int light,int outline){
-  band(head,pose,collector,light,outline);
-  // Front garland
-  flower(stack,head,pose,collector,light,outline,-.31f,-.47f,-.26f,.24f,-8,0,-16);
-  flower(stack,head,pose,collector,light,outline,-.11f,-.51f,-.31f,.27f,-6,0,-6);
-  flower(stack,head,pose,collector,light,outline,.11f,-.51f,-.31f,.27f,-6,0,6);
-  flower(stack,head,pose,collector,light,outline,.31f,-.47f,-.26f,.24f,-8,0,16);
-  // Side blossoms
-  flower(stack,head,pose,collector,light,outline,-.36f,-.48f,.02f,.22f,0,78,-14);
-  flower(stack,head,pose,collector,light,outline,.36f,-.48f,.02f,.22f,0,-78,14);
-  // Back blossoms complete the ring without overwhelming the face
-  flower(stack,head,pose,collector,light,outline,-.20f,-.47f,.30f,.20f,8,180,-8);
-  flower(stack,head,pose,collector,light,outline,.20f,-.47f,.30f,.20f,8,180,8);
+  String name=BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+  band(head,pose,collector,light,outline,bandTexture(name));
+
+  if(name.contains("tulip")) tulipCrown(stack,head,pose,collector,light,outline);
+  else switch(name){
+   case "dandelion" -> denseRing(stack,head,pose,collector,light,outline,.20f);
+   case "poppy" -> denseRing(stack,head,pose,collector,light,outline,.25f);
+   case "blue_orchid" -> sideSpray(stack,head,pose,collector,light,outline);
+   case "allium" -> pomCrown(stack,head,pose,collector,light,outline);
+   case "azure_bluet" -> denseRing(stack,head,pose,collector,light,outline,.18f);
+   case "oxeye_daisy" -> denseRing(stack,head,pose,collector,light,outline,.22f);
+   case "cornflower" -> sideSpray(stack,head,pose,collector,light,outline);
+   case "lily_of_the_valley" -> droopingCrown(stack,head,pose,collector,light,outline);
+   case "wither_rose" -> witherCrown(stack,head,pose,collector,light,outline);
+   case "torchflower" -> torchCrown(stack,head,pose,collector,light,outline);
+   case "open_eyeblossom" -> openEyeCrown(stack,head,pose,collector,light,outline);
+   case "closed_eyeblossom" -> closedEyeCrown(stack,head,pose,collector,light,outline);
+   case "pink_petals" -> petalsCrown(stack,head,pose,collector,light,outline);
+   case "spore_blossom" -> sporeCrown(stack,head,pose,collector,light,outline);
+   default -> denseRing(stack,head,pose,collector,light,outline,.22f);
+  }
  }
 }
