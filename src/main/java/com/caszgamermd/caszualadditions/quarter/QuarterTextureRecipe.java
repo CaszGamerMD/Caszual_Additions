@@ -21,26 +21,37 @@ public final class QuarterTextureRecipe extends CustomRecipe {
     @Override
     public boolean matches(CraftingInput input, Level level) {
         BlockItem source = null;
+        boolean quarterTemplate = false;
+
         for (ItemStack stack : input.items()) {
             if (stack.isEmpty()) continue;
-            if (!(stack.getItem() instanceof BlockItem blockItem)
-                    || blockItem.getBlock() == QuarterBlocks.QUARTER_BLOCK
-                    || source != null) {
+
+            if (stack.is(QuarterBlocks.QUARTER_BLOCK_ITEM)) {
+                if (quarterTemplate) return false;
+                quarterTemplate = true;
+                continue;
+            }
+
+            if (!(stack.getItem() instanceof BlockItem blockItem) || source != null) {
                 return false;
             }
+
             source = blockItem;
         }
-        return source != null;
+
+        return quarterTemplate && source != null;
     }
 
     @Override
     public ItemStack assemble(CraftingInput input) {
         for (ItemStack stack : input.items()) {
-            if (stack.getItem() instanceof BlockItem blockItem
-                    && blockItem.getBlock() != QuarterBlocks.QUARTER_BLOCK) {
+            if (stack.isEmpty() || stack.is(QuarterBlocks.QUARTER_BLOCK_ITEM)) continue;
+
+            if (stack.getItem() instanceof BlockItem blockItem) {
                 return QuarterBlocks.textured(blockItem.getBlock().defaultBlockState(), 8);
             }
         }
+
         return ItemStack.EMPTY;
     }
 
