@@ -19,13 +19,30 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.phys.BlockHitResult;
 public final class XpShowerBlock extends Block implements EntityBlock {
  public static final EnumProperty<Direction> FACING=EnumProperty.create("facing",Direction.class,d->d.getAxis().isHorizontal());
- private static final net.minecraft.world.phys.shapes.VoxelShape NS=net.minecraft.world.phys.shapes.Shapes.or(Block.box(6.5,11,0,9.5,14,12),Block.box(6.5,8,9,9.5,12,12),Block.box(4.5,6,7.5,11.5,8,14.5));
- private static final net.minecraft.world.phys.shapes.VoxelShape EW=net.minecraft.world.phys.shapes.Shapes.or(Block.box(0,11,6.5,12,14,9.5),Block.box(9,8,6.5,12,12,9.5),Block.box(7.5,6,4.5,14.5,8,11.5));
+ private static final net.minecraft.world.phys.shapes.VoxelShape NORTH=net.minecraft.world.phys.shapes.Shapes.or(
+     Block.box(6.5,11,0,9.5,13,12),
+     Block.box(6.5,9,9,9.5,12,12),
+     Block.box(4.5,8,7.5,11.5,9,14.5));
+ private static final net.minecraft.world.phys.shapes.VoxelShape SOUTH=net.minecraft.world.phys.shapes.Shapes.or(
+     Block.box(6.5,11,4,9.5,13,16),
+     Block.box(6.5,9,4,9.5,12,7),
+     Block.box(4.5,8,1.5,11.5,9,8.5));
+ private static final net.minecraft.world.phys.shapes.VoxelShape EAST=net.minecraft.world.phys.shapes.Shapes.or(
+     Block.box(0,11,6.5,12,13,9.5),
+     Block.box(9,9,6.5,12,12,9.5),
+     Block.box(7.5,8,4.5,14.5,9,11.5));
+ private static final net.minecraft.world.phys.shapes.VoxelShape WEST=net.minecraft.world.phys.shapes.Shapes.or(
+     Block.box(4,11,6.5,16,13,9.5),
+     Block.box(4,9,6.5,7,12,9.5),
+     Block.box(1.5,8,4.5,8.5,9,11.5));
  public static final MapCodec<XpShowerBlock> CODEC=simpleCodec(XpShowerBlock::new);
  public XpShowerBlock(BlockBehaviour.Properties p){super(p);registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));}
  @Override protected MapCodec<? extends Block> codec(){return CODEC;}
- @Override protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){return (state.getValue(FACING).getAxis()==Direction.Axis.Z)?NS:EW;}
- @Override protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){return (state.getValue(FACING).getAxis()==Direction.Axis.Z)?NS:EW;}
+ private static net.minecraft.world.phys.shapes.VoxelShape shape(BlockState state){
+  return switch(state.getValue(FACING)){case NORTH->NORTH;case SOUTH->SOUTH;case EAST->EAST;case WEST->WEST;default->NORTH;};
+ }
+ @Override protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){return shape(state);}
+ @Override protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(BlockState state,net.minecraft.world.level.BlockGetter level,BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){return shape(state);}
  @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> b){b.add(FACING);}
  @Override public BlockState getStateForPlacement(BlockPlaceContext ctx){Direction face=ctx.getClickedFace();Direction support=face.getAxis().isHorizontal()?face.getOpposite():ctx.getHorizontalDirection();return defaultBlockState().setValue(FACING,support);}
  @Override public BlockEntity newBlockEntity(BlockPos p,BlockState s){return new XpShowerBlockEntity(p,s);}
