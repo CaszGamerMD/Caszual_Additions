@@ -31,9 +31,17 @@ public final class XpChargerBlock extends Block implements EntityBlock {
  }
  @Override protected InteractionResult useItemOn(ItemStack held,BlockState state,Level level,BlockPos pos,Player player,net.minecraft.world.InteractionHand hand,BlockHitResult hit){
   if(!level.isClientSide()&&level.getBlockEntity(pos) instanceof XpChargerBlockEntity charger){
-   if(charger.item().isEmpty()&&XpRepair.hasMending(held)&&held.isDamaged()){var one=held.copyWithCount(1);charger.setItem(one);held.shrink(1);}
+   if(!charger.item().isEmpty()){
+    var out=charger.removeItem(0,1);
+    if(!player.getInventory().add(out))player.drop(out,false);
+   }else if(XpRepair.hasMending(held)&&held.isDamaged()){
+    var one=held.copyWithCount(1);
+    charger.setItem(one);
+    held.shrink(1);
+   }
    if(level instanceof ServerLevel sl)status(player,sl,pos,charger);
-  } return InteractionResult.SUCCESS;
+  }
+  return InteractionResult.SUCCESS;
  }
  private static void status(Player p,ServerLevel l,BlockPos pos,XpChargerBlockEntity c){
   int stored=XpNetwork.stored(l,pos),cap=XpNetwork.capacity(l,pos);
