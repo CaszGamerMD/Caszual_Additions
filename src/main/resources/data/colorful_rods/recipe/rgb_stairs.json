@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "B  ",
+    "BB ",
+    "BBB"
+  ],
+  "key": {
+    "B": "colorful_rods:rgb_block"
+  },
+  "result": {
+    "id": "colorful_rods:rgb_stairs",
+    "count": 4
+  }
+}

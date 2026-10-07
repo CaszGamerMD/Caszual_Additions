@@ -15,5 +15,17 @@
   "block.colorful_rods.green_end_rod": "Green End Rod",
   "block.colorful_rods.red_end_rod": "Red End Rod",
   "block.colorful_rods.black_end_rod": "Black End Rod",
-  "block.colorful_rods.rgb_end_rod": "RGB End Rod"
+  "block.colorful_rods.rgb_end_rod": "RGB End Rod",
+  "block.colorful_rods.rgb_block": "RGB Block",
+  "block.colorful_rods.rgb_slab": "RGB Slab",
+  "block.colorful_rods.rgb_stairs": "RGB Stairs",
+  "block.colorful_rods.rgb_wall": "RGB Wall",
+  "block.colorful_rods.rgb_fence": "RGB Fence",
+  "block.colorful_rods.rgb_door": "RGB Door",
+  "block.colorful_rods.rgb_trapdoor": "RGB Trapdoor",
+  "block.colorful_rods.rgb_fence_gate": "RGB Fence Gate",
+  "block.colorful_rods.rgb_bars": "RGB Bars",
+  "block.colorful_rods.rgb_vertical_stairs": "RGB Vertical Stairs",
+  "block.colorful_rods.rgb_vertical_slab": "RGB Vertical Slab",
+  "block.colorful_rods.rgb_quarter_block": "RGB Quarter Block"
 }

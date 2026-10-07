@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "RBR",
+    "RBR"
+  ],
+  "key": {
+    "B": "colorful_rods:rgb_block",
+    "R": "colorful_rods:rgb_end_rod"
+  },
+  "result": {
+    "id": "colorful_rods:rgb_fence_gate",
+    "count": 1
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/wall_inventory",
+  "textures": {
+    "wall": "colorful_rods:block/rgb_end_rod"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "colorful_rods:rgb_block"
+  ],
+  "result": {
+    "id": "colorful_rods:rgb_quarter_block",
+    "count": 8
+  }
+}

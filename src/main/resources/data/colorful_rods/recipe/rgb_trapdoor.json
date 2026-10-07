@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "BBB",
+    "BBB"
+  ],
+  "key": {
+    "B": "colorful_rods:rgb_block"
+  },
+  "result": {
+    "id": "colorful_rods:rgb_trapdoor",
+    "count": 2
+  }
+}
