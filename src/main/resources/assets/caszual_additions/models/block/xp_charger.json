@@ -63,6 +63,9 @@
         },
         "up": {
           "texture": "#top"
+        },
+        "down": {
+          "texture": "#metal"
         }
       }
     },
@@ -92,6 +95,9 @@
         },
         "up": {
           "texture": "#green"
+        },
+        "down": {
+          "texture": "#metal"
         }
       }
     }
