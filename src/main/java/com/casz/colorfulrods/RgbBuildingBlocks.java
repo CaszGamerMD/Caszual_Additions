@@ -27,6 +27,7 @@ public final class RgbBuildingBlocks {
         var id=Identifier.fromNamespaceAndPath(ColorfulRods.MOD_ID,name);
         var blockKey=ResourceKey.create(Registries.BLOCK,id);
         var props=BlockBehaviour.Properties.ofFullCopy(template).lightLevel(s->14).setId(blockKey);
+        if(name.contains("carpet")||name.equals("rgb_wallpaper")) props.noOcclusion();
         var block=factory.apply(props);
         Registry.register(BuiltInRegistries.BLOCK,blockKey,block);
         var itemKey=ResourceKey.create(Registries.ITEM,id);
@@ -48,8 +49,8 @@ public final class RgbBuildingBlocks {
         RGB_VERTICAL_STAIRS=register("rgb_vertical_stairs",Blocks.STONE_STAIRS,RgbVerticalStairsBlock::new);
         RGB_VERTICAL_SLAB=register("rgb_vertical_slab",Blocks.STONE_SLAB,RgbVerticalSlabBlock::new);
         RGB_QUARTER_BLOCK=register("rgb_quarter_block",Blocks.AMETHYST_BLOCK,RgbQuarterBlock::new);
-        RGB_CARPET=register("rgb_carpet",Blocks.WHITE_CARPET,CarpetBlock::new);
-        RGB_VERTICAL_CARPET=register("rgb_vertical_carpet",Blocks.WHITE_CARPET,RgbVerticalCarpetBlock::new);
-        RGB_WALLPAPER=register("rgb_wallpaper",Blocks.WHITE_CARPET,RgbWallpaperBlock::new);
+        RGB_CARPET=register("rgb_carpet",Blocks.AMETHYST_BLOCK,CarpetBlock::new);
+        RGB_VERTICAL_CARPET=register("rgb_vertical_carpet",Blocks.AMETHYST_BLOCK,RgbVerticalCarpetBlock::new);
+        RGB_WALLPAPER=register("rgb_wallpaper",Blocks.AMETHYST_BLOCK,RgbWallpaperBlock::new);
     }
 }
