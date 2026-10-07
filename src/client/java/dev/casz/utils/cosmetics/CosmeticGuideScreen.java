@@ -55,14 +55,11 @@ public final class CosmeticGuideScreen extends Screen {
  }
  private void preview(GuiGraphicsExtractor g,CosmeticGuideCatalog.Entry e,int l,int t,int mx,int my){
   if(minecraft.player==null)return;
-  ItemStack[] before=new ItemStack[4];
-  for(int i=0;i<4;i++)before[i]=Cosmetics.get(minecraft.player,Cosmetics.SLOTS[i]);
   try{
-   ItemStack[] show={e.head(),e.chest(),e.legs(),e.feet()};
-   for(int i=0;i<4;i++)Cosmetics.set(minecraft.player,Cosmetics.SLOTS[i],show[i]);
+   CosmeticPreviewState.begin(minecraft.player,e.head(),e.chest(),e.legs(),e.feet());
    InventoryScreen.extractEntityInInventoryFollowsMouse(g,l+18,t+58,l+111,t+171,38,.0625f,mx,my,minecraft.player);
   }finally{
-   for(int i=0;i<4;i++)Cosmetics.set(minecraft.player,Cosmetics.SLOTS[i],before[i]);
+   CosmeticPreviewState.end();
   }
  }
  @Override public void extractBackground(GuiGraphicsExtractor g,int mx,int my,float partial){
