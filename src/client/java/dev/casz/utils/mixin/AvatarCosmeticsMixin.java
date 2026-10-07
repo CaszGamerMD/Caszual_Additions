@@ -30,6 +30,7 @@ public abstract class AvatarCosmeticsMixin {
         if(!head.isEmpty()||hide){
             state.headItem.clear(); state.wornHeadType=null; state.wornHeadProfile=null;
             if(SpecialCosmetics.isPlayerHead(head)){state.wornHeadType=SkullBlock.Types.PLAYER; state.wornHeadProfile=head.get(DataComponents.PROFILE);}
+            else if(SpecialCosmetics.isBone(head)){state.wornHeadType=SkullBlock.Types.SKELETON;}
             else if(head.getItem() instanceof BlockItem&&!SpecialCosmetics.isEndRod(head)&&!SpecialCosmetics.isCrystalCluster(head))
                 Minecraft.getInstance().getItemModelResolver().updateForLiving(state.headItem,head,ItemDisplayContext.HEAD,player);
         }
