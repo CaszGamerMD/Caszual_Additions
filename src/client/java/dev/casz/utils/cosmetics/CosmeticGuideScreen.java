@@ -13,6 +13,7 @@ public final class CosmeticGuideScreen extends Screen {
  private int category;
  private final java.util.ArrayList<Button> categoryButtons=new java.util.ArrayList<>();
  public CosmeticGuideScreen(){super(Component.literal("Cosmetic Guide"));}
+ @Override public void removed(){CosmeticPreviewState.end();super.removed();}
  private List<CosmeticGuideCatalog.Entry> visible(){
   var cat=CosmeticGuideCatalog.CATEGORIES[category];
   return cat.equals("All")?CosmeticGuideCatalog.ENTRIES:CosmeticGuideCatalog.ENTRIES.stream()
@@ -74,7 +75,8 @@ public final class CosmeticGuideScreen extends Screen {
   g.text(font,Component.literal("Cosmetic Guide"),l+12,t+45,0xff3b2b1c,false);
   g.text(font,Component.literal(CosmeticGuideCatalog.CATEGORIES[category]+"  "+(index+1)+"/"+entries.size()),l+12,t+58,0xff6a5132,false);
   g.text(font,Component.literal("Preview only - nothing is equipped"),l+12,t+71,0xff7a6244,false);
-  preview(g,e,l,t+8,mx,my);
+  g.text(font,Component.literal("Choose a category, then use <  >"),l+12,t+82,0xff7a6244,false);
+  preview(g,e,l,t+13,mx,my);
   int x=fold+11,y=t+45,w=112;
   g.text(font,Component.literal(e.name()),x,y,0xff2f2116,false);
   y+=14;
