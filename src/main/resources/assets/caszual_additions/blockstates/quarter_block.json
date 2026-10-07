@@ -1,0 +1,9 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "caszual_additions:block/quarter_block"
+      }
+    }
+  ]
+}
