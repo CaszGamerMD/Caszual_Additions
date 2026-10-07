@@ -25,5 +25,6 @@ public final class ColorfulRods {
             Registry.register(BuiltInRegistries.ITEM,itemKey,new BlockItem(rod,new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
             RODS.put(color,rod);
         }
+        RgbBuildingBlocks.initialize();
     }
 }
