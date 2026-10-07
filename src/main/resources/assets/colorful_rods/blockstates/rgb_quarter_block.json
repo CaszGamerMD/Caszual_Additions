@@ -63,54 +63,6 @@
       "apply": {
         "model": "colorful_rods:block/rgb_quarter_seu"
       }
-    },
-    {
-      "when": {
-        "center": "down"
-      },
-      "apply": {
-        "model": "colorful_rods:block/rgb_quarter_center_down"
-      }
-    },
-    {
-      "when": {
-        "center": "up"
-      },
-      "apply": {
-        "model": "colorful_rods:block/rgb_quarter_center_up"
-      }
-    },
-    {
-      "when": {
-        "center": "north"
-      },
-      "apply": {
-        "model": "colorful_rods:block/rgb_quarter_center_north"
-      }
-    },
-    {
-      "when": {
-        "center": "south"
-      },
-      "apply": {
-        "model": "colorful_rods:block/rgb_quarter_center_south"
-      }
-    },
-    {
-      "when": {
-        "center": "west"
-      },
-      "apply": {
-        "model": "colorful_rods:block/rgb_quarter_center_west"
-      }
-    },
-    {
-      "when": {
-        "center": "east"
-      },
-      "apply": {
-        "model": "colorful_rods:block/rgb_quarter_center_east"
-      }
     }
   ]
 }

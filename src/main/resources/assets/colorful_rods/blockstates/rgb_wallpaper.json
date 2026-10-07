@@ -34,6 +34,22 @@
         "model": "colorful_rods:block/rgb_wallpaper",
         "y": 270
       }
+    },
+    {
+      "when": {
+        "down": "true"
+      },
+      "apply": {
+        "model": "colorful_rods:block/rgb_wallpaper_floor"
+      }
+    },
+    {
+      "when": {
+        "up": "true"
+      },
+      "apply": {
+        "model": "colorful_rods:block/rgb_wallpaper_ceiling"
+      }
     }
   ]
 }
