@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "BB"
+  ],
+  "key": {
+    "B": "colorful_rods:rgb_block"
+  },
+  "result": {
+    "id": "colorful_rods:rgb_carpet",
+    "count": 3
+  }
+}

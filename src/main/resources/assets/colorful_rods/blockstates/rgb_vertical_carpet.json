@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "colorful_rods:block/rgb_vertical_carpet"
+    },
+    "facing=east": {
+      "model": "colorful_rods:block/rgb_vertical_carpet",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "colorful_rods:block/rgb_vertical_carpet",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "colorful_rods:block/rgb_vertical_carpet",
+      "y": 270
+    }
+  }
+}

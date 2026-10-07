@@ -1,0 +1,39 @@
+{
+  "multipart": [
+    {
+      "when": {
+        "north": "true"
+      },
+      "apply": {
+        "model": "colorful_rods:block/rgb_wallpaper"
+      }
+    },
+    {
+      "when": {
+        "east": "true"
+      },
+      "apply": {
+        "model": "colorful_rods:block/rgb_wallpaper",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "south": "true"
+      },
+      "apply": {
+        "model": "colorful_rods:block/rgb_wallpaper",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "west": "true"
+      },
+      "apply": {
+        "model": "colorful_rods:block/rgb_wallpaper",
+        "y": 270
+      }
+    }
+  ]
+}

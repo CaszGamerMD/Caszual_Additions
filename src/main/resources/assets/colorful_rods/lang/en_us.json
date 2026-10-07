@@ -27,5 +27,8 @@
   "block.colorful_rods.rgb_bars": "RGB Bars",
   "block.colorful_rods.rgb_vertical_stairs": "RGB Vertical Stairs",
   "block.colorful_rods.rgb_vertical_slab": "RGB Vertical Slab",
-  "block.colorful_rods.rgb_quarter_block": "RGB Quarter Block"
+  "block.colorful_rods.rgb_quarter_block": "RGB Quarter Block",
+  "block.colorful_rods.rgb_carpet": "RGB Carpet",
+  "block.colorful_rods.rgb_vertical_carpet": "RGB Vertical Carpet",
+  "block.colorful_rods.rgb_wallpaper": "RGB Wallpaper"
 }
