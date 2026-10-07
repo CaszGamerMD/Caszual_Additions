@@ -5,6 +5,7 @@ import com.casz.colorfulrods.ColorfulRods;
 import net.fabricmc.api.ModInitializer;
 import com.caszgamermd.caszualadditions.xp.XpBlocks;
 import com.caszgamermd.caszualadditions.xp.XpBlockEntities;
+import com.caszgamermd.caszualadditions.quarter.QuarterBlocks;
 import net.minecraft.resources.Identifier;
 
 public final class CaszualAdditions implements ModInitializer {
@@ -20,6 +21,7 @@ public final class CaszualAdditions implements ModInitializer {
         ColorfulRods.initialize();
         XpBlocks.initialize();
         XpBlockEntities.initialize();
+        QuarterBlocks.initialize();
         CaszualItemGroups.register();
     }
 }
