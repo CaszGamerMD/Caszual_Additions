@@ -3,10 +3,11 @@
   "category": "building",
   "pattern": [
     "BBB",
-    "BBB"
+    "RBR"
   ],
   "key": {
-    "B": "colorful_rods:rgb_block"
+    "B": "colorful_rods:rgb_block",
+    "R": "colorful_rods:rgb_end_rod"
   },
   "result": {
     "id": "colorful_rods:rgb_trapdoor",
