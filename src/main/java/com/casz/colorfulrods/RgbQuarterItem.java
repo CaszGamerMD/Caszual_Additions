@@ -1,27 +1,22 @@
-package com.caszgamermd.caszualadditions.quarter;
+package com.casz.colorfulrods;
 
+import com.caszgamermd.caszualadditions.quarter.QuarterPlacement;
 import net.fabricmc.fabric.api.item.v1.FabricItem;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.level.block.Block;
 import org.jspecify.annotations.Nullable;
 
-/**
- * Generic textured quarter piece. It also acts as the reusable template/cutter
- * in the quarter-block crafting recipe.
- */
-public final class QuarterBlockItem extends BlockItem implements FabricItem {
-    public QuarterBlockItem(Block block, Item.Properties properties) {
-        super(block, properties);
+public final class RgbQuarterItem extends Item implements FabricItem {
+    public RgbQuarterItem(Properties properties) {
+        super(properties);
     }
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
-        return QuarterPlacement.place(context, QuarterBlocks.source(context.getItemInHand()));
+        return QuarterPlacement.place(context, RgbBuildingBlocks.RGB_BLOCK.defaultBlockState());
     }
 
     @Override

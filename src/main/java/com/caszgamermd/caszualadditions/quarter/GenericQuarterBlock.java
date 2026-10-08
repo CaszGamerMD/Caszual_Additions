@@ -20,7 +20,6 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -28,101 +27,155 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
 public final class GenericQuarterBlock extends Block implements EntityBlock {
-    public static final MapCodec<GenericQuarterBlock> CODEC=simpleCodec(GenericQuarterBlock::new);
-    public static final BooleanProperty NWD=BooleanProperty.create("nwd"),NED=BooleanProperty.create("ned"),
-        SWD=BooleanProperty.create("swd"),SED=BooleanProperty.create("sed"),
-        NWU=BooleanProperty.create("nwu"),NEU=BooleanProperty.create("neu"),
-        SWU=BooleanProperty.create("swu"),SEU=BooleanProperty.create("seu");
-    public static final BooleanProperty[] CORNERS={NWD,NED,SWD,SED,NWU,NEU,SWU,SEU};
+    public static final MapCodec<GenericQuarterBlock> CODEC = simpleCodec(GenericQuarterBlock::new);
 
-    public GenericQuarterBlock(BlockBehaviour.Properties properties){
+    public static final BooleanProperty NWD = BooleanProperty.create("nwd");
+    public static final BooleanProperty NED = BooleanProperty.create("ned");
+    public static final BooleanProperty SWD = BooleanProperty.create("swd");
+    public static final BooleanProperty SED = BooleanProperty.create("sed");
+    public static final BooleanProperty NWU = BooleanProperty.create("nwu");
+    public static final BooleanProperty NEU = BooleanProperty.create("neu");
+    public static final BooleanProperty SWU = BooleanProperty.create("swu");
+    public static final BooleanProperty SEU = BooleanProperty.create("seu");
+    public static final BooleanProperty[] CORNERS = {NWD, NED, SWD, SED, NWU, NEU, SWU, SEU};
+
+    public GenericQuarterBlock(BlockBehaviour.Properties properties) {
         super(properties);
-        var s=stateDefinition.any();
-        for(var p:CORNERS)s=s.setValue(p,false);
-        registerDefaultState(s);
+        BlockState state = stateDefinition.any();
+        for (BooleanProperty property : CORNERS) state = state.setValue(property, false);
+        registerDefaultState(state);
     }
 
-    @Override protected MapCodec<? extends Block> codec(){return CODEC;}
-    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> b){b.add(NWD,NED,SWD,SED,NWU,NEU,SWU,SEU);}
-    @Override protected RenderShape getRenderShape(BlockState state){return RenderShape.INVISIBLE;}
-
-    private static Vec3 relative(BlockPlaceContext ctx){
-        var p=ctx.getClickedPos();var h=ctx.getClickLocation();
-        return new Vec3(h.x-p.getX(),h.y-p.getY(),h.z-p.getZ());
+    @Override
+    protected MapCodec<? extends Block> codec() {
+        return CODEC;
     }
 
-    public static int cornerIndex(Vec3 r){
-        boolean e=r.x>=.5,u=r.y>=.5,s=r.z>=.5;
-        if(!u&&!s)return e?1:0;
-        if(!u)return e?3:2;
-        if(!s)return e?5:4;
-        return e?7:6;
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(NWD, NED, SWD, SED, NWU, NEU, SWU, SEU);
     }
 
-    private static boolean allCorners(BlockState state){
-        for(var p:CORNERS)if(!state.getValue(p))return false;
+    @Override
+    protected RenderShape getRenderShape(BlockState state) {
+        return RenderShape.INVISIBLE;
+    }
+
+    private static Vec3 relative(BlockPlaceContext context) {
+        BlockPos pos = context.getClickedPos();
+        Vec3 hit = context.getClickLocation();
+        return new Vec3(hit.x - pos.getX(), hit.y - pos.getY(), hit.z - pos.getZ());
+    }
+
+    public static int cornerIndex(Vec3 relative) {
+        boolean east = relative.x >= 0.5;
+        boolean up = relative.y >= 0.5;
+        boolean south = relative.z >= 0.5;
+        if (!up && !south) return east ? 1 : 0;
+        if (!up) return east ? 3 : 2;
+        if (!south) return east ? 5 : 4;
+        return east ? 7 : 6;
+    }
+
+    private static boolean allCorners(BlockState state) {
+        for (BooleanProperty property : CORNERS) {
+            if (!state.getValue(property)) return false;
+        }
         return true;
     }
 
-    @Override public boolean canBeReplaced(BlockState state,BlockPlaceContext ctx){
-        if(!ctx.getItemInHand().is(QuarterBlocks.QUARTER_BLOCK_ITEM)||allCorners(state))return false;
-        return !state.getValue(CORNERS[cornerIndex(relative(ctx))]);
+    @Override
+    public boolean canBeReplaced(BlockState state, BlockPlaceContext context) {
+        if (!QuarterBlocks.isQuarterPiece(context.getItemInHand()) || allCorners(state)) return false;
+        return !state.getValue(CORNERS[cornerIndex(relative(context))]);
     }
 
-    @Override public BlockState getStateForPlacement(BlockPlaceContext ctx){
-        int index=cornerIndex(relative(ctx));
-        var existing=ctx.getLevel().getBlockState(ctx.getClickedPos());
-        if(existing.is(this))return existing.getValue(CORNERS[index])?null:existing.setValue(CORNERS[index],true);
-        return defaultBlockState().setValue(CORNERS[index],true);
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        int index = cornerIndex(relative(context));
+        BlockState existing = context.getLevel().getBlockState(context.getClickedPos());
+        if (existing.is(this)) {
+            return existing.getValue(CORNERS[index]) ? null : existing.setValue(CORNERS[index], true);
+        }
+        return defaultBlockState().setValue(CORNERS[index], true);
     }
 
-    @Override public void setPlacedBy(Level level,BlockPos pos,BlockState state,@Nullable LivingEntity placer,ItemStack stack){
-        super.setPlacedBy(level,pos,state,placer,stack);
-        if(!(level.getBlockEntity(pos) instanceof GenericQuarterBlockEntity be))return;
-        var source=QuarterBlocks.source(stack);
-        for(int i=0;i<8;i++){
-            if(state.getValue(CORNERS[i])&&be.material(i)==null){
-                be.setMaterial(i,source);
+    @Override
+    public void setPlacedBy(
+            Level level,
+            BlockPos pos,
+            BlockState state,
+            @Nullable LivingEntity placer,
+            ItemStack stack
+    ) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (!(level.getBlockEntity(pos) instanceof GenericQuarterBlockEntity blockEntity)) return;
+
+        BlockState source = QuarterBlocks.source(stack);
+        for (int i = 0; i < 8; i++) {
+            if (state.getValue(CORNERS[i]) && blockEntity.material(i) == null) {
+                blockEntity.setMaterial(i, source);
                 break;
             }
         }
     }
 
-    @Override public BlockEntity newBlockEntity(BlockPos pos,BlockState state){
-        return new GenericQuarterBlockEntity(pos,state);
+    @Override
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new GenericQuarterBlockEntity(pos, state);
     }
 
-    @Override protected VoxelShape getShape(BlockState s,BlockGetter level,BlockPos pos,CollisionContext c){
-        VoxelShape shape=Shapes.empty();
-        if(s.getValue(NWD))shape=Shapes.or(shape,box(0,0,0,8,8,8));
-        if(s.getValue(NED))shape=Shapes.or(shape,box(8,0,0,16,8,8));
-        if(s.getValue(SWD))shape=Shapes.or(shape,box(0,0,8,8,8,16));
-        if(s.getValue(SED))shape=Shapes.or(shape,box(8,0,8,16,8,16));
-        if(s.getValue(NWU))shape=Shapes.or(shape,box(0,8,0,8,16,8));
-        if(s.getValue(NEU))shape=Shapes.or(shape,box(8,8,0,16,16,8));
-        if(s.getValue(SWU))shape=Shapes.or(shape,box(0,8,8,8,16,16));
-        if(s.getValue(SEU))shape=Shapes.or(shape,box(8,8,8,16,16,16));
+    @Override
+    protected VoxelShape getShape(
+            BlockState state,
+            BlockGetter level,
+            BlockPos pos,
+            CollisionContext context
+    ) {
+        VoxelShape shape = Shapes.empty();
+        if (state.getValue(NWD)) shape = Shapes.or(shape, box(0, 0, 0, 8, 8, 8));
+        if (state.getValue(NED)) shape = Shapes.or(shape, box(8, 0, 0, 16, 8, 8));
+        if (state.getValue(SWD)) shape = Shapes.or(shape, box(0, 0, 8, 8, 8, 16));
+        if (state.getValue(SED)) shape = Shapes.or(shape, box(8, 0, 8, 16, 8, 16));
+        if (state.getValue(NWU)) shape = Shapes.or(shape, box(0, 8, 0, 8, 16, 8));
+        if (state.getValue(NEU)) shape = Shapes.or(shape, box(8, 8, 0, 16, 16, 8));
+        if (state.getValue(SWU)) shape = Shapes.or(shape, box(0, 8, 8, 8, 16, 16));
+        if (state.getValue(SEU)) shape = Shapes.or(shape, box(8, 8, 8, 16, 16, 16));
         return shape;
     }
 
-    @Override protected List<ItemStack> getDrops(BlockState state,LootParams.Builder builder){
-        List<ItemStack> drops=new ArrayList<>();
-        if(builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY) instanceof GenericQuarterBlockEntity be){
-            for(int i=0;i<8;i++)if(state.getValue(CORNERS[i])){
-                var source=be.material(i);
-                if(source!=null)drops.add(QuarterBlocks.textured(source,1));
+    @Override
+    protected List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
+        List<ItemStack> drops = new ArrayList<>();
+
+        if (builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY)
+                instanceof GenericQuarterBlockEntity blockEntity) {
+            for (int i = 0; i < 8; i++) {
+                if (!state.getValue(CORNERS[i])) continue;
+                BlockState source = blockEntity.material(i);
+                if (source != null) drops.add(QuarterBlocks.pieceFor(source, 1));
             }
         }
+
         return drops;
     }
 
-    @Override protected ItemStack getCloneItemStack(LevelReader level,BlockPos pos,BlockState state,boolean includeData){
-        if(level.getBlockEntity(pos) instanceof GenericQuarterBlockEntity be){
-            for(int i=0;i<8;i++){
-                var source=be.material(i);
-                if(state.getValue(CORNERS[i])&&source!=null)return QuarterBlocks.textured(source,1);
+    @Override
+    protected ItemStack getCloneItemStack(
+            LevelReader level,
+            BlockPos pos,
+            BlockState state,
+            boolean includeData
+    ) {
+        if (level.getBlockEntity(pos) instanceof GenericQuarterBlockEntity blockEntity) {
+            for (int i = 0; i < 8; i++) {
+                BlockState source = blockEntity.material(i);
+                if (state.getValue(CORNERS[i]) && source != null) {
+                    return QuarterBlocks.pieceFor(source, 1);
+                }
             }
         }
-        return QuarterBlocks.textured(net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(),1);
+
+        return QuarterBlocks.textured(net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 1);
     }
 }

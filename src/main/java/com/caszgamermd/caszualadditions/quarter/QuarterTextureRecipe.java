@@ -13,8 +13,10 @@ import net.minecraft.world.level.Level;
 public final class QuarterTextureRecipe extends CustomRecipe {
     public static final QuarterTextureRecipe INSTANCE = new QuarterTextureRecipe();
     public static final MapCodec<QuarterTextureRecipe> CODEC = MapCodec.unit(INSTANCE);
-    public static final StreamCodec<RegistryFriendlyByteBuf, QuarterTextureRecipe> STREAM_CODEC = StreamCodec.unit(INSTANCE);
-    public static final RecipeSerializer<QuarterTextureRecipe> SERIALIZER = new RecipeSerializer<>(CODEC, STREAM_CODEC);
+    public static final StreamCodec<RegistryFriendlyByteBuf, QuarterTextureRecipe> STREAM_CODEC =
+            StreamCodec.unit(INSTANCE);
+    public static final RecipeSerializer<QuarterTextureRecipe> SERIALIZER =
+            new RecipeSerializer<>(CODEC, STREAM_CODEC);
 
     private QuarterTextureRecipe() {}
 
@@ -26,7 +28,7 @@ public final class QuarterTextureRecipe extends CustomRecipe {
         for (ItemStack stack : input.items()) {
             if (stack.isEmpty()) continue;
 
-            if (stack.is(QuarterBlocks.QUARTER_BLOCK_ITEM)) {
+            if (QuarterBlocks.isQuarterPiece(stack)) {
                 if (quarterTemplate) return false;
                 quarterTemplate = true;
                 continue;
@@ -45,10 +47,10 @@ public final class QuarterTextureRecipe extends CustomRecipe {
     @Override
     public ItemStack assemble(CraftingInput input) {
         for (ItemStack stack : input.items()) {
-            if (stack.isEmpty() || stack.is(QuarterBlocks.QUARTER_BLOCK_ITEM)) continue;
+            if (stack.isEmpty() || QuarterBlocks.isQuarterPiece(stack)) continue;
 
             if (stack.getItem() instanceof BlockItem blockItem) {
-                return QuarterBlocks.textured(blockItem.getBlock().defaultBlockState(), 8);
+                return QuarterBlocks.pieceFor(blockItem.getBlock().defaultBlockState(), 8);
             }
         }
 

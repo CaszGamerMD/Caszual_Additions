@@ -1,13 +1,13 @@
 package com.caszgamermd.caszualadditions;
 
-import dev.casz.utils.CaszUtils;
 import com.casz.colorfulrods.ColorfulRods;
-import net.fabricmc.api.ModInitializer;
-import com.caszgamermd.caszualadditions.xp.XpBlocks;
-import com.caszgamermd.caszualadditions.xp.XpBlockEntities;
+import com.caszgamermd.caszualadditions.plushie.PlayerPlushies;
 import com.caszgamermd.caszualadditions.quarter.QuarterBlocks;
 import com.caszgamermd.caszualadditions.unbreakable.UnbreakableContent;
-import com.caszgamermd.caszualadditions.plushie.PlayerPlushies;
+import com.caszgamermd.caszualadditions.xp.XpBlockEntities;
+import com.caszgamermd.caszualadditions.xp.XpBlocks;
+import dev.casz.utils.CaszUtils;
+import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
 
 public final class CaszualAdditions implements ModInitializer {
@@ -20,10 +20,14 @@ public final class CaszualAdditions implements ModInitializer {
     @Override
     public void onInitialize() {
         CaszUtils.initialize();
+
+        // The shared quarter container must exist before Colorful Rods registers
+        // the RGB quarter item that places into it.
+        QuarterBlocks.initialize();
         ColorfulRods.initialize();
+
         XpBlocks.initialize();
         XpBlockEntities.initialize();
-        QuarterBlocks.initialize();
         UnbreakableContent.initialize();
         PlayerPlushies.initialize();
         CaszualItemGroups.register();

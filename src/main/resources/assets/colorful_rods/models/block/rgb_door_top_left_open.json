@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:block/door_top_left_open",
   "textures": {
-    "top": "colorful_rods:block/rgb_end_rod",
-    "bottom": "colorful_rods:block/rgb_end_rod"
+    "top": "colorful_rods:block/rgb_door_top",
+    "bottom": "colorful_rods:block/rgb_door_bottom"
   }
 }
