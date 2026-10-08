@@ -5,7 +5,8 @@ import com.casz.colorfulrods.ColorfulRods;
 import net.fabricmc.api.ModInitializer;
 import com.caszgamermd.caszualadditions.xp.XpBlocks;
 import com.caszgamermd.caszualadditions.xp.XpBlockEntities;
-import com.caszgamermd.caszualadditions.quarter.QuarterBlocks;\nimport com.caszgamermd.caszualadditions.unbreakable.UnbreakableContent;
+import com.caszgamermd.caszualadditions.quarter.QuarterBlocks;
+import com.caszgamermd.caszualadditions.unbreakable.UnbreakableContent;
 import net.minecraft.resources.Identifier;
 
 public final class CaszualAdditions implements ModInitializer {
@@ -21,7 +22,8 @@ public final class CaszualAdditions implements ModInitializer {
         ColorfulRods.initialize();
         XpBlocks.initialize();
         XpBlockEntities.initialize();
-        QuarterBlocks.initialize();\n        UnbreakableContent.initialize();
+        QuarterBlocks.initialize();
+        UnbreakableContent.initialize();
         CaszualItemGroups.register();
     }
 }
