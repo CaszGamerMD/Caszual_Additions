@@ -7,6 +7,7 @@ import com.caszgamermd.caszualadditions.xp.XpBlocks;
 import com.caszgamermd.caszualadditions.xp.XpBlockEntities;
 import com.caszgamermd.caszualadditions.quarter.QuarterBlocks;
 import com.caszgamermd.caszualadditions.unbreakable.UnbreakableContent;
+import com.caszgamermd.caszualadditions.plushie.PlayerPlushies;
 import net.minecraft.resources.Identifier;
 
 public final class CaszualAdditions implements ModInitializer {
@@ -24,6 +25,7 @@ public final class CaszualAdditions implements ModInitializer {
         XpBlockEntities.initialize();
         QuarterBlocks.initialize();
         UnbreakableContent.initialize();
+        PlayerPlushies.initialize();
         CaszualItemGroups.register();
     }
 }

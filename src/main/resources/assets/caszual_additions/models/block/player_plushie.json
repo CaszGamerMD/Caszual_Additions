@@ -1,0 +1,62 @@
+{
+  "textures": {
+    "wool": "minecraft:block/white_wool",
+    "particle": "minecraft:block/white_wool"
+  },
+  "elements": [
+    {
+      "from": [4, 8, 4],
+      "to": [12, 16, 12],
+      "faces": {
+        "down": {"texture": "#wool"}, "up": {"texture": "#wool"},
+        "north": {"texture": "#wool"}, "south": {"texture": "#wool"},
+        "west": {"texture": "#wool"}, "east": {"texture": "#wool"}
+      }
+    },
+    {
+      "from": [5, 3, 6],
+      "to": [11, 9, 10],
+      "faces": {
+        "down": {"texture": "#wool"}, "up": {"texture": "#wool"},
+        "north": {"texture": "#wool"}, "south": {"texture": "#wool"},
+        "west": {"texture": "#wool"}, "east": {"texture": "#wool"}
+      }
+    },
+    {
+      "from": [3, 3, 6],
+      "to": [5, 8, 10],
+      "faces": {
+        "down": {"texture": "#wool"}, "up": {"texture": "#wool"},
+        "north": {"texture": "#wool"}, "south": {"texture": "#wool"},
+        "west": {"texture": "#wool"}, "east": {"texture": "#wool"}
+      }
+    },
+    {
+      "from": [11, 3, 6],
+      "to": [13, 8, 10],
+      "faces": {
+        "down": {"texture": "#wool"}, "up": {"texture": "#wool"},
+        "north": {"texture": "#wool"}, "south": {"texture": "#wool"},
+        "west": {"texture": "#wool"}, "east": {"texture": "#wool"}
+      }
+    },
+    {
+      "from": [5, 0, 6],
+      "to": [8, 4, 10],
+      "faces": {
+        "down": {"texture": "#wool"}, "up": {"texture": "#wool"},
+        "north": {"texture": "#wool"}, "south": {"texture": "#wool"},
+        "west": {"texture": "#wool"}, "east": {"texture": "#wool"}
+      }
+    },
+    {
+      "from": [8, 0, 6],
+      "to": [11, 4, 10],
+      "faces": {
+        "down": {"texture": "#wool"}, "up": {"texture": "#wool"},
+        "north": {"texture": "#wool"}, "south": {"texture": "#wool"},
+        "west": {"texture": "#wool"}, "east": {"texture": "#wool"}
+      }
+    }
+  ]
+}
