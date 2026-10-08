@@ -10,7 +10,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import org.jspecify.annotations.Nullable;
 
 public final class RgbQuarterItem extends Item implements FabricItem {
-    public RgbQuarterItem(Properties properties) {
+    public RgbQuarterItem(Item.Properties properties) {
         super(properties);
     }
 
