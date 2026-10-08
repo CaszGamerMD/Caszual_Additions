@@ -191,7 +191,7 @@ public final class HeadVendingContent {
     }
 
     private static boolean validMachine(ServerPlayer player, BlockPos pos) {
-        if (!player.serverLevel().getBlockState(pos).is(PLAYER_HEAD_VENDING_MACHINE)) {
+        if (!player.level().getBlockState(pos).is(PLAYER_HEAD_VENDING_MACHINE)) {
             status(player, "The vending machine is no longer there.", false);
             return false;
         }
@@ -251,9 +251,8 @@ public final class HeadVendingContent {
     }
 
     private static void status(ServerPlayer player, String message, boolean success) {
-        player.displayClientMessage(
-                Component.literal((success ? "✓ " : "✗ ") + message),
-                true
+        player.sendOverlayMessage(
+                Component.literal((success ? "✓ " : "✗ ") + message)
         );
     }
 }
