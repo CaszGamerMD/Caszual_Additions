@@ -6,7 +6,6 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -15,58 +14,64 @@ import net.minecraft.world.level.Level;
 public final class PlasticPalletRecipe extends CustomRecipe {
     public static final PlasticPalletRecipe INSTANCE = new PlasticPalletRecipe();
     public static final MapCodec<PlasticPalletRecipe> CODEC = MapCodec.unit(INSTANCE);
-    public static final StreamCodec<RegistryFriendlyByteBuf, PlasticPalletRecipe> STREAM_CODEC = StreamCodec.unit(INSTANCE);
-    public static final RecipeSerializer<PlasticPalletRecipe> SERIALIZER = new RecipeSerializer<>(CODEC, STREAM_CODEC);
+    public static final StreamCodec<RegistryFriendlyByteBuf, PlasticPalletRecipe> STREAM_CODEC =
+            StreamCodec.unit(INSTANCE);
+    public static final RecipeSerializer<PlasticPalletRecipe> SERIALIZER =
+            new RecipeSerializer<>(CODEC, STREAM_CODEC);
 
     private PlasticPalletRecipe() {}
 
     @Override
     public boolean matches(CraftingInput input, Level level) {
-        int purpur = 0;
-        int dyes = 0;
+        if (input.ingredientCount() != 2) return false;
+
+        boolean pallet = false;
+        boolean dye = false;
 
         for (ItemStack stack : input.items()) {
             if (stack.isEmpty()) continue;
-            if (stack.is(Items.PURPUR_BLOCK)) {
-                purpur++;
+
+            if (stack.is(PalletContent.PLASTIC_PALLET_ITEM)) {
+                if (pallet) return false;
+                pallet = true;
                 continue;
             }
+
             if (stack.get(DataComponents.DYE) != null) {
-                dyes++;
+                if (dye) return false;
+                dye = true;
                 continue;
             }
+
             return false;
         }
 
-        return purpur == 4 && dyes >= 1;
+        return pallet && dye;
     }
 
     @Override
     public ItemStack assemble(CraftingInput input) {
-        long red = 0;
-        long green = 0;
-        long blue = 0;
-        int dyes = 0;
+        ItemStack pallet = ItemStack.EMPTY;
+        DyeColor dye = null;
 
         for (ItemStack stack : input.items()) {
-            DyeColor dye = stack.get(DataComponents.DYE);
-            if (dye == null) continue;
+            if (stack.isEmpty()) continue;
 
-            int color = dye.getTextureDiffuseColor();
-            red += color >> 16 & 255;
-            green += color >> 8 & 255;
-            blue += color & 255;
-            dyes++;
+            if (stack.is(PalletContent.PLASTIC_PALLET_ITEM)) {
+                pallet = stack;
+            } else if (stack.get(DataComponents.DYE) != null) {
+                dye = stack.get(DataComponents.DYE);
+            }
         }
 
-        if (dyes == 0) return ItemStack.EMPTY;
+        if (pallet.isEmpty() || dye == null) return ItemStack.EMPTY;
 
-        int argb = 0xff000000
-                | ((int)(red / dyes) << 16)
-                | ((int)(green / dyes) << 8)
-                | (int)(blue / dyes);
+        ItemStack result = pallet.copy();
+        result.setCount(1);
 
-        return PalletData.applyPlasticColor(new ItemStack(PalletContent.PLASTIC_PALLET_ITEM), argb);
+        int color = dye.getTextureDiffuseColor();
+        int argb = 0xff000000 | (color & 0x00ffffff);
+        return PalletData.applyPlasticColor(result, argb);
     }
 
     @Override

@@ -1,3 +1,16 @@
 {
-  "type": "caszual_additions:plastic_pallet"
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "PCP",
+    "CCC",
+    "PCP"
+  ],
+  "key": {
+    "P": "minecraft:purpur_block",
+    "C": "minecraft:chest"
+  },
+  "result": {
+    "id": "caszual_additions:plastic_pallet",
+    "count": 1
+  }
 }

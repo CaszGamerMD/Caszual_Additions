@@ -1,11 +1,13 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "II",
-    "II"
+    "ICI",
+    "CCC",
+    "ICI"
   ],
   "key": {
-    "I": "minecraft:iron_ingot"
+    "I": "minecraft:iron_block",
+    "C": "minecraft:chest"
   },
   "result": {
     "id": "caszual_additions:iron_pallet",
