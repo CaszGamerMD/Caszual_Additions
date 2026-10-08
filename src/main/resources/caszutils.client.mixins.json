@@ -12,7 +12,8 @@
     "EndRodAvatarRendererMixin",
     "ArmorStandCosmeticsMixin",
     "ArmorStandModelCosmeticsMixin",
-    "ScreenWidgetAccessor"
+    "ScreenWidgetAccessor",
+    "CreativeInventoryCosmeticsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
