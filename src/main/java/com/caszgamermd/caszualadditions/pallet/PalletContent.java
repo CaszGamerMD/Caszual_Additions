@@ -161,10 +161,10 @@ public final class PalletContent {
 
     public static Block copperTextureBlock(int age) {
         return switch (age) {
-            case 1 -> Blocks.COPPER_BLOCK.pick(WeatheringCopper.WeatherState.EXPOSED, false);
-            case 2 -> Blocks.COPPER_BLOCK.pick(WeatheringCopper.WeatherState.WEATHERED, false);
-            case 3 -> Blocks.COPPER_BLOCK.pick(WeatheringCopper.WeatherState.OXIDIZED, false);
-            default -> Blocks.COPPER_BLOCK.pick(WeatheringCopper.WeatherState.UNAFFECTED, false);
+            case 1 -> vanillaBlock("exposed_copper");
+            case 2 -> vanillaBlock("weathered_copper");
+            case 3 -> vanillaBlock("oxidized_copper");
+            default -> vanillaBlock("copper_block");
         };
     }
 
