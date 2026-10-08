@@ -17,7 +17,6 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.WeatheringCopper;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
@@ -52,10 +51,10 @@ public final class PalletContent {
         PLASTIC_PALLET = register("plastic_pallet", PalletKind.PLASTIC, 0, Blocks.PURPUR_BLOCK, false);
         IRON_PALLET = register("iron_pallet", PalletKind.IRON, 0, Blocks.IRON_BLOCK, false);
 
-        COPPER_PALLET = register("copper_pallet", PalletKind.COPPER, 0, Blocks.COPPER_BLOCK.pick(WeatheringCopper.WeatherState.UNAFFECTED, false), true);
-        EXPOSED_COPPER_PALLET = register("exposed_copper_pallet", PalletKind.COPPER, 1, Blocks.COPPER_BLOCK.pick(WeatheringCopper.WeatherState.EXPOSED, false), true);
-        WEATHERED_COPPER_PALLET = register("weathered_copper_pallet", PalletKind.COPPER, 2, Blocks.COPPER_BLOCK.pick(WeatheringCopper.WeatherState.WEATHERED, false), true);
-        OXIDIZED_COPPER_PALLET = register("oxidized_copper_pallet", PalletKind.COPPER, 3, Blocks.COPPER_BLOCK.pick(WeatheringCopper.WeatherState.OXIDIZED, false), false);
+        COPPER_PALLET = register("copper_pallet", PalletKind.COPPER, 0, vanillaBlock("copper_block"), true);
+        EXPOSED_COPPER_PALLET = register("exposed_copper_pallet", PalletKind.COPPER, 1, vanillaBlock("exposed_copper"), true);
+        WEATHERED_COPPER_PALLET = register("weathered_copper_pallet", PalletKind.COPPER, 2, vanillaBlock("weathered_copper"), true);
+        OXIDIZED_COPPER_PALLET = register("oxidized_copper_pallet", PalletKind.COPPER, 3, vanillaBlock("oxidized_copper"), false);
 
         WOODEN_PALLET_ITEM = WOODEN_PALLET.asItem();
         PLASTIC_PALLET_ITEM = PLASTIC_PALLET.asItem();
@@ -167,6 +166,10 @@ public final class PalletContent {
             case 3 -> Blocks.COPPER_BLOCK.pick(WeatheringCopper.WeatherState.OXIDIZED, false);
             default -> Blocks.COPPER_BLOCK.pick(WeatheringCopper.WeatherState.UNAFFECTED, false);
         };
+    }
+
+    private static Block vanillaBlock(String path) {
+        return BuiltInRegistries.BLOCK.getValue(Identifier.withDefaultNamespace(path));
     }
 
     public static List<PalletBlock> allPalletBlocks() {
