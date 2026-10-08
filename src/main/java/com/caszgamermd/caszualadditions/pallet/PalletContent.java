@@ -51,10 +51,10 @@ public final class PalletContent {
         PLASTIC_PALLET = register("plastic_pallet", PalletKind.PLASTIC, 0, Blocks.PURPUR_BLOCK, false);
         IRON_PALLET = register("iron_pallet", PalletKind.IRON, 0, Blocks.IRON_BLOCK, false);
 
-        COPPER_PALLET = register("copper_pallet", PalletKind.COPPER, 0, Blocks.COPPER_BLOCK, true);
-        EXPOSED_COPPER_PALLET = register("exposed_copper_pallet", PalletKind.COPPER, 1, Blocks.EXPOSED_COPPER, true);
-        WEATHERED_COPPER_PALLET = register("weathered_copper_pallet", PalletKind.COPPER, 2, Blocks.WEATHERED_COPPER, true);
-        OXIDIZED_COPPER_PALLET = register("oxidized_copper_pallet", PalletKind.COPPER, 3, Blocks.OXIDIZED_COPPER, false);
+        COPPER_PALLET = register("copper_pallet", PalletKind.COPPER, 0, Blocks.COPPER_BLOCK.unaffected(), true);
+        EXPOSED_COPPER_PALLET = register("exposed_copper_pallet", PalletKind.COPPER, 1, Blocks.COPPER_BLOCK.exposed(), true);
+        WEATHERED_COPPER_PALLET = register("weathered_copper_pallet", PalletKind.COPPER, 2, Blocks.COPPER_BLOCK.weathered(), true);
+        OXIDIZED_COPPER_PALLET = register("oxidized_copper_pallet", PalletKind.COPPER, 3, Blocks.COPPER_BLOCK.oxidized(), false);
 
         WOODEN_PALLET_ITEM = WOODEN_PALLET.asItem();
         PLASTIC_PALLET_ITEM = PLASTIC_PALLET.asItem();
@@ -69,7 +69,7 @@ public final class PalletContent {
         PALLET_RENDER_PROXY = Registry.register(
                 BuiltInRegistries.BLOCK,
                 proxyKey,
-                new Block(BlockBehaviour.Properties.ofFullCopy(Blocks.WHITE_CONCRETE).setId(proxyKey))
+                new Block(BlockBehaviour.Properties.ofFullCopy(Blocks.CONCRETE.white()).setId(proxyKey))
         );
 
         PALLET_BLOCK_ENTITY = Registry.register(
@@ -161,10 +161,10 @@ public final class PalletContent {
 
     public static Block copperTextureBlock(int age) {
         return switch (age) {
-            case 1 -> Blocks.EXPOSED_COPPER;
-            case 2 -> Blocks.WEATHERED_COPPER;
-            case 3 -> Blocks.OXIDIZED_COPPER;
-            default -> Blocks.COPPER_BLOCK;
+            case 1 -> Blocks.COPPER_BLOCK.exposed();
+            case 2 -> Blocks.COPPER_BLOCK.weathered();
+            case 3 -> Blocks.COPPER_BLOCK.oxidized();
+            default -> Blocks.COPPER_BLOCK.unaffected();
         };
     }
 
