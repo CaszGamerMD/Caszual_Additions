@@ -35,7 +35,7 @@ public final class PlayerPlushieBlock extends HorizontalDirectionalBlock impleme
     }
 
     @Override
-    protected MapCodec<? extends Block> codec() {
+    protected MapCodec<? extends HorizontalDirectionalBlock> codec() {
         return CODEC;
     }
 
