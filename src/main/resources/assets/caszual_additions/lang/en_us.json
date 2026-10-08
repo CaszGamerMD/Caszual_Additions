@@ -7,5 +7,17 @@
   "block.caszual_additions.quarter_block": "Quarter Block",
   "block.caszual_additions.unbreakable_anvil": "Unbreakable Anvil",
   "item.caszual_additions.unbreakable_book": "Unbreakable Enchantment Book",
-  "block.caszual_additions.player_plushie": "Player Plushie"
+  "block.caszual_additions.player_plushie": "Player Plushie",
+  "block.caszual_additions.wooden_pallet": "Wooden Pallet",
+  "block.caszual_additions.plastic_pallet": "Plastic Pallet",
+  "block.caszual_additions.iron_pallet": "Iron Pallet",
+  "block.caszual_additions.copper_pallet": "Copper Pallet",
+  "block.caszual_additions.exposed_copper_pallet": "Exposed Copper Pallet",
+  "block.caszual_additions.weathered_copper_pallet": "Weathered Copper Pallet",
+  "block.caszual_additions.oxidized_copper_pallet": "Oxidized Copper Pallet",
+  "container.caszual_additions.pallet": "Pallet",
+  "container.caszual_additions.wooden_pallet": "Wooden Pallet",
+  "container.caszual_additions.plastic_pallet": "Plastic Pallet",
+  "container.caszual_additions.iron_pallet": "Iron Pallet",
+  "container.caszual_additions.copper_pallet": "Copper Pallet"
 }

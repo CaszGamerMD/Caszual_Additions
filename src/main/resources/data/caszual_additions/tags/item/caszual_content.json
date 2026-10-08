@@ -59,6 +59,13 @@
     "colorful_rods:rgb_wallpaper",
     "caszual_additions:unbreakable_anvil",
     "caszual_additions:unbreakable_book",
-    "caszual_additions:player_plushie"
+    "caszual_additions:player_plushie",
+    "caszual_additions:wooden_pallet",
+    "caszual_additions:plastic_pallet",
+    "caszual_additions:iron_pallet",
+    "caszual_additions:copper_pallet",
+    "caszual_additions:exposed_copper_pallet",
+    "caszual_additions:weathered_copper_pallet",
+    "caszual_additions:oxidized_copper_pallet"
   ]
 }

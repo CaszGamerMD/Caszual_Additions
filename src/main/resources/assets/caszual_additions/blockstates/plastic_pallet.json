@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "part=0": {
+      "model": "caszual_additions:block/pallet_empty"
+    },
+    "part=1": {
+      "model": "caszual_additions:block/pallet_empty"
+    },
+    "part=2": {
+      "model": "caszual_additions:block/pallet_empty"
+    },
+    "part=3": {
+      "model": "caszual_additions:block/pallet_empty"
+    }
+  }
+}

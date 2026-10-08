@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions;
 
 import com.casz.colorfulrods.ColorfulRods;
+import com.caszgamermd.caszualadditions.pallet.PalletContent;
 import com.caszgamermd.caszualadditions.plushie.PlayerPlushies;
 import com.caszgamermd.caszualadditions.quarter.QuarterBlocks;
 import com.caszgamermd.caszualadditions.unbreakable.UnbreakableContent;
@@ -21,8 +22,6 @@ public final class CaszualAdditions implements ModInitializer {
     public void onInitialize() {
         CaszUtils.initialize();
 
-        // The shared quarter container must exist before Colorful Rods registers
-        // the RGB quarter item that places into it.
         QuarterBlocks.initialize();
         ColorfulRods.initialize();
 
@@ -30,6 +29,8 @@ public final class CaszualAdditions implements ModInitializer {
         XpBlockEntities.initialize();
         UnbreakableContent.initialize();
         PlayerPlushies.initialize();
+        PalletContent.initialize();
+
         CaszualItemGroups.register();
     }
 }
