@@ -1,3 +1,6 @@
 {
-  "parent": "colorful_rods:block/rgb_carpet"
+  "parent": "minecraft:block/carpet",
+  "textures": {
+    "wool": "colorful_rods:block/rgb_end_rod"
+  }
 }
