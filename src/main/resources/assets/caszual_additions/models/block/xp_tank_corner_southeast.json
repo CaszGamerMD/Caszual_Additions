@@ -1,39 +1,39 @@
 {
   "textures": {
-    "xp": "minecraft:block/lime_concrete",
-    "particle": "minecraft:block/lime_concrete"
+    "frame": "minecraft:block/polished_deepslate",
+    "particle": "minecraft:block/polished_deepslate"
   },
   "elements": [
     {
       "from": [
+        15,
         0,
-        0,
-        0
+        15
       ],
       "to": [
         16,
         16,
         16
       ],
-      "shade": false,
+      "shade": true,
       "faces": {
         "down": {
-          "texture": "#xp"
+          "texture": "#frame"
         },
         "up": {
-          "texture": "#xp"
+          "texture": "#frame"
         },
         "north": {
-          "texture": "#xp"
+          "texture": "#frame"
         },
         "south": {
-          "texture": "#xp"
+          "texture": "#frame"
         },
         "west": {
-          "texture": "#xp"
+          "texture": "#frame"
         },
         "east": {
-          "texture": "#xp"
+          "texture": "#frame"
         }
       }
     }

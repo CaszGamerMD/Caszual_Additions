@@ -1,7 +1,7 @@
 {
   "textures": {
-    "xp": "minecraft:block/lime_concrete",
-    "particle": "minecraft:block/lime_concrete"
+    "glass": "minecraft:block/lime_stained_glass",
+    "particle": "minecraft:block/lime_stained_glass"
   },
   "elements": [
     {
@@ -11,29 +11,29 @@
         0
       ],
       "to": [
+        0.75,
         16,
-        9.6,
         16
       ],
       "shade": false,
       "faces": {
         "down": {
-          "texture": "#xp"
+          "texture": "#glass"
         },
         "up": {
-          "texture": "#xp"
+          "texture": "#glass"
         },
         "north": {
-          "texture": "#xp"
+          "texture": "#glass"
         },
         "south": {
-          "texture": "#xp"
+          "texture": "#glass"
         },
         "west": {
-          "texture": "#xp"
+          "texture": "#glass"
         },
         "east": {
-          "texture": "#xp"
+          "texture": "#glass"
         }
       }
     }
