@@ -27,7 +27,7 @@ public final class PlayerPlushieRecipe extends CustomRecipe {
 
         for (ItemStack stack : input.items()) {
             if (stack.isEmpty()) continue;
-            if (stack.is(Items.WHITE_WOOL)) {
+            if (stack.is(Items.WOOL.white())) {
                 wool++;
             } else if (stack.is(Items.PLAYER_HEAD)) {
                 heads++;
