@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "AAA",
+    "ABA",
+    "AAA"
+  ],
+  "key": {
+    "A": "caszual_additions:unbreakable_anvil",
+    "B": "minecraft:book"
+  },
+  "result": {
+    "id": "caszual_additions:unbreakable_book",
+    "count": 1
+  }
+}

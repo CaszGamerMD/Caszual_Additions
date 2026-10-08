@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/template_anvil",
+  "textures": {
+    "top": "caszual_additions:block/unbreakable_anvil_top"
+  }
+}

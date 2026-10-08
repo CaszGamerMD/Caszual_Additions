@@ -5,7 +5,9 @@
   "mixins": [
     "AbstractContainerMenuAccessor",
     "InventoryMenuCosmeticsMixin",
-    "SlotAccessor"
+    "SlotAccessor",
+    "AnvilBlockDamageMixin",
+    "AnvilMenuUnbreakableMixin"
   ],
   "injectors": {
     "defaultRequire": 1

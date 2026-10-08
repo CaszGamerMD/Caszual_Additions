@@ -4,5 +4,7 @@
   "block.caszual_additions.xp_charger": "XP Charger",
   "block.caszual_additions.xp_drain": "XP Drain",
   "block.caszual_additions.xp_shower": "XP Shower Head",
-  "block.caszual_additions.quarter_block": "Quarter Block"
+  "block.caszual_additions.quarter_block": "Quarter Block",
+  "block.caszual_additions.unbreakable_anvil": "Unbreakable Anvil",
+  "item.caszual_additions.unbreakable_book": "Unbreakable Enchantment Book"
 }
