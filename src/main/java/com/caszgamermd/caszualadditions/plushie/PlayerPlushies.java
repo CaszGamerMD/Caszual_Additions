@@ -33,7 +33,7 @@ public final class PlayerPlushies {
         PLAYER_PLUSHIE = Registry.register(
                 BuiltInRegistries.BLOCK,
                 blockKey,
-                new PlayerPlushieBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.WHITE_WOOL)
+                new PlayerPlushieBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.WOOL.white())
                         .strength(0.8F)
                         .noOcclusion()
                         .setId(blockKey))
