@@ -20,19 +20,29 @@ public final class CaszUtils {
         var id = Identifier.fromNamespaceAndPath(MOD_ID, name);
         var key = ResourceKey.create(Registries.ITEM, id);
         var food = new FoodProperties.Builder().nutrition(2).saturationModifier(0.2f).alwaysEdible().build();
-        return Registry.register(BuiltInRegistries.ITEM, key,
-            new SizeSnack(new Item.Properties().setId(key).food(food), direction));
+        return Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new SizeSnack(new Item.Properties().setId(key).food(food), direction)
+        );
     }
 
     public static void initialize() {
         FireflyGlass.initialize();
+        dev.casz.utils.cosmetics.CosmeticGuide.initialize();
         dev.casz.utils.cosmetics.Cosmetics.initialize();
         dev.casz.utils.cosmetics.ArmorStandCosmeticInteraction.initialize();
+
         CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FOOD_AND_DRINKS).register(entries -> {
             entries.accept(SHORTCAKES);
             entries.accept(STACK_O_JACKS);
             entries.accept(VANILLA_WAFERS);
         });
-        org.slf4j.LoggerFactory.getLogger(MOD_ID).info("CaszUtils systems initialized inside Caszual Additions");
+
+        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries ->
+                entries.accept(dev.casz.utils.cosmetics.CosmeticGuide.ITEM));
+
+        org.slf4j.LoggerFactory.getLogger(MOD_ID)
+                .info("CaszUtils systems initialized inside Caszual Additions");
     }
 }

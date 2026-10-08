@@ -66,6 +66,7 @@
     "caszual_additions:copper_pallet",
     "caszual_additions:exposed_copper_pallet",
     "caszual_additions:weathered_copper_pallet",
-    "caszual_additions:oxidized_copper_pallet"
+    "caszual_additions:oxidized_copper_pallet",
+    "caszutils:cosmetic_guide"
   ]
 }

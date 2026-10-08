@@ -24,5 +24,6 @@
   "gui.caszutils.armor_hidden": "Armor: hidden",
   "gui.caszutils.armor_shown": "Armor: shown",
   "gui.caszutils.hide_hint": "Hide normal armor on all players. Cosmetics stay visible.",
-  "gui.caszutils.cosmetic_hint": "Choose cosmetic head, chest, legs, and feet. Armor or blocks; appearance only."
+  "gui.caszutils.cosmetic_hint": "Choose cosmetic head, chest, legs, and feet. Armor or blocks; appearance only.",
+  "item.caszutils.cosmetic_guide": "Cosmetic Guide"
 }
