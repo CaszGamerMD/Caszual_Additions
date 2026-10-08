@@ -83,8 +83,6 @@ public final class PlayerPlushieSpecialRenderer implements SpecialModelRenderer<
                     resolved.renderType(),
                     lightCoords,
                     overlayCoords,
-                    -1,
-                    null,
                     outlineColor,
                     null
             );
@@ -96,8 +94,6 @@ public final class PlayerPlushieSpecialRenderer implements SpecialModelRenderer<
                     WHITE_WOOL,
                     lightCoords,
                     overlayCoords,
-                    -1,
-                    null,
                     outlineColor,
                     null
             );
