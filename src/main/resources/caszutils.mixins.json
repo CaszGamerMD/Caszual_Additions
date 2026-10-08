@@ -7,7 +7,8 @@
     "InventoryMenuCosmeticsMixin",
     "SlotAccessor",
     "AnvilBlockDamageMixin",
-    "AnvilMenuUnbreakableMixin"
+    "AnvilMenuUnbreakableMixin",
+    "QuarterCreativeBreakServerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
