@@ -1,5 +1,6 @@
 package com.caszgamermd.caszualadditions;
 
+import com.caszgamermd.caszualadditions.headvending.HeadVendingClient;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntityRenderer;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
 import com.caszgamermd.caszualadditions.pallet.PalletScreen;
@@ -28,6 +29,7 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         );
 
         CaszUtilsClient.initialize();
+        HeadVendingClient.initialize();
 
         BlockEntityRenderers.register(
                 QuarterBlocks.QUARTER_BLOCK_ENTITY,

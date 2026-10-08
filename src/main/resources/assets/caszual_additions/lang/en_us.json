@@ -19,5 +19,8 @@
   "container.caszual_additions.wooden_pallet": "Wooden Pallet",
   "container.caszual_additions.plastic_pallet": "Plastic Pallet",
   "container.caszual_additions.iron_pallet": "Iron Pallet",
-  "container.caszual_additions.copper_pallet": "Copper Pallet"
+  "container.caszual_additions.copper_pallet": "Copper Pallet",
+  "block.caszual_additions.player_head_vending_machine": "Player Head Vending Machine",
+  "screen.caszual_additions.head_vending": "Head Vending Machine",
+  "screen.caszual_additions.head_vending.search": "Search Heads"
 }

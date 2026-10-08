@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IHI",
+    "ICI",
+    "IEI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "H": "minecraft:player_head",
+    "C": "minecraft:chest",
+    "E": "minecraft:emerald"
+  },
+  "result": {
+    "id": "caszual_additions:player_head_vending_machine",
+    "count": 1
+  }
+}
