@@ -13,7 +13,8 @@
     "ArmorStandCosmeticsMixin",
     "ArmorStandModelCosmeticsMixin",
     "ScreenWidgetAccessor",
-    "CreativeInventoryCosmeticsMixin"
+    "CreativeInventoryCosmeticsMixin",
+    "SpecialModelRenderersAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

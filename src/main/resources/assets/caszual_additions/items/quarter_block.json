@@ -1,6 +1,9 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "caszual_additions:item/quarter_block"
+    "type": "minecraft:special",
+    "base": "caszual_additions:block/quarter_block_inventory",
+    "model": {
+      "type": "caszual_additions:quarter_block"
+    }
   }
 }
