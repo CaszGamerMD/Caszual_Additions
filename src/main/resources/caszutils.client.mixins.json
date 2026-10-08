@@ -14,7 +14,8 @@
     "ArmorStandModelCosmeticsMixin",
     "ScreenWidgetAccessor",
     "CreativeInventoryCosmeticsMixin",
-    "SpecialModelRenderersAccessor"
+    "SpecialModelRenderersAccessor",
+    "PlayerPlushieCuddleMixin"
   ],
   "injectors": {
     "defaultRequire": 1

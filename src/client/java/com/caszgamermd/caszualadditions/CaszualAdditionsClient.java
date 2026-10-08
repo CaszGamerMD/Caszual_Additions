@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions;
 
 import com.caszgamermd.caszualadditions.plushie.PlayerPlushieBlockEntityRenderer;
+import com.caszgamermd.caszualadditions.plushie.PlayerPlushieSpecialRenderer;
 import com.caszgamermd.caszualadditions.plushie.PlayerPlushies;
 import com.caszgamermd.caszualadditions.quarter.GenericQuarterBlockEntityRenderer;
 import com.caszgamermd.caszualadditions.quarter.QuarterBlockSpecialRenderer;
@@ -16,6 +17,10 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         SpecialModelRenderersAccessor.caszutils$getIdMapper().put(
                 CaszualAdditions.id("quarter_block"),
                 QuarterBlockSpecialRenderer.Unbaked.MAP_CODEC
+        );
+        SpecialModelRenderersAccessor.caszutils$getIdMapper().put(
+                CaszualAdditions.id("player_plushie"),
+                PlayerPlushieSpecialRenderer.Unbaked.MAP_CODEC
         );
 
         CaszUtilsClient.initialize();

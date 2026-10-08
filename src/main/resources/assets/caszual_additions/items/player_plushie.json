@@ -1,6 +1,9 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "caszual_additions:item/player_plushie"
+    "type": "minecraft:special",
+    "base": "caszual_additions:item/player_plushie",
+    "model": {
+      "type": "caszual_additions:player_plushie"
+    }
   }
 }
