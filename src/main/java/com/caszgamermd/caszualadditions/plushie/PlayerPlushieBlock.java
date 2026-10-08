@@ -1,5 +1,6 @@
 package com.caszgamermd.caszualadditions.plushie;
 
+import com.mojang.serialization.MapCodec;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -25,11 +26,17 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
 public final class PlayerPlushieBlock extends HorizontalDirectionalBlock implements EntityBlock {
+    public static final MapCodec<PlayerPlushieBlock> CODEC = simpleCodec(PlayerPlushieBlock::new);
     private static final VoxelShape SHAPE = Block.box(3, 0, 4, 13, 14, 12);
 
     public PlayerPlushieBlock(BlockBehaviour.Properties properties) {
         super(properties);
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
+    }
+
+    @Override
+    protected MapCodec<? extends Block> codec() {
+        return CODEC;
     }
 
     @Override
