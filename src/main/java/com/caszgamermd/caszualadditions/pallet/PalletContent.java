@@ -77,7 +77,7 @@ public final class PalletContent {
         ResourceKey<Block> cardboardKey = ResourceKey.create(Registries.BLOCK, cardboardId);
         CARDBOARD_RENDER_PROXY = Registry.register(
                 BuiltInRegistries.BLOCK, cardboardKey,
-                new Block(BlockBehaviour.Properties.ofFullCopy(Blocks.BROWN_TERRACOTTA)
+                new Block(BlockBehaviour.Properties.ofFullCopy(Blocks.PURPUR_BLOCK)
                         .setId(cardboardKey))
         );
 
