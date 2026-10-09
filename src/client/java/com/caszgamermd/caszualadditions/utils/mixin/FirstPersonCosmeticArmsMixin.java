@@ -16,6 +16,8 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
@@ -53,8 +55,34 @@ public abstract class FirstPersonCosmeticArmsMixin {
             float equipProgress, float attackProgress, HumanoidArm arm,
             CallbackInfo callback
     ) {
+        if (caszual_additions$renderArm(pose, collector, light,
+                equipProgress, attackProgress, arm)) {
+            callback.cancel();
+        }
+    }
+
+    // On 26.2, ordinary held items bypass renderPlayerArm. Render the
+    // cosmetic limb behind that item's normal submission as well.
+    @Inject(method = "submitArmWithItem", at = @At("TAIL"), require = 0)
+    private void caszual_additions$heldItemArm(
+            AbstractClientPlayer player, float tickDelta, float pitch,
+            InteractionHand hand, float swing, ItemStack item, float equip,
+            PoseStack pose, SubmitNodeCollector collector, int light,
+            CallbackInfo callback
+    ) {
+        if (item.isEmpty() || item.is(net.minecraft.world.item.Items.FILLED_MAP)) return;
+        HumanoidArm arm = hand == InteractionHand.MAIN_HAND
+                ? player.getMainArm() : player.getMainArm().getOpposite();
+        caszual_additions$renderArm(pose, collector, light, equip, swing, arm);
+    }
+
+    @Unique
+    private static boolean caszual_additions$renderArm(
+            PoseStack pose, SubmitNodeCollector collector, int light,
+            float equipProgress, float attackProgress, HumanoidArm arm
+    ) {
         var player = Minecraft.getInstance().player;
-        if (player == null || player.isInvisible()) return;
+        if (player == null || player.isInvisible()) return false;
 
         ItemStack chest = Cosmetics.get(player, EquipmentSlot.CHEST);
         boolean bone = SpecialCosmetics.isBone(chest);
@@ -63,7 +91,7 @@ public abstract class FirstPersonCosmeticArmsMixin {
                 Cosmetics.get(player, EquipmentSlot.HEAD), chest,
                 Cosmetics.get(player, EquipmentSlot.LEGS),
                 Cosmetics.get(player, EquipmentSlot.FEET));
-        if (!bone && !rod && !snow) return;
+        if (!bone && !rod && !snow) return false;
 
         // Only replace the arm: the held item's render pipeline is untouched.
         float sign = arm == HumanoidArm.RIGHT ? 1.0f : -1.0f;
@@ -87,6 +115,6 @@ public abstract class FirstPersonCosmeticArmsMixin {
                     light, OverlayTexture.NO_OVERLAY, null, -1, null, 0);
         }
         pose.popPose();
-        callback.cancel();
+        return true;
     }
 }
