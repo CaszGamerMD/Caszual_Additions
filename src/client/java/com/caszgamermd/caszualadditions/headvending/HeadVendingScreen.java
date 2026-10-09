@@ -364,9 +364,16 @@ public final class HeadVendingScreen extends Screen {
         graphics.fill(left + 3, top + 3, left + WIDTH - 3, top + HEIGHT - 3, 0xffd9dde2);
         graphics.fill(left + 8, top + 8, left + WIDTH - 8, top + 31, 0xff59636f);
         graphics.text(font, title, left + 16, top + 15, 0xffffffff, false);
-        graphics.item(new ItemStack(Items.EMERALD), left + WIDTH - 34, top + 12);
-        graphics.text(font, Component.literal("1"), left + WIDTH - 16,
-                top + 17, 0xffffffff, false);
+        boolean free = minecraft != null && minecraft.player != null
+                && minecraft.player.getAbilities().instabuild;
+        if (free) {
+            graphics.text(font, Component.literal("FREE"), left + WIDTH - 46,
+                    top + 17, 0xffaaffaa, false);
+        } else {
+            graphics.item(new ItemStack(Items.EMERALD), left + WIDTH - 34, top + 12);
+            graphics.text(font, Component.literal("1"), left + WIDTH - 16,
+                    top + 17, 0xffffffff, false);
+        }
 
         if (results.isEmpty()) {
             String message = !error.isEmpty() ? error
@@ -393,14 +400,14 @@ public final class HeadVendingScreen extends Screen {
                     y + 11, 0xff5d5d5d, false);
         }
 
-        if (tab == Tab.CUSTOM) {
+        if (tab != Tab.PLAYER) {
             int pages = Math.max(1, (total + MAX_RESULTS - 1) / MAX_RESULTS);
             graphics.text(font,
                     Component.literal("Page " + (page + 1) + "/" + pages
                             + "  (" + total + " heads)"),
                     left + 112, top + 254, 0xff454545, false);
         }
-        graphics.text(font, Component.literal("1 emerald per head"),
+        graphics.text(font, Component.literal(free ? "Creative: free heads" : "1 emerald per head"),
                 left + 18, top + HEIGHT - 12, 0xff555555, false);
     }
 
