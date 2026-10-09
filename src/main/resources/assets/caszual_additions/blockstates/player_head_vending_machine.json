@@ -1,18 +1,33 @@
 {
   "variants": {
-    "facing=north": {
-      "model": "caszual_additions:block/player_head_vending_machine"
+    "facing=north,half=lower": {
+      "model": "caszual_additions:block/player_head_vending_machine_bottom"
     },
-    "facing=east": {
-      "model": "caszual_additions:block/player_head_vending_machine",
+    "facing=north,half=upper": {
+      "model": "caszual_additions:block/player_head_vending_machine_top"
+    },
+    "facing=east,half=lower": {
+      "model": "caszual_additions:block/player_head_vending_machine_bottom",
       "y": 90
     },
-    "facing=south": {
-      "model": "caszual_additions:block/player_head_vending_machine",
+    "facing=east,half=upper": {
+      "model": "caszual_additions:block/player_head_vending_machine_top",
+      "y": 90
+    },
+    "facing=south,half=lower": {
+      "model": "caszual_additions:block/player_head_vending_machine_bottom",
       "y": 180
     },
-    "facing=west": {
-      "model": "caszual_additions:block/player_head_vending_machine",
+    "facing=south,half=upper": {
+      "model": "caszual_additions:block/player_head_vending_machine_top",
+      "y": 180
+    },
+    "facing=west,half=lower": {
+      "model": "caszual_additions:block/player_head_vending_machine_bottom",
+      "y": 270
+    },
+    "facing=west,half=upper": {
+      "model": "caszual_additions:block/player_head_vending_machine_top",
       "y": 270
     }
   }
