@@ -188,3 +188,8 @@ sourceSets.main.resources.srcDir(generatedVendingTextures)
 tasks.named("processResources") {
     dependsOn tasks.named("generateVendingTextures")
 }
+
+// Gradle 9 also validates generated resource dependencies for the sources JAR.
+tasks.named("sourcesJar") {
+    dependsOn tasks.named("generateVendingTextures")
+}
