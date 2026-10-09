@@ -23,3 +23,19 @@ try:
 except Exception as error:
     print("HeadDB smoke test failed:", repr(error))
     raise
+
+print("\nCategory endpoint:")
+try:
+    with urlopen(Request("https://headdb.net/api/v1/categories", headers={"User-Agent":"CaszualAdditions-CI/1.0","Accept":"application/json"}), timeout=15) as resp:
+        categories = json.load(resp)
+        print("Category response type:", type(categories).__name__)
+        if isinstance(categories, dict):
+            print("Category keys:", list(categories)[:15])
+            for key,value in categories.items():
+                if isinstance(value,list):
+                    print("Sample categories:", value[:2])
+                    break
+        elif isinstance(categories,list):
+            print("Sample categories:", categories[:2])
+except Exception as error:
+    print("Category API unavailable:", str(error))
