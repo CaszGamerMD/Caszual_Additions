@@ -14,14 +14,13 @@ against the loaded catalog, and performs the emerald transaction.
 
 ## Database
 
-The server downloads a JSON catalog from
-[Random-MC/MinecraftHeads](https://github.com/Random-MC/MinecraftHeads),
-a third-party mirror of the public Minecraft-Heads catalog. Only names,
-categories, tags for searching, and Mojang texture hashes are used. The mod
-does **not** ship a copy of the catalog.
+The server downloads the public compatibility catalog from
+[HeadDB](https://headdb.net/). The endpoint is part of HeadDB's public v1 API
+and does not require an API key. Only names, categories, tags for searching,
+and texture hashes are used. The mod does **not** ship a copy of the catalog.
 
-- Internet access to `raw.githubusercontent.com` is required for the first
-  custom-head search after server startup.
+- Internet access to `headdb.net` is required for the first custom-head
+  search after server startup.
 - The downloaded catalog is shared across players in server memory for six
   hours. It is not fetched on every machine opening.
 - After a failed refresh, previously loaded data remains available; initial
@@ -31,6 +30,5 @@ does **not** ship a copy of the catalog.
 - The server never accepts an arbitrary custom texture from a client. Custom
   purchases supply a hash that must match a loaded catalog entry.
 
-This external mirror is an independent service. Catalog availability and
-updates depend on its maintainers; it is not part of Minecraft or Mojang.
-The original database is provided by [Minecraft-Heads.com](https://www.minecraft-heads.com/).
+HeadDB is an independent service. Catalog availability and updates depend on
+its maintainers; it is not part of Minecraft or Mojang.
