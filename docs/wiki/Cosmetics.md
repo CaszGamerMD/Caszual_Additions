@@ -31,6 +31,20 @@ A **Cosmetic Guide** gives in-game previews and information.
 
 Ordinary block items and matching equippable items can also be accepted in compatible slots.
 
+## Wearable Aquarium (Linked Aquariums integration)
+
+Install both **Caszual Additions** and **Linked Aquariums 0.8.0+** to use the wearable cosmetic.
+
+1. Craft a Wearable Aquarium in Linked Aquariums from four Aquarium blocks, four Glass blocks and one Iron Chestplate.
+2. Carry the wearable in your **main hand** and a fish bucket in your **offhand**; right-click air to put the fish inside, receiving an empty bucket.
+3. The wearable stores up to **four fish total** (cod, salmon, tropical fish and pufferfish). Tropical fish colors/variants and stored bucket data persist on the item.
+4. An **empty bucket in your offhand** retrieves the most recently inserted fish from the main-hand wearable.
+5. Put the loaded item in the **chest cosmetic slot**. Your entire skin is visually replaced by a framed, transparent human-shaped aquarium. Up to four miniature fish swim inside its torso. Normal armor attributes and hitbox remain intact.
+
+This works for other players in multiplayer because cosmetic item data is synchronized. The aquarium mod is optional for the rest of Caszual Additions; without it, the feature is inactive.
+
+[Full Wearable Aquarium guide](https://github.com/CaszGamerMD/Caszual_Aquariums/blob/main/docs/wiki/Wearable-Aquarium.md)
+
 ## Snow golem transformation
 
 Equip this combination:

@@ -47,6 +47,7 @@ public final class Cosmetics {
     public static boolean hideArmor(Player player) { return player.getAttachedOrElse(HIDE_ARMOR, false); }
     public static void setHideArmor(Player player, boolean hide) { player.setAttached(HIDE_ARMOR, hide); }
     public static boolean accepts(ItemStack stack, EquipmentSlot slot) {
+        if (SpecialCosmetics.isWearableAquarium(stack)) return slot == EquipmentSlot.CHEST;
         if (stack.getItem() instanceof BlockItem) return true;
         if (stack.is(Items.STICK)) return slot == EquipmentSlot.CHEST;
         if (stack.is(Items.BONE)) return true;

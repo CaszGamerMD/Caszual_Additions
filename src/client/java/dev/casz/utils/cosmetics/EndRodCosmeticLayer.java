@@ -10,7 +10,7 @@ public final class EndRodCosmeticLayer extends RenderLayer<AvatarRenderState,Pla
     private final boolean slim;private final SnowGolemCosmeticRender snow=new SnowGolemCosmeticRender();private final BoneCosmeticRender bones=new BoneCosmeticRender();
     public EndRodCosmeticLayer(RenderLayerParent<AvatarRenderState,PlayerModel> renderer,boolean slim){super(renderer);this.slim=slim;}
     @Override public void submit(PoseStack pose,SubmitNodeCollector collector,int light,AvatarRenderState state,float yaw,float pitch){
-        if(state.isSpectator||state.isInvisible)return;var model=getParentModel();pose.pushPose();model.root().translateAndRotate(pose);
+        if(state.isSpectator||state.isInvisible||SpecialCosmetics.isWearableAquarium(state.chestEquipment))return;var model=getParentModel();pose.pushPose();model.root().translateAndRotate(pose);
         if(SpecialCosmetics.isSnowGolem(state.headEquipment,state.chestEquipment,state.legsEquipment,state.feetEquipment)){snow.body(model,pose,collector,light,state.outlineColor);pose.popPose();return;}
         var boneHead=SpecialCosmetics.isBone(state.headEquipment); var boneChest=SpecialCosmetics.isBone(state.chestEquipment);
         var boneLegs=SpecialCosmetics.isBone(state.legsEquipment)||SpecialCosmetics.isBone(state.feetEquipment);

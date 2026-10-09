@@ -10,7 +10,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PlayerCosmeticHeadMixin {
     @Inject(method="setupAnim(Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;)V",at=@At("TAIL"))
     private void caszutils$blockHead(AvatarRenderState state,CallbackInfo ci){
-        var model=(PlayerModel)(Object)this; boolean block=SpecialCosmetics.hasBlockHead(state.headEquipment);
+        var model=(PlayerModel)(Object)this;
+        if (SpecialCosmetics.isWearableAquarium(state.chestEquipment)) {
+            model.head.visible=model.hat.visible=model.body.visible=model.jacket.visible=false;
+            model.leftArm.visible=model.rightArm.visible=model.leftSleeve.visible=model.rightSleeve.visible=false;
+            model.leftLeg.visible=model.rightLeg.visible=model.leftPants.visible=model.rightPants.visible=false;
+            return;
+        }
+        boolean block=SpecialCosmetics.hasBlockHead(state.headEquipment);
         boolean mobHead=SpecialCosmetics.isMobHead(state.headEquipment);
         boolean boneHead=SpecialCosmetics.isBone(state.headEquipment);
         boolean oceanHead=state.headEquipment.is(net.minecraft.world.item.Items.NAUTILUS_SHELL);

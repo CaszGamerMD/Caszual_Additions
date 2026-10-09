@@ -8,6 +8,17 @@ import net.minecraft.world.level.block.SkullBlock;
 
 public final class SpecialCosmetics {
     private SpecialCosmetics() {}
+    /** Avoid a hard cross-mod dependency; aquarium item is registered by Linked Aquariums. */
+    public static boolean isWearableAquarium(ItemStack stack) {
+        return !stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem())
+            .equals(net.minecraft.resources.Identifier.fromNamespaceAndPath("linked_aquariums", "wearable_aquarium"));
+    }
+    public static boolean isAquariumFishBucket(ItemStack stack) {
+        return stack.is(net.minecraft.world.item.Items.COD_BUCKET)
+            || stack.is(net.minecraft.world.item.Items.SALMON_BUCKET)
+            || stack.is(net.minecraft.world.item.Items.TROPICAL_FISH_BUCKET)
+            || stack.is(net.minecraft.world.item.Items.PUFFERFISH_BUCKET);
+    }
     public static boolean isBone(ItemStack stack) { return stack.is(net.minecraft.world.item.Items.BONE); }
     public static boolean isRodLike(ItemStack stack) { return isEndRod(stack) || isBone(stack); }
     public static boolean isEndRod(ItemStack stack) { return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof EndRodBlock; }

@@ -11,7 +11,7 @@ Caszual Additions combines building tools, decorative features, storage, XP util
 - [Pallets](Pallets.md) — storage, display limits, dyeing, and copper weathering
 - [Building Blocks](Building-Blocks.md) — quarter blocks, vertical blocks, RGB construction pieces and colored end rods
 - [XP System](XP-System.md) — tank, charger, drain and shower
-- [Cosmetics](Cosmetics.md) — cosmetic slots, armor visibility, visual effects and transformations
+- [Cosmetics](Cosmetics.md) — cosmetic slots, armor visibility, visual effects, the Wearable Aquarium and transformations
 - [Other Features](Other-Features.md) — vending machine, player plushie, size snacks, firefly glass, and unbreakable tools
 
 ## Quick highlights

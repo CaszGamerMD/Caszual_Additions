@@ -24,7 +24,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class EndRodAvatarRendererMixin extends LivingEntityRenderer<Avatar,AvatarRenderState,PlayerModel>{
     @Unique private boolean caszutils$slim;@Unique private dev.casz.utils.cosmetics.SnowGolemCosmeticRender caszutils$snow;
     protected EndRodAvatarRendererMixin(EntityRendererProvider.Context context,PlayerModel model,float shadow){super(context,model,shadow);}
-    @Inject(method="<init>",at=@At("TAIL")) private void caszutils$rodLayer(EntityRendererProvider.Context context,boolean slim,CallbackInfo ci){caszutils$slim=slim;caszutils$snow=new dev.casz.utils.cosmetics.SnowGolemCosmeticRender();addLayer(new EndRodCosmeticLayer(this,slim));}
+    @Inject(method="<init>",at=@At("TAIL")) private void caszutils$rodLayer(EntityRendererProvider.Context context,boolean slim,CallbackInfo ci){caszutils$slim=slim;caszutils$snow=new dev.casz.utils.cosmetics.SnowGolemCosmeticRender();addLayer(new EndRodCosmeticLayer(this,slim));addLayer(new dev.casz.utils.cosmetics.WearableAquariumLayer(this,slim));}
     @Inject(method="renderHand",at=@At("HEAD"),cancellable=true)
     private void caszutils$rodHand(PoseStack pose,SubmitNodeCollector collector,int light,Identifier skin,ModelPart arm,boolean sleeve,CallbackInfo ci){
         var player=Minecraft.getInstance().player;if(player==null)return;var rod=Cosmetics.get(player,EquipmentSlot.CHEST);

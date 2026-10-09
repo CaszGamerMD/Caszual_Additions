@@ -34,17 +34,25 @@ public abstract class AvatarCosmeticsMixin {
         if (!(entity instanceof Player player)) return;
 
         boolean preview = CosmeticPreviewState.active(player);
-        boolean hide = preview || Cosmetics.hideArmor(player);
 
         var head = CosmeticPreviewState.get(player, EquipmentSlot.HEAD);
         var chest = CosmeticPreviewState.get(player, EquipmentSlot.CHEST);
         var legs = CosmeticPreviewState.get(player, EquipmentSlot.LEGS);
         var feet = CosmeticPreviewState.get(player, EquipmentSlot.FEET);
+        boolean wearableAquarium = SpecialCosmetics.isWearableAquarium(chest);
+        boolean hide = preview || Cosmetics.hideArmor(player) || wearableAquarium;
 
-        state.headEquipment = AppearanceRules.visible(head, state.headEquipment, hide);
+        state.headEquipment = wearableAquarium ? net.minecraft.world.item.ItemStack.EMPTY : AppearanceRules.visible(head, state.headEquipment, hide);
         state.chestEquipment = AppearanceRules.visible(chest, state.chestEquipment, hide);
-        state.legsEquipment = AppearanceRules.visible(legs, state.legsEquipment, hide);
-        state.feetEquipment = AppearanceRules.visible(feet, state.feetEquipment, hide);
+        state.legsEquipment = wearableAquarium ? net.minecraft.world.item.ItemStack.EMPTY : AppearanceRules.visible(legs, state.legsEquipment, hide);
+        state.feetEquipment = wearableAquarium ? net.minecraft.world.item.ItemStack.EMPTY : AppearanceRules.visible(feet, state.feetEquipment, hide);
+
+        if (wearableAquarium) {
+            state.headItem.clear();
+            state.wornHeadType = null;
+            state.wornHeadProfile = null;
+            return;
+        }
 
         if (!head.isEmpty() || hide) {
             state.headItem.clear();

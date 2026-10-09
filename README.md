@@ -15,6 +15,10 @@ The complete [recipe index](docs/wiki/Recipes.md) links to the current crafting 
 - Provide one shared Creative Mode tab containing items from installed Caszual mods.
 - Make Caszual-family content easy to discover in recipe viewers such as JEI/REI where supported.
 
+## Wearable Aquarium compatibility
+
+When **Linked Aquariums 0.8.0+** is installed, its [Wearable Aquarium](https://github.com/CaszGamerMD/Caszual_Aquariums/blob/main/docs/wiki/Wearable-Aquarium.md) can be equipped in the **chest cosmetic slot**. It visually replaces the player with a glass humanoid aquarium containing up to four saved fish. Fish are loaded and retrieved using buckets while the item is held; the cosmetic remains appearance-only. The armor's normal gameplay effects remain unchanged.
+
 ## Companion-mod integration
 
 Companion mods should remain independently installable, but can opt into the Caszual ecosystem.

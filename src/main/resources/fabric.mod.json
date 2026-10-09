@@ -38,6 +38,7 @@
   ],
   "suggests": {
     "jei": "*",
+    "linked_aquariums": ">=0.8.0",
     "lambdynlights": ">=4.12.0"
   }
 }
