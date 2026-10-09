@@ -55,22 +55,35 @@ public final class PalletBlockEntityRenderer
         }
 
         state.root = blockEntity.isRoot();
-        for (int i = 0; i < state.items.length; i++) {
-            ItemStack stack = state.root ? blockEntity.getItem(i) : ItemStack.EMPTY;
-            state.occupied[i] = !stack.isEmpty();
+        state.visibleCount = 0;
 
-            if (state.occupied[i]) {
+        // Slots are independent from display positions. Pack the first visible
+        // nonempty slots into the limited display grid, then stop; remaining
+        // stacks stay in storage and are not submitted to the renderer.
+        if (state.root) {
+            for (int slot = 0;
+                    slot < blockEntity.getContainerSize()
+                            && state.visibleCount < PalletBlockEntityRenderState.DISPLAY_CAPACITY;
+                    slot++) {
+                ItemStack stack = blockEntity.getItem(slot);
+                if (stack.isEmpty()) continue;
+
+                int displayIndex = state.visibleCount++;
                 itemModelResolver.updateForTopItem(
-                        state.items[i],
+                        state.items[displayIndex],
                         stack,
                         ItemDisplayContext.GROUND,
                         blockEntity.getLevel(),
                         null,
-                        i
+                        slot
                 );
-            } else {
-                state.items[i].clear();
             }
+        }
+
+        // Prevent stale objects remaining visible when slots are emptied or
+        // this block entity is no longer the root of the 2x2 pallet.
+        for (int i = state.visibleCount; i < state.items.length; i++) {
+            state.items[i].clear();
         }
     }
 
@@ -98,22 +111,29 @@ public final class PalletBlockEntityRenderer
 
         if (!state.root) return;
 
-        for (int i = 0; i < state.items.length; i++) {
-            if (!state.occupied[i]) continue;
+        int tierSize = PalletBlockEntityRenderState.DISPLAY_COLUMNS
+                * PalletBlockEntityRenderState.DISPLAY_ROWS;
+        for (int i = 0; i < state.visibleCount; i++) {
+            int layer = i / tierSize;
+            int local = i % tierSize;
+            int col = local % PalletBlockEntityRenderState.DISPLAY_COLUMNS;
+            int row = local / PalletBlockEntityRenderState.DISPLAY_COLUMNS;
 
-            int layer = i / 108;
-            int local = i % 108;
-            int col = local % 12;
-            int row = local / 12;
-
-            double x = (col + 0.5) * (2.0 / 12.0);
-            double z = (row + 0.5) * (2.0 / 9.0);
-            double y = 0.31 + layer * 0.12;
+            // Room between neighbors both horizontally and vertically.
+            // At the top tier, the normal-size model bounds stay below y=5.
+            double x = (col + 0.5) * (2.0 / PalletBlockEntityRenderState.DISPLAY_COLUMNS);
+            double z = (row + 0.5) * (2.0 / PalletBlockEntityRenderState.DISPLAY_ROWS);
+            double y = PalletBlockEntityRenderState.FIRST_LAYER_Y
+                    + layer * PalletBlockEntityRenderState.LAYER_SPACING;
 
             poseStack.pushPose();
             poseStack.translate(x, y, z);
             poseStack.mulPose(Axis.YP.rotationDegrees((i * 37) % 360));
-            poseStack.scale(0.17F, 0.17F, 0.17F);
+            poseStack.scale(
+                    PalletBlockEntityRenderState.ITEM_SCALE,
+                    PalletBlockEntityRenderState.ITEM_SCALE,
+                    PalletBlockEntityRenderState.ITEM_SCALE
+            );
             state.items[i].submit(
                     poseStack,
                     collector,
