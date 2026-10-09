@@ -42,6 +42,7 @@ public final class HeadDbSearch {
             .followRedirects(HttpClient.Redirect.NORMAL).build();
     private static final Map<String, CustomHeadCatalog.Head> VERIFIED = new ConcurrentHashMap<>();
     private static volatile List<String> knownCategories = List.of("all");
+    private static volatile long nextCategoryRefresh;
 
     private HeadDbSearch() {}
 
@@ -110,6 +111,7 @@ public final class HeadDbSearch {
             visible.add(entry);
         }
 
+        refreshCategories();
         JsonObject response = new JsonObject();
         response.addProperty("query", query);
         response.addProperty("category", category);
@@ -158,6 +160,51 @@ public final class HeadDbSearch {
 
         updateCategories(items);
         return new RemotePage(items, Math.max(0, total));
+    }
+
+    /** Refresh the category menu independently of the current results page. */
+    private static void refreshCategories() {
+        long now = System.currentTimeMillis();
+        if (now < nextCategoryRefresh) return;
+        synchronized (HeadDbSearch.class) {
+            if (now < nextCategoryRefresh) return;
+            // Retry failures later but keep searching usable even when this
+            // optional category endpoint is unavailable.
+            nextCategoryRefresh = now + 60L * 60L * 1000L;
+        }
+        try {
+            HttpRequest req = HttpRequest.newBuilder(
+                    URI.create("https://headdb.net/api/v1/categories"))
+                    .timeout(Duration.ofSeconds(4))
+                    .header("Accept", "application/json")
+                    .header("User-Agent", "CaszualAdditions/0.1 (head categories)")
+                    .GET().build();
+            HttpResponse<byte[]> response = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() != 200 || response.body().length > MAX_RESPONSE_BYTES) return;
+            JsonElement root = JsonParser.parseString(
+                    new String(response.body(), StandardCharsets.UTF_8));
+            JsonArray source;
+            if (root.isJsonArray()) source = root.getAsJsonArray();
+            else if (root.isJsonObject()) source = getArray(root.getAsJsonObject(), "items");
+            else return;
+            if (source == null) return;
+            Set<String> options = new LinkedHashSet<>();
+            options.add("all");
+            for (JsonElement entry : source) {
+                if (!entry.isJsonObject()) continue;
+                String slug = firstString(entry.getAsJsonObject(), "slug", "name")
+                        .toLowerCase(Locale.ROOT);
+                if (!slug.isBlank() && slug.length() <= 40) options.add(slug);
+            }
+            if (options.size() <= 1 || options.size() > 64) return;
+            List<String> sorted = new ArrayList<>(options);
+            sorted.remove("all");
+            sorted.sort(Comparator.naturalOrder());
+            sorted.add(0, "all");
+            knownCategories = List.copyOf(sorted);
+        } catch (Exception ignored) {
+            // Query results remain usable with the previously cached categories.
+        }
     }
 
     private static void updateCategories(JsonArray items) {
