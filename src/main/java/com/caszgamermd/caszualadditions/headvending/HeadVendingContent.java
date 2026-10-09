@@ -138,6 +138,9 @@ public final class HeadVendingContent {
                         BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
                                 .strength(3.5F)
                                 .noOcclusion()
+                                .lightLevel(state -> state.getValue(HeadVendingBlock.HALF)
+                                        == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER
+                                        ? 8 : 3)
                                 .setId(blockKey)
                 )
         );
