@@ -2,6 +2,12 @@
 
 Caszual Additions is a Fabric 26.2 quality-of-life mod and the hub for the **Caszual** family of mods.
 
+## Documentation / Wiki
+
+**[Read the Caszual Additions Wiki](docs/wiki/Home.md)** — feature guides, crafting recipes, pallet storage, cosmetics, XP utilities, RGB building blocks, and the player-head vending machine.
+
+The complete [recipe index](docs/wiki/Recipes.md) links to the current crafting JSON files. Wiki source pages live in `docs/wiki` so they can be versioned with the mod.
+
 ## Goals
 
 - Add small quality-of-life features that fit naturally into Minecraft.
