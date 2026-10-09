@@ -25,6 +25,14 @@ public abstract class BlockCosmeticArmorMixin {
     @Inject(method="renderArmorPiece",at=@At("HEAD"),cancellable=true)
     private void caszual_additions$blockArmor(PoseStack pose,SubmitNodeCollector collector,ItemStack stack,EquipmentSlot slot,int light,HumanoidRenderState state,CallbackInfo ci){
         if(!(state instanceof AvatarRenderState)) return;
+        // The wearable became a BlockItem in Aquariums 0.8.2. The generic block
+        // armor overlay must not take over: the full-body glass aquarium is
+        // rendered by WearableAquariumLayer, including legacy 0.8.0 item stacks.
+        if (SpecialCosmetics.isWearableAquarium(state.chestEquipment)
+                || SpecialCosmetics.isWearableAquarium(stack)) {
+            ci.cancel();
+            return;
+        }
         if(SpecialCosmetics.isSnowGolem(state.headEquipment,state.chestEquipment,state.legsEquipment,state.feetEquipment)){ci.cancel();return;}
         if(SpecialCosmetics.isRodLike(stack)||((slot==EquipmentSlot.LEGS||slot==EquipmentSlot.FEET)&&SpecialCosmetics.rodLegs(state.legsEquipment,state.feetEquipment))){ci.cancel();return;}
         if(slot==EquipmentSlot.HEAD||!(stack.getItem() instanceof BlockItem item)) return;

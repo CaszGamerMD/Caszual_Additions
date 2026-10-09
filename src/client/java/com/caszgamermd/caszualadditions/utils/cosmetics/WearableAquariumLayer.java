@@ -101,8 +101,12 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
     private void drawPart(ModelPart geometry,ModelPart original,PoseStack pose,
                           SubmitNodeCollector collector,int light,int outline,
                           Identifier texture,boolean transparent,int order) {
+        // setupAnim hides the original player parts when a wearable is equipped.
+        // The aquarium itself is independent baked geometry and must be visible
+        // even when the original player's model is completely hidden.
         pose.pushPose();
         original.translateAndRotate(pose);
+        geometry.visible = true;
         collector.order(order).submitModelPart(geometry,pose,
             transparent?RenderTypes.entityTranslucent(texture):RenderTypes.entityCutout(texture),
             light,OverlayTexture.NO_OVERLAY,null,-1,null,outline);
