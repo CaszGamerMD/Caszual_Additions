@@ -140,7 +140,7 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void changePage(int direction) {
-        if (tab != Tab.CUSTOM) return;
+        if (tab == Tab.PLAYER) return;
         int lastPage = Math.max(0, (total - 1) / MAX_RESULTS);
         int target = Math.clamp(page + direction, 0, lastPage);
         if (target == page) return;
@@ -177,7 +177,20 @@ public final class HeadVendingScreen extends Screen {
                     }
                 }
             }
+            if (tab == Tab.FAVORITES || tab == Tab.HISTORY) {
+                for (SavedHead saved : (tab == Tab.FAVORITES ? favorites : history)) {
+                    if (!query.isEmpty() && !saved.label().toLowerCase(Locale.ROOT).contains(query)) continue;
+                    Result result = resultForSaved(saved);
+                    if (result != null) results.add(result);
+                }
+            }
             total = results.size();
+            if (tab != Tab.PLAYER && total > MAX_RESULTS) {
+                int last = Math.max(0, (total - 1) / MAX_RESULTS);
+                page = Math.clamp(page, 0, last);
+                results.subList(0, page * MAX_RESULTS).clear();
+                if (results.size() > MAX_RESULTS) results.subList(MAX_RESULTS, results.size()).clear();
+            }
         }
         updateButtons();
     }
@@ -237,6 +250,16 @@ public final class HeadVendingScreen extends Screen {
             Button button = buyButtons.get(i);
             button.visible = i < results.size();
             button.active = i < results.size();
+            boolean free = minecraft != null && minecraft.player != null
+                    && minecraft.player.getAbilities().instabuild;
+            button.setMessage(Component.literal(free ? "Free" : "1 Emerald"));
+            Button star = starButtons.get(i);
+            star.visible = i < results.size();
+            star.active = star.visible;
+            if (star.visible) {
+                Result entry = results.get(i);
+                star.setMessage(Component.literal(isFavorite(entry) ? "★" : "☆"));
+            }
         }
         if (categoryButton != null) {
             categoryButton.visible = tab == Tab.CUSTOM;
@@ -244,13 +267,12 @@ public final class HeadVendingScreen extends Screen {
             categoryButton.setMessage(Component.literal("Category: " + label));
         }
         if (previousButton != null) {
-            previousButton.visible = tab == Tab.CUSTOM;
-            previousButton.active = tab == Tab.CUSTOM && !loading && page > 0;
+            previousButton.visible = tab != Tab.PLAYER;
+            previousButton.active = !loading && page > 0;
         }
         if (nextButton != null) {
-            nextButton.visible = tab == Tab.CUSTOM;
-            nextButton.active = tab == Tab.CUSTOM && !loading
-                    && (page + 1) * MAX_RESULTS < total;
+            nextButton.visible = tab != Tab.PLAYER;
+            nextButton.active = !loading && (page + 1) * MAX_RESULTS < total;
         }
     }
 
