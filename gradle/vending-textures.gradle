@@ -1,0 +1,195 @@
+/*
+ * Builds pixel-art textures from source as a deterministic Gradle resource
+ * task. These are genuine PNGs inside the packaged mod JAR.
+ *
+ * Keeping the tiny icon set procedural avoids a dependency on another
+ * image editor or an external asset download during distribution builds.
+ */
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+def generatedVendingTextures = layout.buildDirectory.dir("generated/vending-assets")
+
+tasks.register("generateVendingTextures") {
+    outputs.dir(generatedVendingTextures)
+    doLast {
+        File folder = generatedVendingTextures.get()
+                .file("assets/caszual_additions/textures/block").asFile
+        folder.mkdirs()
+
+        def argb = { String hex -> (int) Long.parseLong("FF" + hex, 16) }
+        def px = { BufferedImage image, int x, int y, int color ->
+            if (x >= 0 && y >= 0 && x < image.width && y < image.height) {
+                image.setRGB(x, y, color)
+            }
+        }
+        def rect = { BufferedImage image, int x, int y, int w, int h, String hex ->
+            int c = argb(hex)
+            for (int yy = Math.max(0,y); yy < Math.min(image.height,y+h); yy++) {
+                for (int xx = Math.max(0,x); xx < Math.min(image.width,x+w); xx++) {
+                    px(image,xx,yy,c)
+                }
+            }
+        }
+        def shades = [
+            steel:"89949e", dark:"1d2732", trim:"4c5864",
+            panel:"303d4c", cyan:"10d8f4", green:"3af26a",
+            blue:"367eff", amber:"ffb83c", screen:"091d2f",
+            player:"152436", custom:"152436", mob:"152436",
+            drawer:"68492d", emerald:"123a2d", vent:"202d37",
+            emblem:"113345", top:"576777"
+        ]
+        def names = shades.keySet().toList()
+        for (String type : names) {
+            int size = type == "screen" ? 32 : 16
+            BufferedImage img = new BufferedImage(size,size,BufferedImage.TYPE_INT_ARGB)
+            int base = argb(shades[type])
+            java.util.Random random = new java.util.Random(type.hashCode() * 982451653L)
+            for (int y=0;y<size;y++) for (int x=0;x<size;x++) {
+                int shift = random.nextInt(21)-10
+                int r = Math.max(0,Math.min(255,((base>>>16)&255)+shift))
+                int g = Math.max(0,Math.min(255,((base>>>8)&255)+shift))
+                int b = Math.max(0,Math.min(255,(base&255)+shift))
+                img.setRGB(x,y,(int)(0xff000000L | (r<<16) | (g<<8) | b))
+            }
+            if (["steel","trim","panel","dark"].contains(type)) {
+                rect(img,0,0,size,1,type=="steel"?"bdc8d1":"758391")
+                rect(img,0,size-1,size,1,type=="steel"?"53606c":"131d25")
+                rect(img,0,0,1,size,"b0bbc4")
+                rect(img,size-1,0,1,size,"17232b")
+                for(int i=2;i<size-2;i+=5) {
+                    rect(img,i,2,1,1,type=="steel"?"d9e1e5":"8293a3")
+                    rect(img,i,size-3,1,1,"18252e")
+                }
+            }
+            if (["cyan","green","blue","amber"].contains(type)) {
+                String shine=type=="cyan"?"8ef9ff":type=="green"?"acffc1":type=="blue"?"a3c5ff":"ffedb0"
+                rect(img,2,2,size-4,2,shine)
+                rect(img,3,5,size-6,size-7,shades[type])
+                rect(img,0,size-2,size,2,"121e28")
+            }
+            if(type=="vent") {
+                for(int y=2;y<size-2;y+=3) {
+                    rect(img,1,y,size-2,2,"101820")
+                    rect(img,2,y,1,1,"667a88")
+                    rect(img,2,y+1,size-4,1,"435563")
+                }
+            }
+            if(type=="drawer") {
+                for(int y=0;y<16;y+=4) {
+                    rect(img,0,y,16,1,"9b6b3a")
+                    rect(img,0,y+1,16,1,"bb7d3f")
+                    rect(img,1,y+3,14,1,"422f21")
+                }
+                rect(img,0,7,16,3,"34373b")
+                rect(img,6,6,4,5,"b5bac1")
+                rect(img,7,7,2,3,"323943")
+                rect(img,7,8,2,1,"dce1e2")
+            }
+            if(type=="emerald") {
+                rect(img,0,0,16,16,"0a1c21")
+                rect(img,3,3,10,10,"164e35")
+                rect(img,5,1,6,14,"195a43")
+                rect(img,1,5,14,6,"1b6442")
+                rect(img,4,4,8,8,"11be6b")
+                rect(img,5,3,6,10,"23d87b")
+                rect(img,6,5,4,6,"7cffae")
+                rect(img,6,6,2,3,"d4ffe0")
+                rect(img,4,11,8,2,"086a4c")
+                rect(img,3,5,1,5,"85ffd0")
+            }
+            if(type=="top") {
+                rect(img,1,1,14,14,"212e3a")
+                rect(img,2,2,12,12,"75828d")
+                rect(img,3,3,10,10,"0ab0d7")
+                rect(img,4,4,8,8,"223442")
+                rect(img,5,5,6,6,"425467")
+                rect(img,6,6,4,4,"192a38")
+            }
+            if(type=="emblem") {
+                rect(img,0,0,16,16,"091825")
+                rect(img,1,1,14,14,"0c3040")
+                rect(img,3,2,10,1,"36ecff")
+                rect(img,2,3,1,9,"36ecff")
+                rect(img,13,3,1,9,"36ecff")
+                rect(img,3,13,10,1,"36ecff")
+                rect(img,5,4,6,2,"a6faff")
+                rect(img,4,6,8,6,"1699c6")
+                rect(img,5,7,6,4,"48e6ff")
+                rect(img,6,8,4,3,"172636")
+                rect(img,6,9,1,1,"a2faff")
+                rect(img,9,9,1,1,"a2faff")
+            }
+            if(type=="screen") {
+                rect(img,1,1,30,30,"091a2a")
+                for(int i=4;i<32;i+=4) {
+                    rect(img,i,2,1,28,"102b3d")
+                    rect(img,2,i,28,1,"102b3d")
+                }
+                rect(img,3,3,8,1,"39eaff")
+                rect(img,3,3,1,6,"39eaff")
+                rect(img,21,3,8,1,"39eaff")
+                rect(img,28,3,1,6,"39eaff")
+                rect(img,3,25,1,4,"39eaff")
+                rect(img,3,28,8,1,"39eaff")
+                rect(img,28,25,1,4,"39eaff")
+                rect(img,21,28,8,1,"39eaff")
+                rect(img,10,8,12,16,"5a301e")
+                rect(img,11,10,10,13,"e6b17c")
+                rect(img,11,8,10,4,"4f2e23")
+                rect(img,10,10,4,3,"583320")
+                rect(img,18,10,4,3,"583320")
+                rect(img,12,15,3,2,"f3f7ff")
+                rect(img,17,15,3,2,"f3f7ff")
+                rect(img,13,15,1,2,"3878cd")
+                rect(img,18,15,1,2,"3878cd")
+                rect(img,15,17,2,3,"b97856")
+                rect(img,14,21,4,1,"8e4b38")
+                rect(img,9,24,14,2,"146986")
+                rect(img,13,26,6,1,"25dcef")
+            }
+            if(["player","custom","mob"].contains(type)) {
+                rect(img,1,1,14,14,"111f2b")
+                rect(img,2,2,12,12,type=="mob"?"184a28":"274d60")
+                if(type=="mob") {
+                    rect(img,3,3,10,10,"49c75d")
+                    rect(img,5,6,2,3,"143822")
+                    rect(img,9,6,2,3,"143822")
+                    rect(img,7,8,2,2,"143822")
+                    rect(img,6,10,4,3,"143822")
+                    rect(img,6,12,1,1,"143822")
+                    rect(img,9,12,1,1,"143822")
+                } else {
+                    rect(img,3,3,10,10,"e9b989")
+                    rect(img,3,3,10,3,type=="player"?"51301f":"ffad38")
+                    rect(img,4,8,3,2,"eef5ff")
+                    rect(img,9,8,3,2,"eef5ff")
+                    rect(img,5,8,1,2,"2773c6")
+                    rect(img,10,8,1,2,"2773c6")
+                    rect(img,7,10,2,2,"c5805c")
+                    rect(img,6,12,4,1,"8d5440")
+                    if(type=="custom") {
+                        rect(img,3,3,2,3,"e94262")
+                        rect(img,5,3,2,3,"efdd48")
+                        rect(img,7,3,2,3,"43eb69")
+                        rect(img,9,3,2,3,"39c6ff")
+                        rect(img,11,3,2,3,"aa6aff")
+                    }
+                }
+            }
+            File destination = new File(folder,"vending_${type}.png")
+            ImageIO.write(img,"PNG",destination)
+        }
+        logger.lifecycle("Generated ${names.size()} vending machine block textures")
+    }
+}
+
+sourceSets.main.resources.srcDir(generatedVendingTextures)
+tasks.named("processResources") {
+    dependsOn tasks.named("generateVendingTextures")
+}
+
+// Gradle 9 also validates generated resource dependencies for the sources JAR.
+tasks.named("sourcesJar") {
+    dependsOn tasks.named("generateVendingTextures")
+}

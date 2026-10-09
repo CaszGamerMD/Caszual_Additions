@@ -46,3 +46,6 @@ java {
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
 }
+
+// Package generated pixel-art vending textures in the final mod JAR.
+apply from: 'gradle/vending-textures.gradle'
