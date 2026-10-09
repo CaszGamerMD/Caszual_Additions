@@ -9,4 +9,5 @@ public final class PlayerPlushieRenderState extends BlockEntityRenderState {
     public @Nullable ResolvableProfile profile;
     public Direction facing = Direction.NORTH;
     public int pose;
+    public final net.minecraft.client.renderer.item.ItemStackRenderState prop = new net.minecraft.client.renderer.item.ItemStackRenderState();
 }
