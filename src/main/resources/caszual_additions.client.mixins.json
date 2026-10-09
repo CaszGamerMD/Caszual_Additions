@@ -9,6 +9,7 @@
     "PlayerCosmeticHeadMixin",
     "BlockCosmeticArmorMixin",
     "CosmeticSkullScaleMixin",
+    "RecipeBookCosmeticClickMixin",
     "EndRodAvatarRendererMixin",
     "ArmorStandCosmeticsMixin",
     "ArmorStandModelCosmeticsMixin",
