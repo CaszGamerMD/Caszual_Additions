@@ -12,7 +12,7 @@ Individual corners can be placed independently, including diagonally opposite co
 
 ## Colored end rods
 
-The integrated Colorful Rods module includes end rods for all **16 dye colors**, plus an **RGB end rod** with animated coloring. To recolor a compatible end rod, combine it with the appropriate dye.
+The Caszual Additions colored-end-rod collection includes end rods for all **16 dye colors**, plus an **RGB end rod** with animated coloring. To recolor a compatible end rod, combine it with the appropriate dye.
 
 Craft the RGB end rod with a **red end rod + green end rod + blue end rod** (shapeless): produces **three RGB end rods**.
 
@@ -41,4 +41,4 @@ RGB wallpaper supports walls, floors, and ceilings. Vertical slabs and stairs ar
 
 See [Recipes](Recipes.md) for the rest of the crafting JSON reference.
 
-[Generic quarter block source](https://github.com/CaszGamerMD/Caszual_Additions/tree/main/src/main/java/com/caszgamermd/caszualadditions/quarter) · [Colorful Rods source](https://github.com/CaszGamerMD/Caszual_Additions/tree/main/src/main/java/com/casz/colorfulrods)
+[Generic quarter block source](https://github.com/CaszGamerMD/Caszual_Additions/tree/main/src/main/java/com/caszgamermd/caszualadditions/quarter) · [Colored end rod source](https://github.com/CaszGamerMD/Caszual_Additions/tree/main/src/main/java/com/caszgamermd/caszualadditions/rods)
