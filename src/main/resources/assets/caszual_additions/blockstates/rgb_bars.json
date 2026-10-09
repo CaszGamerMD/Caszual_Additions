@@ -3,6 +3,12 @@
     {
       "apply": {
         "model": "caszual_additions:block/rgb_bars_post"
+      },
+      "when": {
+        "north": "false",
+        "south": "false",
+        "east": "false",
+        "west": "false"
       }
     },
     {
