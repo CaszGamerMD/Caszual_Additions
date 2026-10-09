@@ -7,20 +7,20 @@
   "elements": [
     {
       "from": [
-        2,
+        1,
         0,
         7
       ],
       "to": [
-        4,
+        3,
         16,
         9
       ],
       "faces": {
-        "down": {
+        "up": {
           "texture": "#texture"
         },
-        "up": {
+        "down": {
           "texture": "#texture"
         },
         "north": {
@@ -29,62 +29,62 @@
         "south": {
           "texture": "#texture"
         },
-        "west": {
+        "east": {
           "texture": "#texture"
         },
-        "east": {
+        "west": {
           "texture": "#texture"
         }
       }
     },
     {
       "from": [
+        5,
+        0,
+        7
+      ],
+      "to": [
         7,
-        0,
-        7
+        16,
+        9
       ],
-      "to": [
+      "faces": {
+        "up": {
+          "texture": "#texture"
+        },
+        "down": {
+          "texture": "#texture"
+        },
+        "north": {
+          "texture": "#texture"
+        },
+        "south": {
+          "texture": "#texture"
+        },
+        "east": {
+          "texture": "#texture"
+        },
+        "west": {
+          "texture": "#texture"
+        }
+      }
+    },
+    {
+      "from": [
         9,
-        16,
-        9
-      ],
-      "faces": {
-        "down": {
-          "texture": "#texture"
-        },
-        "up": {
-          "texture": "#texture"
-        },
-        "north": {
-          "texture": "#texture"
-        },
-        "south": {
-          "texture": "#texture"
-        },
-        "west": {
-          "texture": "#texture"
-        },
-        "east": {
-          "texture": "#texture"
-        }
-      }
-    },
-    {
-      "from": [
-        12,
         0,
         7
       ],
       "to": [
-        14,
+        11,
         16,
         9
       ],
       "faces": {
-        "down": {
+        "up": {
           "texture": "#texture"
         },
-        "up": {
+        "down": {
           "texture": "#texture"
         },
         "north": {
@@ -93,30 +93,62 @@
         "south": {
           "texture": "#texture"
         },
-        "west": {
+        "east": {
           "texture": "#texture"
         },
-        "east": {
+        "west": {
           "texture": "#texture"
         }
       }
     },
     {
       "from": [
-        2,
+        13,
+        0,
+        7
+      ],
+      "to": [
+        15,
+        16,
+        9
+      ],
+      "faces": {
+        "up": {
+          "texture": "#texture"
+        },
+        "down": {
+          "texture": "#texture"
+        },
+        "north": {
+          "texture": "#texture"
+        },
+        "south": {
+          "texture": "#texture"
+        },
+        "east": {
+          "texture": "#texture"
+        },
+        "west": {
+          "texture": "#texture"
+        }
+      }
+    },
+    {
+      "from": [
+        1,
         5,
         7
       ],
       "to": [
-        14,
+        15,
         7,
         9
       ],
       "faces": {
-        "down": {
+        "up": {
           "texture": "#texture"
         },
-        "up": {
+        "down": {
           "texture": "#texture"
         },
         "north": {
@@ -125,30 +157,30 @@
         "south": {
           "texture": "#texture"
         },
-        "west": {
+        "east": {
           "texture": "#texture"
         },
-        "east": {
+        "west": {
           "texture": "#texture"
         }
       }
     },
     {
       "from": [
-        2,
+        1,
         10,
         7
       ],
       "to": [
-        14,
+        15,
         12,
         9
       ],
       "faces": {
-        "down": {
+        "up": {
           "texture": "#texture"
         },
-        "up": {
+        "down": {
           "texture": "#texture"
         },
         "north": {
@@ -157,10 +189,10 @@
         "south": {
           "texture": "#texture"
         },
-        "west": {
+        "east": {
           "texture": "#texture"
         },
-        "east": {
+        "west": {
           "texture": "#texture"
         }
       }
