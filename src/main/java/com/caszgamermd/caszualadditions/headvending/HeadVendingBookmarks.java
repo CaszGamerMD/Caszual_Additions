@@ -108,6 +108,19 @@ public final class HeadVendingBookmarks {
         sync(player);
     }
 
+    /**
+     * History is written only after a successful server-validated purchase.
+     * It can safely restore a purchased custom texture after server restart.
+     * Favorites, which can be set without buying, are intentionally not trusted.
+     */
+    public static String previouslyPurchasedCustom(ServerPlayer player, String hash) {
+        String prefix = "custom|" + hash.toLowerCase(Locale.ROOT) + "|";
+        for (String entry : player.getAttachedOrElse(HISTORY, List.of())) {
+            if (entry.startsWith(prefix)) return entry.substring(prefix.length());
+        }
+        return null;
+    }
+
     public static void sync(ServerPlayer player) {
         JsonObject data = new JsonObject();
         JsonArray favorites = new JsonArray();
