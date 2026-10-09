@@ -23,7 +23,7 @@
       "com.caszgamermd.caszualadditions.compat.jei.CaszualJeiPlugin"
     ],
     "lambdynlights:initializer": [
-      "dev.casz.utils.cosmetics.CosmeticDynamicLights"
+      "com.caszgamermd.caszualadditions.utils.cosmetics.CosmeticDynamicLights"
     ]
   },
   "depends": {
@@ -33,8 +33,8 @@
     "fabric-api": "*"
   },
   "mixins": [
-    "caszutils.mixins.json",
-    "caszutils.client.mixins.json"
+    "caszual_additions.mixins.json",
+    "caszual_additions.client.mixins.json"
   ],
   "suggests": {
     "jei": "*",

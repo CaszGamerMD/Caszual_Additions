@@ -6,7 +6,7 @@ Caszual Additions combines building tools, decorative features, storage, XP util
 
 ## Browse the wiki
 
-- [Getting Started](Getting-Started.md) — installation, versions, creative inventory, compatibility
+- [Upgrade Notes](Upgrade-Notes.md) — registry ID changes, backup and migration warnings\n- [Getting Started](Getting-Started.md) — installation, versions, creative inventory, compatibility
 - [Recipes](Recipes.md) — crafting reference and complete source recipe index
 - [Pallets](Pallets.md) — storage, display limits, dyeing, and copper weathering
 - [Building Blocks](Building-Blocks.md) — quarter blocks, vertical blocks, RGB construction pieces and colored end rods

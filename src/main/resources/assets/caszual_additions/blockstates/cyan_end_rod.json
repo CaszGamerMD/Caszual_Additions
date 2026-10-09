@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "caszual_additions:block/cyan_end_rod",
+      "x": 180
+    },
+    "facing=east": {
+      "model": "caszual_additions:block/cyan_end_rod",
+      "x": 90,
+      "y": 90
+    },
+    "facing=north": {
+      "model": "caszual_additions:block/cyan_end_rod",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "caszual_additions:block/cyan_end_rod",
+      "x": 90,
+      "y": 180
+    },
+    "facing=up": {
+      "model": "caszual_additions:block/cyan_end_rod"
+    },
+    "facing=west": {
+      "model": "caszual_additions:block/cyan_end_rod",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

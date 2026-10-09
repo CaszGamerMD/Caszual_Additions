@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "B  ",
+    "BB ",
+    "BBB"
+  ],
+  "key": {
+    "B": "caszual_additions:rgb_block"
+  },
+  "result": {
+    "id": "caszual_additions:rgb_stairs",
+    "count": 4
+  }
+}

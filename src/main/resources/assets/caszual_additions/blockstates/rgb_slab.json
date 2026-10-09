@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "caszual_additions:block/rgb_slab"
+    },
+    "type=top": {
+      "model": "caszual_additions:block/rgb_slab_top"
+    },
+    "type=double": {
+      "model": "caszual_additions:block/rgb_block"
+    }
+  }
+}

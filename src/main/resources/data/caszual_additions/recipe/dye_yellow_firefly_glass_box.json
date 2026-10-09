@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "caszual_additions:firefly_glass_box",
+    "minecraft:yellow_dye"
+  ],
+  "result": {
+    "id": "caszual_additions:yellow_firefly_glass_box",
+    "count": 1
+  }
+}

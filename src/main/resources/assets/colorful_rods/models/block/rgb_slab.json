@@ -1,8 +1,0 @@
-{
-  "parent": "minecraft:block/slab",
-  "textures": {
-    "bottom": "colorful_rods:block/rgb_end_rod",
-    "top": "colorful_rods:block/rgb_end_rod",
-    "side": "colorful_rods:block/rgb_end_rod"
-  }
-}

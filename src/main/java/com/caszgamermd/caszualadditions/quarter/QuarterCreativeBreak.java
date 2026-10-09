@@ -1,6 +1,6 @@
 package com.caszgamermd.caszualadditions.quarter;
 
-import com.casz.colorfulrods.RgbQuarterBlock;
+import com.caszgamermd.caszualadditions.rods.RgbQuarterBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;

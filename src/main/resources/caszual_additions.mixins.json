@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "com.caszgamermd.caszualadditions.utils.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "AbstractContainerMenuAccessor",
+    "InventoryMenuCosmeticsMixin",
+    "SlotAccessor",
+    "AnvilBlockDamageMixin",
+    "AnvilMenuUnbreakableMixin",
+    "QuarterCreativeBreakServerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

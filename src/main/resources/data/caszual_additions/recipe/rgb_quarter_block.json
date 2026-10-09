@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "caszual_additions:rgb_block"
+  ],
+  "result": {
+    "id": "caszual_additions:rgb_quarter_block",
+    "count": 8
+  }
+}

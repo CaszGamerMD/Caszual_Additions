@@ -8,7 +8,7 @@ Caszual Additions is a Fabric 26.2 quality-of-life mod and the hub for the **Cas
 
 The complete [recipe index](docs/wiki/Recipes.md) links to the current crafting JSON files. Wiki source pages live in `docs/wiki` so they can be versioned with the mod.
 
-## Goals
+**Migration warning:** Older items/blocks registered under `caszutils:` or `colorful_rods:` now use `caszual_additions:` and are not automatically migrated. Back up affected worlds first. [Read the upgrade notes](docs/wiki/Upgrade-Notes.md).\n\n## Goals
 
 - Add small quality-of-life features that fit naturally into Minecraft.
 - Provide a common identity for companion Caszual mods.
@@ -38,4 +38,4 @@ The shared tag is intentionally cross-mod: any installed Caszual-family mod may 
 - Pretty Frogs
 - TV Time
 - Aquarium-related content
-- CaszUtils and other QoL modules
+- Built-in utility features (cosmetics, firefly glass, size snacks)

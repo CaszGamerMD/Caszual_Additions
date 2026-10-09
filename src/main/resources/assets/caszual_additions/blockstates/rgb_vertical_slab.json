@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "caszual_additions:block/rgb_vertical_slab"
+    },
+    "facing=east": {
+      "model": "caszual_additions:block/rgb_vertical_slab",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "caszual_additions:block/rgb_vertical_slab",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "caszual_additions:block/rgb_vertical_slab",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/door_top_left",
+  "textures": {
+    "top": "caszual_additions:block/rgb_door_top",
+    "bottom": "caszual_additions:block/rgb_door_bottom"
+  }
+}

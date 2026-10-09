@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/slab_top",
+  "textures": {
+    "bottom": "caszual_additions:block/rgb_end_rod",
+    "top": "caszual_additions:block/rgb_end_rod",
+    "side": "caszual_additions:block/rgb_end_rod"
+  }
+}

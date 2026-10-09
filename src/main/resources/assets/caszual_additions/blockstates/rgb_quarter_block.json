@@ -1,0 +1,68 @@
+{
+  "multipart": [
+    {
+      "when": {
+        "nwd": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_quarter_nwd"
+      }
+    },
+    {
+      "when": {
+        "ned": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_quarter_ned"
+      }
+    },
+    {
+      "when": {
+        "swd": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_quarter_swd"
+      }
+    },
+    {
+      "when": {
+        "sed": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_quarter_sed"
+      }
+    },
+    {
+      "when": {
+        "nwu": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_quarter_nwu"
+      }
+    },
+    {
+      "when": {
+        "neu": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_quarter_neu"
+      }
+    },
+    {
+      "when": {
+        "swu": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_quarter_swu"
+      }
+    },
+    {
+      "when": {
+        "seu": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_quarter_seu"
+      }
+    }
+  ]
+}

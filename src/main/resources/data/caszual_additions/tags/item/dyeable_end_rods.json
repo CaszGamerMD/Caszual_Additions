@@ -1,0 +1,23 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:end_rod",
+    "caszual_additions:white_end_rod",
+    "caszual_additions:orange_end_rod",
+    "caszual_additions:magenta_end_rod",
+    "caszual_additions:light_blue_end_rod",
+    "caszual_additions:yellow_end_rod",
+    "caszual_additions:lime_end_rod",
+    "caszual_additions:pink_end_rod",
+    "caszual_additions:gray_end_rod",
+    "caszual_additions:light_gray_end_rod",
+    "caszual_additions:cyan_end_rod",
+    "caszual_additions:purple_end_rod",
+    "caszual_additions:blue_end_rod",
+    "caszual_additions:brown_end_rod",
+    "caszual_additions:green_end_rod",
+    "caszual_additions:red_end_rod",
+    "caszual_additions:black_end_rod",
+    "caszual_additions:rgb_end_rod"
+  ]
+}

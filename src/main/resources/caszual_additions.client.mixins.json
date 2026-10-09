@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "package": "com.caszgamermd.caszualadditions.utils.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "FireflyBushMixin",
+    "ContainerScreenAccessor",
+    "AvatarCosmeticsMixin",
+    "PlayerCosmeticHeadMixin",
+    "BlockCosmeticArmorMixin",
+    "CosmeticSkullScaleMixin",
+    "EndRodAvatarRendererMixin",
+    "ArmorStandCosmeticsMixin",
+    "ArmorStandModelCosmeticsMixin",
+    "ScreenWidgetAccessor",
+    "CreativeInventoryCosmeticsMixin",
+    "SpecialModelRenderersAccessor",
+    "PlayerPlushieCuddleMixin",
+    "QuarterCreativeBreakClientMixin",
+    "MinecraftScreenAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

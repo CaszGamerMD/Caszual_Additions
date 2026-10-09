@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/template_fence_gate_open",
+  "textures": {
+    "texture": "caszual_additions:block/rgb_end_rod"
+  }
+}

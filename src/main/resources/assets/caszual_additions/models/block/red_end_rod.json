@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/end_rod",
+  "textures": {
+    "end_rod": "caszual_additions:block/red_end_rod",
+    "particle": "caszual_additions:block/red_end_rod"
+  }
+}

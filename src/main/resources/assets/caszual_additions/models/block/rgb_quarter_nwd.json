@@ -1,0 +1,40 @@
+{
+  "textures": {
+    "texture": "caszual_additions:block/rgb_end_rod",
+    "particle": "caszual_additions:block/rgb_end_rod"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        8,
+        8,
+        8
+      ],
+      "faces": {
+        "north": {
+          "texture": "#texture"
+        },
+        "south": {
+          "texture": "#texture"
+        },
+        "west": {
+          "texture": "#texture"
+        },
+        "east": {
+          "texture": "#texture"
+        },
+        "up": {
+          "texture": "#texture"
+        },
+        "down": {
+          "texture": "#texture"
+        }
+      }
+    }
+  ]
+}

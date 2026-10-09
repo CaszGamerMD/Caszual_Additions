@@ -1,6 +1,6 @@
 package com.caszgamermd.caszualadditions.quarter;
 
-import com.casz.colorfulrods.RgbBuildingBlocks;
+import com.caszgamermd.caszualadditions.rods.RgbBuildingBlocks;
 import com.caszgamermd.caszualadditions.CaszualAdditions;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.core.Registry;

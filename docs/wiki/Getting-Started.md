@@ -20,7 +20,7 @@ Recipes can be browsed in JEI when a compatible installation is present; the exa
 
 ## Modules and namespaces
 
-The distributed mod includes several modules. Registry IDs are grouped under `caszual_additions:`, `caszutils:`, and `colorful_rods:`; these do **not** necessarily mean three separate JARs are required.
+All built-in items, blocks, particles, recipes and tags now use **`caszual_additions:`**. That includes cosmetics, size snacks, colored end rods, RGB building blocks and firefly glass. The previous `caszutils:` and `colorful_rods:` IDs are no longer registered. Back up existing worlds before updating; see [Upgrade Notes](Upgrade-Notes.md).
 
 ## Multiplayer and networking
 
