@@ -8,7 +8,30 @@ The **Quarter Block** is a small, independently placeable building piece.
 
 **Texture customization:** craft a quarter-block item together with a block item to get **eight** quarter pieces using that block's default appearance. The matching custom recipe accepts many ordinary block items, including modded blocks.
 
-Individual corners can be placed independently, including diagonally opposite corners. In Creative, breaking a targeted quarter removes that section rather than clearing the whole block.
+Individual corners can be placed independently, including diagonally opposite corners. In both **Survival and Creative**, breaking a baby block removes just the targeted quarter without disturbing the other seven. In Survival, the removed quarter drops its matching textured quarter-block item.
+
+### Boink'r hammer
+
+The **Boink'r** is a two-ended red hammer with a yellow handle. Craft it using two **red wool** and three **sticks**:
+
+```text
+W S W
+  S
+  S
+```
+
+Hold the Boink'r and **sneak + right-click** (in the air or on a block) to cycle its modes; the active mode is shown in the action bar.
+
+| Mode | Action | Effect |
+| --- | --- | --- |
+| Single | Mine a baby block | Remove exactly one aimed quarter (normal mining works the same way) |
+| Group | Mine a baby block | Remove all occupied quarters in that same 1×1×1 block space; no adjacent blocks are touched |
+| Boink! | Right-click an ordinary solid full block | Convert it into eight matching quarter blocks in place |
+| Boink! | Right-click eight matching quarters filling one block space | Recombine them into their original full block |
+
+Only solid full-cube blocks without block-entity data can be split. Inventories, fluids, partially shaped blocks and unbreakable blocks cannot be split. Recombining requires eight occupied corners of the same material. Neither conversion consumes or drops extra items.
+
+
 
 ## Colored end rods
 
