@@ -32,6 +32,8 @@ import org.jspecify.annotations.Nullable;
 public final class PlayerPlushieBlock extends HorizontalDirectionalBlock implements EntityBlock {
     public static final MapCodec<PlayerPlushieBlock> CODEC = simpleCodec(PlayerPlushieBlock::new);
     private static final VoxelShape SHAPE = Block.box(3, 0, 4, 13, 14, 12);
+    private static final VoxelShape SITTING_SHAPE = Block.box(2, 0, 3, 14, 11, 13);
+    private static final VoxelShape SLEEPING_SHAPE = Block.box(1, 0, 1, 15, 5, 15);
 
     public PlayerPlushieBlock(BlockBehaviour.Properties properties) {
         super(properties);
@@ -60,6 +62,10 @@ public final class PlayerPlushieBlock extends HorizontalDirectionalBlock impleme
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        if (level.getBlockEntity(pos) instanceof PlayerPlushieBlockEntity plushie) {
+            if (plushie.pose() == 9) return SLEEPING_SHAPE;
+            if (plushie.pose() == 1) return SITTING_SHAPE;
+        }
         return SHAPE;
     }
 
