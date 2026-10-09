@@ -20,7 +20,19 @@ tasks.named("processResources") {
             if (!file.isFile()) {
                 throw new GradleException("Missing RGB texture in packaged resources: " + filename)
             }
-            BufferedImage source = ImageIO.read(file)
+            BufferedImage source
+            try {
+                source = ImageIO.read(file)
+            } catch (javax.imageio.IIOException corrupted) {
+                if (filename != "rgb_end_rod_rod_s.png") throw corrupted
+                // The existing "_s" source PNG has a bad IDAT checksum.
+                // Recover its animated rod coloration from the intact sibling
+                // instead of shipping a broken PNG or failing the whole build.
+                File healthy = project.file("src/main/resources/assets/caszual_additions/textures/block/rgb_end_rod_rod.png")
+                logger.warn("Repairing corrupt RGB texture " + filename +
+                        " using the intact rod animation: " + corrupted.message)
+                source = ImageIO.read(healthy)
+            }
             if (source == null) throw new GradleException("Could not decode RGB texture " + filename)
             int width = source.width
             int height = source.height
