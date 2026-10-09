@@ -76,15 +76,21 @@ public final class PalletBlockEntityRenderer
                 if (stack.isEmpty()) continue;
 
                 int displayIndex = state.visibleCount++;
-                state.boxed[displayIndex] = !(stack.getItem() instanceof BlockItem);
-                itemModelResolver.updateForTopItem(
-                        state.items[displayIndex],
-                        stack,
-                        ItemDisplayContext.FIXED,
-                        blockEntity.getLevel(),
-                        null,
-                        slot
-                );
+                if (stack.getItem() instanceof BlockItem blockItem) {
+                    state.boxed[displayIndex] = false;
+                    // A block item in FIXED display context is transformed like
+                    // an inventory object, with an off-center pivot. That made
+                    // cargo float and spread apart. Real block models instead
+                    // occupy exactly the half-block cargo cell.
+                    blockModelResolver.update(state.cargoBlocks[displayIndex],
+                            blockItem.getBlock().defaultBlockState(), DISPLAY_CONTEXT);
+                    state.items[displayIndex].clear();
+                } else {
+                    state.boxed[displayIndex] = true;
+                    itemModelResolver.updateForTopItem(
+                            state.items[displayIndex], stack, ItemDisplayContext.GUI,
+                            blockEntity.getLevel(), null, slot);
+                }
             }
         }
 
@@ -128,29 +134,32 @@ public final class PalletBlockEntityRenderer
             int col = local % PalletBlockEntityRenderState.DISPLAY_COLUMNS;
             int row = local / PalletBlockEntityRenderState.DISPLAY_COLUMNS;
 
-            // Exact 8px cargo cubes, spaced 1px apart on all three axes.
-            // Compacting the nonempty inventory stacks automatically fills
-            // any vacated lower display position before a new tier is used.
-            double x = .4375 + col * .5625;
-            double z = .4375 + row * .5625;
+            // Four 8-pixel cubes plus three 1-pixel gaps need 35 pixels
+            // across a 32-pixel pallet. A tiny 1.5px overhang on each side
+            // allows cargo to fill the pallet instead of leaving empty edges.
+            // Each layer begins on top of the deck and fills left-to-right,
+            // then front-to-back; removing stacks compacts every higher tier.
+            double x = -0.09375 + col * 0.5625;
+            double z = -0.09375 + row * 0.5625;
             double y = PalletBlockEntityRenderState.FIRST_LAYER_Y
                     + layer * PalletBlockEntityRenderState.LAYER_SPACING;
 
             poseStack.pushPose();
+            poseStack.translate(x, y, z);
+            poseStack.scale(.5f, .5f, .5f);
             if (state.boxed[i]) {
-                // Kraft carton: a flat inventory icon is stamped on the front.
-                poseStack.translate(x - .25, y - .25, z - .25);
-                poseStack.scale(.5f, .5f, .5f);
                 state.carton.submit(poseStack, collector, state.lightCoords,
                         OverlayTexture.NO_OVERLAY, 0);
-                poseStack.translate(.5, .5, -.02);
-                poseStack.scale(.66f, .66f, .66f);
+                // Stamp a small item icon onto the front of each carton, not
+                // a floating full-sized inventory model around the carton.
+                poseStack.pushPose();
+                poseStack.translate(.5f, .5f, -0.016f);
+                poseStack.scale(.44f, .44f, .44f);
                 state.items[i].submit(poseStack, collector, state.lightCoords,
                         OverlayTexture.NO_OVERLAY, 0);
+                poseStack.popPose();
             } else {
-                poseStack.translate(x, y, z);
-                poseStack.scale(.5f, .5f, .5f);
-                state.items[i].submit(poseStack, collector, state.lightCoords,
+                state.cargoBlocks[i].submit(poseStack, collector, state.lightCoords,
                         OverlayTexture.NO_OVERLAY, 0);
             }
             poseStack.popPose();
