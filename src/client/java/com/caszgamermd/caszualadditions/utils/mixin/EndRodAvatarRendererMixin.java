@@ -24,7 +24,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class EndRodAvatarRendererMixin extends LivingEntityRenderer<Avatar,AvatarRenderState,PlayerModel>{
     @Unique private boolean caszual_additions$slim;@Unique private com.caszgamermd.caszualadditions.utils.cosmetics.SnowGolemCosmeticRender caszual_additions$snow;
     protected EndRodAvatarRendererMixin(EntityRendererProvider.Context context,PlayerModel model,float shadow){super(context,model,shadow);}
-    @Inject(method="<init>",at=@At("TAIL")) private void caszual_additions$rodLayer(EntityRendererProvider.Context context,boolean slim,CallbackInfo ci){caszual_additions$slim=slim;caszual_additions$snow=new com.caszgamermd.caszualadditions.utils.cosmetics.SnowGolemCosmeticRender();addLayer(new EndRodCosmeticLayer(this,slim));addLayer(new com.caszgamermd.caszualadditions.utils.cosmetics.WearableAquariumLayer(this,slim));}
+    @Inject(method="<init>",at=@At("TAIL")) private void caszual_additions$rodLayer(EntityRendererProvider.Context context,boolean slim,CallbackInfo ci){caszual_additions$slim=slim;caszual_additions$snow=new com.caszgamermd.caszualadditions.utils.cosmetics.SnowGolemCosmeticRender();addLayer(new EndRodCosmeticLayer(this,slim));addLayer(new com.caszgamermd.caszualadditions.utils.cosmetics.WearableAquariumLayer(this,slim,context));}
     @Inject(method="renderHand",at=@At("HEAD"),cancellable=true)
     private void caszual_additions$rodHand(PoseStack pose,SubmitNodeCollector collector,int light,Identifier skin,ModelPart arm,boolean sleeve,CallbackInfo ci){
         var player=Minecraft.getInstance().player;if(player==null)return;var rod=Cosmetics.get(player,EquipmentSlot.CHEST);
