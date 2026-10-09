@@ -4,6 +4,8 @@ import com.caszgamermd.caszualadditions.CaszualAdditions;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -60,7 +62,21 @@ public final class PlayerPlushies {
     }
 
     public static ItemStack createStack(@Nullable ResolvableProfile profile) {
+        return createStack(profile, 0);
+    }
+
+    public static int pose(ItemStack stack) {
+        return Math.floorMod(stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
+                .copyTag().getIntOr("plushie_pose", 0), PlayerPlushieBlockEntity.POSES.length);
+    }
+
+    public static ItemStack createStack(@Nullable ResolvableProfile profile, int pose) {
         ItemStack stack = new ItemStack(PLAYER_PLUSHIE_ITEM);
+        if (pose != 0) {
+            CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            tag.putInt("plushie_pose", Math.floorMod(pose, PlayerPlushieBlockEntity.POSES.length));
+            stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        }
         if (profile != null) {
             stack.set(DataComponents.PROFILE, profile);
             profile.name().ifPresent(name -> stack.set(DataComponents.ITEM_NAME, Component.literal(name + " Plushie")));

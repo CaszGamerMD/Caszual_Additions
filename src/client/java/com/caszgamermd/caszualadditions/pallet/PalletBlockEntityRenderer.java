@@ -1,7 +1,7 @@
 package com.caszgamermd.caszualadditions.pallet;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelResolver;
 import net.minecraft.client.renderer.block.model.BlockDisplayContext;
@@ -45,16 +45,23 @@ public final class PalletBlockEntityRenderer
     ) {
         BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTicks, cameraPosition, breakProgress);
 
-        Block material = materialFor(blockEntity);
-        blockModelResolver.update(state.base, material.defaultBlockState(), DISPLAY_CONTEXT);
-
-        if (blockEntity.getBlockState().getBlock() instanceof PalletBlock pallet
-                && pallet.kind() == PalletKind.PLASTIC) {
-            state.base.tintLayers().clear();
-            state.base.tintLayers().add(blockEntity.plasticColor());
-        }
-
         state.root = blockEntity.isRoot();
+        if (state.root) {
+            Block defaultMaterial = materialFor(blockEntity);
+            boolean mixedWood = blockEntity.getBlockState().getBlock() instanceof PalletBlock pallet
+                    && pallet.kind() == PalletKind.WOOD;
+            boolean plastic = blockEntity.getBlockState().getBlock() instanceof PalletBlock pallet
+                    && pallet.kind() == PalletKind.PLASTIC;
+
+            for (int i = 0; i < 4; i++) {
+                Block material = mixedWood ? blockEntity.woodForBoard(i) : defaultMaterial;
+                blockModelResolver.update(state.boards[i], material.defaultBlockState(), DISPLAY_CONTEXT);
+                state.boards[i].tintLayers().clear();
+                if (plastic) state.boards[i].tintLayers().add(blockEntity.plasticColor());
+            }
+            blockModelResolver.update(state.carton,
+                    PalletContent.CARDBOARD_RENDER_PROXY.defaultBlockState(), DISPLAY_CONTEXT);
+        }
         state.visibleCount = 0;
 
         // Slots are independent from display positions. Pack the first visible
@@ -69,10 +76,11 @@ public final class PalletBlockEntityRenderer
                 if (stack.isEmpty()) continue;
 
                 int displayIndex = state.visibleCount++;
+                state.boxed[displayIndex] = !(stack.getItem() instanceof BlockItem);
                 itemModelResolver.updateForTopItem(
                         state.items[displayIndex],
                         stack,
-                        ItemDisplayContext.GROUND,
+                        ItemDisplayContext.FIXED,
                         blockEntity.getLevel(),
                         null,
                         slot
@@ -107,40 +115,44 @@ public final class PalletBlockEntityRenderer
             SubmitNodeCollector collector,
             CameraRenderState camera
     ) {
+        // Render ONE continuous 2×2 pallet from the controller. The three
+        // satellite block entities never submit overlapping quarter-pallets.
+        if (!state.root) return;
         submitPalletBase(state, poseStack, collector);
 
-        if (!state.root) return;
-
-        int tierSize = PalletBlockEntityRenderState.DISPLAY_COLUMNS
+        int layerSize = PalletBlockEntityRenderState.DISPLAY_COLUMNS
                 * PalletBlockEntityRenderState.DISPLAY_ROWS;
         for (int i = 0; i < state.visibleCount; i++) {
-            int layer = i / tierSize;
-            int local = i % tierSize;
+            int layer = i / layerSize;
+            int local = i % layerSize;
             int col = local % PalletBlockEntityRenderState.DISPLAY_COLUMNS;
             int row = local / PalletBlockEntityRenderState.DISPLAY_COLUMNS;
 
-            // Room between neighbors both horizontally and vertically.
-            // At the top tier, the normal-size model bounds stay below y=5.
-            double x = (col + 0.5) * (2.0 / PalletBlockEntityRenderState.DISPLAY_COLUMNS);
-            double z = (row + 0.5) * (2.0 / PalletBlockEntityRenderState.DISPLAY_ROWS);
+            // Exact 8px cargo cubes, spaced 1px apart on all three axes.
+            // Compacting the nonempty inventory stacks automatically fills
+            // any vacated lower display position before a new tier is used.
+            double x = .4375 + col * .5625;
+            double z = .4375 + row * .5625;
             double y = PalletBlockEntityRenderState.FIRST_LAYER_Y
                     + layer * PalletBlockEntityRenderState.LAYER_SPACING;
 
             poseStack.pushPose();
-            poseStack.translate(x, y, z);
-            poseStack.mulPose(Axis.YP.rotationDegrees((i * 37) % 360));
-            poseStack.scale(
-                    PalletBlockEntityRenderState.ITEM_SCALE,
-                    PalletBlockEntityRenderState.ITEM_SCALE,
-                    PalletBlockEntityRenderState.ITEM_SCALE
-            );
-            state.items[i].submit(
-                    poseStack,
-                    collector,
-                    state.lightCoords,
-                    OverlayTexture.NO_OVERLAY,
-                    0
-            );
+            if (state.boxed[i]) {
+                // Kraft carton: a flat inventory icon is stamped on the front.
+                poseStack.translate(x - .25, y - .25, z - .25);
+                poseStack.scale(.5f, .5f, .5f);
+                state.carton.submit(poseStack, collector, state.lightCoords,
+                        OverlayTexture.NO_OVERLAY, 0);
+                poseStack.translate(.5, .5, -.02);
+                poseStack.scale(.66f, .66f, .66f);
+                state.items[i].submit(poseStack, collector, state.lightCoords,
+                        OverlayTexture.NO_OVERLAY, 0);
+            } else {
+                poseStack.translate(x, y, z);
+                poseStack.scale(.5f, .5f, .5f);
+                state.items[i].submit(poseStack, collector, state.lightCoords,
+                        OverlayTexture.NO_OVERLAY, 0);
+            }
             poseStack.popPose();
         }
     }
@@ -150,35 +162,38 @@ public final class PalletBlockEntityRenderer
             PoseStack poseStack,
             SubmitNodeCollector collector
     ) {
-        submitBox(state, poseStack, collector, 0.02F, 0.12F, 0.02F, 0.30F, 0.12F, 0.96F);
-        submitBox(state, poseStack, collector, 0.35F, 0.12F, 0.02F, 0.30F, 0.12F, 0.96F);
-        submitBox(state, poseStack, collector, 0.68F, 0.12F, 0.02F, 0.30F, 0.12F, 0.96F);
+        // Four 2-block-long deck boards. Each top plank's timber derives
+        // from one of the recipe's four corner ingredients.
+        for (int i = 0; i < 4; i++) {
+            float x = .04f + i * .49f;
+            submitBox(state, i, poseStack, collector, x, .19f, .015f, .43f, .105f, 1.97f);
+        }
 
-        submitBox(state, poseStack, collector, 0.11F, 0.02F, 0.08F, 0.18F, 0.10F, 0.84F);
-        submitBox(state, poseStack, collector, 0.71F, 0.02F, 0.08F, 0.18F, 0.10F, 0.84F);
+        // Transverse lower runners, using the same four craft selections.
+        // Each runner continues across all four footprint blocks, not one
+        // tiny runner per quadrant. The underside colors can differ from
+        // the visible deck-board colors.
+        submitBox(state, 2, poseStack, collector,
+                .035f, .035f, .12f, 1.93f, .15f, .23f);
+        submitBox(state, 3, poseStack, collector,
+                .035f, .035f, .88f, 1.93f, .15f, .23f);
+        submitBox(state, 0, poseStack, collector,
+                .035f, .035f, 1.65f, 1.93f, .15f, .23f);
     }
 
     private static void submitBox(
             PalletBlockEntityRenderState state,
+            int board,
             PoseStack poseStack,
             SubmitNodeCollector collector,
-            float x,
-            float y,
-            float z,
-            float sx,
-            float sy,
-            float sz
+            float x, float y, float z,
+            float sx, float sy, float sz
     ) {
         poseStack.pushPose();
         poseStack.translate(x, y, z);
         poseStack.scale(sx, sy, sz);
-        state.base.submit(
-                poseStack,
-                collector,
-                state.lightCoords,
-                OverlayTexture.NO_OVERLAY,
-                0
-        );
+        state.boards[board].submit(poseStack, collector,
+                state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
         poseStack.popPose();
     }
 

@@ -8,7 +8,7 @@ Pallets are **2×2 storage platforms**. Each has **216 inventory slots**, equiva
 
 | Pallet | Special behavior |
 | --- | --- |
-| Wooden | Appearance inherits each of four corner planks; mix wood types for a patchwork pallet |
+| Wooden | Four recipe-corner planks select long top boards and different under-deck runners; mixed colors extend across the entire 2×2 model |
 | Plastic | Craft from purpur blocks and dye the completed pallet in a shapeless recipe |
 | Iron | Iron-block appearance |
 | Copper | Ages through regular, exposed, weathered, and oxidized appearances |
@@ -34,11 +34,12 @@ M C M
 
 Pallets do not render all 216 stored stacks.
 
-- Up to **63 nonempty inventory stacks** are displayed, in a **3 × 3 × 7** arrangement over the 2×2 footprint.
-- Models are reduced and spaced out, intended to remain under **five blocks high** for ordinary-sized item models.
-- Once all display positions are occupied, newly stored items remain in the inventory but are **not** rendered on top.
-- When a visible stack is removed, the next stored nonempty stack takes the freed display position.
-- All 216 slots remain usable regardless of visible item count.
+- Up to **72 nonempty inventory stacks** are displayed in **3 × 3 × 8** columns/layers across the 2×2 footprint.
+- Each cargo display is **8 × 8 × 8 pixels** with **1 pixel between adjacent cargo units**, in both horizontal and vertical directions; the final tier is below five world blocks.
+- Non-block items appear as compact kraft-cardboard boxes with an item icon on the front.
+- The first nonempty stack fills the bottom tier. If a visible stack is removed, remaining visible stacks immediately pack down into the earliest available display positions.
+- Once the 72 display positions are occupied, additional stacks stay in the full 216-slot inventory but are no longer rendered on the pallet.
+- The pallet base is submitted **only by the shared controller block**. A single set of long deck boards and bottom runners now crosses all four blocks, without quarter-pallet seams.
 
 Unusually oversized modded item models can exceed standard display bounds and may require visual adjustment.
 

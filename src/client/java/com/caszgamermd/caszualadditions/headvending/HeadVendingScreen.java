@@ -24,12 +24,15 @@ public final class HeadVendingScreen extends Screen {
     private static final int HEIGHT = 282;
     private static final int MAX_RESULTS = CustomHeadCatalog.PAGE_SIZE;
 
-    private enum Tab { CUSTOM, PLAYER, MOB }
+    private enum Tab { CUSTOM, PLAYER, MOB, FAVORITES, HISTORY }
     private enum Kind { CUSTOM, PLAYER, MOB }
 
     private final BlockPos machinePos;
     private final List<Result> results = new ArrayList<>();
     private final List<Button> buyButtons = new ArrayList<>();
+    private final List<Button> starButtons = new ArrayList<>();
+    private final List<SavedHead> favorites = new ArrayList<>();
+    private final List<SavedHead> history = new ArrayList<>();
     private List<String> categories = List.of("all");
 
     private Tab tab = Tab.CUSTOM;
@@ -55,15 +58,14 @@ public final class HeadVendingScreen extends Screen {
         int top = (height - HEIGHT) / 2;
         String priorText = search == null ? "" : search.getValue();
 
-        addRenderableWidget(Button.builder(Component.literal("Custom Heads"),
-                        ignored -> setTab(Tab.CUSTOM))
-                .bounds(left + 16, top + 36, 101, 21).build());
-        addRenderableWidget(Button.builder(Component.literal("Player Heads"),
-                        ignored -> setTab(Tab.PLAYER))
-                .bounds(left + 118, top + 36, 101, 21).build());
-        addRenderableWidget(Button.builder(Component.literal("Mob Heads"),
-                        ignored -> setTab(Tab.MOB))
-                .bounds(left + 220, top + 36, 100, 21).build());
+        String[] names = {"Custom", "Players", "Mobs", "Favorites", "History"};
+        Tab[] tabs = Tab.values();
+        for (int i = 0; i < tabs.length; i++) {
+            final Tab selected = tabs[i];
+            addRenderableWidget(Button.builder(Component.literal(names[i]),
+                    ignored -> setTab(selected))
+                    .bounds(left + 15 + i * 62, top + 36, 61, 21).build());
+        }
 
         search = addRenderableWidget(new EditBox(
                 font, left + 18, top + 64, 185, 20,
@@ -85,10 +87,14 @@ public final class HeadVendingScreen extends Screen {
         buyButtons.clear();
         for (int i = 0; i < MAX_RESULTS; i++) {
             final int resultIndex = i;
-            Button button = Button.builder(
-                    Component.literal("Buy: 1 Emerald"),
-                    ignored -> buy(resultIndex)
-            ).bounds(left + 221, top + 94 + i * 21, 99, 18).build();
+            Button star = Button.builder(Component.literal("☆"),
+                    ignored -> toggleFavorite(resultIndex))
+                    .bounds(left + 221, top + 94 + i * 21, 23, 18).build();
+            starButtons.add(star);
+            addRenderableWidget(star);
+            Button button = Button.builder(Component.literal("Buy"),
+                    ignored -> buy(resultIndex))
+                    .bounds(left + 245, top + 94 + i * 21, 75, 18).build();
             buyButtons.add(button);
             addRenderableWidget(button);
         }
@@ -109,6 +115,8 @@ public final class HeadVendingScreen extends Screen {
             case CUSTOM -> "Search decorative heads...";
             case PLAYER -> "Enter a player username...";
             case MOB -> "Search vanilla mob heads...";
+            case FAVORITES -> "Filter your favorites...";
+            case HISTORY -> "Filter recent purchases...";
         };
     }
 
@@ -132,7 +140,7 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void changePage(int direction) {
-        if (tab != Tab.CUSTOM) return;
+        if (tab == Tab.PLAYER) return;
         int lastPage = Math.max(0, (total - 1) / MAX_RESULTS);
         int target = Math.clamp(page + direction, 0, lastPage);
         if (target == page) return;
@@ -161,6 +169,9 @@ public final class HeadVendingScreen extends Screen {
             if (tab == Tab.MOB) {
                 for (var entry : HeadVendingContent.MOB_HEADS.entrySet()) {
                     String key = entry.getKey();
+                    // Backward-compatible "dragon" alias is available to purchases,
+                    // but the catalog only displays the Ender Dragon once.
+                    if (key.equals("dragon")) continue;
                     String label = HeadVendingContent.displayName(key) + " Head";
                     if (query.isEmpty() || key.contains(query.replace(' ', '_'))
                             || label.toLowerCase(Locale.ROOT).contains(query)) {
@@ -169,7 +180,20 @@ public final class HeadVendingScreen extends Screen {
                     }
                 }
             }
+            if (tab == Tab.FAVORITES || tab == Tab.HISTORY) {
+                for (SavedHead saved : (tab == Tab.FAVORITES ? favorites : history)) {
+                    if (!query.isEmpty() && !saved.label().toLowerCase(Locale.ROOT).contains(query)) continue;
+                    Result result = resultForSaved(saved);
+                    if (result != null) results.add(result);
+                }
+            }
             total = results.size();
+            if (tab != Tab.PLAYER && total > MAX_RESULTS) {
+                int last = Math.max(0, (total - 1) / MAX_RESULTS);
+                page = Math.clamp(page, 0, last);
+                results.subList(0, page * MAX_RESULTS).clear();
+                if (results.size() > MAX_RESULTS) results.subList(MAX_RESULTS, results.size()).clear();
+            }
         }
         updateButtons();
     }
@@ -229,6 +253,16 @@ public final class HeadVendingScreen extends Screen {
             Button button = buyButtons.get(i);
             button.visible = i < results.size();
             button.active = i < results.size();
+            boolean free = minecraft != null && minecraft.player != null
+                    && minecraft.player.getAbilities().instabuild;
+            button.setMessage(Component.literal(free ? "Free" : "1 Emerald"));
+            Button star = starButtons.get(i);
+            star.visible = i < results.size();
+            star.active = star.visible;
+            if (star.visible) {
+                Result entry = results.get(i);
+                star.setMessage(Component.literal(isFavorite(entry) ? "★" : "☆"));
+            }
         }
         if (categoryButton != null) {
             categoryButton.visible = tab == Tab.CUSTOM;
@@ -236,14 +270,77 @@ public final class HeadVendingScreen extends Screen {
             categoryButton.setMessage(Component.literal("Category: " + label));
         }
         if (previousButton != null) {
-            previousButton.visible = tab == Tab.CUSTOM;
-            previousButton.active = tab == Tab.CUSTOM && !loading && page > 0;
+            previousButton.visible = tab != Tab.PLAYER;
+            previousButton.active = !loading && page > 0;
         }
         if (nextButton != null) {
-            nextButton.visible = tab == Tab.CUSTOM;
-            nextButton.active = tab == Tab.CUSTOM && !loading
-                    && (page + 1) * MAX_RESULTS < total;
+            nextButton.visible = tab != Tab.PLAYER;
+            nextButton.active = !loading && (page + 1) * MAX_RESULTS < total;
         }
+    }
+
+    public void acceptSavedHeads(String json) {
+        try {
+            JsonObject data = JsonParser.parseString(json).getAsJsonObject();
+            favorites.clear();
+            history.clear();
+            for (JsonElement entry : data.getAsJsonArray("favorites")) {
+                SavedHead parsed = parseSaved(entry.getAsString());
+                if (parsed != null) favorites.add(parsed);
+            }
+            for (JsonElement entry : data.getAsJsonArray("history")) {
+                SavedHead parsed = parseSaved(entry.getAsString());
+                if (parsed != null) history.add(parsed);
+            }
+            if (tab == Tab.FAVORITES || tab == Tab.HISTORY) refreshResults();
+            else updateButtons();
+        } catch (RuntimeException ignored) {
+            // Keep screen functional when the server data cannot be parsed.
+        }
+    }
+
+    private static SavedHead parseSaved(String raw) {
+        String[] parts = raw.split("\\|", 3);
+        return parts.length == 3 ? new SavedHead(parts[0], parts[1], parts[2]) : null;
+    }
+
+    private Result resultForSaved(SavedHead saved) {
+        Kind kind;
+        ItemStack item;
+        switch (saved.kind()) {
+            case "player" -> {
+                kind = Kind.PLAYER;
+                item = new ItemStack(Items.PLAYER_HEAD);
+                item.set(DataComponents.PROFILE, ResolvableProfile.createUnresolved(saved.target()));
+            }
+            case "mob" -> {
+                kind = Kind.MOB;
+                var mob = HeadVendingContent.MOB_HEADS.get(saved.target());
+                if (mob == null) return null;
+                item = new ItemStack(mob);
+            }
+            case "custom" -> {
+                kind = Kind.CUSTOM;
+                item = CustomHeadCatalog.createHead(saved.label(), saved.target());
+                if (item.isEmpty()) return null;
+            }
+            default -> { return null; }
+        }
+        return new Result(saved.label(), saved.kind(), item, kind, saved.target());
+    }
+
+    private boolean isFavorite(Result result) {
+        String kind = result.kind().name().toLowerCase(Locale.ROOT);
+        return favorites.stream().anyMatch(entry -> entry.kind().equals(kind)
+                && entry.target().equalsIgnoreCase(result.target()));
+    }
+
+    private void toggleFavorite(int index) {
+        if (index < 0 || index >= results.size()) return;
+        Result entry = results.get(index);
+        ClientPlayNetworking.send(new HeadVendingBookmarks.Toggle(machinePos,
+                entry.kind().name().toLowerCase(Locale.ROOT),
+                entry.target(), entry.label()));
     }
 
     private void buy(int index) {
@@ -270,9 +367,16 @@ public final class HeadVendingScreen extends Screen {
         graphics.fill(left + 3, top + 3, left + WIDTH - 3, top + HEIGHT - 3, 0xffd9dde2);
         graphics.fill(left + 8, top + 8, left + WIDTH - 8, top + 31, 0xff59636f);
         graphics.text(font, title, left + 16, top + 15, 0xffffffff, false);
-        graphics.item(new ItemStack(Items.EMERALD), left + WIDTH - 34, top + 12);
-        graphics.text(font, Component.literal("1"), left + WIDTH - 16,
-                top + 17, 0xffffffff, false);
+        boolean free = minecraft != null && minecraft.player != null
+                && minecraft.player.getAbilities().instabuild;
+        if (free) {
+            graphics.text(font, Component.literal("FREE"), left + WIDTH - 46,
+                    top + 17, 0xffaaffaa, false);
+        } else {
+            graphics.item(new ItemStack(Items.EMERALD), left + WIDTH - 34, top + 12);
+            graphics.text(font, Component.literal("1"), left + WIDTH - 16,
+                    top + 17, 0xffffffff, false);
+        }
 
         if (results.isEmpty()) {
             String message = !error.isEmpty() ? error
@@ -299,14 +403,14 @@ public final class HeadVendingScreen extends Screen {
                     y + 11, 0xff5d5d5d, false);
         }
 
-        if (tab == Tab.CUSTOM) {
+        if (tab != Tab.PLAYER) {
             int pages = Math.max(1, (total + MAX_RESULTS - 1) / MAX_RESULTS);
             graphics.text(font,
                     Component.literal("Page " + (page + 1) + "/" + pages
                             + "  (" + total + " heads)"),
                     left + 112, top + 254, 0xff454545, false);
         }
-        graphics.text(font, Component.literal("1 emerald per head"),
+        graphics.text(font, Component.literal(free ? "Creative: free heads" : "1 emerald per head"),
                 left + 18, top + HEIGHT - 12, 0xff555555, false);
     }
 
@@ -314,6 +418,8 @@ public final class HeadVendingScreen extends Screen {
     public boolean isPauseScreen() {
         return false;
     }
+
+    private record SavedHead(String kind, String target, String label) {}
 
     private record Result(
             String label, String category, ItemStack stack, Kind kind, String target

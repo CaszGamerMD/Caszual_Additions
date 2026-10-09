@@ -131,6 +131,7 @@ public final class HeadVendingBlock extends HorizontalDirectionalBlock {
                 && isComplete(level, pos, state)) {
             ServerPlayNetworking.send(serverPlayer,
                     new HeadVendingContent.Open(basePos(pos, state)));
+            HeadVendingBookmarks.sync(serverPlayer);
         }
         return InteractionResult.SUCCESS;
     }

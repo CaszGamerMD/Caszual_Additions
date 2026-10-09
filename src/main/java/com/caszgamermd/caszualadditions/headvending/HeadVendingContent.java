@@ -3,6 +3,7 @@ package com.caszgamermd.caszualadditions.headvending;
 import com.caszgamermd.caszualadditions.CaszualAdditions;
 import com.mojang.authlib.GameProfile;
 import java.util.LinkedHashMap;
+import net.minecraft.world.entity.MobCategory;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -128,6 +129,7 @@ public final class HeadVendingContent {
     }
 
     public static void initialize() {
+        HeadVendingBookmarks.initialize();
         Identifier id = CaszualAdditions.id("player_head_vending_machine");
         ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
 
@@ -161,6 +163,17 @@ public final class HeadVendingContent {
         MOB_HEADS.put("creeper", Items.CREEPER_HEAD);
         MOB_HEADS.put("piglin", Items.PIGLIN_HEAD);
         MOB_HEADS.put("dragon", Items.DRAGON_HEAD);
+        MOB_HEADS.put("ender_dragon", Items.DRAGON_HEAD);
+
+        // Resolve the full vanilla mob roster from Minecraft's entity registry.
+        // Native heads use their real vanilla item; the rest use validated HeadDB skins.
+        BuiltInRegistries.ENTITY_TYPE.forEach(type -> {
+            Identifier entityId = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+            if (entityId != null && "minecraft".equals(entityId.getNamespace())
+                    && type.canSummon() && type.getCategory() != MobCategory.MISC) {
+                MOB_HEADS.putIfAbsent(entityId.getPath(), Items.PLAYER_HEAD);
+            }
+        });
 
         PayloadTypeRegistry.clientboundPlay().register(Open.TYPE, Open.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(Purchase.TYPE, Purchase.CODEC);
@@ -195,7 +208,15 @@ public final class HeadVendingContent {
             case "creeper" -> "Creeper";
             case "piglin" -> "Piglin";
             case "dragon" -> "Dragon";
-            default -> key;
+            default -> {
+                StringBuilder name = new StringBuilder();
+                for (String part : key.split("_")) {
+                    if (!name.isEmpty()) name.append(' ');
+                    if (!part.isEmpty()) name.append(Character.toUpperCase(part.charAt(0)))
+                            .append(part.substring(1));
+                }
+                yield name.toString();
+            }
         };
     }
 
@@ -238,7 +259,7 @@ public final class HeadVendingContent {
                             DataComponents.ITEM_NAME,
                             Component.literal(resolved.name() + "'s Head")
                     );
-                    completePurchase(current, head, resolved.name() + "'s Head");
+                    completePurchase(current, head, resolved.name() + "'s Head", "player", name);
                 });
             });
             return;
@@ -251,11 +272,46 @@ public final class HeadVendingContent {
             return;
         }
 
-        completePurchase(
-                player,
-                new ItemStack(item),
-                displayName(key) + " Head"
-        );
+        if (item != Items.PLAYER_HEAD) {
+            completePurchase(player, new ItemStack(item), displayName(key) + " Head", "mob", key);
+            return;
+        }
+
+        CustomHeadCatalog.load().whenComplete((catalog, error) ->
+                server.execute(() -> {
+                    ServerPlayer current = server.getPlayerList().getPlayer(player.getUUID());
+                    if (current == null || !validMachine(current, payload.pos())) return;
+                    if (error != null) {
+                        status(current, "Mob-head textures are temporarily unavailable.", false);
+                        return;
+                    }
+                    String desired = key.replace('_', ' ');
+                    // Prefer exact vanilla mob names, then named variants such
+                    // as "Cow (Brown)". Never allow prefix collisions like
+                    // "cow" accidentally matching "cowboy".
+                    String searchName = desired.toLowerCase(java.util.Locale.ROOT);
+                    CustomHeadCatalog.Head match = catalog.heads().stream()
+                            .filter(head -> {
+                                String candidate = head.name().toLowerCase(java.util.Locale.ROOT)
+                                        .replaceAll("[^a-z0-9]+", " ").trim();
+                                return candidate.equals(searchName)
+                                        || candidate.equals(searchName + " head");
+                            })
+                            .findFirst().orElse(null);
+                    if (match == null) {
+                        match = catalog.heads().stream()
+                                .filter(head -> head.name().toLowerCase(java.util.Locale.ROOT)
+                                        .replaceAll("[^a-z0-9]+", " ").trim()
+                                        .startsWith(searchName + " "))
+                                .findFirst().orElse(null);
+                    }
+                    if (match == null) {
+                        status(current, "No verified " + displayName(key) + " head texture found.", false);
+                        return;
+                    }
+                    completePurchase(current, CustomHeadCatalog.createHead(
+                            displayName(key) + " Head", match.hash()), displayName(key) + " Head", "mob", key);
+                }));
     }
 
 
@@ -304,7 +360,7 @@ public final class HeadVendingContent {
                     completePurchase(
                             current,
                             CustomHeadCatalog.createHead(head.name(), head.hash()),
-                            head.name()
+                            head.name(), "custom", head.hash()
                     );
                 }));
     }
@@ -329,7 +385,9 @@ public final class HeadVendingContent {
     private static void completePurchase(
             ServerPlayer player,
             ItemStack head,
-            String label
+            String label,
+            String kind,
+            String target
     ) {
         Inventory inventory = player.getInventory();
 
@@ -339,28 +397,31 @@ public final class HeadVendingContent {
             return;
         }
 
-        int emeraldSlot = findEmerald(inventory);
-        if (emeraldSlot < 0) {
-            status(player, "You need 1 emerald.", false);
-            return;
+        boolean creative = player.getAbilities().instabuild;
+        if (!creative) {
+            int emeraldSlot = findEmerald(inventory);
+            if (emeraldSlot < 0) {
+                status(player, "You need 1 emerald.", false);
+                return;
+            }
+            ItemStack emeralds = inventory.getItem(emeraldSlot);
+            emeralds.shrink(1);
+            if (emeralds.isEmpty()) {
+                inventory.setItem(emeraldSlot, ItemStack.EMPTY);
+            }
+            inventory.setChanged();
         }
-
-        ItemStack emeralds = inventory.getItem(emeraldSlot);
-        emeralds.shrink(1);
-        if (emeralds.isEmpty()) {
-            inventory.setItem(emeraldSlot, ItemStack.EMPTY);
-        }
-        inventory.setChanged();
 
         ItemStack toInsert = head.copy();
         boolean inserted = inventory.add(toInsert);
         if (!inserted || !toInsert.isEmpty()) {
-            inventory.add(new ItemStack(Items.EMERALD));
-            status(player, "Could not deliver the head; your emerald was returned.", false);
+            if (!creative) inventory.add(new ItemStack(Items.EMERALD));
+            status(player, creative ? "Could not deliver the head." : "Could not deliver the head; your emerald was returned.", false);
             return;
         }
 
-        status(player, "Purchased " + label + " for 1 emerald.", true);
+        HeadVendingBookmarks.recordPurchase(player, kind, target, label);
+        status(player, creative ? "Created " + label + " for free." : "Purchased " + label + " for 1 emerald.", true);
     }
 
     private static int findEmerald(Inventory inventory) {

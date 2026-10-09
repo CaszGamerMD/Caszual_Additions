@@ -39,6 +39,7 @@ public final class PalletContent {
     public static Item OXIDIZED_COPPER_PALLET_ITEM;
 
     public static Block PALLET_RENDER_PROXY;
+    public static Block CARDBOARD_RENDER_PROXY;
     public static BlockEntityType<PalletBlockEntity> PALLET_BLOCK_ENTITY;
     public static MenuType<PalletMenu> PALLET_MENU;
     public static RecipeSerializer<WoodenPalletRecipe> WOODEN_RECIPE;
@@ -70,6 +71,14 @@ public final class PalletContent {
                 BuiltInRegistries.BLOCK,
                 proxyKey,
                 new Block(BlockBehaviour.Properties.ofFullCopy(Blocks.CONCRETE.white()).setId(proxyKey))
+        );
+
+        Identifier cardboardId = CaszualAdditions.id("pallet_cardboard_render_proxy");
+        ResourceKey<Block> cardboardKey = ResourceKey.create(Registries.BLOCK, cardboardId);
+        CARDBOARD_RENDER_PROXY = Registry.register(
+                BuiltInRegistries.BLOCK, cardboardKey,
+                new Block(BlockBehaviour.Properties.ofFullCopy(Blocks.PURPUR_BLOCK)
+                        .setId(cardboardKey))
         );
 
         PALLET_BLOCK_ENTITY = Registry.register(

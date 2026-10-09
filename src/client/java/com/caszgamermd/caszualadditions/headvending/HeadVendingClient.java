@@ -7,6 +7,14 @@ public final class HeadVendingClient {
 
     public static void initialize() {
         ClientPlayNetworking.registerGlobalReceiver(
+                HeadVendingBookmarks.Snapshot.TYPE,
+                (payload, context) -> context.client().execute(() -> {
+                    if (context.client().gui.screen() instanceof HeadVendingScreen screen) {
+                        screen.acceptSavedHeads(payload.json());
+                    }
+                })
+        );
+        ClientPlayNetworking.registerGlobalReceiver(
                 HeadVendingContent.Open.TYPE,
                 (payload, context) -> context.client().execute(() ->
                         context.client().gui.setScreen(

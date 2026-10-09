@@ -180,6 +180,23 @@ tasks.register("generateVendingTextures") {
             File destination = new File(folder,"vending_${type}.png")
             ImageIO.write(img,"PNG",destination)
         }
+        // Pallet cardboard: kraft-paper texture with taped cross and stamped edges.
+        BufferedImage carton = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
+        java.util.Random kraft = new java.util.Random(1248907L)
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+            int noise = kraft.nextInt(17) - 8
+            int r = Math.min(255, Math.max(0, 174 + noise))
+            int g = Math.min(255, Math.max(0, 133 + noise))
+            int b = Math.min(255, Math.max(0, 76 + noise))
+            carton.setRGB(x, y, (int) (0xff000000L | (r << 16) | (g << 8) | b))
+        }
+        rect(carton, 0, 0, 16, 1, "76532d")
+        rect(carton, 0, 15, 16, 1, "76532d")
+        rect(carton, 0, 0, 1, 16, "76532d")
+        rect(carton, 15, 0, 1, 16, "76532d")
+        rect(carton, 7, 0, 2, 16, "d6b17a")
+        rect(carton, 0, 7, 16, 2, "c7a373")
+        ImageIO.write(carton, "PNG", new File(folder, "pallet_cardboard.png"))
         logger.lifecycle("Generated ${names.size()} vending machine block textures")
     }
 }
