@@ -24,11 +24,16 @@ tasks.named("processResources") {
             try {
                 source = ImageIO.read(file)
             } catch (javax.imageio.IIOException corrupted) {
-                if (filename != "rgb_end_rod_rod_s.png") throw corrupted
-                // The existing "_s" source PNG has a bad IDAT checksum.
-                // Recover its animated rod coloration from the intact sibling
-                // instead of shipping a broken PNG or failing the whole build.
-                File healthy = project.file("src/main/resources/assets/caszual_additions/textures/block/rgb_end_rod_rod.png")
+                // Some existing sprite sources have corrupt PNG IDAT checksums.
+                // Rebuild them from an intact, similarly-shaped RGB sibling
+                // rather than packaging unreadable animated PNGs.
+                String replacement = switch (filename) {
+                    case "rgb_end_rod_rod_s.png" -> "rgb_end_rod_rod.png"
+                    case "rgb_trapdoor.png" -> "rgb_door_bottom.png"
+                    default -> null
+                }
+                if (replacement == null) throw corrupted
+                File healthy = project.file("src/main/resources/assets/caszual_additions/textures/block/" + replacement)
                 logger.warn("Repairing corrupt RGB texture " + filename +
                         " using the intact rod animation: " + corrupted.message)
                 source = ImageIO.read(healthy)
