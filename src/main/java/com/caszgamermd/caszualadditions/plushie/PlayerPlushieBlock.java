@@ -80,6 +80,11 @@ public final class PlayerPlushieBlock extends HorizontalDirectionalBlock impleme
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                Player player, BlockHitResult hit) {
+        // Only an entirely empty-handed interaction changes poses; using
+        // items on the plushie must not unexpectedly cycle its appearance.
+        if (!player.getMainHandItem().isEmpty() || !player.getOffhandItem().isEmpty()) {
+            return InteractionResult.PASS;
+        }
         if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer
                 && level.getBlockEntity(pos) instanceof PlayerPlushieBlockEntity plushie) {
             plushie.setPose(plushie.pose() + 1);
