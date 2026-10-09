@@ -129,6 +129,7 @@ public final class HeadVendingContent {
     }
 
     public static void initialize() {
+        HeadVendingBookmarks.initialize();
         Identifier id = CaszualAdditions.id("player_head_vending_machine");
         ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
 
@@ -258,7 +259,7 @@ public final class HeadVendingContent {
                             DataComponents.ITEM_NAME,
                             Component.literal(resolved.name() + "'s Head")
                     );
-                    completePurchase(current, head, resolved.name() + "'s Head");
+                    completePurchase(current, head, resolved.name() + "'s Head", "player", name);
                 });
             });
             return;
@@ -272,7 +273,7 @@ public final class HeadVendingContent {
         }
 
         if (item != Items.PLAYER_HEAD) {
-            completePurchase(player, new ItemStack(item), displayName(key) + " Head");
+            completePurchase(player, new ItemStack(item), displayName(key) + " Head", "mob", key);
             return;
         }
 
@@ -294,7 +295,7 @@ public final class HeadVendingContent {
                         return;
                     }
                     completePurchase(current, CustomHeadCatalog.createHead(
-                            displayName(key) + " Head", match.hash()), displayName(key) + " Head");
+                            displayName(key) + " Head", match.hash()), displayName(key) + " Head", "mob", key);
                 }));
     }
 
@@ -344,7 +345,7 @@ public final class HeadVendingContent {
                     completePurchase(
                             current,
                             CustomHeadCatalog.createHead(head.name(), head.hash()),
-                            head.name()
+                            head.name(), "custom", head.hash()
                     );
                 }));
     }
@@ -369,7 +370,9 @@ public final class HeadVendingContent {
     private static void completePurchase(
             ServerPlayer player,
             ItemStack head,
-            String label
+            String label,
+            String kind,
+            String target
     ) {
         Inventory inventory = player.getInventory();
 
@@ -402,6 +405,7 @@ public final class HeadVendingContent {
             return;
         }
 
+        HeadVendingBookmarks.recordPurchase(player, kind, target, label);
         status(player, creative ? "Created " + label + " for free." : "Purchased " + label + " for 1 emerald.", true);
     }
 
