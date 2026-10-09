@@ -24,12 +24,15 @@ public final class HeadVendingScreen extends Screen {
     private static final int HEIGHT = 282;
     private static final int MAX_RESULTS = CustomHeadCatalog.PAGE_SIZE;
 
-    private enum Tab { CUSTOM, PLAYER, MOB }
+    private enum Tab { CUSTOM, PLAYER, MOB, FAVORITES, HISTORY }
     private enum Kind { CUSTOM, PLAYER, MOB }
 
     private final BlockPos machinePos;
     private final List<Result> results = new ArrayList<>();
     private final List<Button> buyButtons = new ArrayList<>();
+    private final List<Button> starButtons = new ArrayList<>();
+    private final List<SavedHead> favorites = new ArrayList<>();
+    private final List<SavedHead> history = new ArrayList<>();
     private List<String> categories = List.of("all");
 
     private Tab tab = Tab.CUSTOM;
@@ -55,15 +58,14 @@ public final class HeadVendingScreen extends Screen {
         int top = (height - HEIGHT) / 2;
         String priorText = search == null ? "" : search.getValue();
 
-        addRenderableWidget(Button.builder(Component.literal("Custom Heads"),
-                        ignored -> setTab(Tab.CUSTOM))
-                .bounds(left + 16, top + 36, 101, 21).build());
-        addRenderableWidget(Button.builder(Component.literal("Player Heads"),
-                        ignored -> setTab(Tab.PLAYER))
-                .bounds(left + 118, top + 36, 101, 21).build());
-        addRenderableWidget(Button.builder(Component.literal("Mob Heads"),
-                        ignored -> setTab(Tab.MOB))
-                .bounds(left + 220, top + 36, 100, 21).build());
+        String[] names = {"Custom", "Players", "Mobs", "Favorites", "History"};
+        Tab[] tabs = Tab.values();
+        for (int i = 0; i < tabs.length; i++) {
+            final Tab selected = tabs[i];
+            addRenderableWidget(Button.builder(Component.literal(names[i]),
+                    ignored -> setTab(selected))
+                    .bounds(left + 15 + i * 62, top + 36, 61, 21).build());
+        }
 
         search = addRenderableWidget(new EditBox(
                 font, left + 18, top + 64, 185, 20,
@@ -85,10 +87,14 @@ public final class HeadVendingScreen extends Screen {
         buyButtons.clear();
         for (int i = 0; i < MAX_RESULTS; i++) {
             final int resultIndex = i;
-            Button button = Button.builder(
-                    Component.literal("Buy: 1 Emerald"),
-                    ignored -> buy(resultIndex)
-            ).bounds(left + 221, top + 94 + i * 21, 99, 18).build();
+            Button star = Button.builder(Component.literal("☆"),
+                    ignored -> toggleFavorite(resultIndex))
+                    .bounds(left + 221, top + 94 + i * 21, 23, 18).build();
+            starButtons.add(star);
+            addRenderableWidget(star);
+            Button button = Button.builder(Component.literal("Buy"),
+                    ignored -> buy(resultIndex))
+                    .bounds(left + 245, top + 94 + i * 21, 75, 18).build();
             buyButtons.add(button);
             addRenderableWidget(button);
         }
@@ -109,6 +115,8 @@ public final class HeadVendingScreen extends Screen {
             case CUSTOM -> "Search decorative heads...";
             case PLAYER -> "Enter a player username...";
             case MOB -> "Search vanilla mob heads...";
+            case FAVORITES -> "Filter your favorites...";
+            case HISTORY -> "Filter recent purchases...";
         };
     }
 
