@@ -20,6 +20,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.7.0'
+      - name: Verify HeadDB head-search API (nonblocking)
+        continue-on-error: true
+        run: python3 scripts/head_db_api_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()
