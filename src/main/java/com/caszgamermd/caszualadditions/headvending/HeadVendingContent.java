@@ -277,40 +277,18 @@ public final class HeadVendingContent {
             return;
         }
 
-        CustomHeadCatalog.load().whenComplete((catalog, error) ->
+        HeadDbSearch.findMobAsync(key.replace('_', ' ')).whenComplete((head, error) ->
                 server.execute(() -> {
                     ServerPlayer current = server.getPlayerList().getPlayer(player.getUUID());
                     if (current == null || !validMachine(current, payload.pos())) return;
-                    if (error != null) {
-                        status(current, "Mob-head textures are temporarily unavailable.", false);
-                        return;
-                    }
-                    String desired = key.replace('_', ' ');
-                    // Prefer exact vanilla mob names, then named variants such
-                    // as "Cow (Brown)". Never allow prefix collisions like
-                    // "cow" accidentally matching "cowboy".
-                    String searchName = desired.toLowerCase(java.util.Locale.ROOT);
-                    CustomHeadCatalog.Head match = catalog.heads().stream()
-                            .filter(head -> {
-                                String candidate = head.name().toLowerCase(java.util.Locale.ROOT)
-                                        .replaceAll("[^a-z0-9]+", " ").trim();
-                                return candidate.equals(searchName)
-                                        || candidate.equals(searchName + " head");
-                            })
-                            .findFirst().orElse(null);
-                    if (match == null) {
-                        match = catalog.heads().stream()
-                                .filter(head -> head.name().toLowerCase(java.util.Locale.ROOT)
-                                        .replaceAll("[^a-z0-9]+", " ").trim()
-                                        .startsWith(searchName + " "))
-                                .findFirst().orElse(null);
-                    }
-                    if (match == null) {
-                        status(current, "No verified " + displayName(key) + " head texture found.", false);
+                    if (head == null) {
+                        status(current, "No matching " + displayName(key)
+                                + " head is available from HeadDB.", false);
                         return;
                     }
                     completePurchase(current, CustomHeadCatalog.createHead(
-                            displayName(key) + " Head", match.hash()), displayName(key) + " Head", "mob", key);
+                            displayName(key) + " Head", head.hash()),
+                            displayName(key) + " Head", "mob", key);
                 }));
     }
 
@@ -319,18 +297,13 @@ public final class HeadVendingContent {
             MinecraftServer server, ServerPlayer player, SearchCustom request
     ) {
         if (!validMachine(player, request.pos())) return;
-        CustomHeadCatalog.load().whenComplete((catalog, error) ->
-                server.execute(() -> {
+        HeadDbSearch.searchAsync(request.query(), request.category(), request.page())
+                .whenComplete((data, error) -> server.execute(() -> {
                     ServerPlayer current = server.getPlayerList().getPlayer(player.getUUID());
                     if (current == null || !validMachine(current, request.pos())) return;
-                    String data;
-                    if (error != null) {
-                        data = CustomHeadCatalog.Catalog.failure(
-                                request.query(), request.category(), request.page());
-                    } else {
-                        data = catalog.search(request.query(), request.category(), request.page());
-                    }
-                    ServerPlayNetworking.send(current, new CustomResults(request.pos(), data));
+                    String answer = error == null ? data : CustomHeadCatalog.Catalog.failure(
+                            request.query(), request.category(), request.page());
+                    ServerPlayNetworking.send(current, new CustomResults(request.pos(), answer));
                 }));
     }
 
@@ -344,25 +317,15 @@ public final class HeadVendingContent {
             return;
         }
 
-        CustomHeadCatalog.load().whenComplete((catalog, error) ->
-                server.execute(() -> {
-                    ServerPlayer current = server.getPlayerList().getPlayer(player.getUUID());
-                    if (current == null || !validMachine(current, request.pos())) return;
-                    if (error != null) {
-                        status(current, "Custom heads are temporarily unavailable.", false);
-                        return;
-                    }
-                    CustomHeadCatalog.Head head = catalog.find(hash);
-                    if (head == null) {
-                        status(current, "That head is not in the catalog.", false);
-                        return;
-                    }
-                    completePurchase(
-                            current,
-                            CustomHeadCatalog.createHead(head.name(), head.hash()),
-                            head.name(), "custom", head.hash()
-                    );
-                }));
+        // Only hashes previously returned by HeadDB on this server are valid.
+        // Clients cannot submit arbitrary texture URLs or forged hash values.
+        CustomHeadCatalog.Head head = HeadDbSearch.verified(hash);
+        if (head == null) {
+            status(player, "Search for this head again before purchasing.", false);
+            return;
+        }
+        completePurchase(player, CustomHeadCatalog.createHead(head.name(), head.hash()),
+                head.name(), "custom", head.hash());
     }
 
     private static boolean validMachine(ServerPlayer player, BlockPos pos) {
