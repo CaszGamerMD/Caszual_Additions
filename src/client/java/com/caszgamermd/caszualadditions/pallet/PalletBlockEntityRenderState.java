@@ -14,19 +14,23 @@ public final class PalletBlockEntityRenderState extends BlockEntityRenderState {
      */
     public static final int DISPLAY_COLUMNS = 3;
     public static final int DISPLAY_ROWS = 3;
-    public static final int DISPLAY_LAYERS = 7;
+    public static final int DISPLAY_LAYERS = 8;
     public static final int DISPLAY_CAPACITY =
             DISPLAY_COLUMNS * DISPLAY_ROWS * DISPLAY_LAYERS;
-    public static final float ITEM_SCALE = 0.55F;
-    public static final float FIRST_LAYER_Y = 0.60F;
-    public static final float LAYER_SPACING = 0.65F;
+    public static final float ITEM_SCALE = 0.5F;
+    public static final float FIRST_LAYER_Y = 0.5625F;
+    public static final float LAYER_SPACING = 0.5625F;
 
     public final BlockModelRenderState base = new BlockModelRenderState();
+    public final BlockModelRenderState carton = new BlockModelRenderState();
+    public final BlockModelRenderState[] boards = new BlockModelRenderState[4];
+    public final boolean[] boxed = new boolean[DISPLAY_CAPACITY];
     public final ItemStackRenderState[] items = new ItemStackRenderState[DISPLAY_CAPACITY];
     public int visibleCount;
     public boolean root;
 
     public PalletBlockEntityRenderState() {
+        for (int i = 0; i < boards.length; i++) boards[i] = new BlockModelRenderState();
         for (int i = 0; i < items.length; i++) {
             items[i] = new ItemStackRenderState();
         }
