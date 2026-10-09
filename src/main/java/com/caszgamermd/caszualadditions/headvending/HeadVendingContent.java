@@ -77,6 +77,56 @@ public final class HeadVendingContent {
         }
     }
 
+
+    /** Search/filter requests are processed against the server's catalog only. */
+    public record SearchCustom(BlockPos pos, String query, String category, int page)
+            implements CustomPacketPayload {
+        public static final Type<SearchCustom> TYPE =
+                new Type<>(CaszualAdditions.id("search_custom_heads"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, SearchCustom> CODEC =
+                StreamCodec.composite(
+                        BlockPos.STREAM_CODEC, SearchCustom::pos,
+                        ByteBufCodecs.stringUtf8(48), SearchCustom::query,
+                        ByteBufCodecs.stringUtf8(40), SearchCustom::category,
+                        ByteBufCodecs.INT, SearchCustom::page,
+                        SearchCustom::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    public record CustomResults(BlockPos pos, String json) implements CustomPacketPayload {
+        public static final Type<CustomResults> TYPE =
+                new Type<>(CaszualAdditions.id("custom_head_results"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, CustomResults> CODEC =
+                StreamCodec.composite(
+                        BlockPos.STREAM_CODEC, CustomResults::pos,
+                        ByteBufCodecs.stringUtf8(16384), CustomResults::json,
+                        CustomResults::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    public record BuyCustom(BlockPos pos, String hash) implements CustomPacketPayload {
+        public static final Type<BuyCustom> TYPE =
+                new Type<>(CaszualAdditions.id("buy_custom_head"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, BuyCustom> CODEC =
+                StreamCodec.composite(
+                        BlockPos.STREAM_CODEC, BuyCustom::pos,
+                        ByteBufCodecs.stringUtf8(128), BuyCustom::hash,
+                        BuyCustom::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     public static void initialize() {
         Identifier id = CaszualAdditions.id("player_head_vending_machine");
         ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
@@ -111,11 +161,26 @@ public final class HeadVendingContent {
 
         PayloadTypeRegistry.clientboundPlay().register(Open.TYPE, Open.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(Purchase.TYPE, Purchase.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(SearchCustom.TYPE, SearchCustom.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(BuyCustom.TYPE, BuyCustom.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(CustomResults.TYPE, CustomResults.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(
                 Purchase.TYPE,
                 (payload, context) -> context.server().execute(() ->
                         handlePurchase(context.server(), context.player(), payload))
+        );
+
+        ServerPlayNetworking.registerGlobalReceiver(
+                SearchCustom.TYPE,
+                (payload, context) -> context.server().execute(() ->
+                        handleCustomSearch(context.server(), context.player(), payload))
+        );
+
+        ServerPlayNetworking.registerGlobalReceiver(
+                BuyCustom.TYPE,
+                (payload, context) -> context.server().execute(() ->
+                        handleCustomPurchase(context.server(), context.player(), payload))
         );
     }
 
@@ -188,6 +253,57 @@ public final class HeadVendingContent {
                 new ItemStack(item),
                 displayName(key) + " Head"
         );
+    }
+
+
+    private static void handleCustomSearch(
+            MinecraftServer server, ServerPlayer player, SearchCustom request
+    ) {
+        if (!validMachine(player, request.pos())) return;
+        CustomHeadCatalog.load().whenComplete((catalog, error) ->
+                server.execute(() -> {
+                    ServerPlayer current = server.getPlayerList().getPlayer(player.getUUID());
+                    if (current == null || !validMachine(current, request.pos())) return;
+                    String data;
+                    if (error != null) {
+                        data = CustomHeadCatalog.Catalog.failure(
+                                request.query(), request.category(), request.page());
+                    } else {
+                        data = catalog.search(request.query(), request.category(), request.page());
+                    }
+                    ServerPlayNetworking.send(current, new CustomResults(request.pos(), data));
+                }));
+    }
+
+    private static void handleCustomPurchase(
+            MinecraftServer server, ServerPlayer player, BuyCustom request
+    ) {
+        if (!validMachine(player, request.pos())) return;
+        String hash = request.hash().toLowerCase(java.util.Locale.ROOT);
+        if (!hash.matches("[a-f0-9]{32,128}")) {
+            status(player, "That custom head is invalid.", false);
+            return;
+        }
+
+        CustomHeadCatalog.load().whenComplete((catalog, error) ->
+                server.execute(() -> {
+                    ServerPlayer current = server.getPlayerList().getPlayer(player.getUUID());
+                    if (current == null || !validMachine(current, request.pos())) return;
+                    if (error != null) {
+                        status(current, "Custom heads are temporarily unavailable.", false);
+                        return;
+                    }
+                    CustomHeadCatalog.Head head = catalog.find(hash);
+                    if (head == null) {
+                        status(current, "That head is not in the catalog.", false);
+                        return;
+                    }
+                    completePurchase(
+                            current,
+                            CustomHeadCatalog.createHead(head.name(), head.hash()),
+                            head.name()
+                    );
+                }));
     }
 
     private static boolean validMachine(ServerPlayer player, BlockPos pos) {

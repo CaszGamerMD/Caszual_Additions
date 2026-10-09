@@ -14,5 +14,14 @@ public final class HeadVendingClient {
                         )
                 )
         );
+
+        ClientPlayNetworking.registerGlobalReceiver(
+                HeadVendingContent.CustomResults.TYPE,
+                (payload, context) -> context.client().execute(() -> {
+                    if (context.client().gui.screen() instanceof HeadVendingScreen screen) {
+                        screen.acceptCustomResults(payload.pos(), payload.json());
+                    }
+                })
+        );
     }
 }
