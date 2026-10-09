@@ -24,7 +24,6 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.Unit;
 import net.minecraft.world.entity.player.PlayerModelType;
 import net.minecraft.world.level.block.SkullBlock;
 import net.minecraft.world.phys.Vec3;
@@ -38,9 +37,9 @@ public final class PlayerPlushieBlockEntityRenderer
 
     private final PlayerSkinRenderCache skinCache;
     private final ItemModelResolver itemModelResolver;
-    private final Model.Simple wideModel;
-    private final Model.Simple slimModel;
-    private final Model.Simple woolBodyModel;
+    private final PosedPlushieModel wideModel;
+    private final PosedPlushieModel slimModel;
+    private final PosedPlushieModel woolBodyModel;
     private final SkullModelBase playerHeadModel;
 
     public PlayerPlushieBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
@@ -52,7 +51,7 @@ public final class PlayerPlushieBlockEntityRenderer
         playerHeadModel = SkullBlockRenderer.createModel(context.entityModelSet(), SkullBlock.Types.PLAYER);
     }
 
-    private static Model.Simple createModel(boolean slim, boolean showHead) {
+    private static PosedPlushieModel createModel(boolean slim, boolean showHead) {
         var root = LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, slim), 64, 64).bakeRoot();
         root.getChild("head").visible = showHead;
 
@@ -63,7 +62,7 @@ public final class PlayerPlushieBlockEntityRenderer
         root.getChild("right_leg").xRot = -0.18F;
         root.getChild("left_leg").xRot = -0.18F;
 
-        return new Model.Simple(root, showHead ? RenderTypes::entityTranslucent : RenderTypes::entityCutout);
+        return new PosedPlushieModel(root, showHead);
     }
 
     @Override
@@ -117,11 +116,10 @@ public final class PlayerPlushieBlockEntityRenderer
 
         PlayerSkinRenderCache.RenderInfo resolved = resolvedSkin(state);
         if (resolved != null) {
-            Model.Simple model = resolved.playerSkin().model() == PlayerModelType.SLIM ? slimModel : wideModel;
-            poseModel(model, state.pose);
+            PosedPlushieModel model = resolved.playerSkin().model() == PlayerModelType.SLIM ? slimModel : wideModel;
             collector.submitModel(
                     model,
-                    Unit.INSTANCE,
+                    state.pose,
                     poseStack,
                     resolved.renderType(),
                     state.lightCoords,
@@ -130,10 +128,9 @@ public final class PlayerPlushieBlockEntityRenderer
                     state.breakProgress
             );
         } else {
-            poseModel(woolBodyModel, state.pose);
             collector.submitModel(
                     woolBodyModel,
-                    Unit.INSTANCE,
+                    state.pose,
                     poseStack,
                     WHITE_WOOL,
                     state.lightCoords,
@@ -170,9 +167,29 @@ public final class PlayerPlushieBlockEntityRenderer
         poseStack.popPose();
     }
 
+    /**
+     * The collector defers rendering and calls Model.setupAnim for each queued
+     * submission. Model.Simple.setupAnim resets the pose, which used to erase
+     * every plushie animation before the mesh was rendered. Carry the pose as
+     * immutable render state and apply it AFTER the vanilla reset instead.
+     *
+     * A shared model can now render adjacent plushies with different poses
+     * without the last submission overriding every other plushie's limbs.
+     */
+    private static final class PosedPlushieModel extends Model<Integer> {
+        private PosedPlushieModel(ModelPart root, boolean showHead) {
+            super(root, showHead ? RenderTypes::entityTranslucent : RenderTypes::entityCutout);
+        }
+
+        @Override
+        public void setupAnim(Integer pose) {
+            super.setupAnim(pose);
+            poseModel(root(), pose == null ? 0 : pose);
+        }
+    }
+
     /** Reset every part before posing because the models are shared between plushies. */
-    private static void poseModel(Model.Simple model, int pose) {
-        ModelPart root = model.root();
+    private static void poseModel(ModelPart root, int pose) {
         ModelPart head = root.getChild("head");
         ModelPart body = root.getChild("body");
         ModelPart right = root.getChild("right_arm");
