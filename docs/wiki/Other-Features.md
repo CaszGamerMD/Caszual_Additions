@@ -4,6 +4,10 @@
 
 ## Player Head Vending Machine
 
+The head vending machine is a **1 block wide × 1 block deep × 2 blocks tall** appliance. Its two halves form one unit: place it with a clear block above, right-click either half to open the UI, and breaking one half removes the whole machine.
+
+The custom 3D model includes a large player-head screen, three category indicators, a chest-styled head-dispenser drawer, green emerald payment slot, reinforced steel casing, side vents, and cyan accent lighting.
+
 The vending machine provides three tabs:
 
 1. **Custom Heads** — search a remote decorative-head catalog by name, category and keywords, view previews, and browse pages.
@@ -22,7 +26,7 @@ I E I
 
 I = iron ingot, H = player head, C = chest, E = emerald.
 
-[Head database details](https://github.com/CaszGamerMD/Caszual_Additions/blob/main/docs/head-vending-custom-heads.md)
+[Head database details](https://github.com/CaszGamerMD/Caszual_Additions/blob/main/docs/head-vending-custom-heads.md) · [3D model and Blockbench editing guide](https://github.com/CaszGamerMD/Caszual_Additions/blob/main/docs/blockbench/player-head-vending-machine.md)
 
 ## Player Plushie
 
