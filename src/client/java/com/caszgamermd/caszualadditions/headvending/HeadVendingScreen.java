@@ -276,6 +276,70 @@ public final class HeadVendingScreen extends Screen {
         }
     }
 
+    public void acceptSavedHeads(String json) {
+        try {
+            JsonObject data = JsonParser.parseString(json).getAsJsonObject();
+            favorites.clear();
+            history.clear();
+            for (JsonElement entry : data.getAsJsonArray("favorites")) {
+                SavedHead parsed = parseSaved(entry.getAsString());
+                if (parsed != null) favorites.add(parsed);
+            }
+            for (JsonElement entry : data.getAsJsonArray("history")) {
+                SavedHead parsed = parseSaved(entry.getAsString());
+                if (parsed != null) history.add(parsed);
+            }
+            if (tab == Tab.FAVORITES || tab == Tab.HISTORY) refreshResults();
+            else updateButtons();
+        } catch (RuntimeException ignored) {
+            // Keep screen functional when the server data cannot be parsed.
+        }
+    }
+
+    private static SavedHead parseSaved(String raw) {
+        String[] parts = raw.split("\\|", 3);
+        return parts.length == 3 ? new SavedHead(parts[0], parts[1], parts[2]) : null;
+    }
+
+    private Result resultForSaved(SavedHead saved) {
+        Kind kind;
+        ItemStack item;
+        switch (saved.kind()) {
+            case "player" -> {
+                kind = Kind.PLAYER;
+                item = new ItemStack(Items.PLAYER_HEAD);
+                item.set(DataComponents.PROFILE, ResolvableProfile.createUnresolved(saved.target()));
+            }
+            case "mob" -> {
+                kind = Kind.MOB;
+                var mob = HeadVendingContent.MOB_HEADS.get(saved.target());
+                if (mob == null) return null;
+                item = new ItemStack(mob);
+            }
+            case "custom" -> {
+                kind = Kind.CUSTOM;
+                item = CustomHeadCatalog.createHead(saved.label(), saved.target());
+                if (item.isEmpty()) return null;
+            }
+            default -> { return null; }
+        }
+        return new Result(saved.label(), saved.kind(), item, kind, saved.target());
+    }
+
+    private boolean isFavorite(Result result) {
+        String kind = result.kind().name().toLowerCase(Locale.ROOT);
+        return favorites.stream().anyMatch(entry -> entry.kind().equals(kind)
+                && entry.target().equalsIgnoreCase(result.target()));
+    }
+
+    private void toggleFavorite(int index) {
+        if (index < 0 || index >= results.size()) return;
+        Result entry = results.get(index);
+        ClientPlayNetworking.send(new HeadVendingBookmarks.Toggle(machinePos,
+                entry.kind().name().toLowerCase(Locale.ROOT),
+                entry.target(), entry.label()));
+    }
+
     private void buy(int index) {
         if (index < 0 || index >= results.size()) return;
         Result result = results.get(index);
@@ -344,6 +408,8 @@ public final class HeadVendingScreen extends Screen {
     public boolean isPauseScreen() {
         return false;
     }
+
+    private record SavedHead(String kind, String target, String label) {}
 
     private record Result(
             String label, String category, ItemStack stack, Kind kind, String target
