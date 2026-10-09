@@ -8,13 +8,15 @@ The head vending machine is a **1 block wide × 1 block deep × 2 blocks tall** 
 
 The custom 3D model includes a large player-head screen, three category indicators, a chest-styled head-dispenser drawer, green emerald payment slot, reinforced steel casing, side vents, and cyan accent lighting.
 
-The vending machine provides three tabs:
+The vending machine now has five tabs:
 
 1. **Custom Heads** — search a remote decorative-head catalog by name, category and keywords, view previews, and browse pages.
 2. **Player Heads** — enter a Minecraft username for that player's head.
-3. **Mob Heads** — choose from vanilla skulls/heads: skeleton, wither skeleton, zombie, creeper, piglin and dragon.
+3. **Mob Heads** — browse vanilla mobs with search and pages. Existing vanilla skulls are dispensed directly; mobs without vanilla skulls are resolved by a matching HeadDB decorative texture, which may not be available for every name.
+4. **Favorites** — star a custom, player, or mob head to save it for later. Favorites are stored per player, not per machine.
+5. **History** — shows up to 30 recently purchased heads per player; purchase a previously generated head again from this tab.
 
-Every purchase is **one emerald per head**. The server verifies the machine, range, stored catalogue entry and payment. The custom-head catalog is cached, and external data availability depends on the third-party source.
+In **Survival**, each purchase costs **one emerald**. **Creative-mode players receive heads for free**. The server validates the machine, range, catalog entries, and any required emerald payment. The custom-head catalog is cached, and external data availability depends on the third-party source.
 
 **Recipe**
 
@@ -31,6 +33,8 @@ I = iron ingot, H = player head, C = chest, E = emerald.
 ## Player Plushie
 
 A decorative plushie that retains the identity/texture data of the player head used to craft it.
+
+**Right-click with an empty hand to cycle 12 poses:** standing, sitting, reading an enchanted book, sword, axe, pickaxe, hoe, searching with a spyglass, running, sleeping, waving, and crying. The pose is stored in the block entity, synchronized to clients, and retained when the plushie is picked up.
 
 **Recipe:** eight **white wool** blocks + one **player head**, anywhere in a 3×3 grid (shapeless custom recipe; all nine positions are used). The placed block retains the profile and drops a matching plushie.
 
