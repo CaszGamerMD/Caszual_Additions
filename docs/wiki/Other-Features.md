@@ -16,7 +16,7 @@ The vending machine now has five tabs:
 4. **Favorites** — star a custom, player, or mob head to save it for later. Favorites are stored per player, not per machine.
 5. **History** — shows up to 30 recently purchased heads per player; purchase a previously generated head again from this tab.
 
-In **Survival**, each purchase costs **one emerald**. **Creative-mode players receive heads for free**. The server validates the machine, range, catalog entries, and any required emerald payment. The custom-head catalog is cached, and external data availability depends on the third-party source.
+In **Survival**, each purchase costs **one emerald**. **Creative-mode players receive heads for free**. The server validates the machine, range, catalog entries, and any required emerald payment. Custom-head searches use a small paginated request to HeadDB; the vending GUI includes a **Refresh** control. Access requires outbound HTTPS from the server to headdb.net. The remote API is independently operated.
 
 **Recipe**
 

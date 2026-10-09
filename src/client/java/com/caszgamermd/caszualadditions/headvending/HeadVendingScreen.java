@@ -39,6 +39,7 @@ public final class HeadVendingScreen extends Screen {
     private String category = "all";
     private EditBox search;
     private Button categoryButton;
+    private Button refreshButton;
     private Button previousButton;
     private Button nextButton;
     private int page;
@@ -66,6 +67,10 @@ public final class HeadVendingScreen extends Screen {
                     ignored -> setTab(selected))
                     .bounds(left + 15 + i * 62, top + 36, 61, 21).build());
         }
+
+        refreshButton = addRenderableWidget(Button.builder(
+                Component.literal("Refresh"), ignored -> refreshResults()
+        ).bounds(left + 227, top + 10, 62, 18).build());
 
         search = addRenderableWidget(new EditBox(
                 font, left + 18, top + 64, 185, 20,
@@ -264,6 +269,7 @@ public final class HeadVendingScreen extends Screen {
                 star.setMessage(Component.literal(isFavorite(entry) ? "★" : "☆"));
             }
         }
+        if (refreshButton != null) refreshButton.visible = tab == Tab.CUSTOM;
         if (categoryButton != null) {
             categoryButton.visible = tab == Tab.CUSTOM;
             String label = category.length() > 11 ? category.substring(0, 10) + "..." : category;

@@ -14,22 +14,32 @@ Survival purchases cost one emerald each, including custom heads. Players in Cre
 that the machine still exists and is nearby, verifies the selected custom head
 against the loaded catalog, and performs the emerald transaction.
 
-## Database
+## Custom head search
 
-The server downloads the public compatibility catalog from
-[HeadDB](https://headdb.net/). The endpoint is part of HeadDB's public v1 API
-and does not require an API key. Only names, categories, tags for searching,
-and texture hashes are used. The mod does **not** ship a copy of the catalog.
+The vending machine searches the **official public HeadDB API** using short,
+paginated requests. It no longer downloads the entire legacy catalog before
+the first search. Each request fetches only the pages needed to fill the
+vending screen's seven result rows.
 
-- Internet access to `headdb.net` is required for the first custom-head
-  search after server startup.
-- The downloaded catalog is shared across players in server memory for six
-  hours. It is not fetched on every machine opening.
-- After a failed refresh, previously loaded data remains available; initial
-  failures show an error and are retried after two minutes.
-- Player heads and the six native vanilla skull types continue to work without the external catalog. Other vanilla mob head textures require a matching entry from the online catalog.
-- The server never accepts an arbitrary custom texture from a client. Custom
-  purchases supply a hash that must match a loaded catalog entry.
+- Search by name or keywords; switch categories using the separate HeadDB
+  category listing. Categories are cached for an hour.
+- **Refresh** retries the current custom-head search if a previous request
+  failed or timed out.
+- The server sends clear status/errors back to the GUI rather than leaving
+  the screen indefinitely in a loading state.
+- Purchases are authorized using head texture hashes that were returned
+  from the real HeadDB catalog to this server. Arbitrary client-supplied
+  texture hashes are never accepted.
+- The catalog service runs at [headdb.net](https://headdb.net/). The **server
+  host**, not just the client PC, must be able to reach
+  `https://headdb.net/api/v1/heads` and `/api/v1/categories`.
+- Custom-head search, non-native vanilla mob heads and texture previews
+  require the HeadDB service to be accessible. Native vanilla skulls and
+  normal player-name heads do not require the HeadDB catalog.
 
-HeadDB is an independent service. Catalog availability and updates depend on
-its maintainers; it is not part of Minecraft or Mojang.
+**Connectivity check:** If the GUI says that HeadDB could not be reached,
+check the server's outbound HTTPS/DNS access and use Refresh. HeadDB is an
+independent third-party service; downtime and service limits are outside
+Caszual Additions' control.
+
+[HeadDB API documentation](https://headdb.net/docs/api)
