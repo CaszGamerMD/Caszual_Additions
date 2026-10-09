@@ -321,7 +321,15 @@ public final class HeadVendingContent {
         // Clients cannot submit arbitrary texture URLs or forged hash values.
         CustomHeadCatalog.Head head = HeadDbSearch.verified(hash);
         if (head == null) {
-            status(player, "Search for this head again before purchasing.", false);
+            String label = HeadVendingBookmarks.previouslyPurchasedCustom(player, hash);
+            if (label == null) {
+                status(player, "Search for this head again before purchasing.", false);
+                return;
+            }
+            // This hash was already validated by the server and recorded
+            // as a successful purchase in this player's persistent history.
+            completePurchase(player, CustomHeadCatalog.createHead(label, hash),
+                    label, "custom", hash);
             return;
         }
         completePurchase(player, CustomHeadCatalog.createHead(head.name(), head.hash()),
