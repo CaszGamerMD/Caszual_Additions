@@ -2,7 +2,6 @@ package com.caszgamermd.caszualadditions.utils;
 
 import com.caszgamermd.caszualadditions.utils.cosmetics.CosmeticGuide;
 import com.caszgamermd.caszualadditions.utils.cosmetics.CosmeticGuideScreen;
-import com.caszgamermd.caszualadditions.utils.mixin.MinecraftScreenAccessor;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleProviderRegistry;
 import net.minecraft.client.particle.FireflyParticle;
@@ -15,8 +14,7 @@ public final class CaszUtilsClient {
         ClientPlayNetworking.registerGlobalReceiver(
                 CosmeticGuide.OpenGuide.TYPE,
                 (payload, context) -> context.client().execute(() ->
-                        ((MinecraftScreenAccessor)(Object) context.client())
-                                .caszual_additions$setScreen(new CosmeticGuideScreen()))
+                        context.client().gui.setScreen(new CosmeticGuideScreen()))
         );
 
         FireflyGlass.PARTICLES.forEach((color, type) -> {

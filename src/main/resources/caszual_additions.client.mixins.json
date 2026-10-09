@@ -16,8 +16,7 @@
     "CreativeInventoryCosmeticsMixin",
     "SpecialModelRenderersAccessor",
     "PlayerPlushieCuddleMixin",
-    "QuarterCreativeBreakClientMixin",
-    "MinecraftScreenAccessor"
+    "QuarterCreativeBreakClientMixin"
   ],
   "injectors": {
     "defaultRequire": 1
