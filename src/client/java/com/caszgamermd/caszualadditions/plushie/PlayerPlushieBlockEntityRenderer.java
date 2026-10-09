@@ -4,6 +4,10 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import java.util.Optional;
 import net.minecraft.client.model.Model;
+import net.minecraft.client.renderer.item.ItemModelResolver;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
@@ -33,6 +37,7 @@ public final class PlayerPlushieBlockEntityRenderer
     private static final float ANCHOR_Y = 0.63F;
 
     private final PlayerSkinRenderCache skinCache;
+    private final ItemModelResolver itemModelResolver;
     private final Model.Simple wideModel;
     private final Model.Simple slimModel;
     private final Model.Simple woolBodyModel;
@@ -40,6 +45,7 @@ public final class PlayerPlushieBlockEntityRenderer
 
     public PlayerPlushieBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
         skinCache = context.playerSkinRenderCache();
+        itemModelResolver = context.itemModelResolver();
         wideModel = createModel(false, true);
         slimModel = createModel(true, true);
         woolBodyModel = createModel(false, false);
@@ -77,6 +83,20 @@ public final class PlayerPlushieBlockEntityRenderer
         state.profile = blockEntity.profile();
         state.facing = blockEntity.getBlockState().getValue(PlayerPlushieBlock.FACING);
         state.pose = blockEntity.pose();
+        ItemStack prop = switch (state.pose) {
+            case 2 -> new ItemStack(Items.ENCHANTED_BOOK);
+            case 3 -> new ItemStack(Items.IRON_SWORD);
+            case 4 -> new ItemStack(Items.IRON_AXE);
+            case 5 -> new ItemStack(Items.IRON_PICKAXE);
+            case 6 -> new ItemStack(Items.IRON_HOE);
+            case 7 -> new ItemStack(Items.SPYGLASS);
+            default -> ItemStack.EMPTY;
+        };
+        state.prop.clear();
+        if (!prop.isEmpty()) {
+            itemModelResolver.updateForTopItem(state.prop, prop,
+                    ItemDisplayContext.FIXED, blockEntity.getLevel(), null, 0);
+        }
     }
 
     @Override
@@ -139,6 +159,14 @@ public final class PlayerPlushieBlockEntityRenderer
             }
         }
 
+        if (state.pose >= 2 && state.pose <= 7) {
+            poseStack.pushPose();
+            poseStack.translate(-0.17F, -0.12F, -0.48F);
+            poseStack.mulPose(Axis.XP.rotationDegrees(30));
+            poseStack.scale(0.48F, 0.48F, 0.48F);
+            state.prop.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+            poseStack.popPose();
+        }
         poseStack.popPose();
     }
 
