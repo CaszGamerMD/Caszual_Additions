@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import java.util.Optional;
 import net.minecraft.client.model.Model;
+import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.object.skull.SkullModelBase;
@@ -75,6 +76,7 @@ public final class PlayerPlushieBlockEntityRenderer
         BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTicks, cameraPosition, breakProgress);
         state.profile = blockEntity.profile();
         state.facing = blockEntity.getBlockState().getValue(PlayerPlushieBlock.FACING);
+        state.pose = blockEntity.pose();
     }
 
     @Override
@@ -87,11 +89,16 @@ public final class PlayerPlushieBlockEntityRenderer
         poseStack.pushPose();
         poseStack.translate(0.5F, ANCHOR_Y, 0.5F);
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - state.facing.toYRot()));
+        if (state.pose == 9) {
+            poseStack.translate(0.0F, -0.40F, -0.12F);
+            poseStack.mulPose(Axis.XP.rotationDegrees(-88.0F));
+        }
         poseStack.scale(-SCALE, -SCALE, SCALE);
 
         PlayerSkinRenderCache.RenderInfo resolved = resolvedSkin(state);
         if (resolved != null) {
             Model.Simple model = resolved.playerSkin().model() == PlayerModelType.SLIM ? slimModel : wideModel;
+            poseModel(model, state.pose);
             collector.submitModel(
                     model,
                     Unit.INSTANCE,
@@ -103,6 +110,7 @@ public final class PlayerPlushieBlockEntityRenderer
                     state.breakProgress
             );
         } else {
+            poseModel(woolBodyModel, state.pose);
             collector.submitModel(
                     woolBodyModel,
                     Unit.INSTANCE,
@@ -132,6 +140,71 @@ public final class PlayerPlushieBlockEntityRenderer
         }
 
         poseStack.popPose();
+    }
+
+    /** Reset every part before posing because the models are shared between plushies. */
+    private static void poseModel(Model.Simple model, int pose) {
+        ModelPart root = model.root();
+        ModelPart head = root.getChild("head");
+        ModelPart body = root.getChild("body");
+        ModelPart right = root.getChild("right_arm");
+        ModelPart left = root.getChild("left_arm");
+        ModelPart rightLeg = root.getChild("right_leg");
+        ModelPart leftLeg = root.getChild("left_leg");
+        head.xRot = head.yRot = head.zRot = 0;
+        body.xRot = body.yRot = body.zRot = 0;
+        right.xRot = left.xRot = -0.20F;
+        right.zRot = 0.10F;
+        left.zRot = -0.10F;
+        right.yRot = left.yRot = 0;
+        rightLeg.xRot = leftLeg.xRot = -0.18F;
+        rightLeg.yRot = leftLeg.yRot = 0;
+        rightLeg.zRot = leftLeg.zRot = 0;
+        switch (pose) {
+            case 1 -> {
+                rightLeg.xRot = leftLeg.xRot = -1.35F;
+                right.xRot = left.xRot = -0.50F;
+            }
+            case 2 -> {
+                head.xRot = 0.32F;
+                right.xRot = left.xRot = -1.00F;
+                right.yRot = -0.38F;
+                left.yRot = 0.38F;
+            }
+            case 3, 4, 5, 6 -> {
+                right.xRot = -1.35F;
+                right.zRot = -0.18F;
+                left.xRot = -0.40F;
+            }
+            case 7 -> {
+                head.xRot = -0.10F;
+                right.xRot = -1.72F;
+                right.yRot = -0.34F;
+            }
+            case 8 -> {
+                right.xRot = -1.05F;
+                left.xRot = 0.95F;
+                rightLeg.xRot = 1.00F;
+                leftLeg.xRot = -1.00F;
+                body.xRot = 0.17F;
+            }
+            case 9 -> {
+                right.xRot = left.xRot = -0.12F;
+                rightLeg.xRot = leftLeg.xRot = 0;
+            }
+            case 10 -> {
+                right.xRot = -2.55F;
+                right.zRot = 0.40F;
+                head.yRot = 0.18F;
+            }
+            case 11 -> {
+                head.xRot = 0.68F;
+                right.xRot = left.xRot = -1.40F;
+                right.yRot = -0.20F;
+                left.yRot = 0.20F;
+            }
+            default -> {}
+        }
     }
 
     private @Nullable PlayerSkinRenderCache.RenderInfo resolvedSkin(PlayerPlushieRenderState state) {
