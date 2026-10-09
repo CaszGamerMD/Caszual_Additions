@@ -13,6 +13,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.level.block.AbstractSkullBlock;
 import net.minecraft.world.level.block.SkullBlock;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -59,9 +60,14 @@ public abstract class AvatarCosmeticsMixin {
             state.wornHeadType = null;
             state.wornHeadProfile = null;
 
-            if (SpecialCosmetics.isPlayerHead(head)) {
-                state.wornHeadType = SkullBlock.Types.PLAYER;
-                state.wornHeadProfile = head.get(DataComponents.PROFILE);
+            // A cosmetic skull needs the same renderer as a normally equipped mob head.
+            // Rendering it as a generic HEAD block item makes previews much too small.
+            if (head.getItem() instanceof BlockItem blockItem
+                    && blockItem.getBlock() instanceof AbstractSkullBlock skull) {
+                state.wornHeadType = skull.getType();
+                if (SpecialCosmetics.isPlayerHead(head)) {
+                    state.wornHeadProfile = head.get(DataComponents.PROFILE);
+                }
             } else if (SpecialCosmetics.isBone(head)) {
                 state.wornHeadType = SkullBlock.Types.SKELETON;
             } else if (head.getItem() instanceof BlockItem
