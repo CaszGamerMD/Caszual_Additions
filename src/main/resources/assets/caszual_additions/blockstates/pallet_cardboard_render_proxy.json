@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "caszual_additions:block/pallet_cardboard_render_proxy"
+    }
+  }
+}
