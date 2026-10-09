@@ -33,7 +33,7 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
     private static final Identifier FISH_TEXTURE = Identifier.withDefaultNamespace("textures/block/white_concrete.png");
     private static final Identifier GUARDIAN_TEXTURE = Identifier.withDefaultNamespace("textures/entity/guardian.png");
     private final ModelPart shell, water, frame;
-    private final ModelPart fishBody, fishAccent;
+    private final ModelPart fishBody, fishAccent, guardianBody, guardianEye;
 
     public WearableAquariumLayer(RenderLayerParent<AvatarRenderState,PlayerModel> renderer, boolean slim) {
         super(renderer);
@@ -52,6 +52,19 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
         var baked=LayerDefinition.create(fishMesh,16,16).bakeRoot();
         fishBody=baked.getChild("fish");
         fishAccent=baked.getChild("accent");
+        var gMesh=new MeshDefinition();
+        var spikes=CubeListBuilder.create().texOffs(0,0).addBox(-2f,-2f,-2f,4f,4f,4f)
+           .texOffs(0,8).addBox(-.35f,-3f,-.35f,.7f,1.0f,.7f)
+           .texOffs(0,8).addBox(-.35f,2f,-.35f,.7f,1.0f,.7f)
+           .texOffs(0,8).addBox(-3f,-.35f,-.35f,1f,.7f,.7f)
+           .texOffs(0,8).addBox(2f,-.35f,-.35f,1f,.7f,.7f)
+           .texOffs(0,8).addBox(-.35f,-.35f,-3f,.7f,.7f,1f)
+           .texOffs(0,8).addBox(-.35f,-.35f,2f,.7f,.7f,1f);
+        gMesh.getRoot().addOrReplaceChild("body",spikes,PartPose.ZERO);
+        gMesh.getRoot().addOrReplaceChild("eye",CubeListBuilder.create().texOffs(0,0)
+           .addBox(-.9f,-.9f,-2.25f,1.8f,1.8f,.35f),PartPose.ZERO);
+        var guardianModel=LayerDefinition.create(gMesh,32,32).bakeRoot();
+        guardianBody=guardianModel.getChild("body");guardianEye=guardianModel.getChild("eye");
     }
 
     private static void add(MeshDefinition mesh,String part,float x,float y,float z,float w,float h,float d,int u,int v,float inset,boolean rail) {
@@ -152,7 +165,7 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
             float time=state.ageInTicks, phase=i*1.8f;
             float x=(float)Math.sin(time*.045f+phase)*.065f;
             // Negative Y is upward in the player model: fish now swim all the way into the head.
-            float y=.18f - (.5f+.5f*(float)Math.sin(time*.017f+phase))*.56f;
+            float y=guardian(bucket)?.22f:.18f - (.5f+.5f*(float)Math.sin(time*.017f+phase))*.56f;
             float z=(float)Math.cos(time*.058f+phase)*.026f;
             pose.pushPose();
             player.body.translateAndRotate(pose);
@@ -160,9 +173,9 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
             pose.mulPose(Axis.YP.rotationDegrees(90f+(float)Math.sin(time*.038f+phase)*65f+(i%2==0?0:180)));
             float scale=guardian(bucket)?.85f:.55f;
             pose.scale(scale,scale,scale);
-            collector.order(1).submitModelPart(fishBody,pose,RenderTypes.entityCutout(FISH_TEXTURE),
+            collector.order(1).submitModelPart(guardian(bucket)?guardianBody:fishBody,pose,RenderTypes.entityCutout(FISH_TEXTURE),
                 light,OverlayTexture.NO_OVERLAY,null,color(bucket),null,state.outlineColor);
-            collector.order(1).submitModelPart(fishAccent,pose,RenderTypes.entityCutout(FISH_TEXTURE),
+            collector.order(1).submitModelPart(guardian(bucket)?guardianEye:fishAccent,pose,RenderTypes.entityCutout(FISH_TEXTURE),
                 light,OverlayTexture.NO_OVERLAY,null,accent(bucket),null,state.outlineColor);
             pose.popPose();
         }
