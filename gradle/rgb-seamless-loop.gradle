@@ -27,11 +27,10 @@ tasks.named("processResources") {
                 // Some existing sprite sources have corrupt PNG IDAT checksums.
                 // Rebuild them from an intact, similarly-shaped RGB sibling
                 // rather than packaging unreadable animated PNGs.
-                String replacement = switch (filename) {
-                    case "rgb_end_rod_rod_s.png" -> "rgb_end_rod_rod.png"
-                    case "rgb_trapdoor.png" -> "rgb_door_bottom.png"
-                    default -> null
-                }
+                String replacement = [
+                        "rgb_end_rod_rod_s.png": "rgb_end_rod_rod.png",
+                        "rgb_trapdoor.png": "rgb_door_bottom.png"
+                ][filename]
                 if (replacement == null) throw corrupted
                 File healthy = project.file("src/main/resources/assets/caszual_additions/textures/block/" + replacement)
                 logger.warn("Repairing corrupt RGB texture " + filename +
