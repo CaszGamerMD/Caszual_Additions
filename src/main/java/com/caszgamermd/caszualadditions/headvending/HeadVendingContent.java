@@ -307,12 +307,15 @@ public final class HeadVendingContent {
     }
 
     private static boolean validMachine(ServerPlayer player, BlockPos pos) {
-        if (!player.level().getBlockState(pos).is(PLAYER_HEAD_VENDING_MACHINE)) {
+        var state = player.level().getBlockState(pos);
+        if (!state.is(PLAYER_HEAD_VENDING_MACHINE)
+                || !HeadVendingBlock.isComplete(player.level(), pos, state)) {
             status(player, "The vending machine is no longer there.", false);
             return false;
         }
 
-        if (player.distanceToSqr(Vec3.atCenterOf(pos)) > 64.0) {
+        BlockPos base = HeadVendingBlock.basePos(pos, state);
+        if (player.distanceToSqr(Vec3.atCenterOf(base)) > 64.0) {
             status(player, "Move closer to the vending machine.", false);
             return false;
         }
