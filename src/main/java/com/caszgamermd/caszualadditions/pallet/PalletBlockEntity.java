@@ -61,6 +61,10 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         return plasticColor;
     }
 
+    public Block woodForBoard(int board) {
+        return wood[Math.max(0, Math.min(3, board))];
+    }
+
     public Block woodForPart() {
         return wood[Math.max(0, Math.min(3, part))];
     }
