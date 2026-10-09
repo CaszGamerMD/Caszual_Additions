@@ -286,10 +286,25 @@ public final class HeadVendingContent {
                         return;
                     }
                     String desired = key.replace('_', ' ');
+                    // Prefer exact vanilla mob names, then named variants such
+                    // as "Cow (Brown)". Never allow prefix collisions like
+                    // "cow" accidentally matching "cowboy".
+                    String searchName = desired.toLowerCase(java.util.Locale.ROOT);
                     CustomHeadCatalog.Head match = catalog.heads().stream()
-                            .filter(head -> head.name().equalsIgnoreCase(desired)
-                                    || head.name().equalsIgnoreCase(desired + " head"))
+                            .filter(head -> {
+                                String candidate = head.name().toLowerCase(java.util.Locale.ROOT)
+                                        .replaceAll("[^a-z0-9]+", " ").trim();
+                                return candidate.equals(searchName)
+                                        || candidate.equals(searchName + " head");
+                            })
                             .findFirst().orElse(null);
+                    if (match == null) {
+                        match = catalog.heads().stream()
+                                .filter(head -> head.name().toLowerCase(java.util.Locale.ROOT)
+                                        .replaceAll("[^a-z0-9]+", " ").trim()
+                                        .startsWith(searchName + " "))
+                                .findFirst().orElse(null);
+                    }
                     if (match == null) {
                         status(current, "No verified " + displayName(key) + " head texture found.", false);
                         return;
