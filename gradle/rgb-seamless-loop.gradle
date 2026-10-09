@@ -13,7 +13,7 @@ def animatedRgbTextures = [
 
 tasks.named("processResources") {
     doLast {
-        File folder = new File(destinationDirectory.get().asFile,
+        File folder = new File(destinationDir,
                 "assets/caszual_additions/textures/block")
         animatedRgbTextures.each { filename ->
             File file = new File(folder, filename)
