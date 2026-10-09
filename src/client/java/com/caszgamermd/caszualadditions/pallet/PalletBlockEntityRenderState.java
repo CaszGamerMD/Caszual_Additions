@@ -6,11 +6,9 @@ import net.minecraft.client.renderer.item.ItemStackRenderState;
 
 public final class PalletBlockEntityRenderState extends BlockEntityRenderState {
     /*
-     * A 2x2 pallet has a 3x3 footprint for visible items. Only seven
-     * tiers are shown; the full 216-slot storage inventory is unaffected.
-     *
-     * Item models rendered in GROUND context normally fit inside a unit
-     * cube before scaling. The final tier ends below five world blocks.
+     * One shared 2x2 pallet controller draws a 3x3x8 array of visible cargo:
+     * half-block (8px) display units with one-pixel gaps on every axis.
+     * Storage still has 216 slots; the final cargo tier is below y=5.
      */
     public static final int DISPLAY_COLUMNS = 3;
     public static final int DISPLAY_ROWS = 3;
