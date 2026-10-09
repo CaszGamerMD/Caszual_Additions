@@ -31,6 +31,7 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
     private static final Identifier WATER = Identifier.fromNamespaceAndPath("linked_aquariums", "textures/block/contained_water.png");
     private static final Identifier FRAME = Identifier.fromNamespaceAndPath("linked_aquariums", "textures/block/frame.png");
     private static final Identifier FISH_TEXTURE = Identifier.withDefaultNamespace("textures/block/white_concrete.png");
+    private static final Identifier GUARDIAN_TEXTURE = Identifier.withDefaultNamespace("textures/entity/guardian.png");
     private final ModelPart shell, water, frame;
     private final ModelPart fishBody, fishAccent;
 
@@ -41,12 +42,12 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
         frame = makeHumanoid(slim, 0f, true);
         var fishMesh = new MeshDefinition();
         fishMesh.getRoot().addOrReplaceChild("fish",
-            CubeListBuilder.create().texOffs(0,0).addBox(-2f,-.9f,-.7f,4f,1.8f,1.4f)
-                .texOffs(0,8).addBox(-3.5f,-.65f,-.25f,1.5f,1.3f,.5f),
+            CubeListBuilder.create().texOffs(0,0).addBox(-1.5f,-.65f,-.45f,3f,1.3f,.9f)
+                .texOffs(0,8).addBox(-2.5f,-.7f,-.16f,1f,1.4f,.32f),
             PartPose.ZERO);
         fishMesh.getRoot().addOrReplaceChild("accent",
-            CubeListBuilder.create().texOffs(4,8).addBox(-.8f,-1.5f,-.4f,1.5f,.6f,.8f)
-                .texOffs(8,8).addBox(.2f,.7f,-.4f,1.4f,.8f,.8f),
+            CubeListBuilder.create().texOffs(4,8).addBox(-.6f,-1.10f,-.25f,1f,.45f,.5f)
+                .texOffs(8,8).addBox(.2f,.58f,-.25f,1.1f,.6f,.5f),
             PartPose.ZERO);
         var baked=LayerDefinition.create(fishMesh,16,16).bakeRoot();
         fishBody=baked.getChild("fish");
@@ -58,7 +59,7 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
         if (!rail) {
             cubes=CubeListBuilder.create().texOffs(u,v).addBox(x+inset,y+inset,z+inset,w-inset*2,h-inset*2,d-inset*2);
         } else {
-            float b=.65f; cubes=CubeListBuilder.create();
+            float b=.23f; cubes=CubeListBuilder.create();
             for(int i=0;i<2;i++)for(int k=0;k<2;k++)
                 cubes.texOffs(0,0).addBox(x+i*(w-b),y,z+k*(d-b),b,h,b);
             for(int i=0;i<2;i++){
@@ -106,7 +107,17 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
         drawPart(pieces.getChild("right_leg"),player.rightLeg,pose,collector,light,outline,texture,transparent,order);
     }
 
+    private static boolean guardian(ItemStack stack) {
+        if(!stack.is(Items.AIR) && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(
+              Identifier.fromNamespaceAndPath("linked_aquariums","mob_net"))) {
+            return stack.getOrDefault(DataComponents.CUSTOM_DATA,net.minecraft.world.item.component.CustomData.EMPTY)
+               .copyTag().getString("terrarium_type").orElse("").equals("minecraft:guardian");
+        }
+        return false;
+    }
+    private static int cost(ItemStack stack){return guardian(stack)?2:SpecialCosmetics.isAquariumFishBucket(stack)?1:0;}
     private static int color(ItemStack fish) {
+        if(guardian(fish))return 0xff428b80;
         if(fish.is(Items.TROPICAL_FISH_BUCKET))
             return 0xff000000|fish.getOrDefault(DataComponents.TROPICAL_FISH_BASE_COLOR,DyeColor.ORANGE).getTextureDiffuseColor();
         if(fish.is(Items.SALMON_BUCKET)) return 0xffe99b86;
@@ -114,6 +125,7 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
         return 0xffa7a078;
     }
     private static int accent(ItemStack fish) {
+        if(guardian(fish))return 0xffed7d37;
         return fish.is(Items.TROPICAL_FISH_BUCKET)
             ? 0xff000000|fish.getOrDefault(DataComponents.TROPICAL_FISH_PATTERN_COLOR,DyeColor.WHITE).getTextureDiffuseColor()
             : 0xffe1e3cb;
@@ -128,20 +140,26 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
         player.root().translateAndRotate(pose);
         drawAll(water,player,pose,collector,light,state.outlineColor,WATER,true,0);
 
-        // At most four fish in the entire cosmetic, all swimming inside the torso.
+        // Capacity belongs to the entire aquarium, with Guardians occupying two slots.
         var stored=state.chestEquipment.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY);
-        var fish=stored.nonEmptyItemCopyStream().filter(SpecialCosmetics::isAquariumFishBucket).limit(4).toList();
+        var fish=new java.util.ArrayList<ItemStack>();int used=0;
+        for(var candidate:stored.nonEmptyItemCopyStream().toList()){
+            int weight=cost(candidate);if(weight==0||used+weight>4)continue;
+            fish.add(candidate);used+=weight;
+        }
         for(int i=0;i<fish.size();i++){
             ItemStack bucket=fish.get(i);
             float time=state.ageInTicks, phase=i*1.8f;
-            float x=(float)Math.sin(time*.045f+phase)*.085f;
-            float y=(2.0f+i*2.45f)/16f+(float)Math.sin(time*.071f+phase)*.013f;
-            float z=(float)Math.cos(time*.058f+phase)*.028f;
+            float x=(float)Math.sin(time*.045f+phase)*.065f;
+            // Negative Y is upward in the player model: fish now swim all the way into the head.
+            float y=.18f - (.5f+.5f*(float)Math.sin(time*.017f+phase))*.56f;
+            float z=(float)Math.cos(time*.058f+phase)*.026f;
             pose.pushPose();
             player.body.translateAndRotate(pose);
             pose.translate(x,y,z);
             pose.mulPose(Axis.YP.rotationDegrees(90f+(float)Math.sin(time*.038f+phase)*65f+(i%2==0?0:180)));
-            pose.scale(.75f,.75f,.75f);
+            float scale=guardian(bucket)?.85f:.55f;
+            pose.scale(scale,scale,scale);
             collector.order(1).submitModelPart(fishBody,pose,RenderTypes.entityCutout(FISH_TEXTURE),
                 light,OverlayTexture.NO_OVERLAY,null,color(bucket),null,state.outlineColor);
             collector.order(1).submitModelPart(fishAccent,pose,RenderTypes.entityCutout(FISH_TEXTURE),

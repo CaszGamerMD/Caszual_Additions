@@ -33,15 +33,16 @@ Ordinary block items and matching equippable items can also be accepted in compa
 
 ## Wearable Aquarium (Linked Aquariums integration)
 
-Install both **Caszual Additions** and **Linked Aquariums 0.8.0+** to use the wearable cosmetic.
+Requires **Caszual Aquariums 0.8.2+** alongside Caszual Additions.
 
-1. Craft a Wearable Aquarium in Linked Aquariums from four Aquarium blocks, four Glass blocks and one Iron Chestplate.
-2. Carry the wearable in your **main hand** and a fish bucket in your **offhand**; right-click air to put the fish inside, receiving an empty bucket.
-3. The wearable stores up to **four fish total** (cod, salmon, tropical fish and pufferfish). Tropical fish colors/variants and stored bucket data persist on the item.
-4. An **empty bucket in your offhand** retrieves the most recently inserted fish from the main-hand wearable.
-5. Put the loaded item in the **chest cosmetic slot**. Your entire skin is visually replaced by a framed, transparent human-shaped aquarium. Up to four miniature fish swim inside its torso. Normal armor attributes and hitbox remain intact.
+1. Craft the water-filled chestplate icon (four Aquarium blocks, four Glass blocks and an Iron Chestplate).
+2. **Place the item on the ground** to erect a full-sized humanoid standing aquarium.
+3. Use a filled fish bucket directly on the glass model to load cod, salmon, tropical fish or pufferfish. Each costs **one of four slots**.
+4. Right-click a wild Guardian with an empty **Mob Net** to capture it, then use the filled net on the placed aquarium. Each Guardian costs **two slots**.
+5. Retrieve fish with an empty Bucket or Guardians with an empty Mob Net. Break the standing aquarium to pick it up **with its saved contents**.
+6. Equip it in the **chest cosmetic slot** to become a slim-framed humanoid aquarium with tiny animated residents. Fish can swim upward into the **head**.
 
-This works for other players in multiplayer because cosmetic item data is synchronized. The aquarium mod is optional for the rest of Caszual Additions; without it, the feature is inactive.
+The accessory is cosmetic: normal armor stats and your physical hitbox do not change. Guardian Mob Nets and custom tropical fish data remain on the item across placing and picking up. Other players see the synced contents.
 
 [Full Wearable Aquarium guide](https://github.com/CaszGamerMD/Caszual_Aquariums/blob/main/docs/wiki/Wearable-Aquarium.md)
 
