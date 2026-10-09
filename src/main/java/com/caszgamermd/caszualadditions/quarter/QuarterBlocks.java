@@ -26,6 +26,7 @@ public final class QuarterBlocks {
 
     public static Block QUARTER_BLOCK;
     public static Item QUARTER_BLOCK_ITEM;
+    public static Item BOINKR;
     public static BlockEntityType<GenericQuarterBlockEntity> QUARTER_BLOCK_ENTITY;
     public static RecipeSerializer<QuarterTextureRecipe> QUARTER_TEXTURE_RECIPE;
 
@@ -52,6 +53,10 @@ public final class QuarterBlocks {
                         new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()
                 )
         );
+
+        ResourceKey<Item> hammerKey = ResourceKey.create(Registries.ITEM, CaszualAdditions.id("boinkr"));
+        BOINKR = Registry.register(BuiltInRegistries.ITEM, hammerKey,
+                new BoinkrItem(new Item.Properties().setId(hammerKey).stacksTo(1)));
 
         QUARTER_BLOCK_ENTITY = Registry.register(
                 BuiltInRegistries.BLOCK_ENTITY_TYPE,
