@@ -29,6 +29,8 @@ public final class XpTankBlock extends Block implements EntityBlock {
     public static final BooleanProperty EAST = BooleanProperty.create("east");
     public static final BooleanProperty UP = BooleanProperty.create("up");
     public static final BooleanProperty DOWN = BooleanProperty.create("down");
+    /** The tank above already contains XP: do not render a fluid surface at this seam. */
+    public static final BooleanProperty UP_FILLED = BooleanProperty.create("up_filled");
 
     public XpTankBlock(BlockBehaviour.Properties properties) {
         super(properties);
@@ -41,6 +43,7 @@ public final class XpTankBlock extends Block implements EntityBlock {
                         .setValue(EAST, false)
                         .setValue(UP, false)
                         .setValue(DOWN, false)
+                        .setValue(UP_FILLED, false)
         );
     }
 
@@ -51,7 +54,7 @@ public final class XpTankBlock extends Block implements EntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FILL, NORTH, SOUTH, WEST, EAST, UP, DOWN);
+        builder.add(FILL, NORTH, SOUTH, WEST, EAST, UP, DOWN, UP_FILLED);
     }
 
     @Override
@@ -70,7 +73,11 @@ public final class XpTankBlock extends Block implements EntityBlock {
             BlockState neighborState,
             RandomSource random
     ) {
-        return state.setValue(property(direction), connects(level, neighborPos));
+        BlockState updated = state.setValue(property(direction), connects(level, neighborPos));
+        if (direction == Direction.UP) {
+            updated = updated.setValue(UP_FILLED, hasFluidAbove(neighborState));
+        }
+        return updated;
     }
 
     private static BooleanProperty property(Direction direction) {
@@ -91,7 +98,13 @@ public final class XpTankBlock extends Block implements EntityBlock {
                 .setValue(WEST, connects(level, pos.west()))
                 .setValue(EAST, connects(level, pos.east()))
                 .setValue(UP, connects(level, pos.above()))
+                .setValue(UP_FILLED, hasFluidAbove(level.getBlockState(pos.above())))
                 .setValue(DOWN, connects(level, pos.below()));
+    }
+
+    private static boolean hasFluidAbove(BlockState above) {
+        return above.getBlock() instanceof XpTankBlock
+                && above.getValue(FILL) > 0;
     }
 
     private static boolean connects(BlockGetter level, BlockPos pos) {

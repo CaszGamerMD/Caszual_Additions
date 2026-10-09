@@ -6,23 +6,17 @@
   "elements": [
     {
       "from": [
+        1,
         0,
-        0,
-        0
+        0.06
       ],
       "to": [
+        15,
         16,
-        16,
-        0.75
+        0.8
       ],
       "shade": false,
       "faces": {
-        "down": {
-          "texture": "#glass"
-        },
-        "up": {
-          "texture": "#glass"
-        },
         "north": {
           "texture": "#glass"
         },

@@ -16,7 +16,8 @@
     "CreativeInventoryCosmeticsMixin",
     "SpecialModelRenderersAccessor",
     "PlayerPlushieCuddleMixin",
-    "QuarterCreativeBreakClientMixin"
+    "QuarterCreativeBreakClientMixin",
+    "FirstPersonCosmeticArmsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
