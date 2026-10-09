@@ -169,6 +169,9 @@ public final class HeadVendingScreen extends Screen {
             if (tab == Tab.MOB) {
                 for (var entry : HeadVendingContent.MOB_HEADS.entrySet()) {
                     String key = entry.getKey();
+                    // Backward-compatible "dragon" alias is available to purchases,
+                    // but the catalog only displays the Ender Dragon once.
+                    if (key.equals("dragon")) continue;
                     String label = HeadVendingContent.displayName(key) + " Head";
                     if (query.isEmpty() || key.contains(query.replace(' ', '_'))
                             || label.toLowerCase(Locale.ROOT).contains(query)) {
