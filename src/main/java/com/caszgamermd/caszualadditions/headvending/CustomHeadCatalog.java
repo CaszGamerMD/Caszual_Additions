@@ -34,14 +34,14 @@ import net.minecraft.world.item.component.ResolvableProfile;
 /**
  * Server-side, read-only catalog of decorative heads.
  *
- * The upstream is a regularly updated JSON mirror of the public Minecraft-Heads
- * catalog. No catalog data is bundled with the mod. Only validated texture hashes,
+ * The upstream is HeadDB's public compatibility catalog endpoint. No catalog data
+ * is bundled with the mod. Only validated texture hashes,
  * names, and categories are sent to the client, and purchases are resolved against
  * this server-held catalog (never against an arbitrary client-supplied texture).
  */
 public final class CustomHeadCatalog {
     private static final URI CATALOG_URL = URI.create(
-            "https://raw.githubusercontent.com/Random-MC/MinecraftHeads/master/heads.json"
+            "https://headdb.net/api/v1/legacy/heads.json"
     );
     private static final long REFRESH_MILLIS = 6L * 60L * 60L * 1000L;
     private static final long RETRY_MILLIS = 2L * 60L * 1000L;
@@ -76,7 +76,7 @@ public final class CustomHeadCatalog {
         try {
             HttpRequest request = HttpRequest.newBuilder(CATALOG_URL)
                     .timeout(Duration.ofSeconds(20))
-                    .header("User-Agent", "CaszualAdditions/0.1 CustomHeadVending")
+                    .header("User-Agent", "CaszualAdditions/0.1 HeadVending HeadDB")
                     .GET()
                     .build();
             HttpResponse<byte[]> response = HttpClient.newBuilder()
@@ -103,7 +103,10 @@ public final class CustomHeadCatalog {
                 JsonObject object = element.getAsJsonObject();
                 String name = string(object, "name");
                 String category = string(object, "category");
-                String hash = string(object, "hash").toLowerCase(Locale.ROOT);
+                String hash = string(object, "texture").toLowerCase(Locale.ROOT);
+                if (hash.isBlank()) {
+                    hash = string(object, "hash").toLowerCase(Locale.ROOT);
+                }
                 if (name.isBlank() || name.length() > 100
                         || !hash.matches("[a-f0-9]{32,128}")) {
                     continue;
