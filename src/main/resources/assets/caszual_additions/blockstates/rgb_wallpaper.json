@@ -1,0 +1,55 @@
+{
+  "multipart": [
+    {
+      "when": {
+        "north": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_wallpaper"
+      }
+    },
+    {
+      "when": {
+        "east": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_wallpaper",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "south": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_wallpaper",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "west": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_wallpaper",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "down": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_wallpaper_floor"
+      }
+    },
+    {
+      "when": {
+        "up": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rgb_wallpaper_ceiling"
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "caszual_additions:block/rgb_end_rod"
+  }
+}

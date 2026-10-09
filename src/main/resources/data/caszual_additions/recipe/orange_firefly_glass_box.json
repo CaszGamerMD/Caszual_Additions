@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "GGG",
+    "G G"
+  ],
+  "key": {
+    "G": "minecraft:orange_stained_glass"
+  },
+  "result": {
+    "id": "caszual_additions:orange_firefly_glass_box",
+    "count": 1
+  }
+}

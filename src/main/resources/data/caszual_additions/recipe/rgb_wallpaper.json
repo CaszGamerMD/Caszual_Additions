@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "caszual_additions:rgb_block",
+    "minecraft:paper"
+  ],
+  "result": {
+    "id": "caszual_additions:rgb_wallpaper",
+    "count": 8
+  }
+}

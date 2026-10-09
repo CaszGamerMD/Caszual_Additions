@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "contains_bush=false": {
+      "model": "caszual_additions:block/black_firefly_glass_box"
+    },
+    "contains_bush=true": {
+      "model": "caszual_additions:block/black_firefly_glass_box_with_bush"
+    }
+  }
+}

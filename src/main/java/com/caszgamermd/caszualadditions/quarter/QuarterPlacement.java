@@ -1,7 +1,7 @@
 package com.caszgamermd.caszualadditions.quarter;
 
-import com.casz.colorfulrods.RgbBuildingBlocks;
-import com.casz.colorfulrods.RgbQuarterBlock;
+import com.caszgamermd.caszualadditions.rods.RgbBuildingBlocks;
+import com.caszgamermd.caszualadditions.rods.RgbQuarterBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundSource;

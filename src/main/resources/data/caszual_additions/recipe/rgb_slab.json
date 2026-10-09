@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "BBB"
+  ],
+  "key": {
+    "B": "caszual_additions:rgb_block"
+  },
+  "result": {
+    "id": "caszual_additions:rgb_slab",
+    "count": 6
+  }
+}

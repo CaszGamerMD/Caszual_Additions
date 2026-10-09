@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "group": "caszual_additions",
+  "ingredients": [
+    "#caszual_additions:dyeable_end_rods",
+    "minecraft:pink_dye"
+  ],
+  "result": {
+    "id": "caszual_additions:pink_end_rod",
+    "count": 1
+  }
+}

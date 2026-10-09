@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/template_wall_post",
+  "textures": {
+    "wall": "caszual_additions:block/rgb_end_rod"
+  }
+}

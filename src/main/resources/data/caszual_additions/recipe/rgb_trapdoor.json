@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "BBB",
+    "RBR"
+  ],
+  "key": {
+    "B": "caszual_additions:rgb_block",
+    "R": "caszual_additions:rgb_end_rod"
+  },
+  "result": {
+    "id": "caszual_additions:rgb_trapdoor",
+    "count": 2
+  }
+}

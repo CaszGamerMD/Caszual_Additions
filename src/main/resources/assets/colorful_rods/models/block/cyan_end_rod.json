@@ -1,7 +1,0 @@
-{
-  "parent": "minecraft:block/end_rod",
-  "textures": {
-    "end_rod": "colorful_rods:block/cyan_end_rod",
-    "particle": "colorful_rods:block/cyan_end_rod"
-  }
-}

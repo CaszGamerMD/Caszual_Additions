@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "group": "caszual_additions",
+  "ingredients": [
+    "caszual_additions:red_end_rod",
+    "caszual_additions:green_end_rod",
+    "caszual_additions:blue_end_rod"
+  ],
+  "result": {
+    "id": "caszual_additions:rgb_end_rod",
+    "count": 3
+  }
+}

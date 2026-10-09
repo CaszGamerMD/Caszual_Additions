@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "group": "caszual_additions",
+  "ingredients": [
+    "#caszual_additions:dyeable_end_rods",
+    "minecraft:black_dye"
+  ],
+  "result": {
+    "id": "caszual_additions:black_end_rod",
+    "count": 1
+  }
+}

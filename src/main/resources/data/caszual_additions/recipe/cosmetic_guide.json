@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:book",
+    "minecraft:brush"
+  ],
+  "result": {
+    "id": "caszual_additions:cosmetic_guide",
+    "count": 1
+  }
+}

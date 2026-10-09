@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/carpet",
+  "textures": {
+    "wool": "caszual_additions:block/rgb_end_rod"
+  }
+}
