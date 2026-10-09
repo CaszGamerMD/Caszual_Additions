@@ -2,90 +2,512 @@
   "multipart": [
     {
       "when": {
-        "fill": "0"
+        "fill": "1",
+        "north": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill0"
+        "model": "caszual_additions:block/xp_tank_liquid_side_1"
       }
     },
     {
       "when": {
-        "fill": "1"
+        "fill": "1",
+        "east": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill1"
+        "model": "caszual_additions:block/xp_tank_liquid_side_1",
+        "y": 90,
+        "uvlock": true
       }
     },
     {
       "when": {
-        "fill": "2"
+        "fill": "1",
+        "south": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill2"
+        "model": "caszual_additions:block/xp_tank_liquid_side_1",
+        "y": 180,
+        "uvlock": true
       }
     },
     {
       "when": {
-        "fill": "3"
+        "fill": "1",
+        "west": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill3"
+        "model": "caszual_additions:block/xp_tank_liquid_side_1",
+        "y": 270,
+        "uvlock": true
       }
     },
     {
       "when": {
-        "fill": "4"
+        "fill": "1",
+        "up_filled": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill4"
+        "model": "caszual_additions:block/xp_tank_liquid_surface_1"
       }
     },
     {
       "when": {
-        "fill": "5"
+        "fill": "2",
+        "north": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill5"
+        "model": "caszual_additions:block/xp_tank_liquid_side_2"
       }
     },
     {
       "when": {
-        "fill": "6"
+        "fill": "2",
+        "east": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill6"
+        "model": "caszual_additions:block/xp_tank_liquid_side_2",
+        "y": 90,
+        "uvlock": true
       }
     },
     {
       "when": {
-        "fill": "7"
+        "fill": "2",
+        "south": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill7"
+        "model": "caszual_additions:block/xp_tank_liquid_side_2",
+        "y": 180,
+        "uvlock": true
       }
     },
     {
       "when": {
-        "fill": "8"
+        "fill": "2",
+        "west": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill8"
+        "model": "caszual_additions:block/xp_tank_liquid_side_2",
+        "y": 270,
+        "uvlock": true
       }
     },
     {
       "when": {
-        "fill": "9"
+        "fill": "2",
+        "up_filled": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill9"
+        "model": "caszual_additions:block/xp_tank_liquid_surface_2"
       }
     },
     {
       "when": {
-        "fill": "10"
+        "fill": "3",
+        "north": "false"
       },
       "apply": {
-        "model": "caszual_additions:block/xp_tank_fill10"
+        "model": "caszual_additions:block/xp_tank_liquid_side_3"
+      }
+    },
+    {
+      "when": {
+        "fill": "3",
+        "east": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_3",
+        "y": 90,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "3",
+        "south": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_3",
+        "y": 180,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "3",
+        "west": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_3",
+        "y": 270,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "3",
+        "up_filled": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_surface_3"
+      }
+    },
+    {
+      "when": {
+        "fill": "4",
+        "north": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_4"
+      }
+    },
+    {
+      "when": {
+        "fill": "4",
+        "east": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_4",
+        "y": 90,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "4",
+        "south": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_4",
+        "y": 180,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "4",
+        "west": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_4",
+        "y": 270,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "4",
+        "up_filled": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_surface_4"
+      }
+    },
+    {
+      "when": {
+        "fill": "5",
+        "north": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_5"
+      }
+    },
+    {
+      "when": {
+        "fill": "5",
+        "east": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_5",
+        "y": 90,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "5",
+        "south": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_5",
+        "y": 180,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "5",
+        "west": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_5",
+        "y": 270,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "5",
+        "up_filled": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_surface_5"
+      }
+    },
+    {
+      "when": {
+        "fill": "6",
+        "north": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_6"
+      }
+    },
+    {
+      "when": {
+        "fill": "6",
+        "east": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_6",
+        "y": 90,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "6",
+        "south": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_6",
+        "y": 180,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "6",
+        "west": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_6",
+        "y": 270,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "6",
+        "up_filled": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_surface_6"
+      }
+    },
+    {
+      "when": {
+        "fill": "7",
+        "north": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_7"
+      }
+    },
+    {
+      "when": {
+        "fill": "7",
+        "east": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_7",
+        "y": 90,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "7",
+        "south": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_7",
+        "y": 180,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "7",
+        "west": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_7",
+        "y": 270,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "7",
+        "up_filled": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_surface_7"
+      }
+    },
+    {
+      "when": {
+        "fill": "8",
+        "north": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_8"
+      }
+    },
+    {
+      "when": {
+        "fill": "8",
+        "east": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_8",
+        "y": 90,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "8",
+        "south": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_8",
+        "y": 180,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "8",
+        "west": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_8",
+        "y": 270,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "8",
+        "up_filled": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_surface_8"
+      }
+    },
+    {
+      "when": {
+        "fill": "9",
+        "north": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_9"
+      }
+    },
+    {
+      "when": {
+        "fill": "9",
+        "east": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_9",
+        "y": 90,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "9",
+        "south": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_9",
+        "y": 180,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "9",
+        "west": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_9",
+        "y": 270,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "9",
+        "up_filled": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_surface_9"
+      }
+    },
+    {
+      "when": {
+        "fill": "10",
+        "north": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_10"
+      }
+    },
+    {
+      "when": {
+        "fill": "10",
+        "east": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_10",
+        "y": 90,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "10",
+        "south": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_10",
+        "y": 180,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "10",
+        "west": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_side_10",
+        "y": 270,
+        "uvlock": true
+      }
+    },
+    {
+      "when": {
+        "fill": "10",
+        "up_filled": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/xp_tank_liquid_surface_10"
       }
     },
     {

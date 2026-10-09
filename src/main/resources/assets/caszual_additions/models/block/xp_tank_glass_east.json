@@ -17,12 +17,6 @@
       ],
       "shade": false,
       "faces": {
-        "down": {
-          "texture": "#glass"
-        },
-        "up": {
-          "texture": "#glass"
-        },
         "north": {
           "texture": "#glass"
         },

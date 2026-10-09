@@ -1,0 +1,26 @@
+{
+  "textures": {
+    "xp": "minecraft:block/lime_concrete",
+    "particle": "minecraft:block/lime_concrete"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        3.1900000000000004,
+        0
+      ],
+      "to": [
+        16,
+        3.2,
+        16
+      ],
+      "shade": false,
+      "faces": {
+        "up": {
+          "texture": "#xp"
+        }
+      }
+    }
+  ]
+}
