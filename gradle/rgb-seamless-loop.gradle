@@ -1,0 +1,90 @@
+/*
+ * Smooth the closing transition of every RGB texture cycle during packaging.
+ * Sources remain untouched; processResources produces seamless animated PNGs.
+ */
+import java.awt.Color
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+def animatedRgbTextures = [
+        "rgb_end_rod.png", "rgb_end_rod_rod.png", "rgb_end_rod_rod_s.png",
+        "rgb_door_bottom.png", "rgb_door_top.png", "rgb_trapdoor.png"
+]
+
+tasks.named("processResources") {
+    doLast {
+        File folder = new File(destinationDir,
+                "assets/caszual_additions/textures/block")
+        animatedRgbTextures.each { filename ->
+            File file = new File(folder, filename)
+            if (!file.isFile()) {
+                throw new GradleException("Missing RGB texture in packaged resources: " + filename)
+            }
+            BufferedImage source
+            try {
+                source = ImageIO.read(file)
+            } catch (javax.imageio.IIOException corrupted) {
+                // Some existing sprite sources have corrupt PNG IDAT checksums.
+                // Rebuild them from an intact, similarly-shaped RGB sibling
+                // rather than packaging unreadable animated PNGs.
+                String replacement = [
+                        "rgb_end_rod_rod_s.png": "rgb_end_rod_rod.png",
+                        "rgb_trapdoor.png": "rgb_door_bottom.png"
+                ][filename]
+                if (replacement == null) throw corrupted
+                File healthy = project.file("src/main/resources/assets/caszual_additions/textures/block/" + replacement)
+                logger.warn("Repairing corrupt RGB texture " + filename +
+                        " using the intact rod animation: " + corrupted.message)
+                source = ImageIO.read(healthy)
+            }
+            if (source == null) throw new GradleException("Could not decode RGB texture " + filename)
+            int width = source.width
+            int height = source.height
+            if (width < 1 || height % width != 0 || height / width < 2) {
+                throw new GradleException("RGB animation must be stacked square frames: " + filename + " is " + width + "x" + height)
+            }
+            int frames = height / width
+            int bridges = 6
+            BufferedImage smooth = new BufferedImage(width,
+                    height + bridges * width, BufferedImage.TYPE_INT_ARGB)
+            java.awt.Graphics2D g = smooth.createGraphics()
+            try { g.drawImage(source, 0, 0, null) }
+            finally { g.dispose() }
+
+            for (int frame = 1; frame <= bridges; frame++) {
+                float t = frame / (bridges + 1f)
+                for (int y = 0; y < width; y++) {
+                    for (int x = 0; x < width; x++) {
+                        int last = source.getRGB(x, (frames - 1) * width + y)
+                        int first = source.getRGB(x, y)
+                        int a0 = (last >>> 24) & 255
+                        int a1 = (first >>> 24) & 255
+                        int alpha = Math.round(a0 * (1f - t) + a1 * t)
+                        if (alpha == 0) {
+                            smooth.setRGB(x, height + (frame - 1) * width + y, 0)
+                            continue
+                        }
+                        float[] left = Color.RGBtoHSB((last >>> 16) & 255,
+                                (last >>> 8) & 255, last & 255, null)
+                        float[] right = Color.RGBtoHSB((first >>> 16) & 255,
+                                (first >>> 8) & 255, first & 255, null)
+                        float delta = right[0] - left[0]
+                        if (delta > 0.5f) delta -= 1f
+                        if (delta < -0.5f) delta += 1f
+                        float hue = (left[0] + delta * t + 1f) % 1f
+                        float saturation = left[1] * (1f - t) + right[1] * t
+                        float brightness = left[2] * (1f - t) + right[2] * t
+                        int rgb = Color.HSBtoRGB(hue, saturation, brightness) & 0xFFFFFF
+                        smooth.setRGB(x, height + (frame - 1) * width + y,
+                                (alpha << 24) | rgb)
+                    }
+                }
+            }
+            if (!ImageIO.write(smooth, "PNG", file)) {
+                throw new GradleException("PNG encoder missing for " + filename)
+            }
+            logger.lifecycle("Smoothed RGB animation " + filename + ": " + frames +
+                    " source frames + " + bridges + " hue-bridge frames")
+        }
+    }
+}

@@ -216,38 +216,81 @@ public final class HeadVendingScreen extends Screen {
 
     public void acceptCustomResults(BlockPos pos, String json) {
         if (!machinePos.equals(pos) || tab != Tab.CUSTOM || search == null) return;
+
         try {
             JsonObject data = JsonParser.parseString(json).getAsJsonObject();
+            if (!data.has("query") || !data.has("category") || !data.has("page")) {
+                error = "Invalid head-search reply. Ensure client and server use the same mod version.";
+                loading = false;
+                results.clear();
+                updateButtons();
+                return;
+            }
             if (!search.getValue().trim().equals(data.get("query").getAsString())
                     || !category.equals(data.get("category").getAsString())
                     || page != data.get("page").getAsInt()) {
-                return; // An earlier search completed after the user typed something new.
-            }
-            results.clear();
-            JsonArray items = data.getAsJsonArray("items");
-            for (JsonElement element : items) {
-                if (results.size() >= MAX_RESULTS) break;
-                JsonObject item = element.getAsJsonObject();
-                String name = item.get("name").getAsString();
-                String type = item.get("category").getAsString();
-                String hash = item.get("hash").getAsString();
-                ItemStack head = CustomHeadCatalog.createHead(name, hash);
-                if (!head.isEmpty()) results.add(new Result(name, type, head, Kind.CUSTOM, hash));
+                return; // Ignore replies to earlier searches.
             }
 
+            results.clear();
+            total = data.has("total") ? data.get("total").getAsInt() : 0;
+            error = data.has("error") && !data.get("error").isJsonNull()
+                    ? data.get("error").getAsString() : "";
             if (data.has("categories") && data.get("categories").isJsonArray()) {
                 List<String> options = new ArrayList<>();
-                for (JsonElement element : data.getAsJsonArray("categories")) {
-                    if (element.isJsonPrimitive()) options.add(element.getAsString());
+                for (JsonElement option : data.getAsJsonArray("categories")) {
+                    if (option.isJsonPrimitive()) options.add(option.getAsString());
                 }
                 if (!options.isEmpty()) categories = List.copyOf(options);
             }
-            total = data.get("total").getAsInt();
-            error = data.has("error") ? data.get("error").getAsString() : "";
-            loading = false;
-            updateButtons();
-        } catch (RuntimeException ignored) {
-            error = "Could not read the custom-head search results.";
+
+            int rejected = 0;
+            String reason = "";
+            JsonArray items = data.has("items") && data.get("items").isJsonArray()
+                    ? data.getAsJsonArray("items") : new JsonArray();
+            for (JsonElement element : items) {
+                if (results.size() >= MAX_RESULTS) break;
+                try {
+                    if (!element.isJsonObject()) {
+                        rejected++;
+                        continue;
+                    }
+                    JsonObject item = element.getAsJsonObject();
+                    String name = item.has("name") ? item.get("name").getAsString() : "";
+                    String type = item.has("category") ? item.get("category").getAsString() : "other";
+                    String hash = item.has("hash") ? item.get("hash").getAsString() : "";
+                    if (name.isBlank() || !hash.matches("[a-fA-F0-9]{32,128}")) {
+                        rejected++;
+                        continue;
+                    }
+                    ItemStack head = CustomHeadCatalog.createHead(name, hash.toLowerCase(Locale.ROOT));
+                    if (head.isEmpty()) {
+                        rejected++;
+                        continue;
+                    }
+                    results.add(new Result(name, type, head, Kind.CUSTOM, hash));
+                } catch (RuntimeException exception) {
+                    rejected++;
+                    reason = exception.getClass().getSimpleName() + ": " + exception.getMessage();
+                    org.slf4j.LoggerFactory.getLogger("CaszualAdditions/HeadVending")
+                            .warn("Could not render one HeadDB search result", exception);
+                }
+            }
+
+            if (error.isBlank() && results.isEmpty() && (rejected > 0 || total > 0)) {
+                error = "HeadDB returned " + total + " results, but "
+                        + (rejected > 0 ? rejected + " entries could not be rendered. " : "none could be displayed. ")
+                        + (reason.isBlank() ? "Check latest.log for HeadVending details."
+                                            : reason);
+            }
+        } catch (RuntimeException exception) {
+            org.slf4j.LoggerFactory.getLogger("CaszualAdditions/HeadVending")
+                    .error("Malformed custom-head search response ({} characters)", json.length(), exception);
+            error = "Invalid search reply: " + exception.getClass().getSimpleName()
+                    + ". Check latest.log; ensure mod versions match on client and server.";
+            results.clear();
+            total = 0;
+        } finally {
             loading = false;
             updateButtons();
         }
