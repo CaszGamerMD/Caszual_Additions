@@ -67,7 +67,7 @@ public final class BoinkrItem extends Item {
 
         BlockPos pos = context.getClickedPos();
         BlockState state = level.getBlockState(pos);
-        if (!level.mayInteract(player, pos)) return InteractionResult.FAIL;
+        if (!player.getAbilities().mayBuild || !level.mayInteract(player, pos)) return InteractionResult.FAIL;
 
         BlockState merged = QuarterCreativeBreak.mergedSource(level, pos, state);
         if (merged != null) {
@@ -88,7 +88,7 @@ public final class BoinkrItem extends Item {
 
         // Only single-block, full-cube solids without block entities.
         // This excludes inventories, liquids, crops, doors, and stateful machinery.
-        if (state.isAir() || state.hasBlockEntity()
+        if (state.isAir() || state.getDestroySpeed(level, pos) < 0.0f || state.hasBlockEntity()
                 || !state.getFluidState().isEmpty()
                 || state.getRenderShape() != RenderShape.MODEL
                 || !Block.isShapeFullBlock(state.getCollisionShape(level, pos))
