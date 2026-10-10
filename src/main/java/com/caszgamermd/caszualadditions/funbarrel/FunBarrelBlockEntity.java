@@ -110,6 +110,8 @@ public final class FunBarrelBlockEntity extends BlockEntity
         items = expanded;
     }
 
+    public int catalogCount() { return cataloged.size(); }
+
     @Override
     public int getContainerSize() { return items.size(); }
 
