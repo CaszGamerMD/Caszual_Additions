@@ -56,4 +56,10 @@ apply from: 'gradle/vending-textures.gradle'
 apply from: 'gradle/rgb-seamless-loop.gradle'
 
 // Exercise the HeadDB->Minecraft player-head conversion in CI, not just compilation.
-tasks.named('test', Test) { useJUnitPlatform() }
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    testLogging {
+        events 'failed'
+        exceptionFormat 'full'
+    }
+}
