@@ -4,6 +4,7 @@ import com.caszgamermd.caszualadditions.utils.cosmetics.Cosmetics;
 import com.caszgamermd.caszualadditions.utils.cosmetics.EndRodCosmeticLayer;
 import com.caszgamermd.caszualadditions.utils.cosmetics.EndRodRender;
 import com.caszgamermd.caszualadditions.utils.cosmetics.SpecialCosmetics;
+import com.caszgamermd.caszualadditions.utils.cosmetics.WearableAquariumArmRender;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.player.PlayerModel;
@@ -28,6 +29,11 @@ public abstract class EndRodAvatarRendererMixin extends LivingEntityRenderer<Ava
     @Inject(method="renderHand",at=@At("HEAD"),cancellable=true)
     private void caszual_additions$rodHand(PoseStack pose,SubmitNodeCollector collector,int light,Identifier skin,ModelPart arm,boolean sleeve,CallbackInfo ci){
         var player=Minecraft.getInstance().player;if(player==null)return;var rod=Cosmetics.get(player,EquipmentSlot.CHEST);
+        if(SpecialCosmetics.isWearableAquarium(rod)){
+            WearableAquariumArmRender.renderHand(arm,pose,collector,light,caszual_additions$slim);
+            ci.cancel();
+            return;
+        }
         if(SpecialCosmetics.isSnowGolem(Cosmetics.get(player,EquipmentSlot.HEAD),rod,Cosmetics.get(player,EquipmentSlot.LEGS),Cosmetics.get(player,EquipmentSlot.FEET))){arm.resetPose();caszual_additions$snow.hand(arm,pose,collector,light);ci.cancel();return;}
         if(!SpecialCosmetics.isEndRod(rod))return;arm.resetPose();boolean right=arm==getModel().rightArm;arm.zRot=right?.1f:-.1f;float center=(caszual_additions$slim?.5f:1f)/16f;EndRodRender.limb(rod,arm,pose,collector,right?-center:center,-.125f,0);ci.cancel();
     }

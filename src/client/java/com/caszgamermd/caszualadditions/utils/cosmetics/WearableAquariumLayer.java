@@ -29,9 +29,9 @@ import net.minecraft.world.item.component.ItemContainerContents;
  * cosmetic stack so remote players see the same four fish.
  */
 public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
-    private static final Identifier GLASS = Identifier.fromNamespaceAndPath("linked_aquariums", "textures/block/glass_clear.png");
-    private static final Identifier WATER = Identifier.fromNamespaceAndPath("linked_aquariums", "textures/block/contained_water.png");
-    private static final Identifier FRAME = Identifier.fromNamespaceAndPath("linked_aquariums", "textures/block/frame.png");
+    static final Identifier GLASS = Identifier.fromNamespaceAndPath("linked_aquariums", "textures/block/glass_clear.png");
+    static final Identifier WATER = Identifier.fromNamespaceAndPath("linked_aquariums", "textures/block/contained_water.png");
+    static final Identifier FRAME = Identifier.fromNamespaceAndPath("linked_aquariums", "textures/block/frame.png");
     private static final Identifier FISH_TEXTURE = Identifier.withDefaultNamespace("textures/block/white_concrete.png");
     private static final Identifier GUARDIAN_TEXTURE = Identifier.withDefaultNamespace("textures/entity/guardian.png");
     private static final Identifier COD_TEXTURE = Identifier.withDefaultNamespace("textures/entity/fish/cod.png");
@@ -100,6 +100,11 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
             }
         }
         mesh.getRoot().addOrReplaceChild(part,cubes,PartPose.ZERO);
+    }
+
+    /** Reuse the third-person mesh for matching first-person arm geometry. */
+    static ModelPart bakeArm(boolean slim,float inset,boolean rails){
+        return makeHumanoid(slim,inset,rails).getChild("right_arm");
     }
 
     private static ModelPart makeHumanoid(boolean slim,float inset,boolean rails) {

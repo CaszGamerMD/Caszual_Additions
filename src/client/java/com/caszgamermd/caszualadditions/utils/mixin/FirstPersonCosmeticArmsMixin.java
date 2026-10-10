@@ -2,6 +2,7 @@ package com.caszgamermd.caszualadditions.utils.mixin;
 
 import com.caszgamermd.caszualadditions.utils.cosmetics.Cosmetics;
 import com.caszgamermd.caszualadditions.utils.cosmetics.EndRodRender;
+import com.caszgamermd.caszualadditions.utils.cosmetics.WearableAquariumArmRender;
 import com.caszgamermd.caszualadditions.utils.cosmetics.SpecialCosmetics;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
@@ -85,13 +86,14 @@ public abstract class FirstPersonCosmeticArmsMixin {
         if (player == null || player.isInvisible()) return false;
 
         ItemStack chest = Cosmetics.get(player, EquipmentSlot.CHEST);
+        boolean aquarium = SpecialCosmetics.isWearableAquarium(chest);
         boolean bone = SpecialCosmetics.isBone(chest);
         boolean rod = SpecialCosmetics.isEndRod(chest);
         boolean snow = !bone && !rod && SpecialCosmetics.isSnowGolem(
                 Cosmetics.get(player, EquipmentSlot.HEAD), chest,
                 Cosmetics.get(player, EquipmentSlot.LEGS),
                 Cosmetics.get(player, EquipmentSlot.FEET));
-        if (!bone && !rod && !snow) return false;
+        if (!bone && !rod && !snow && !aquarium) return false;
 
         // Only replace the arm: the held item's render pipeline is untouched.
         float sign = arm == HumanoidArm.RIGHT ? 1.0f : -1.0f;
@@ -103,7 +105,12 @@ public abstract class FirstPersonCosmeticArmsMixin {
         pose.mulPose(Axis.ZP.rotationDegrees(sign * -21f));
         pose.mulPose(Axis.XP.rotationDegrees(-34f - 22f * attackProgress));
 
-        if (rod) {
+        if (aquarium) {
+            // Both bare hands and the arm behind held items use the aquarium,
+            // with no dependency on the item being held in either hand.
+            boolean slim = player.getSkin().model().toString().equalsIgnoreCase("slim");
+            WearableAquariumArmRender.firstPerson(pose, collector, light, slim);
+        } else if (rod) {
             // Exactly the same colored/RGB End Rod block model as third person.
             pose.scale(0.23f, -0.78f, 0.23f);
             EndRodRender.block(chest, pose, collector, 0);
