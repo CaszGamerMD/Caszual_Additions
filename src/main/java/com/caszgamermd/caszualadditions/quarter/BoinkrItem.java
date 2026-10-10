@@ -51,6 +51,22 @@ public final class BoinkrItem extends Item {
         return InteractionResult.SUCCESS;
     }
 
+    /**
+     * This is a dedicated baby-block tool, not a pickaxe or universal hammer.
+     * In mining modes it removes quarters quickly. Boink! is conversion-only.
+     */
+    @Override
+    public float getDestroySpeed(ItemStack stack, BlockState state) {
+        return QuarterCreativeBreak.isQuarterContainer(state) && mode(stack) != Mode.BOINK
+                ? 64.0F : 0.0F;
+    }
+
+    @Override
+    public boolean canAttackBlock(BlockState state, Level level, BlockPos pos, Player player) {
+        return QuarterCreativeBreak.isQuarterContainer(state)
+                && mode(player.getMainHandItem()) != Mode.BOINK;
+    }
+
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
         if (player.isShiftKeyDown()) return cycle(level, player, player.getItemInHand(hand));
