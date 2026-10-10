@@ -154,7 +154,7 @@ public final class CustomHeadCatalog {
      */
     static GameProfile createHeadProfile(String textureHash) {
         String url = "https://textures.minecraft.net/texture/" + textureHash;
-        String json = "{\\\"textures\\\":{\\\"SKIN\\\":{\\\"url\\\":\\\"" + url + "\\\"}}}";
+        String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}";
         String base64 = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
         PropertyMap textures = new PropertyMap(
                 ImmutableListMultimap.of("textures", new Property("textures", base64)));
