@@ -453,19 +453,10 @@
         "up": {
           "texture": "#frame"
         },
-        "down": {
-          "texture": "#frame"
-        },
         "north": {
           "texture": "#frame"
         },
         "south": {
-          "texture": "#frame"
-        },
-        "east": {
-          "texture": "#frame"
-        },
-        "west": {
           "texture": "#frame"
         }
       }
