@@ -130,21 +130,35 @@ public final class PalletBlockEntityRenderer
         if (!state.root) return;
         if (!state.legacy) {
             poseStack.pushPose();
-            // Existing board/cargo geometry is a 2x2 square extending in
-            // local +X/+Z. Rotate its axes so +X points to the player's right
-            // and the length of the pallet points forward from the home spot.
-            // The home corner stays inside the block originally clicked.
-            poseStack.translate(.5, 0, .5);
-            float degrees = switch (state.facing) {
-                case NORTH -> 0f;
-                case EAST -> -90f;
-                case SOUTH -> 180f;
-                case WEST -> 90f;
-                default -> 0f;
-            };
-            poseStack.mulPose(Axis.YP.rotationDegrees(degrees));
-            poseStack.translate(-.5, 0, -.5);
-            poseStack.translate(0, 0, -1);
+            // The origin is ALWAYS the clicked home block (part 0).
+            // Local +X is rightward across the deck, local +Z extends
+            // forward. Since E/S in Minecraft form the opposite handedness
+            // to right/forward, we reflect the model as needed, rather
+            // than using a pure rotation that offsets the home corner.
+            switch (state.facing) {
+                case NORTH -> {
+                    // right +X, forward -Z
+                    poseStack.translate(0, 0, 1);
+                    poseStack.scale(1, 1, -1);
+                }
+                case EAST -> {
+                    // right +Z, forward +X
+                    poseStack.mulPose(Axis.YP.rotationDegrees(-90));
+                    poseStack.scale(1, 1, -1);
+                }
+                case SOUTH -> {
+                    // right -X, forward +Z
+                    poseStack.translate(1, 0, 0);
+                    poseStack.scale(-1, 1, 1);
+                }
+                case WEST -> {
+                    // right -Z, forward -X
+                    poseStack.translate(1, 0, 1);
+                    poseStack.mulPose(Axis.YP.rotationDegrees(-90));
+                    poseStack.scale(-1, 1, 1);
+                }
+                default -> {}
+            }
         }
 
         submitPalletBase(state, poseStack, collector);
@@ -157,19 +171,18 @@ public final class PalletBlockEntityRenderer
             int col = local % PalletBlockEntityRenderState.DISPLAY_COLUMNS;
             int row = local / PalletBlockEntityRenderState.DISPLAY_COLUMNS;
 
-            // Four 8-pixel cubes plus three 1-pixel gaps need 35 pixels
-            // across a 32-pixel pallet. A tiny 1.5px overhang on each side
-            // allows cargo to fill the pallet instead of leaving empty edges.
-            // Each layer begins on top of the deck and fills left-to-right,
-            // then front-to-back; removing stacks compacts every higher tier.
-            double x = -0.09375 + col * 0.5625;
-            double z = -0.09375 + row * 0.5625;
+            // Three 9-pixel cubes + two 1-pixel gaps = 29 pixels.
+            // Centered on the 32-pixel (2-block) deck, that leaves 1.5
+            // pixels inside EACH edge. Cargo never overhangs.
+            // Fill each tier left-to-right, front-to-back, from the bottom.
+            double x = 0.09375 + col * 0.625;
+            double z = 0.09375 + row * 0.625;
             double y = PalletBlockEntityRenderState.FIRST_LAYER_Y
                     + layer * PalletBlockEntityRenderState.LAYER_SPACING;
 
             poseStack.pushPose();
             poseStack.translate(x, y, z);
-            poseStack.scale(.5f, .5f, .5f);
+            poseStack.scale(.5625f, .5625f, .5625f);
             if (state.boxed[i]) {
                 state.carton.submit(poseStack, collector, state.lightCoords,
                         OverlayTexture.NO_OVERLAY, 0);
