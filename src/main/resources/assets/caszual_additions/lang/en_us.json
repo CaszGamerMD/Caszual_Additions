@@ -83,5 +83,7 @@
   "block.caszual_additions.rgb_wallpaper": "RGB Wallpaper",
   "item.caszual_additions.rgb_quarter_block": "RGB Quarter Block",
   "item.caszual_additions.boinkr": "Boink'r",
-  "tooltip.caszual_additions.boinkr": "Shift + right-click to change mode"
+  "tooltip.caszual_additions.boinkr": "Shift + right-click to change mode",
+  "block.caszual_additions.barrel_of_caszual_fun": "Barrel of Caszual Fun",
+  "container.caszual_additions.barrel_of_caszual_fun": "Barrel of Caszual Fun"
 }
