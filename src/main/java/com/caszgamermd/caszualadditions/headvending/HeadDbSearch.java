@@ -12,12 +12,15 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.util.Util;
@@ -37,6 +40,8 @@ public final class HeadDbSearch {
     private static final String API = "https://headdb.net/api/v1/heads";
     private static final int UPSTREAM_PAGE_SIZE = 12;
     private static final int MAX_RESPONSE_BYTES = 1_000_000;
+    private static final Pattern SKIN_URL_HASH = Pattern.compile(
+            "textures\\.minecraft\\.net/texture/([a-fA-F0-9]{32,128})");
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL).build();
@@ -98,12 +103,16 @@ public final class HeadDbSearch {
 
         JsonArray visible = new JsonArray();
         int total = first.total();
+        int invalid = 0;
         for (int i = start; i < Math.min(start + CustomHeadCatalog.PAGE_SIZE, total); i++) {
             RemotePage source = i / UPSTREAM_PAGE_SIZE + 1 == remoteFirst ? first : second;
             int index = i % UPSTREAM_PAGE_SIZE;
             if (index >= source.items().size()) continue;
             CustomHeadCatalog.Head head = parseHead(source.items().get(index));
-            if (head == null) continue;
+            if (head == null) {
+                invalid++;
+                continue;
+            }
             JsonObject entry = new JsonObject();
             entry.addProperty("name", head.name());
             entry.addProperty("category", head.category());
@@ -121,6 +130,18 @@ public final class HeadDbSearch {
         for (String name : knownCategories) categories.add(name);
         response.add("categories", categories);
         response.add("items", visible);
+        if (visible.isEmpty() && total > start) {
+            String issue = "HeadDB reported " + total
+                    + " heads, but none of this page's textures passed validation"
+                    + " (" + invalid + " invalid entries).";
+            response.addProperty("error", issue);
+            org.slf4j.LoggerFactory.getLogger("CaszualAdditions/HeadVending")
+                    .warn("{} query='{}', category='{}', page={}", issue, query, category, page);
+        } else if (invalid > 0) {
+            org.slf4j.LoggerFactory.getLogger("CaszualAdditions/HeadVending")
+                    .warn("Discarded {} unrecognized HeadDB records for query='{}' page={}",
+                            invalid, query, page);
+        }
         return response.toString();
     }
 
@@ -223,24 +244,45 @@ public final class HeadDbSearch {
         knownCategories = List.copyOf(sorted);
     }
 
-    private static CustomHeadCatalog.Head parseHead(JsonElement item) {
+    // Keep package access to allow a response-contract regression test.
+    static CustomHeadCatalog.Head parseHead(JsonElement item) {
         if (!item.isJsonObject()) return null;
         JsonObject object = item.getAsJsonObject();
         String name = firstString(object, "name", "displayName", "title");
         String category = category(object);
         String hash = firstString(object, "textureHash", "texture_hash",
                 "hash", "texture", "textureUrl", "skinHash");
-        if (hash.startsWith("http")) {
-            int i = hash.lastIndexOf('/');
-            hash = hash.substring(i + 1);
+        if (object.has("texture") && object.get("texture").isJsonObject()
+                && !isHash(hash)) {
+            JsonObject nested = object.getAsJsonObject("texture");
+            hash = firstString(nested, "hash", "textureHash", "url", "textureUrl");
         }
-        if (object.has("texture") && object.get("texture").isJsonObject()) {
-            JsonObject texture = object.getAsJsonObject("texture");
-            if (!hash.matches("[a-fA-F0-9]{32,128}"))
-                hash = firstString(texture, "hash", "textureHash");
+        if (!isHash(hash)) {
+            Matcher url = SKIN_URL_HASH.matcher(hash);
+            if (url.find()) hash = url.group(1);
+        }
+        if (!isHash(hash)) {
+            Matcher url = SKIN_URL_HASH.matcher(firstString(object, "textureUrl"));
+            if (url.find()) hash = url.group(1);
+        }
+        if (!isHash(hash)) {
+            // New HeadDB responses can supply the Mojang skin payload as
+            // base64 instead of a plain hash. Only accept a URL at Mojang's
+            // official texture host, never arbitrary untrusted skin URLs.
+            String encoded = firstString(object, "textureValue");
+            if (encoded.length() > 0 && encoded.length() <= 8192) {
+                try {
+                    String decoded = new String(Base64.getDecoder().decode(encoded),
+                            StandardCharsets.UTF_8);
+                    Matcher url = SKIN_URL_HASH.matcher(decoded);
+                    if (url.find()) hash = url.group(1);
+                } catch (IllegalArgumentException ignored) {
+                    // Bad textureValue -> treat this single record as invalid.
+                }
+            }
         }
         hash = hash.toLowerCase(Locale.ROOT);
-        if (name.isBlank() || name.length() > 100 || !hash.matches("[a-f0-9]{32,128}"))
+        if (name.isBlank() || name.length() > 100 || !isHash(hash))
             return null;
         if (category.isBlank()) category = "other";
         StringBuilder keywords = new StringBuilder(name).append(' ').append(category);
@@ -256,6 +298,10 @@ public final class HeadDbSearch {
         if (VERIFIED.size() > 12_000) VERIFIED.clear();
         VERIFIED.put(hash, head);
         return head;
+    }
+
+    private static boolean isHash(String value) {
+        return value != null && value.matches("[a-fA-F0-9]{32,128}");
     }
 
     private static String category(JsonObject object) {

@@ -5,7 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
+import com.google.common.collect.ImmutableListMultimap;
 import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -145,20 +147,29 @@ public final class CustomHeadCatalog {
                 ? value.getAsString() : "";
     }
 
+    /**
+     * Construct a textured profile without touching game item registries.
+     * 26.2 GameProfiles have immutable properties; replacing or modifying a
+     * profile.properties() map after construction throws.
+     */
+    static GameProfile createHeadProfile(String textureHash) {
+        String url = "https://textures.minecraft.net/texture/" + textureHash;
+        String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}";
+        String base64 = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+        PropertyMap textures = new PropertyMap(
+                ImmutableListMultimap.of("textures", new Property("textures", base64)));
+        return new GameProfile(
+                UUID.nameUUIDFromBytes(("caszual-head:" + textureHash)
+                        .getBytes(StandardCharsets.UTF_8)),
+                "CustomHead", textures
+        );
+    }
+
     public static ItemStack createHead(String name, String textureHash) {
         if (textureHash == null || !textureHash.matches("[a-f0-9]{32,128}")) {
             return ItemStack.EMPTY;
         }
-        String url = "https://textures.minecraft.net/texture/" + textureHash;
-        String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}";
-        String base64 = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-        GameProfile profile = new GameProfile(
-                UUID.nameUUIDFromBytes(("caszual-head:" + textureHash)
-                        .getBytes(StandardCharsets.UTF_8)),
-                "CustomHead"
-        );
-        profile.properties().put("textures", new Property("textures", base64));
-
+        GameProfile profile = createHeadProfile(textureHash);
         ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
         stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
         stack.set(DataComponents.ITEM_NAME, Component.literal(name));
