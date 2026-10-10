@@ -15,10 +15,10 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
  */
 public final class WearableAquariumArmRender {
     private static final ModelPart WIDE_WATER=WearableAquariumLayer.bakeArm(false,.07f,false);
-    private static final ModelPart WIDE_GLASS=WearableAquariumLayer.bakeArm(false,0,false);
+    private static final ModelPart WIDE_GLASS=WearableAquariumLayer.bakeArm(false,.02f,false);
     private static final ModelPart WIDE_FRAME=WearableAquariumLayer.bakeArm(false,0,true);
     private static final ModelPart SLIM_WATER=WearableAquariumLayer.bakeArm(true,.07f,false);
-    private static final ModelPart SLIM_GLASS=WearableAquariumLayer.bakeArm(true,0,false);
+    private static final ModelPart SLIM_GLASS=WearableAquariumLayer.bakeArm(true,.02f,false);
     private static final ModelPart SLIM_FRAME=WearableAquariumLayer.bakeArm(true,0,true);
 
     private WearableAquariumArmRender(){}
