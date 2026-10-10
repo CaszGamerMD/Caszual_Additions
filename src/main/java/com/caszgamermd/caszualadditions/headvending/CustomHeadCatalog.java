@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -152,14 +153,16 @@ public final class CustomHeadCatalog {
         String url = "https://textures.minecraft.net/texture/" + textureHash;
         String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}";
         String base64 = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-        // In 26.2 authlib, GameProfile's properties are immutable.
-        // Supplying the texture in the constructor is required; trying to
-        // mutate profile.properties() throws UnsupportedOperationException.
+        // GameProfile(UUID, String) uses an immutable empty PropertyMap in
+        // Minecraft 26.2. Populate a separate mutable PropertyMap FIRST and
+        // supply it to the three-argument constructor; never mutate the
+        // profile's immutable properties() collection.
+        PropertyMap textures = new PropertyMap();
+        textures.put("textures", new Property("textures", base64));
         GameProfile profile = new GameProfile(
                 UUID.nameUUIDFromBytes(("caszual-head:" + textureHash)
                         .getBytes(StandardCharsets.UTF_8)),
-                "CustomHead",
-                Map.of("textures", new Property("textures", base64))
+                "CustomHead", textures
         );
 
         ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
