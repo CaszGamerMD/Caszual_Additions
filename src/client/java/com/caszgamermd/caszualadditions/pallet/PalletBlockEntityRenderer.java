@@ -1,6 +1,8 @@
 package com.caszgamermd.caszualadditions.pallet;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.core.Direction;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelResolver;
@@ -46,6 +48,8 @@ public final class PalletBlockEntityRenderer
         BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTicks, cameraPosition, breakProgress);
 
         state.root = blockEntity.isRoot();
+        state.facing = blockEntity.getBlockState().getValue(PalletBlock.FACING);
+        state.legacy = blockEntity.getBlockState().getValue(PalletBlock.LEGACY);
         if (state.root) {
             Block defaultMaterial = materialFor(blockEntity);
             boolean mixedWood = blockEntity.getBlockState().getBlock() instanceof PalletBlock pallet
@@ -124,6 +128,25 @@ public final class PalletBlockEntityRenderer
         // Render ONE continuous 2×2 pallet from the controller. The three
         // satellite block entities never submit overlapping quarter-pallets.
         if (!state.root) return;
+        if (!state.legacy) {
+            poseStack.pushPose();
+            // Existing board/cargo geometry is a 2x2 square extending in
+            // local +X/+Z. Rotate its axes so +X points to the player's right
+            // and the length of the pallet points forward from the home spot.
+            // The home corner stays inside the block originally clicked.
+            poseStack.translate(.5, 0, .5);
+            float degrees = switch (state.facing) {
+                case NORTH -> 0f;
+                case EAST -> -90f;
+                case SOUTH -> 180f;
+                case WEST -> 90f;
+                default -> 0f;
+            };
+            poseStack.mulPose(Axis.YP.rotationDegrees(degrees));
+            poseStack.translate(-.5, 0, -.5);
+            poseStack.translate(0, 0, -1);
+        }
+
         submitPalletBase(state, poseStack, collector);
 
         int layerSize = PalletBlockEntityRenderState.DISPLAY_COLUMNS
@@ -164,6 +187,7 @@ public final class PalletBlockEntityRenderer
             }
             poseStack.popPose();
         }
+        if (!state.legacy) poseStack.popPose();
     }
 
     private static void submitPalletBase(
