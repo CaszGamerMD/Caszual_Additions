@@ -218,7 +218,14 @@ public final class PalletBlock extends Block implements EntityBlock {
     ) {
         if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer) {
             PalletBlockEntity root = rootEntity(level, pos, state);
-            if (root != null) serverPlayer.openMenu(root);
+            if (root != null) {
+                // Rebuild collision extenders for pallets already present in
+                // worlds saved before cargo collision support was introduced.
+                if (level instanceof ServerLevel server) {
+                    PalletCargoCollisionBlock.refresh(server, root.getBlockPos());
+                }
+                serverPlayer.openMenu(root);
+            }
         }
         return InteractionResult.SUCCESS;
     }
