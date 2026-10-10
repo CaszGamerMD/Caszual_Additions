@@ -30,6 +30,20 @@ M C M
 
 **Recolor plastic:** plastic pallet + a dye (shapeless) → recolored plastic pallet.
 
+## Placing a pallet: home corner and auto-rotation
+
+The block you click becomes the pallet's **home corner** (the closest left corner from the player's perspective). From that square, the 2×2 pallet extends:
+
+- **One block to your right**
+- **One block forward**
+- **One block diagonally forward-right**
+
+For example, while looking **north**, the home block is the **southwest** corner and the other three squares are east, north, and northeast.
+
+If that footprint is blocked, placement automatically tries rotating **90° clockwise**, then **180°**, then **270°**. The clicked home block **never moves**, even when the pallet rotates. All four squares must be replaceable and within the world bounds. If none of the four orientations fits, **no pallet is placed**.
+
+All pallet materials, the 216-slot shared inventory, long mixed-wood deck boards, and copper weathering follow the chosen orientation. Pallets placed before this update retain their old east/south layout and existing inventory.
+
 ## Visible items versus inventory
 
 Pallets do not render all 216 stored stacks.
