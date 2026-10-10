@@ -62,12 +62,6 @@ public final class BoinkrItem extends Item {
     }
 
     @Override
-    public boolean canAttackBlock(BlockState state, Level level, BlockPos pos, Player player) {
-        return QuarterCreativeBreak.isQuarterContainer(state)
-                && mode(player.getMainHandItem()) != Mode.BOINK;
-    }
-
-    @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
         if (player.isShiftKeyDown()) return cycle(level, player, player.getItemInHand(hand));
         return InteractionResult.PASS;
