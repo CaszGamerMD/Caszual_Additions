@@ -1,7 +1,7 @@
 package com.caszgamermd.caszualadditions.utils.cosmetics;
 
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.SimpleContainer;
+
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -13,19 +13,7 @@ public final class CosmeticsMenu extends AbstractContainerMenu {
     public CosmeticsMenu(int id, Inventory inventory) {
         super(Cosmetics.MENU, id);
         owner = inventory.player;
-        class CosmeticContainer extends SimpleContainer {
-            private boolean initialized;
-            CosmeticContainer() {
-                super(4);
-                for (int i = 0; i < 4; i++) setItem(i, Cosmetics.get(owner, Cosmetics.SLOTS[i]));
-                initialized = true;
-            }
-            @Override public void setChanged() {
-                super.setChanged();
-                if (initialized && !owner.level().isClientSide()) for (int i = 0; i < 4; i++) Cosmetics.set(owner, Cosmetics.SLOTS[i], getItem(i));
-            }
-        }
-        var cosmetics = new CosmeticContainer();
+        var cosmetics = new CosmeticSlotContainer(owner);
         String[] icons = {"helmet", "chestplate", "leggings", "boots"};
         for (int i = 0; i < 4; i++) {
             final int index = i;
