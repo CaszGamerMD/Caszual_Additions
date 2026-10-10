@@ -7,18 +7,19 @@ import net.minecraft.core.Direction;
 
 public final class PalletBlockEntityRenderState extends BlockEntityRenderState {
     /*
-     * One shared 2x2 pallet controller draws a 3x3x7 array of visible cargo:
-     * half-block (9px) display units with one-pixel gaps on every axis.
-     * Storage still has 216 slots; the final cargo tier is below y=5.
+     * One shared 2x2 controller draws a tightly packed 3x3x7
+     * display. Every cell is 2/3 of a block wide with no gaps;
+     * seven full tiers reach just below five blocks above ground.
+     * Storage capacity remains 216 slots (63 visible).
      */
     public static final int DISPLAY_COLUMNS = 3;
     public static final int DISPLAY_ROWS = 3;
     public static final int DISPLAY_LAYERS = 7;
     public static final int DISPLAY_CAPACITY =
             DISPLAY_COLUMNS * DISPLAY_ROWS * DISPLAY_LAYERS;
-    public static final float ITEM_SCALE = 0.5625F;
-    public static final float FIRST_LAYER_Y = 0.30F;
-    public static final float LAYER_SPACING = 0.625F;
+    public static final float ITEM_SCALE = 2.0F / 3.0F;
+    public static final float FIRST_LAYER_Y = 0.3125F;
+    public static final float LAYER_SPACING = ITEM_SCALE;
 
     public final BlockModelRenderState base = new BlockModelRenderState();
     public final BlockModelRenderState carton = new BlockModelRenderState();
