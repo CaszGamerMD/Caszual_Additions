@@ -135,43 +135,37 @@ public final class PalletBlockEntityRenderer
             SubmitNodeCollector collector,
             CameraRenderState camera
     ) {
-        // Render ONE continuous 2×2 pallet from the controller. The three
-        // satellite block entities never submit overlapping quarter-pallets.
+        // Only the home controller renders the whole 2x2 pallet.
         if (!state.root) return;
+
+        // Never mirror a rendered mesh with a negative scale. Negative
+        // determinant transforms flip face winding, causing exterior faces
+        // to vanish and leaving hollow-looking blocks. Use a genuine Y
+        // rotation for the wooden/metal deck. Cargo cell positions are
+        // transformed separately so the clicked block remains the home corner.
+        poseStack.pushPose();
         if (!state.legacy) {
-            poseStack.pushPose();
-            // The origin is ALWAYS the clicked home block (part 0).
-            // Local +X is rightward across the deck, local +Z extends
-            // forward. Since E/S in Minecraft form the opposite handedness
-            // to right/forward, we reflect the model as needed, rather
-            // than using a pure rotation that offsets the home corner.
             switch (state.facing) {
                 case NORTH -> {
-                    // right +X, forward -Z
                     poseStack.translate(0, 0, 1);
-                    poseStack.scale(1, 1, -1);
+                    poseStack.mulPose(Axis.YP.rotationDegrees(90));
                 }
                 case EAST -> {
-                    // right +Z, forward +X
-                    poseStack.mulPose(Axis.YP.rotationDegrees(-90));
-                    poseStack.scale(1, 1, -1);
+                    // The home block is the south-west corner of this square.
                 }
                 case SOUTH -> {
-                    // right -X, forward +Z
                     poseStack.translate(1, 0, 0);
-                    poseStack.scale(-1, 1, 1);
+                    poseStack.mulPose(Axis.YP.rotationDegrees(-90));
                 }
                 case WEST -> {
-                    // right -Z, forward -X
                     poseStack.translate(1, 0, 1);
-                    poseStack.mulPose(Axis.YP.rotationDegrees(-90));
-                    poseStack.scale(-1, 1, 1);
+                    poseStack.mulPose(Axis.YP.rotationDegrees(180));
                 }
                 default -> {}
             }
         }
-
         submitPalletBase(state, poseStack, collector);
+        poseStack.popPose();
 
         int layerSize = PalletBlockEntityRenderState.DISPLAY_COLUMNS
                 * PalletBlockEntityRenderState.DISPLAY_ROWS;
@@ -181,10 +175,38 @@ public final class PalletBlockEntityRenderer
             int col = local % PalletBlockEntityRenderState.DISPLAY_COLUMNS;
             int row = local / PalletBlockEntityRenderState.DISPLAY_COLUMNS;
 
-            // Three contiguous 2/3-block cubes across each axis.
-            // They fill the two-block deck without gaps or overhang.
-            double x = col * PalletBlockEntityRenderState.ITEM_SCALE;
-            double z = row * PalletBlockEntityRenderState.ITEM_SCALE;
+            // Place the cargo in world-relative cells rather than reflecting
+            // item meshes. This retains correct face winding on all four
+            // orientations and aligns exactly with cargo collision shapes.
+            double cell = PalletBlockEntityRenderState.ITEM_SCALE;
+            double x, z;
+            if (state.legacy) {
+                x = col * cell;
+                z = row * cell;
+            } else {
+                switch (state.facing) {
+                    case NORTH -> {
+                        x = col * cell;
+                        z = 1.0 - (row + 1) * cell;
+                    }
+                    case EAST -> {
+                        x = row * cell;
+                        z = col * cell;
+                    }
+                    case SOUTH -> {
+                        x = 1.0 - (col + 1) * cell;
+                        z = row * cell;
+                    }
+                    case WEST -> {
+                        x = 1.0 - (row + 1) * cell;
+                        z = 1.0 - (col + 1) * cell;
+                    }
+                    default -> {
+                        x = col * cell;
+                        z = row * cell;
+                    }
+                }
+            }
             double y = PalletBlockEntityRenderState.FIRST_LAYER_Y
                     + layer * PalletBlockEntityRenderState.LAYER_SPACING;
 
@@ -210,7 +232,7 @@ public final class PalletBlockEntityRenderer
             }
             poseStack.popPose();
         }
-        if (!state.legacy) poseStack.popPose();
+
     }
 
     private static void submitPalletBase(
