@@ -24,7 +24,6 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -36,7 +35,7 @@ import org.jspecify.annotations.Nullable;
 public final class PalletBlock extends Block implements EntityBlock {
     public static final IntegerProperty PART = IntegerProperty.create("part", 0, 3);
     /** Direction the placing player was looking; determines the 2x2 footprint. */
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     /**
      * The old pallet always extended east and south from part 0. Saved world
      * states without these new properties inherit legacy=true, preserving
