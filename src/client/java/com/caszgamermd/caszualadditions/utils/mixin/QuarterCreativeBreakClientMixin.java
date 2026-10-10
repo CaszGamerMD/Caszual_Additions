@@ -22,6 +22,13 @@ public abstract class QuarterCreativeBreakClientMixin {
     @Inject(method = "destroyBlock", at = @At("HEAD"), cancellable = true)
     private void caszualAdditions$breakQuarter(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
         if (minecraft.player == null || minecraft.level == null) return;
+        // This hammer cannot destroy normal full blocks, even in Creative.
+        // Its only action on them is Boink!'s right-click conversion.
+        if (minecraft.player.getMainHandItem().getItem() instanceof BoinkrItem
+                && !QuarterCreativeBreak.isQuarterContainer(minecraft.level.getBlockState(pos))) {
+            cir.setReturnValue(false);
+            return;
+        }
         if (QuarterCreativeBreak.isQuarterContainer(minecraft.level.getBlockState(pos))) {
             // Minecraft normally sends a breaking packet here. Cancelling
             // destroyBlock stopped that packet, so a mined baby block was
