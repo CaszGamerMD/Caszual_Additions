@@ -147,24 +147,29 @@ public final class CustomHeadCatalog {
                 ? value.getAsString() : "";
     }
 
-    public static ItemStack createHead(String name, String textureHash) {
-        if (textureHash == null || !textureHash.matches("[a-f0-9]{32,128}")) {
-            return ItemStack.EMPTY;
-        }
+    /**
+     * Construct a textured profile without touching game item registries.
+     * 26.2 GameProfiles have immutable properties; replacing or modifying a
+     * profile.properties() map after construction throws.
+     */
+    static GameProfile createHeadProfile(String textureHash) {
         String url = "https://textures.minecraft.net/texture/" + textureHash;
-        String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}";
+        String json = "{\\\"textures\\\":{\\\"SKIN\\\":{\\\"url\\\":\\\"" + url + "\\\"}}}";
         String base64 = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-        // In Minecraft 26.2, profiles expose immutable properties. Build
-        // the PropertyMap from the provided textures property and pass it
-        // into the constructor, instead of mutating profile.properties().
         PropertyMap textures = new PropertyMap(
                 ImmutableListMultimap.of("textures", new Property("textures", base64)));
-        GameProfile profile = new GameProfile(
+        return new GameProfile(
                 UUID.nameUUIDFromBytes(("caszual-head:" + textureHash)
                         .getBytes(StandardCharsets.UTF_8)),
                 "CustomHead", textures
         );
+    }
 
+    public static ItemStack createHead(String name, String textureHash) {
+        if (textureHash == null || !textureHash.matches("[a-f0-9]{32,128}")) {
+            return ItemStack.EMPTY;
+        }
+        GameProfile profile = createHeadProfile(textureHash);
         ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
         stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
         stack.set(DataComponents.ITEM_NAME, Component.literal(name));
