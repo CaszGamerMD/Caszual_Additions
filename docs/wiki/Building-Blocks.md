@@ -22,6 +22,9 @@ W S W
 
 Hold the Boink'r and **sneak + right-click** (in the air or on a block) to cycle its modes; the active mode is shown in the action bar.
 
+**The Boink'r mines baby/quarter blocks only.** Hold left-click in **Single** or **Group** mode to break them quickly. The tool cannot mine ordinary full-sized blocks, furniture, containers, or other world blocks. **Boink!** mode uses right-click for converting full blocks to quarters or merging matching quarters; left-click in Boink! mode does not break blocks. Baby-block mining is processed on the server so the removed pieces stay removed in Survival and Creative.
+
+
 | Mode | Action | Effect |
 | --- | --- | --- |
 | Single | Mine a baby block | Remove exactly one aimed quarter (normal mining works the same way) |
