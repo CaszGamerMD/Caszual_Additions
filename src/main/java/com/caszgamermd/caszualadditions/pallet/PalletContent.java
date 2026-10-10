@@ -156,15 +156,29 @@ public final class PalletContent {
         };
         if (next == null) return;
 
+        BlockState home = level.getBlockState(root);
+        if (!(home.getBlock() instanceof PalletBlock pallet)
+                || pallet.kind() != PalletKind.COPPER
+                || home.getValue(PalletBlock.PART) != 0) return;
+
+        // Verify the entire oriented footprint before aging any piece.
         for (int part = 0; part < 4; part++) {
-            BlockPos pos = PalletBlock.partPos(root, part);
+            BlockPos pos = PalletBlock.partPos(root, part, home);
             BlockState old = level.getBlockState(pos);
-            if (!(old.getBlock() instanceof PalletBlock pallet) || pallet.kind() != PalletKind.COPPER) return;
+            if (!(old.getBlock() instanceof PalletBlock existing)
+                    || existing.kind() != PalletKind.COPPER
+                    || old.getValue(PalletBlock.PART) != part
+                    || old.getValue(PalletBlock.FACING) != home.getValue(PalletBlock.FACING)
+                    || old.getValue(PalletBlock.LEGACY) != home.getValue(PalletBlock.LEGACY)) return;
         }
 
+        // Preserve orientation and legacy position mapping while weathering.
         for (int part = 0; part < 4; part++) {
-            BlockPos pos = PalletBlock.partPos(root, part);
-            level.setBlock(pos, next.defaultBlockState().setValue(PalletBlock.PART, part), 3);
+            BlockPos pos = PalletBlock.partPos(root, part, home);
+            level.setBlock(pos, next.defaultBlockState()
+                    .setValue(PalletBlock.PART, part)
+                    .setValue(PalletBlock.FACING, home.getValue(PalletBlock.FACING))
+                    .setValue(PalletBlock.LEGACY, home.getValue(PalletBlock.LEGACY)), 3);
         }
     }
 
