@@ -31,6 +31,7 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.phys.shapes.Shapes;
 import org.jspecify.annotations.Nullable;
 
 public final class PalletBlock extends Block implements EntityBlock {
@@ -95,7 +96,7 @@ public final class PalletBlock extends Block implements EntityBlock {
 
     @Override
     protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return SHAPE;
+        return Shapes.or(SHAPE, PalletCargoCollisionBlock.shapeFor(level, pos));
     }
 
     /** "Home" is always part 0: the actual block the player clicked. */
@@ -217,7 +218,14 @@ public final class PalletBlock extends Block implements EntityBlock {
     ) {
         if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer) {
             PalletBlockEntity root = rootEntity(level, pos, state);
-            if (root != null) serverPlayer.openMenu(root);
+            if (root != null) {
+                // Rebuild collision extenders for pallets already present in
+                // worlds saved before cargo collision support was introduced.
+                if (level instanceof ServerLevel server) {
+                    PalletCargoCollisionBlock.refresh(server, root.getBlockPos());
+                }
+                serverPlayer.openMenu(root);
+            }
         }
         return InteractionResult.SUCCESS;
     }
@@ -226,6 +234,9 @@ public final class PalletBlock extends Block implements EntityBlock {
     public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!level.isClientSide()) {
             BlockPos root = rootPos(pos, state);
+            if (level instanceof ServerLevel server) {
+                PalletCargoCollisionBlock.clear(server, root, state);
+            }
             PalletBlockEntity controller = level.getBlockEntity(root) instanceof PalletBlockEntity be ? be : null;
 
             if (controller != null && !player.getAbilities().instabuild) {

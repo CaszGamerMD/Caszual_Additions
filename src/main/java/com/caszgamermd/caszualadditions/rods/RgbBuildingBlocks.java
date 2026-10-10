@@ -37,7 +37,8 @@ public final class RgbBuildingBlocks {
                 .lightLevel(state -> 14)
                 .setId(blockKey);
 
-        if (name.contains("carpet") || name.equals("rgb_wallpaper")) {
+        if (name.contains("carpet") || name.equals("rgb_wallpaper")
+                || name.equals("rgb_door") || name.equals("rgb_trapdoor")) {
             props.noOcclusion();
         }
 

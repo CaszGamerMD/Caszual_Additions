@@ -1,7 +1,7 @@
 package com.caszgamermd.caszualadditions.utils.mixin;
 
 import com.caszgamermd.caszualadditions.utils.cosmetics.Cosmetics;
-import net.minecraft.world.SimpleContainer;
+import com.caszgamermd.caszualadditions.utils.cosmetics.CosmeticSlotContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.InventoryMenu;
@@ -17,20 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class InventoryMenuCosmeticsMixin {
     @Inject(method="<init>", at=@At("RETURN"))
     private void caszual_additions$addCosmeticSlots(Inventory inventory, boolean active, Player owner, CallbackInfo ci) {
-        class CosmeticContainer extends SimpleContainer {
-            private boolean initialized;
-            CosmeticContainer() {
-                super(4);
-                for (int i=0;i<4;i++) setItem(i, Cosmetics.get(owner, Cosmetics.SLOTS[i]));
-                initialized=true;
-            }
-            @Override public void setChanged() {
-                super.setChanged();
-                if (initialized && !owner.level().isClientSide())
-                    for (int i=0;i<4;i++) Cosmetics.set(owner, Cosmetics.SLOTS[i], getItem(i));
-            }
-        }
-        var cosmetics=new CosmeticContainer();
+        var cosmetics = new CosmeticSlotContainer(owner);
         String[] icons={"helmet","chestplate","leggings","boots"};
         for(int i=0;i<4;i++){
             final var cosmeticSlot=Cosmetics.SLOTS[i];

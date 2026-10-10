@@ -72,9 +72,16 @@ public final class PalletBlockEntityRenderer
         // nonempty slots into the limited display grid, then stop; remaining
         // stacks stay in storage and are not submitted to the renderer.
         if (state.root) {
+            // Respect occupied blocks above the deck: do not render cargo
+            // through a roof, wall or an adjacent built structure.
+            int maxVisible = blockEntity.getLevel() == null
+                    ? PalletBlockEntityRenderState.DISPLAY_CAPACITY
+                    : PalletCargoCollisionBlock.visibleCount(
+                            blockEntity.getLevel(), blockEntity.getBlockPos(),
+                            blockEntity.getBlockState(), blockEntity);
             for (int slot = 0;
                     slot < blockEntity.getContainerSize()
-                            && state.visibleCount < PalletBlockEntityRenderState.DISPLAY_CAPACITY;
+                            && state.visibleCount < maxVisible;
                     slot++) {
                 ItemStack stack = blockEntity.getItem(slot);
                 if (stack.isEmpty()) continue;
@@ -86,9 +93,12 @@ public final class PalletBlockEntityRenderer
                     // an inventory object, with an off-center pivot. That made
                     // cargo float and spread apart. Real block models instead
                     // occupy exactly the half-block cargo cell.
-                    blockModelResolver.update(state.cargoBlocks[displayIndex],
-                            blockItem.getBlock().defaultBlockState(), DISPLAY_CONTEXT);
-                    state.items[displayIndex].clear();
+                    // Raw item models have complete geometry on all faces.
+                    // Terrain block models may cull internal faces when used
+                    // outside the world renderer and appear hollow.
+                    itemModelResolver.updateForTopItem(
+                            state.items[displayIndex], stack, ItemDisplayContext.NONE,
+                            blockEntity.getLevel(), null, slot);
                 } else {
                     state.boxed[displayIndex] = true;
                     itemModelResolver.updateForTopItem(
@@ -125,43 +135,37 @@ public final class PalletBlockEntityRenderer
             SubmitNodeCollector collector,
             CameraRenderState camera
     ) {
-        // Render ONE continuous 2×2 pallet from the controller. The three
-        // satellite block entities never submit overlapping quarter-pallets.
+        // Only the home controller renders the whole 2x2 pallet.
         if (!state.root) return;
+
+        // Never mirror a rendered mesh with a negative scale. Negative
+        // determinant transforms flip face winding, causing exterior faces
+        // to vanish and leaving hollow-looking blocks. Use a genuine Y
+        // rotation for the wooden/metal deck. Cargo cell positions are
+        // transformed separately so the clicked block remains the home corner.
+        poseStack.pushPose();
         if (!state.legacy) {
-            poseStack.pushPose();
-            // The origin is ALWAYS the clicked home block (part 0).
-            // Local +X is rightward across the deck, local +Z extends
-            // forward. Since E/S in Minecraft form the opposite handedness
-            // to right/forward, we reflect the model as needed, rather
-            // than using a pure rotation that offsets the home corner.
             switch (state.facing) {
                 case NORTH -> {
-                    // right +X, forward -Z
                     poseStack.translate(0, 0, 1);
-                    poseStack.scale(1, 1, -1);
+                    poseStack.mulPose(Axis.YP.rotationDegrees(90));
                 }
                 case EAST -> {
-                    // right +Z, forward +X
-                    poseStack.mulPose(Axis.YP.rotationDegrees(-90));
-                    poseStack.scale(1, 1, -1);
+                    // The home block is the south-west corner of this square.
                 }
                 case SOUTH -> {
-                    // right -X, forward +Z
                     poseStack.translate(1, 0, 0);
-                    poseStack.scale(-1, 1, 1);
+                    poseStack.mulPose(Axis.YP.rotationDegrees(-90));
                 }
                 case WEST -> {
-                    // right -Z, forward -X
                     poseStack.translate(1, 0, 1);
-                    poseStack.mulPose(Axis.YP.rotationDegrees(-90));
-                    poseStack.scale(-1, 1, 1);
+                    poseStack.mulPose(Axis.YP.rotationDegrees(180));
                 }
                 default -> {}
             }
         }
-
         submitPalletBase(state, poseStack, collector);
+        poseStack.popPose();
 
         int layerSize = PalletBlockEntityRenderState.DISPLAY_COLUMNS
                 * PalletBlockEntityRenderState.DISPLAY_ROWS;
@@ -171,18 +175,46 @@ public final class PalletBlockEntityRenderer
             int col = local % PalletBlockEntityRenderState.DISPLAY_COLUMNS;
             int row = local / PalletBlockEntityRenderState.DISPLAY_COLUMNS;
 
-            // Three 9-pixel cubes + two 1-pixel gaps = 29 pixels.
-            // Centered on the 32-pixel (2-block) deck, that leaves 1.5
-            // pixels inside EACH edge. Cargo never overhangs.
-            // Fill each tier left-to-right, front-to-back, from the bottom.
-            double x = 0.09375 + col * 0.625;
-            double z = 0.09375 + row * 0.625;
+            // Place the cargo in world-relative cells rather than reflecting
+            // item meshes. This retains correct face winding on all four
+            // orientations and aligns exactly with cargo collision shapes.
+            double cell = PalletBlockEntityRenderState.ITEM_SCALE;
+            double x, z;
+            if (state.legacy) {
+                x = col * cell;
+                z = row * cell;
+            } else {
+                switch (state.facing) {
+                    case NORTH -> {
+                        x = col * cell;
+                        z = 1.0 - (row + 1) * cell;
+                    }
+                    case EAST -> {
+                        x = row * cell;
+                        z = col * cell;
+                    }
+                    case SOUTH -> {
+                        x = 1.0 - (col + 1) * cell;
+                        z = row * cell;
+                    }
+                    case WEST -> {
+                        x = 1.0 - (row + 1) * cell;
+                        z = 1.0 - (col + 1) * cell;
+                    }
+                    default -> {
+                        x = col * cell;
+                        z = row * cell;
+                    }
+                }
+            }
             double y = PalletBlockEntityRenderState.FIRST_LAYER_Y
                     + layer * PalletBlockEntityRenderState.LAYER_SPACING;
 
             poseStack.pushPose();
             poseStack.translate(x, y, z);
-            poseStack.scale(.5625f, .5625f, .5625f);
+            poseStack.scale(PalletBlockEntityRenderState.ITEM_SCALE,
+                    PalletBlockEntityRenderState.ITEM_SCALE,
+                    PalletBlockEntityRenderState.ITEM_SCALE);
             if (state.boxed[i]) {
                 state.carton.submit(poseStack, collector, state.lightCoords,
                         OverlayTexture.NO_OVERLAY, 0);
@@ -195,12 +227,12 @@ public final class PalletBlockEntityRenderer
                         OverlayTexture.NO_OVERLAY, 0);
                 poseStack.popPose();
             } else {
-                state.cargoBlocks[i].submit(poseStack, collector, state.lightCoords,
+                state.items[i].submit(poseStack, collector, state.lightCoords,
                         OverlayTexture.NO_OVERLAY, 0);
             }
             poseStack.popPose();
         }
-        if (!state.legacy) poseStack.popPose();
+
     }
 
     private static void submitPalletBase(
@@ -212,19 +244,21 @@ public final class PalletBlockEntityRenderer
         // from one of the recipe's four corner ingredients.
         for (int i = 0; i < 4; i++) {
             float x = .04f + i * .49f;
-            submitBox(state, i, poseStack, collector, x, .19f, .015f, .43f, .105f, 1.97f);
+            // Tile one model per block of length instead of smearing
+            // 16 pixels across both blocks.
+            submitBox(state, i, poseStack, collector, x, .19f, .015f, .43f, .105f, .985f);
+            submitBox(state, i, poseStack, collector, x, .19f, 1.0f, .43f, .105f, .985f);
         }
 
         // Transverse lower runners, using the same four craft selections.
         // Each runner continues across all four footprint blocks, not one
         // tiny runner per quadrant. The underside colors can differ from
         // the visible deck-board colors.
-        submitBox(state, 2, poseStack, collector,
-                .035f, .035f, .12f, 1.93f, .15f, .23f);
-        submitBox(state, 3, poseStack, collector,
-                .035f, .035f, .88f, 1.93f, .15f, .23f);
-        submitBox(state, 0, poseStack, collector,
-                .035f, .035f, 1.65f, 1.93f, .15f, .23f);
+        for (float x : new float[]{.035f, 1.0f}) {
+            submitBox(state, 2, poseStack, collector, x, .035f, .12f, .965f, .15f, .23f);
+            submitBox(state, 3, poseStack, collector, x, .035f, .88f, .965f, .15f, .23f);
+            submitBox(state, 0, poseStack, collector, x, .035f, 1.65f, .965f, .15f, .23f);
+        }
     }
 
     private static void submitBox(

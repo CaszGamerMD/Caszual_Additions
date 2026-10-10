@@ -10,6 +10,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -73,6 +74,21 @@ public final class CosmeticsClient {
         MenuScreens.register(Cosmetics.MENU, CosmeticsScreen::new);
 
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
+            // Creative does not synchronize extra InventoryMenu slots. Open the
+            // server-backed cosmetics menu instead of creating ghost/drop slots.
+            if (screen instanceof CreativeModeInventoryScreen) {
+                var pos = (ContainerScreenAccessor)screen;
+                var widgets = (ScreenWidgetAccessor)(Object)screen;
+                var open = Button.builder(Component.literal("Cosmetics"),
+                        b -> ClientPlayNetworking.send(new OpenCosmetics()))
+                        .bounds(pos.caszual_additions$left() + 117,
+                                pos.caszual_additions$top() + 62, 74, 20)
+                        .build();
+                open.setTooltip(Tooltip.create(Component.literal(
+                        "Edit cosmetics with normal cursor pickup and placement")));
+                widgets.caszual_additions$addRenderableWidget(open);
+                return;
+            }
             if (!(screen instanceof InventoryScreen inventoryScreen)) return;
 
             var positions = (ContainerScreenAccessor)screen;

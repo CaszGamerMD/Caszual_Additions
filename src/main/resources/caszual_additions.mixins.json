@@ -5,6 +5,7 @@
   "mixins": [
     "AbstractContainerMenuAccessor",
     "InventoryMenuCosmeticsMixin",
+    "AbstractContainerMenuCosmeticSyncMixin",
     "SlotAccessor",
     "AnvilBlockDamageMixin",
     "AnvilMenuUnbreakableMixin",

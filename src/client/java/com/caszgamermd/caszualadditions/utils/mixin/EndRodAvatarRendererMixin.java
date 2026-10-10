@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions.utils.mixin;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.caszgamermd.caszualadditions.utils.cosmetics.Cosmetics;
+import com.caszgamermd.caszualadditions.utils.cosmetics.BlockOutfitTextures;
 import com.caszgamermd.caszualadditions.utils.cosmetics.EndRodCosmeticLayer;
 import com.caszgamermd.caszualadditions.utils.cosmetics.EndRodRender;
 import com.caszgamermd.caszualadditions.utils.cosmetics.SpecialCosmetics;
@@ -14,6 +15,9 @@ import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.entity.EquipmentSlot;
 import org.spongepowered.asm.mixin.Mixin;
@@ -35,6 +39,14 @@ public abstract class EndRodAvatarRendererMixin extends LivingEntityRenderer<Ava
             return;
         }
         if(SpecialCosmetics.isSnowGolem(Cosmetics.get(player,EquipmentSlot.HEAD),rod,Cosmetics.get(player,EquipmentSlot.LEGS),Cosmetics.get(player,EquipmentSlot.FEET))){arm.resetPose();caszual_additions$snow.hand(arm,pose,collector,light);ci.cancel();return;}
+        if (rod.getItem() instanceof BlockItem blockItem && !SpecialCosmetics.isEndRod(rod)) {
+            arm.resetPose();
+            collector.order(1).submitModelPart(arm, pose,
+                    RenderTypes.entityTranslucent(BlockOutfitTextures.texture(blockItem.getBlock())),
+                    light, OverlayTexture.NO_OVERLAY, null, -1, null, 0);
+            ci.cancel();
+            return;
+        }
         if(!SpecialCosmetics.isEndRod(rod))return;arm.resetPose();boolean right=arm==getModel().rightArm;arm.zRot=right?.1f:-.1f;float center=(caszual_additions$slim?.5f:1f)/16f;EndRodRender.limb(rod,arm,pose,collector,right?-center:center,-.125f,0);ci.cancel();
     }
 }

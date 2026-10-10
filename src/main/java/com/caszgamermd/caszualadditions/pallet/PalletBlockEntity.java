@@ -3,6 +3,7 @@ package com.caszgamermd.caszualadditions.pallet;
 import java.util.List;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -169,6 +170,9 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
     @Override
     public void setChanged() {
         super.setChanged();
+        if (isRoot() && level instanceof ServerLevel server) {
+            PalletCargoCollisionBlock.refresh(server, worldPosition);
+        }
         if (isRoot() && level != null) {
             BlockState state = getBlockState();
             level.sendBlockUpdated(worldPosition, state, state, 3);
@@ -177,6 +181,9 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
 
     private void sync() {
         super.setChanged();
+        if (isRoot() && level instanceof ServerLevel server) {
+            PalletCargoCollisionBlock.refresh(server, worldPosition);
+        }
         if (level != null) {
             BlockState state = getBlockState();
             level.sendBlockUpdated(worldPosition, state, state, 3);
