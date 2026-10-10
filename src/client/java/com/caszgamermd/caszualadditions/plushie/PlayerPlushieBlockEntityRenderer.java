@@ -10,6 +10,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
+import net.minecraft.client.model.geom.builders.CubeListBuilder;
+import net.minecraft.client.model.geom.builders.MeshDefinition;
+import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.object.skull.SkullModelBase;
 import net.minecraft.client.model.player.PlayerModel;
@@ -34,6 +37,64 @@ public final class PlayerPlushieBlockEntityRenderer
     private static final Identifier WHITE_WOOL = Identifier.withDefaultNamespace("textures/block/white_wool.png");
     private static final float SCALE = 0.42F;
     private static final float ANCHOR_Y = 0.63F;
+    private static final Identifier BOOK_COVER = Identifier.withDefaultNamespace("textures/block/red_wool.png");
+    private static final Identifier BOOK_PAGES = Identifier.withDefaultNamespace("textures/block/white_concrete.png");
+    private static final Identifier BOOK_SPINE = Identifier.withDefaultNamespace("textures/block/brown_terracotta.png");
+    private static final ModelPart OPEN_BOOK = makeOpenBook();
+
+    /**
+     * Small 3D open book: independent angled covers, inset cream pages and a
+     * raised spine. No flat item sprite clipping through the plushie's hands.
+     * Pages are separated from the covers by 0.04 model pixels.
+     */
+    private static ModelPart makeOpenBook() {
+        MeshDefinition mesh = new MeshDefinition();
+        var root = mesh.getRoot();
+        root.addOrReplaceChild("left_cover",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(-4.70F, -3.35F, -0.46F, 4.32F, 6.70F, 0.46F),
+                PartPose.offsetAndRotation(-0.30F, 0, 0, 0, 0.22F, 0));
+        root.addOrReplaceChild("right_cover",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(0.38F, -3.35F, -0.46F, 4.32F, 6.70F, 0.46F),
+                PartPose.offsetAndRotation(0.30F, 0, 0, 0, -0.22F, 0));
+        root.addOrReplaceChild("left_pages",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(-4.37F, -3.02F, -0.85F, 3.88F, 6.04F, 0.35F),
+                PartPose.offsetAndRotation(-0.30F, 0, 0, 0, 0.22F, 0));
+        root.addOrReplaceChild("right_pages",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(0.49F, -3.02F, -0.85F, 3.88F, 6.04F, 0.35F),
+                PartPose.offsetAndRotation(0.30F, 0, 0, 0, -0.22F, 0));
+        root.addOrReplaceChild("spine",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(-0.48F, -3.36F, -0.23F, 0.96F, 6.72F, 0.78F),
+                PartPose.ZERO);
+        return LayerDefinition.create(mesh, 16, 16).bakeRoot();
+    }
+
+    private static void drawOpenBook(PoseStack pose, SubmitNodeCollector collector, int light) {
+        pose.pushPose();
+        // Both arms are bent toward this shared center; the book is in the
+        // hands rather than stuck to the torso or floating at head level.
+        pose.translate(0, 0.58F, -0.49F);
+        pose.mulPose(Axis.XP.rotationDegrees(15.0F));
+        pose.scale(1.0F / 16, 1.0F / 16, 1.0F / 16);
+        for (String name : new String[]{"left_cover", "right_cover"}) {
+            collector.order(2).submitModelPart(OPEN_BOOK.getChild(name), pose,
+                    RenderTypes.entityCutout(BOOK_COVER), light,
+                    OverlayTexture.NO_OVERLAY, null, -1, null, 0);
+        }
+        for (String name : new String[]{"left_pages", "right_pages"}) {
+            collector.order(3).submitModelPart(OPEN_BOOK.getChild(name), pose,
+                    RenderTypes.entityCutout(BOOK_PAGES), light,
+                    OverlayTexture.NO_OVERLAY, null, -1, null, 0);
+        }
+        collector.order(4).submitModelPart(OPEN_BOOK.getChild("spine"), pose,
+                RenderTypes.entityCutout(BOOK_SPINE), light,
+                OverlayTexture.NO_OVERLAY, null, -1, null, 0);
+        pose.popPose();
+    }
 
     private final PlayerSkinRenderCache skinCache;
     private final ItemModelResolver itemModelResolver;
@@ -83,7 +144,6 @@ public final class PlayerPlushieBlockEntityRenderer
         state.facing = blockEntity.getBlockState().getValue(PlayerPlushieBlock.FACING);
         state.pose = blockEntity.pose();
         ItemStack prop = switch (state.pose) {
-            case 2 -> new ItemStack(Items.ENCHANTED_BOOK);
             case 3 -> new ItemStack(Items.IRON_SWORD);
             case 4 -> new ItemStack(Items.IRON_AXE);
             case 5 -> new ItemStack(Items.IRON_PICKAXE);
@@ -109,8 +169,10 @@ public final class PlayerPlushieBlockEntityRenderer
         poseStack.translate(0.5F, ANCHOR_Y, 0.5F);
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - state.facing.toYRot()));
         if (state.pose == 9) {
-            poseStack.translate(0.0F, -0.40F, -0.12F);
-            poseStack.mulPose(Axis.XP.rotationDegrees(-88.0F));
+            // Lay on the back: after the arm/body scale, +90deg points the
+            // plushie's face UP (the old -88deg pointed it at the floor).
+            poseStack.translate(0.0F, -0.37F, 0.06F);
+            poseStack.mulPose(Axis.XP.rotationDegrees(90.0F));
         }
         poseStack.scale(-SCALE, -SCALE, SCALE);
 
@@ -156,12 +218,29 @@ public final class PlayerPlushieBlockEntityRenderer
             }
         }
 
-        if (state.pose >= 2 && state.pose <= 7) {
+        if (state.pose == 2) {
+            drawOpenBook(poseStack, collector, state.lightCoords);
+        } else if (state.pose >= 3 && state.pose <= 6) {
+            // Tool origin follows the raised right hand. A half-turn around
+            // Z fixes the inverted blade/head from the old FIXED transform;
+            // pitch makes the weapon/tool project forward as if being used.
             poseStack.pushPose();
-            poseStack.translate(-0.17F, -0.12F, -0.48F);
-            poseStack.mulPose(Axis.XP.rotationDegrees(30));
+            poseStack.translate(-0.31F, 0.23F, -0.66F);
+            poseStack.mulPose(Axis.YP.rotationDegrees(-22));
+            poseStack.mulPose(Axis.XP.rotationDegrees(-55));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(180));
             poseStack.scale(0.48F, 0.48F, 0.48F);
-            state.prop.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+            state.prop.submit(poseStack, collector, state.lightCoords,
+                    OverlayTexture.NO_OVERLAY, 0);
+            poseStack.popPose();
+        } else if (state.pose == 7) {
+            // Spyglass remains by the eye instead of inheriting a mining pose.
+            poseStack.pushPose();
+            poseStack.translate(-0.31F, -0.01F, -0.39F);
+            poseStack.mulPose(Axis.XP.rotationDegrees(-76));
+            poseStack.scale(0.34F, 0.34F, 0.34F);
+            state.prop.submit(poseStack, collector, state.lightCoords,
+                    OverlayTexture.NO_OVERLAY, 0);
             poseStack.popPose();
         }
         poseStack.popPose();
@@ -211,15 +290,27 @@ public final class PlayerPlushieBlockEntityRenderer
                 right.xRot = left.xRot = -0.50F;
             }
             case 2 -> {
-                head.xRot = 0.32F;
-                right.xRot = left.xRot = -1.00F;
-                right.yRot = -0.38F;
-                left.yRot = 0.38F;
+                head.xRot = 0.34F;
+                right.xRot = left.xRot = -0.89F;
+                right.yRot = -0.39F;
+                left.yRot = 0.39F;
+                right.zRot = 0.19F;
+                left.zRot = -0.19F;
+                body.xRot = 0.06F;
             }
             case 3, 4, 5, 6 -> {
-                right.xRot = -1.35F;
-                right.zRot = -0.18F;
-                left.xRot = -0.40F;
+                // Active swing: tool-hand driven forward, other arm for balance.
+                head.xRot = 0.18F;
+                head.yRot = -0.10F;
+                body.xRot = 0.10F;
+                right.xRot = -1.43F;
+                right.yRot = -0.08F;
+                right.zRot = 0.14F;
+                left.xRot = -0.66F;
+                left.yRot = 0.14F;
+                left.zRot = -0.24F;
+                rightLeg.xRot = -0.34F;
+                leftLeg.xRot = 0.17F;
             }
             case 7 -> {
                 head.xRot = -0.10F;
@@ -234,8 +325,11 @@ public final class PlayerPlushieBlockEntityRenderer
                 body.xRot = 0.17F;
             }
             case 9 -> {
-                right.xRot = left.xRot = -0.12F;
-                rightLeg.xRot = leftLeg.xRot = 0;
+                head.xRot = 0;
+                right.xRot = left.xRot = -0.06F;
+                right.zRot = 0.16F;
+                left.zRot = -0.16F;
+                rightLeg.xRot = leftLeg.xRot = 0.02F;
             }
             case 10 -> {
                 right.xRot = -2.55F;

@@ -77,6 +77,72 @@
       "to": [
         9,
         7,
+        1
+      ],
+      "faces": {
+        "up": {
+          "texture": "#texture"
+        },
+        "down": {
+          "texture": "#texture"
+        },
+        "north": {
+          "texture": "#texture"
+        },
+        "south": {
+          "texture": "#texture"
+        },
+        "east": {
+          "texture": "#texture"
+        },
+        "west": {
+          "texture": "#texture"
+        }
+      },
+      "name": "horizontal_0_0"
+    },
+    {
+      "from": [
+        7,
+        5,
+        3
+      ],
+      "to": [
+        9,
+        7,
+        5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#texture"
+        },
+        "down": {
+          "texture": "#texture"
+        },
+        "north": {
+          "texture": "#texture"
+        },
+        "south": {
+          "texture": "#texture"
+        },
+        "east": {
+          "texture": "#texture"
+        },
+        "west": {
+          "texture": "#texture"
+        }
+      },
+      "name": "horizontal_0_1"
+    },
+    {
+      "from": [
+        7,
+        5,
+        7
+      ],
+      "to": [
+        9,
+        7,
         8
       ],
       "faces": {
@@ -98,13 +164,80 @@
         "west": {
           "texture": "#texture"
         }
-      }
+      },
+      "name": "horizontal_0_2"
     },
     {
       "from": [
         7,
         10,
         0
+      ],
+      "to": [
+        9,
+        12,
+        1
+      ],
+      "faces": {
+        "up": {
+          "texture": "#texture"
+        },
+        "down": {
+          "texture": "#texture"
+        },
+        "north": {
+          "texture": "#texture"
+        },
+        "south": {
+          "texture": "#texture"
+        },
+        "east": {
+          "texture": "#texture"
+        },
+        "west": {
+          "texture": "#texture"
+        }
+      },
+      "name": "horizontal_1_0"
+    },
+    {
+      "from": [
+        7,
+        10,
+        3
+      ],
+      "to": [
+        9,
+        12,
+        5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#texture"
+        },
+        "down": {
+          "texture": "#texture"
+        },
+        "north": {
+          "texture": "#texture"
+        },
+        "south": {
+          "texture": "#texture"
+        },
+        "east": {
+          "texture": "#texture"
+        },
+        "west": {
+          "texture": "#texture"
+        }
+      },
+      "name": "horizontal_1_1"
+    },
+    {
+      "from": [
+        7,
+        10,
+        7
       ],
       "to": [
         9,
@@ -130,7 +263,8 @@
         "west": {
           "texture": "#texture"
         }
-      }
+      },
+      "name": "horizontal_1_2"
     }
   ]
 }
