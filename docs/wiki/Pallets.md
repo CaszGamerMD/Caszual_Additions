@@ -48,11 +48,11 @@ All pallet materials, the 216-slot shared inventory, long mixed-wood deck boards
 
 Pallets do not render all 216 stored stacks.
 
-- Up to **128 nonempty inventory stacks** are displayed in **4 × 4 × 8** columns/layers across the 2×2 footprint.
-- Block cargo uses real Minecraft world-block models scaled to **8 × 8 × 8 pixels**, with **1 pixel between adjacent cargo units**, horizontally and vertically. Four across requires a slight **1.5-pixel overhang** at the edges of the 2×2 pallet, and the final tier stays below five world blocks.
+- Up to **63 nonempty inventory stacks** are displayed in **3 × 3 × 7** columns/layers across the 2×2 footprint.
+- Block cargo uses real Minecraft world-block models scaled to **9 × 9 × 9 pixels**, with **1 pixel between adjacent cargo units**, horizontally and vertically. Three across spans **29 pixels** on the 32-pixel pallet, leaving a **1.5-pixel inset** from each side: no overhang. The last visible tier stays below five world blocks.
 - Non-block items appear as compact kraft-cardboard boxes with the item's icon on the front. Block models are anchored at the deck rather than using the offset inventory-display transform, so they stack tightly without floating.
 - The first nonempty stack fills the bottom tier. If a visible stack is removed, remaining visible stacks immediately pack down into the earliest available display positions.
-- Once the 128 display positions are occupied, additional stacks stay in the full 216-slot inventory but are no longer rendered on the pallet.
+- Once the 63 display positions are occupied, additional stacks stay in the full 216-slot inventory but are no longer rendered on the pallet.
 - The pallet base is submitted **only by the shared controller block**. A single set of long deck boards and bottom runners now crosses all four blocks, without quarter-pallet seams.
 
 Unusually oversized modded item models can exceed standard display bounds and may require visual adjustment.
