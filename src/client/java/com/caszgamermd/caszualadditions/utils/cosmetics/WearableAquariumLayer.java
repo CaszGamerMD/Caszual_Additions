@@ -33,7 +33,7 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
     static final Identifier WATER = Identifier.fromNamespaceAndPath("linked_aquariums", "textures/block/contained_water.png");
     static final Identifier FRAME = Identifier.fromNamespaceAndPath("linked_aquariums", "textures/block/frame.png");
     private static final Identifier FISH_TEXTURE = Identifier.withDefaultNamespace("textures/block/white_concrete.png");
-    private static final Identifier GUARDIAN_TEXTURE = Identifier.withDefaultNamespace("textures/entity/guardian.png");
+    private static final Identifier GUARDIAN_TEXTURE = Identifier.withDefaultNamespace("textures/entity/guardian/guardian.png");
     private static final Identifier COD_TEXTURE = Identifier.withDefaultNamespace("textures/entity/fish/cod.png");
     private static final Identifier SALMON_TEXTURE = Identifier.withDefaultNamespace("textures/entity/fish/salmon.png");
     private static final Identifier TROPICAL_TEXTURE = Identifier.withDefaultNamespace("textures/entity/fish/tropical_a.png");
@@ -185,19 +185,29 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
             int weight=cost(candidate);if(weight==0||used+weight>4)continue;
             fish.add(candidate);used+=weight;
         }
+        int guardianCount=0;
+        for(var resident:fish)if(guardian(resident))guardianCount++;
+        int guardianOrdinal=0;
         for(int i=0;i<fish.size();i++){
             ItemStack bucket=fish.get(i);
             float time=state.ageInTicks, phase=i*1.8f;
-            float x=(float)Math.sin(time*.017f+phase)*.060f;
-            // Negative Y is upward in the player model: fish now swim all the way into the head.
-            // Continuous slow movement through the head and torso. No teleporting
-            // between hardcoded body levels or rapid alternating model poses.
-            float y=guardian(bucket)?.10f:.02f-.28f*(float)Math.sin(time*.010f+phase);
-            float z=(float)Math.cos(time*.013f+phase)*.030f;
+            boolean fixedGuardian=guardian(bucket);
             pose.pushPose();
-            player.body.translateAndRotate(pose);
-            pose.translate(x,y,z);
-            pose.mulPose(Axis.YP.rotationDegrees(90f+(float)Math.sin(time*.009f+phase)*30f+(i%2==0?0:180)));
+            if(fixedGuardian){
+                // Anchor to the head, never the swimming torso. Follow head
+                // rotation: one central guardian or two eye-like positions.
+                player.head.translateAndRotate(pose);
+                float horizontal=guardianCount==1?0f:(guardianOrdinal==0?-.1125f:.1125f);
+                guardianOrdinal++;
+                pose.translate(horizontal,-.25f,-.065f);
+            }else{
+                float x=(float)Math.sin(time*.017f+phase)*.060f;
+                float y=.02f-.28f*(float)Math.sin(time*.010f+phase);
+                float z=(float)Math.cos(time*.013f+phase)*.030f;
+                player.body.translateAndRotate(pose);
+                pose.translate(x,y,z);
+                pose.mulPose(Axis.YP.rotationDegrees(90f+(float)Math.sin(time*.009f+phase)*30f+(i%2==0?0:180)));
+            }
             ModelPart resident=guardian(bucket)?guardianVanillaModel:
                 bucket.is(Items.COD_BUCKET)?codModel:
                 bucket.is(Items.SALMON_BUCKET)?salmonModel:
@@ -206,7 +216,7 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
                 bucket.is(Items.COD_BUCKET)?COD_TEXTURE:
                 bucket.is(Items.SALMON_BUCKET)?SALMON_TEXTURE:
                 bucket.is(Items.PUFFERFISH_BUCKET)?PUFFER_TEXTURE:TROPICAL_TEXTURE;
-            float scale=guardian(bucket)?.28f:.32f;
+            float scale=fixedGuardian?(guardianCount==1?.28f:.18f):.32f;
             pose.scale(scale,scale,scale);
             collector.order(1).submitModelPart(resident,pose,RenderTypes.entityCutout(skin),
                 light,OverlayTexture.NO_OVERLAY,null,
