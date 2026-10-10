@@ -152,12 +152,15 @@ public final class CustomHeadCatalog {
         String url = "https://textures.minecraft.net/texture/" + textureHash;
         String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}";
         String base64 = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+        // In 26.2 authlib, GameProfile's properties are immutable.
+        // Supplying the texture in the constructor is required; trying to
+        // mutate profile.properties() throws UnsupportedOperationException.
         GameProfile profile = new GameProfile(
                 UUID.nameUUIDFromBytes(("caszual-head:" + textureHash)
                         .getBytes(StandardCharsets.UTF_8)),
-                "CustomHead"
+                "CustomHead",
+                Map.of("textures", new Property("textures", base64))
         );
-        profile.properties().put("textures", new Property("textures", base64));
 
         ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
         stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
