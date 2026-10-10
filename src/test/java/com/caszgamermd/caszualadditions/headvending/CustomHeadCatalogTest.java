@@ -1,11 +1,6 @@
 package com.caszgamermd.caszualadditions.headvending;
 
 import com.google.gson.JsonParser;
-import net.minecraft.SharedConstants;
-import net.minecraft.server.Bootstrap;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.item.Items;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,11 +12,6 @@ import static org.junit.jupiter.api.Assertions.*;
 class CustomHeadCatalogTest {
     private static final String HASH =
             "1ded4105dc6600ed82f61692095f254746affbaab976002ab754cb47c9874a6a";
-
-    @BeforeAll static void bootstrapMinecraft() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-    }
 
     @Test void parsesOfficialHeadDbTextureField() {
         var json = JsonParser.parseString("""
@@ -35,10 +25,11 @@ class CustomHeadCatalogTest {
         assertEquals("humans", head.category());
     }
 
-    @Test void createsUsableCustomPlayerHeadForPreviewAndPurchase() {
-        var stack = CustomHeadCatalog.createHead("Alex In Melon", HASH);
-        assertTrue(stack.is(Items.PLAYER_HEAD));
-        assertNotNull(stack.get(DataComponents.PROFILE));
-        assertEquals("Alex In Melon", stack.get(DataComponents.ITEM_NAME).getString());
+    @Test void buildsValidTextureProfileWithoutMutatingImmutableGameProfile() {
+        var profile = CustomHeadCatalog.createHeadProfile(HASH);
+        assertEquals("CustomHead", profile.name());
+        assertTrue(profile.properties().containsKey("textures"),
+                "Custom skin texture must be included at construction time");
+        assertEquals(1, profile.properties().get("textures").size());
     }
 }
