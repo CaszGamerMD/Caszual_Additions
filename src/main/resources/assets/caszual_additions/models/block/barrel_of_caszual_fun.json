@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/barrel",
+  "textures": {
+    "top": "minecraft:block/melon_top",
+    "bottom": "minecraft:block/barrel_bottom",
+    "side": "minecraft:block/barrel_side",
+    "particle": "minecraft:block/barrel_side"
+  }
+}

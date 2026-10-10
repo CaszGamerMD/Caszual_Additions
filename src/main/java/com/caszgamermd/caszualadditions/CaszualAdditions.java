@@ -3,6 +3,7 @@ package com.caszgamermd.caszualadditions;
 import com.caszgamermd.caszualadditions.rods.ColorfulRods;
 import com.caszgamermd.caszualadditions.headvending.HeadVendingContent;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
+import com.caszgamermd.caszualadditions.funbarrel.FunBarrelContent;
 import com.caszgamermd.caszualadditions.plushie.PlayerPlushies;
 import com.caszgamermd.caszualadditions.quarter.QuarterBlocks;
 import com.caszgamermd.caszualadditions.unbreakable.UnbreakableContent;
@@ -32,6 +33,7 @@ public final class CaszualAdditions implements ModInitializer {
         PlayerPlushies.initialize();
         PalletContent.initialize();
         HeadVendingContent.initialize();
+        FunBarrelContent.initialize();
 
         CaszualItemGroups.register();
     }

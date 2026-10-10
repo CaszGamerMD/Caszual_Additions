@@ -4,6 +4,8 @@ import com.caszgamermd.caszualadditions.headvending.HeadVendingClient;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntityRenderer;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
 import com.caszgamermd.caszualadditions.pallet.PalletScreen;
+import com.caszgamermd.caszualadditions.funbarrel.FunBarrelContent;
+import com.caszgamermd.caszualadditions.funbarrel.FunBarrelScreen;
 import com.caszgamermd.caszualadditions.plushie.PlayerPlushieBlockEntityRenderer;
 import com.caszgamermd.caszualadditions.plushie.PlayerPlushieSpecialRenderer;
 import com.caszgamermd.caszualadditions.plushie.PlayerPlushies;
@@ -45,5 +47,6 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         );
 
         MenuScreens.register(PalletContent.PALLET_MENU, PalletScreen::new);
+        MenuScreens.register(FunBarrelContent.MENU, FunBarrelScreen::new);
     }
 }
