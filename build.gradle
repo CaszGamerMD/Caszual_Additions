@@ -29,6 +29,7 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     clientCompileOnly 'dev.lambdaurora.lambdynamiclights:lambdynamiclights-api:4.12.4+26.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
 
     compileOnly "mezz.jei:jei-${project.minecraft_version}-fabric-api:${project.jei_version}"
     runtimeOnly "mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}"
@@ -52,3 +53,6 @@ apply from: 'gradle/vending-textures.gradle'
 
 // Smooth the loop from the last animated RGB frame back to the first.
 apply from: 'gradle/rgb-seamless-loop.gradle'
+
+// Exercise the HeadDB->Minecraft player-head conversion in CI, not just compilation.
+tasks.named('test', Test) { useJUnitPlatform() }
