@@ -40,6 +40,7 @@ public final class PalletContent {
 
     public static Block PALLET_RENDER_PROXY;
     public static Block CARDBOARD_RENDER_PROXY;
+    public static Block PALLET_CARGO_COLLISION;
     public static BlockEntityType<PalletBlockEntity> PALLET_BLOCK_ENTITY;
     public static MenuType<PalletMenu> PALLET_MENU;
     public static RecipeSerializer<WoodenPalletRecipe> WOODEN_RECIPE;
@@ -48,6 +49,11 @@ public final class PalletContent {
     private PalletContent() {}
 
     public static void initialize() {
+        Identifier cargoId = CaszualAdditions.id("pallet_cargo_collision");
+        ResourceKey<Block> cargoKey = ResourceKey.create(Registries.BLOCK, cargoId);
+        PALLET_CARGO_COLLISION = Registry.register(BuiltInRegistries.BLOCK, cargoKey,
+                new PalletCargoCollisionBlock(BlockBehaviour.Properties.of()
+                        .strength(0.5F).noOcclusion().setId(cargoKey)));
         WOODEN_PALLET = register("wooden_pallet", PalletKind.WOOD, 0, Blocks.OAK_PLANKS, false);
         PLASTIC_PALLET = register("plastic_pallet", PalletKind.PLASTIC, 0, Blocks.PURPUR_BLOCK, false);
         IRON_PALLET = register("iron_pallet", PalletKind.IRON, 0, Blocks.IRON_BLOCK, false);
