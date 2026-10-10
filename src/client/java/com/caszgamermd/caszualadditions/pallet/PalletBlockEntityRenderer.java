@@ -72,9 +72,16 @@ public final class PalletBlockEntityRenderer
         // nonempty slots into the limited display grid, then stop; remaining
         // stacks stay in storage and are not submitted to the renderer.
         if (state.root) {
+            // Respect occupied blocks above the deck: do not render cargo
+            // through a roof, wall or an adjacent built structure.
+            int maxVisible = blockEntity.getLevel() == null
+                    ? PalletBlockEntityRenderState.DISPLAY_CAPACITY
+                    : PalletCargoCollisionBlock.visibleCount(
+                            blockEntity.getLevel(), blockEntity.getBlockPos(),
+                            blockEntity.getBlockState(), blockEntity);
             for (int slot = 0;
                     slot < blockEntity.getContainerSize()
-                            && state.visibleCount < PalletBlockEntityRenderState.DISPLAY_CAPACITY;
+                            && state.visibleCount < maxVisible;
                     slot++) {
                 ItemStack stack = blockEntity.getItem(slot);
                 if (stack.isEmpty()) continue;
