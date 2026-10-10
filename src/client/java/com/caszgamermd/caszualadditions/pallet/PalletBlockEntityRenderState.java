@@ -3,6 +3,7 @@ package com.caszgamermd.caszualadditions.pallet;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.core.Direction;
 
 public final class PalletBlockEntityRenderState extends BlockEntityRenderState {
     /*
@@ -27,6 +28,8 @@ public final class PalletBlockEntityRenderState extends BlockEntityRenderState {
     public final ItemStackRenderState[] items = new ItemStackRenderState[DISPLAY_CAPACITY];
     public int visibleCount;
     public boolean root;
+    public Direction facing = Direction.NORTH;
+    public boolean legacy;
 
     public PalletBlockEntityRenderState() {
         for (int i = 0; i < cargoBlocks.length; i++) cargoBlocks[i] = new BlockModelRenderState();
