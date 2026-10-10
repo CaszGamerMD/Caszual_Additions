@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions.utils.mixin;
 
 import com.caszgamermd.caszualadditions.quarter.QuarterCreativeBreak;
+import com.caszgamermd.caszualadditions.quarter.BoinkrItem;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,6 +23,11 @@ public abstract class QuarterCreativeBreakServerMixin {
     private void caszualAdditions$breakQuarter(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
         if (QuarterCreativeBreak.isQuarterContainer(level.getBlockState(pos))) {
             cir.setReturnValue(QuarterCreativeBreak.breakTargeted(level, player, pos));
+        } else if (player.getMainHandItem().getItem() instanceof BoinkrItem) {
+            // Refuse vanilla mining entirely when the Boink'r is held.
+            // Splitting/merging ordinary blocks is still handled separately
+            // by the Boink! right-click action.
+            cir.setReturnValue(false);
         }
     }
 }

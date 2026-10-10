@@ -33,6 +33,7 @@ public final class QuarterBlocks {
     private QuarterBlocks() {}
 
     public static void initialize() {
+        QuarterBreakNetworking.initialize();
         Identifier blockId = CaszualAdditions.id("quarter_block");
         ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, blockId);
 
