@@ -216,7 +216,7 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
                 bucket.is(Items.COD_BUCKET)?COD_TEXTURE:
                 bucket.is(Items.SALMON_BUCKET)?SALMON_TEXTURE:
                 bucket.is(Items.PUFFERFISH_BUCKET)?PUFFER_TEXTURE:TROPICAL_TEXTURE;
-            float scale=fixedGuardian?(guardianCount==1?.28f:.18f):.32f;
+            float scale=fixedGuardian?(guardianCount==1?.22f:.13f):.32f;
             pose.scale(scale,scale,scale);
             collector.order(1).submitModelPart(resident,pose,RenderTypes.entityCutout(skin),
                 light,OverlayTexture.NO_OVERLAY,null,
