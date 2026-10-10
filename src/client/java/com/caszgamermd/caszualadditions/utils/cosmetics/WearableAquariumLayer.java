@@ -46,7 +46,9 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
 
     public WearableAquariumLayer(RenderLayerParent<AvatarRenderState,PlayerModel> renderer, boolean slim, EntityRendererProvider.Context context) {
         super(renderer);
-        shell = makeHumanoid(slim, 0f, false);
+        // A 0.02-pixel inset separates the glass skin from the outer frame.
+        // The old flush geometry z-fought with the frame on its outer edges.
+        shell = makeHumanoid(slim, .02f, false);
         // Almost flush with the glass. The old .5-pixel inset left an obvious
         // empty-looking rim around the wearer (especially at the head).
         water = makeHumanoid(slim, .07f, false);
@@ -89,14 +91,17 @@ public final class WearableAquariumLayer extends RenderLayer<AvatarRenderState, 
             cubes=CubeListBuilder.create().texOffs(u,v).addBox(x+inset,y+inset,z+inset,w-inset*2,h-inset*2,d-inset*2);
         } else {
             float b=.23f; cubes=CubeListBuilder.create();
+            // Twelve frame segments touch at their ends but never overlap in
+            // volume. The original full-length top/bottom rails intersected
+            // the corner uprights and drew duplicate coplanar faces.
             for(int i=0;i<2;i++)for(int k=0;k<2;k++)
                 cubes.texOffs(0,0).addBox(x+i*(w-b),y,z+k*(d-b),b,h,b);
             for(int i=0;i<2;i++){
                 float yy=y+i*(h-b);
-                cubes.texOffs(0,0).addBox(x,yy,z,w,b,b)
-                    .texOffs(0,0).addBox(x,yy,z+d-b,w,b,b)
-                    .texOffs(0,0).addBox(x,yy,z,b,b,d)
-                    .texOffs(0,0).addBox(x+w-b,yy,z,b,b,d);
+                cubes.texOffs(0,0).addBox(x+b,yy,z,w-2*b,b,b)
+                    .texOffs(0,0).addBox(x+b,yy,z+d-b,w-2*b,b,b)
+                    .texOffs(0,0).addBox(x,yy,z+b,b,b,d-2*b)
+                    .texOffs(0,0).addBox(x+w-b,yy,z+b,b,b,d-2*b);
             }
         }
         mesh.getRoot().addOrReplaceChild(part,cubes,PartPose.ZERO);
