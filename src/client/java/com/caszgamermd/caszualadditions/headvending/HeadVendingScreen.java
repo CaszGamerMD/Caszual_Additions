@@ -245,6 +245,7 @@ public final class HeadVendingScreen extends Screen {
             }
 
             int rejected = 0;
+            int previewFailures = 0;
             String reason = "";
             JsonArray items = data.has("items") && data.get("items").isJsonArray()
                     ? data.getAsJsonArray("items") : new JsonArray();
@@ -263,12 +264,23 @@ public final class HeadVendingScreen extends Screen {
                         rejected++;
                         continue;
                     }
-                    ItemStack head = CustomHeadCatalog.createHead(name, hash.toLowerCase(Locale.ROOT));
-                    if (head.isEmpty()) {
-                        rejected++;
-                        continue;
+                    // A texture or profile rendering failure must never hide
+                    // an otherwise valid purchasable head. The server already
+                    // verified this hash against the real HeadDB response.
+                    ItemStack preview;
+                    try {
+                        preview = CustomHeadCatalog.createHead(
+                                name, hash.toLowerCase(Locale.ROOT));
+                        if (preview.isEmpty()) throw new IllegalStateException("Empty player head preview");
+                    } catch (RuntimeException previewError) {
+                        previewFailures++;
+                        preview = new ItemStack(Items.PLAYER_HEAD);
+                        org.slf4j.LoggerFactory.getLogger("CaszualAdditions/HeadVending")
+                                .warn("Failed to prepare preview for HeadDB head '{}' (hash {}); "
+                                        + "keeping the result purchasable", name, hash, previewError);
                     }
-                    results.add(new Result(name, type, head, Kind.CUSTOM, hash));
+                    results.add(new Result(name, type, preview, Kind.CUSTOM,
+                            hash.toLowerCase(Locale.ROOT)));
                 } catch (RuntimeException exception) {
                     rejected++;
                     reason = exception.getClass().getSimpleName() + ": " + exception.getMessage();
@@ -278,10 +290,17 @@ public final class HeadVendingScreen extends Screen {
             }
 
             if (error.isBlank() && results.isEmpty() && (rejected > 0 || total > 0)) {
-                error = "HeadDB returned " + total + " results, but "
-                        + (rejected > 0 ? rejected + " entries could not be rendered. " : "none could be displayed. ")
-                        + (reason.isBlank() ? "Check latest.log for HeadVending details."
-                                            : reason);
+                error = "HeadDB found " + total + " heads but sent no usable texture hashes. "
+                        + (reason.isBlank() ? "Check latest.log for HeadVending diagnostics." : reason);
+            } else if (error.isBlank() && previewFailures > 0) {
+                // Warn without hiding the rows or disabling purchases.
+                error = previewFailures + " head preview(s) unavailable; "
+                        + "buying and favoriting still work.";
+            }
+            if (rejected > 0) {
+                org.slf4j.LoggerFactory.getLogger("CaszualAdditions/HeadVending")
+                        .warn("Rejected {} malformed custom-head entries from HeadDB ({} total)",
+                                rejected, total);
             }
         } catch (RuntimeException exception) {
             org.slf4j.LoggerFactory.getLogger("CaszualAdditions/HeadVending")
@@ -432,8 +451,9 @@ public final class HeadVendingScreen extends Screen {
                     : loading ? "Searching custom-head database..."
                     : tab == Tab.PLAYER ? "Type a Minecraft username"
                     : "No matching heads";
-            graphics.text(font, Component.literal(message), left + 18,
-                    top + 106, 0xff555555, false);
+            drawStatus(graphics, message, left + 18, top + 106, 3);
+        } else if (!error.isEmpty()) {
+            drawStatus(graphics, error, left + 18, top + 226, 2);
         }
 
         for (int i = 0; i < results.size(); i++) {
@@ -441,7 +461,14 @@ public final class HeadVendingScreen extends Screen {
             int y = top + 94 + i * 21;
             graphics.fill(left + 14, y - 1, left + WIDTH - 14, y + 19,
                     (i & 1) == 0 ? 0xffc8cdd2 : 0xffbfc5cb);
-            graphics.item(result.stack(), left + 19, y + 1);
+            try {
+                graphics.item(result.stack(), left + 19, y + 1);
+            } catch (RuntimeException previewError) {
+                // A bad skin must not crash the entire vending UI.
+                graphics.item(new ItemStack(Items.PLAYER_HEAD), left + 19, y + 1);
+                org.slf4j.LoggerFactory.getLogger("CaszualAdditions/HeadVending")
+                        .warn("Could not draw vending preview '{}'", result.label(), previewError);
+            }
             String label = result.label();
             if (label.length() > 27) label = label.substring(0, 24) + "...";
             graphics.text(font, Component.literal(label), left + 43,
@@ -461,6 +488,22 @@ public final class HeadVendingScreen extends Screen {
         }
         graphics.text(font, Component.literal(free ? "Creative: free heads" : "1 emerald per head"),
                 left + 18, top + HEIGHT - 12, 0xff555555, false);
+    }
+
+    /** Wrap errors instead of clipping their useful diagnostic text to one row. */
+    private void drawStatus(GuiGraphicsExtractor graphics, String message,
+                            int x, int y, int maxLines) {
+        String remaining = message;
+        for (int line = 0; line < maxLines && !remaining.isEmpty(); line++) {
+            int chars = Math.min(48, remaining.length());
+            if (chars < remaining.length()) {
+                int space = remaining.lastIndexOf(' ', chars);
+                if (space > 12) chars = space;
+            }
+            graphics.text(font, Component.literal(remaining.substring(0, chars)),
+                    x, y + line * 11, 0xff4b4b4b, false);
+            remaining = remaining.substring(chars).stripLeading();
+        }
     }
 
     @Override
