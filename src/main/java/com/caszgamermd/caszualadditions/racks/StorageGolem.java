@@ -28,6 +28,7 @@ public final class StorageGolem extends PathfinderMob {
     private ItemStack cargo=ItemStack.EMPTY;
     private String itemId="";
     private int stage=2; // 0 source, 1 destination, 2 home
+    private boolean deathDropsReleased;
     private int waitTicks;
     public StorageGolem(EntityType<? extends StorageGolem> type,Level level){
         super(type,level);
@@ -137,7 +138,8 @@ public final class StorageGolem extends PathfinderMob {
         waitTicks=Math.max(0,in.getIntOr("wait",0));
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
-        if(level() instanceof ServerLevel server &&!isDeadOrDying()){
+        if(level() instanceof ServerLevel server &&!deathDropsReleased){
+            deathDropsReleased=true;
             if(!cargo.isEmpty()){
                 Containers.dropItemStack(server,getX(),getY(),getZ(),cargo);
                 cargo=ItemStack.EMPTY;

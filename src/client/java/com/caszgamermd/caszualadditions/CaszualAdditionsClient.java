@@ -8,6 +8,7 @@ import com.caszgamermd.caszualadditions.racks.RackBlockEntityRenderer;
 import com.caszgamermd.caszualadditions.racks.PtpRenderer;
 import com.caszgamermd.caszualadditions.racks.RackComputerClient;
 import com.caszgamermd.caszualadditions.racks.StorageGolemRenderer;
+import com.caszgamermd.caszualadditions.racks.StorageGolemShelfRenderer;
 import com.caszgamermd.caszualadditions.racks.StorageGolemModel;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
@@ -58,6 +59,7 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         );
         BlockEntityRenderers.register(RackContent.RACK_ENTITY,RackBlockEntityRenderer::new);
         BlockEntityRenderers.register(RackContent.PTP_ENTITY,PtpRenderer::new);
+        BlockEntityRenderers.register(RackContent.STORAGE_SHELF_ENTITY,StorageGolemShelfRenderer::new);
 
         MenuScreens.register(PalletContent.PALLET_MENU, PalletScreen::new);
         MenuScreens.register(FunBarrelContent.MENU, FunBarrelScreen::new);
