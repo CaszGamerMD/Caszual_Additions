@@ -46,6 +46,21 @@ public final class RackComputerNet {
                         ByteBufCodecs.stringUtf8(60000),Snapshot::json,Snapshot::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
+    public record OrderRequest(BlockPos computer,String itemId,int quantity)
+            implements CustomPacketPayload {
+        public static final Type<OrderRequest> TYPE=new Type<>(CaszualAdditions.id("rack_order_request"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,OrderRequest> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,OrderRequest::computer,
+                        ByteBufCodecs.stringUtf8(128),OrderRequest::itemId,
+                        ByteBufCodecs.INT,OrderRequest::quantity,OrderRequest::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
+    public record OrderReply(String message) implements CustomPacketPayload {
+        public static final Type<OrderReply> TYPE=new Type<>(CaszualAdditions.id("rack_order_reply"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,OrderReply> CODEC=
+                StreamCodec.composite(ByteBufCodecs.stringUtf8(220),OrderReply::message,OrderReply::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
     private static final Map<ServerLevel,Map<BlockPos,Long>> HIGHLIGHTS=new WeakHashMap<>();
     private RackComputerNet() {}
 
@@ -53,8 +68,12 @@ public final class RackComputerNet {
         PayloadTypeRegistry.clientboundPlay().register(Open.TYPE,Open.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(Query.TYPE,Query.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Snapshot.TYPE,Snapshot.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(OrderRequest.TYPE,OrderRequest.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(OrderReply.TYPE,OrderReply.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(Query.TYPE,(payload,context)->
                 context.server().execute(()->answer(context.player(),payload)));
+        ServerPlayNetworking.registerGlobalReceiver(OrderRequest.TYPE,(payload,context)->
+                context.server().execute(()->acceptOrder(context.player(),payload)));
         ServerTickEvents.END_LEVEL_TICK.register(level->{
             Map<BlockPos,Long> map=HIGHLIGHTS.get(level);
             if(map==null||level.getGameTime()%10!=0)return;
@@ -65,6 +84,44 @@ public final class RackComputerNet {
                 level.sendParticles(ParticleTypes.END_ROD,x,y,z,12,.85,1.0,.85,.01);
             }
         });
+    }
+
+    private static void reply(ServerPlayer player,String message) {
+        ServerPlayNetworking.send(player,new OrderReply(message));
+    }
+
+    private static void acceptOrder(ServerPlayer player,OrderRequest order) {
+        ServerLevel level=player.level();
+        BlockPos computer=order.computer();
+        if(player.distanceToSqr(computer.getX()+.5,computer.getY()+.5,computer.getZ()+.5)>100
+                || !level.getBlockState(computer).is(RackContent.RACK_COMPUTER))return;
+        if(order.quantity()<1||order.quantity()>4096) {
+            reply(player,"Quantity must be 1–4096.");return;
+        }
+        var id=net.minecraft.resources.Identifier.tryParse(order.itemId());
+        if(id==null) {reply(player,"Choose an item from a rack inventory.");return;}
+        var item=BuiltInRegistries.ITEM.getValue(id);
+        if(item==null||!BuiltInRegistries.ITEM.getKey(item).equals(id)) {
+            reply(player,"Unknown item.");return;
+        }
+        List<RackBlockEntity> racks=RackNetwork.fromComputer(level,computer);
+        if(racks.isEmpty()){reply(player,"Computer is not connected to any rack.");return;}
+        boolean found=false;
+        for(RackBlockEntity rack:racks){
+            for(int i=0;i<rack.getContainerSize();i++){
+                if(rack.getItem(i).is(item)){found=true;break;}
+            }
+            if(found)break;
+        }
+        if(!found){reply(player,"Item not found in connected racks.");return;}
+        OrderHubEntity hub=OrderHubEntity.nextToComputer(level,computer);
+        if(hub==null) {reply(player,"Place a 2x2 Order Collector Hub next to this computer.");return;}
+        if(hub.collectors()==0){reply(player,"Insert up to 3 Order Collectors into the hub.");return;}
+        if(!hub.queue(order.itemId(),order.quantity())){
+            reply(player,"Hub's order queue is full (16 orders max).");return;
+        }
+        reply(player,"Order queued: "+order.quantity()+" × "+item.getName().getString()
+                +(hub.hasPallet()?"":" — waiting for a pallet on the hub."));
     }
 
     private static void answer(ServerPlayer player,Query query) {
