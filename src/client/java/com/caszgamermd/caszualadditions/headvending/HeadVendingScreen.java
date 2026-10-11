@@ -34,6 +34,7 @@ public final class HeadVendingScreen extends Screen {
     private int gridLeft, gridTop, gridRight, gridBottom, gridCols, gridRows;
     private int pageSize = CustomHeadCatalog.PAGE_SIZE;
     private boolean sidebar;
+    private boolean compactHeight;
     private int sidebarLeft, sidebarWidth;
     private int cartScroll;
     private final List<Button> tabButtons = new ArrayList<>();
@@ -85,18 +86,21 @@ public final class HeadVendingScreen extends Screen {
      * changes. A sidebar appears only when it leaves sufficient tile width.
      */
     private void computeLayout() {
-        frameLeft = EDGE;
-        frameTop = EDGE;
-        frameWidth = Math.max(1, width - EDGE * 2);
-        frameHeight = Math.max(1, height - EDGE * 2);
+        compactHeight = height < 310;
+        int margin = compactHeight ? 3 : EDGE;
+        frameLeft = margin;
+        frameTop = margin;
+        frameWidth = Math.max(1, width - margin * 2);
+        frameHeight = Math.max(1, height - margin * 2);
         sidebar = width >= 760;
         sidebarWidth = sidebar ? Math.clamp(width / 4, 220, 300) : 0;
         sidebarLeft = frameLeft + frameWidth - sidebarWidth - 12;
         gridLeft = frameLeft + 14;
         gridRight = sidebar ? sidebarLeft - 12 : frameLeft + frameWidth - 14;
-        gridTop = frameTop + 118;
-        // Leave a status line above the compact Cart action bar.
-        gridBottom = frameTop + frameHeight - (sidebar ? 76 : 96);
+        gridTop = frameTop + (compactHeight ? 94 : 118);
+        // Reserve independent status, action and pagination rows.
+        gridBottom = frameTop + frameHeight
+                - (compactHeight ? 82 : sidebar ? 76 : 96);
         int available = Math.max(40, gridRight - gridLeft);
         gridCols = Math.clamp(available / CELL_W, 1, 12);
         int maxRows = Math.max(1, 72 / gridCols);
@@ -123,8 +127,9 @@ public final class HeadVendingScreen extends Screen {
             int endX = tabsX + (i + 1) * tabsWidth / tabs.length;
             Button button = addRenderableWidget(Button.builder(
                     Component.literal(names[i]), ignored -> setTab(selected))
-                    .bounds(startX, frameTop + 39,
-                            Math.max(1, endX - startX - 2), 24).build());
+                    .bounds(startX, frameTop + (compactHeight ? 29 : 39),
+                            Math.max(1, endX - startX - 2),
+                            compactHeight ? 20 : 24).build());
             tabButtons.add(button);
         }
 
@@ -132,11 +137,14 @@ public final class HeadVendingScreen extends Screen {
                 Component.literal("Refresh"), ignored -> {
                     if (tab == Tab.MOB) mobRequested.clear();
                     refreshResults();
-                }).bounds(frameLeft + frameWidth - 97, frameTop + 9, 80, 22).build());
+                }).bounds(frameLeft + frameWidth - 97,
+                        frameTop + (compactHeight ? 4 : 9), 80,
+                        compactHeight ? 20 : 22).build());
 
         int searchWidth = Math.max(80, gridRight - gridLeft - 143);
         search = addRenderableWidget(new EditBox(
-                font, gridLeft, frameTop + 75, searchWidth, 22,
+                font, gridLeft, frameTop + (compactHeight ? 53 : 75),
+                searchWidth, compactHeight ? 20 : 22,
                 Component.translatable("screen.caszual_additions.head_vending.search")));
         search.setMaxLength(48);
         search.setValue(priorText);
@@ -148,21 +156,27 @@ public final class HeadVendingScreen extends Screen {
 
         categoryButton = addRenderableWidget(Button.builder(
                 Component.literal("Category: All"), ignored -> cycleCategory())
-                .bounds(gridLeft + searchWidth + 8, frameTop + 75, 128, 22).build());
+                .bounds(gridLeft + searchWidth + 8,
+                        frameTop + (compactHeight ? 53 : 75),
+                        128, compactHeight ? 20 : 22).build());
 
         previousButton = addRenderableWidget(Button.builder(
                 Component.literal("◀ Previous"), ignored -> changePage(-1))
-                .bounds(gridLeft, frameTop + frameHeight - 35, 102, 23).build());
+                .bounds(gridLeft, frameTop + frameHeight
+                        - (compactHeight ? 33 : 35), 102,
+                        compactHeight ? 21 : 23).build());
         nextButton = addRenderableWidget(Button.builder(
                 Component.literal("Next ▶"), ignored -> changePage(1))
-                .bounds(gridRight - 102, frameTop + frameHeight - 35, 102, 23).build());
+                .bounds(gridRight - 102, frameTop + frameHeight
+                        - (compactHeight ? 33 : 35), 102,
+                        compactHeight ? 21 : 23).build());
 
         int actionsX = sidebar ? sidebarLeft + 10 : gridLeft;
         int actionsW = sidebar ? sidebarWidth - 20 : gridRight - gridLeft;
-        int actionsY = sidebar
-                ? frameTop + frameHeight - 118 : frameTop + frameHeight - 66;
+        int actionsY = sidebar ? frameTop + frameHeight - 118
+                : frameTop + frameHeight - (compactHeight ? 61 : 66);
         int actionGap = sidebar ? 4 : 6;
-        int actionHeight = sidebar ? 24 : 23;
+        int actionHeight = sidebar ? 24 : compactHeight ? 20 : 23;
         int actionWidth = sidebar ? actionsW : Math.max(40, (actionsW - 2 * actionGap) / 3);
         checkoutButton = addRenderableWidget(Button.builder(
                 Component.literal("Checkout"), ignored -> checkout())
@@ -746,14 +760,16 @@ public final class HeadVendingScreen extends Screen {
                 frameLeft + frameWidth, frameTop + frameHeight, 0xff17222e);
         graphics.fill(frameLeft + 2, frameTop + 2,
                 frameLeft + frameWidth - 2, frameTop + frameHeight - 2, 0xffd8e0e8);
+        int headerBottom = frameTop + (compactHeight ? 25 : 34);
         graphics.fill(frameLeft + 2, frameTop + 2,
-                frameLeft + frameWidth - 2, frameTop + 34, 0xff273a4c);
-        graphics.fill(frameLeft + 2, frameTop + 33,
-                frameLeft + frameWidth - 2, frameTop + 35, 0xff3ba5ad);
+                frameLeft + frameWidth - 2, headerBottom, 0xff273a4c);
+        graphics.fill(frameLeft + 2, headerBottom - 1,
+                frameLeft + frameWidth - 2, headerBottom + 1, 0xff3ba5ad);
         String heading = fit("HEAD VENDING  /  MARKETPLACE",
                 Math.max(80, frameWidth - 128));
         graphics.text(font, Component.literal(heading),
-                frameLeft + 16, frameTop + 14, 0xffffffff, false);
+                frameLeft + 16, frameTop + (compactHeight ? 8 : 14),
+                0xffffffff, false);
         boolean free = minecraft != null && minecraft.player != null
                 && minecraft.player.getAbilities().instabuild;
         String rate = free ? "CREATIVE • FREE" : "1 EMERALD / HEAD";
@@ -809,7 +825,8 @@ public final class HeadVendingScreen extends Screen {
             if (hot) hovered = result.label() + "  ·  " + result.category();
         }
 
-        int statusY = frameTop + frameHeight - (sidebar ? 58 : 91);
+        int statusY = frameTop + frameHeight
+                - (compactHeight ? 77 : sidebar ? 58 : 91);
         String status = !error.isEmpty() ? error : !notice.isEmpty() ? notice : hovered;
         if (!status.isBlank())
             graphics.text(font, Component.literal(fit(status,
@@ -824,7 +841,8 @@ public final class HeadVendingScreen extends Screen {
                     + "   •   " + total + " RESULTS";
             graphics.text(font, Component.literal(paging),
                     gridLeft + Math.max(0, (gridRight - gridLeft - font.width(paging)) / 2),
-                    frameTop + frameHeight - 28, 0xff3f5365, false);
+                    frameTop + frameHeight
+                            - (compactHeight ? 26 : 28), 0xff3f5365, false);
         }
         if (sidebar) drawCartPanel(graphics, mouseX, mouseY);
     }
