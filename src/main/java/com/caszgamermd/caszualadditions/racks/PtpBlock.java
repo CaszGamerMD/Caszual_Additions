@@ -131,7 +131,11 @@ public final class PtpBlock extends Block implements EntityBlock {
         if(held.getItem() instanceof BlockItem bi && bi.getBlock() instanceof PtpBlock module
                 && module.kind()!=Kind.TRANSFER){
             if(!allowed(module.kind(),state.getValue(PART)))return InteractionResult.PASS;
-            if(!level.isClientSide())swapModule(level,pos,state,player,held,module);
+            if(!level.isClientSide()) {
+                if(!ptp.sealed())swapModule(level,pos,state,player,held,module);
+                else player.sendSystemMessage(Component.literal(
+                        "Unwrap the pallet with shears before changing modules."));
+            }
             return InteractionResult.SUCCESS;
         }
         if(held.is(Items.SHEARS)&&ptp.sealed()){
@@ -167,9 +171,12 @@ public final class PtpBlock extends Block implements EntityBlock {
         if(ptp==null)return InteractionResult.PASS;
         if(!level.isClientSide()){
             if(kind==Kind.WRAP && !player.isShiftKeyDown() && ptp.hasPallet()){
-                ptp.setSealed(!ptp.sealed());
-                player.sendSystemMessage(Component.literal(
-                        ptp.sealed()?"Pallet sealed. Use shears to unwrap.":"Pallet unwrapped."));
+                if(!ptp.sealed()){
+                    ptp.setSealed(true);
+                    player.sendSystemMessage(Component.literal(
+                            "Pallet sealed. Only shears can unwrap it."));
+                } else player.sendSystemMessage(Component.literal(
+                        "Pallet is sealed. Use shears to unwrap."));
             } else if(player.isShiftKeyDown()){
                 ptp.setInput(!ptp.input());
                 player.sendSystemMessage(Component.literal(
