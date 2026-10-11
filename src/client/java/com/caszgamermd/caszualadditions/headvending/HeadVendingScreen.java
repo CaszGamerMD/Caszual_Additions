@@ -618,7 +618,11 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private int visibleSideRows() {
-        return Math.max(1, (frameHeight - 260) / 29);
+        // The summary and action buttons own the bottom of the cart panel;
+        // never draw scrollable cart rows behind them.
+        int listTop = gridTop + 57;
+        int summaryY = frameTop + frameHeight - 151;
+        return Math.max(0, (summaryY - listTop - 8) / 29);
     }
 
     @Override
