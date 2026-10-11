@@ -173,8 +173,13 @@ public final class PalletMenu extends AbstractContainerMenu {
             if(stack.is(RackContent.PALLET_FILTER)
                     && moveItemStackTo(stack,FILTER_SLOT,FILTER_SLOT+1,false)){
                 // Filter module moved into the dedicated slot.
-            } else if(!moveItemStackTo(stack,0,PAGE_SIZE,false)){
-                return ItemStack.EMPTY;
+            } else {
+                // Vanilla's merging pass can grow an already-occupied stack
+                // without calling Slot.mayPlace. Check the backing policy
+                // BEFORE any mutation, including merging into partial stacks.
+                if(!paged.canPlaceItem(0,stack)
+                        ||!moveItemStackTo(stack,0,PAGE_SIZE,false))
+                    return ItemStack.EMPTY;
             }
         }
 
