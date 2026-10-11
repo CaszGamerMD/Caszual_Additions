@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " R ",
+    "IPI",
+    "IHI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone",
+    "P": "minecraft:carved_pumpkin",
+    "H": "minecraft:hopper"
+  },
+  "result": {
+    "id": "caszual_additions:storage_golem",
+    "count": 1
+  }
+}
