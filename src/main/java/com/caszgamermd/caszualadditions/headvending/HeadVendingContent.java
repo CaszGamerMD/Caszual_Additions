@@ -489,18 +489,20 @@ public final class HeadVendingContent {
                     // Use the real All The Heads item with its head-type data
                     // component whenever that mod has the requested mob variant.
                     // All factory/registry work stays on the server thread.
-                    ItemStack compatible = AllTheHeadsCompat.create(
-                            player.registryAccess(), key);
-                    if (!compatible.isEmpty()) {
-                        future = CompletableFuture.completedFuture(
-                                new Prepared(compatible, label, "mob", key));
-                    } else if (item != Items.PLAYER_HEAD) {
+                    if (item != Items.PLAYER_HEAD) {
                         future = CompletableFuture.completedFuture(new Prepared(
                                 new ItemStack(item), label, "mob", key));
                     } else {
-                        future = mobTexture(key).thenApply(head -> head == null ? null
-                                : new Prepared(CustomHeadCatalog.createHead(label, head.hash()),
-                                        label, "mob", key));
+                        ItemStack compatible = AllTheHeadsCompat.create(
+                                player.registryAccess(), key);
+                        if (!compatible.isEmpty()) {
+                            future = CompletableFuture.completedFuture(
+                                    new Prepared(compatible, label, "mob", key));
+                        } else {
+                            future = mobTexture(key).thenApply(head -> head == null ? null
+                                    : new Prepared(CustomHeadCatalog.createHead(label, head.hash()),
+                                            label, "mob", key));
+                        }
                     }
                 }
                 case "custom" -> {

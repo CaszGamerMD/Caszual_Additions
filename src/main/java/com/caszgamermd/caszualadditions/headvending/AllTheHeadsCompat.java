@@ -26,7 +26,6 @@ public final class AllTheHeadsCompat {
             Map.entry("cat", "cat/tabby"),
             Map.entry("chicken", "chicken/temperate"),
             Map.entry("cow", "cow/temperate"),
-            Map.entry("creeper", "creeper/charged"),
             Map.entry("frog", "frog/temperate"),
             Map.entry("horse", "horse/brown"),
             Map.entry("llama", "llama/creamy"),

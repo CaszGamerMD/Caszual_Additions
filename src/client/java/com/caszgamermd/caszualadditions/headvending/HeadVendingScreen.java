@@ -598,11 +598,13 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private ItemStack mobPreview(String key, Item nativeItem) {
+        // Existing vanilla skulls (creeper, skeleton, zombie, etc.) stay vanilla.
+        // All The Heads supplements mob types Minecraft doesn't supply.
+        if (nativeItem != Items.PLAYER_HEAD) return new ItemStack(nativeItem);
         if (minecraft != null && minecraft.level != null) {
             ItemStack actual = AllTheHeadsCompat.create(minecraft.level.registryAccess(), key);
             if (!actual.isEmpty()) return actual;
         }
-        if (nativeItem != Items.PLAYER_HEAD) return new ItemStack(nativeItem);
         String hash = mobTextures.get(key);
         if (hash != null && hash.matches("[a-f0-9]{32,128}"))
             return CustomHeadCatalog.createHead(HeadVendingContent.displayName(key) + " Head", hash);
