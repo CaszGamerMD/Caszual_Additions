@@ -10,6 +10,7 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import com.caszgamermd.caszualadditions.funbarrel.FunBarrelContent;
+import com.caszgamermd.caszualadditions.racks.RackContent;
 
 public final class CaszualItemGroups {
     public static final ResourceKey<CreativeModeTab> MAIN = ResourceKey.create(
@@ -31,6 +32,10 @@ public final class CaszualItemGroups {
                             // No recipe, no survival acquisition: explicitly
                             // surface the sampler in the creative Caszual tab.
                             output.accept(new ItemStack(FunBarrelContent.ITEM));
+                            for (var item : java.util.List.of(RackContent.RACK_ITEM,
+                                    RackContent.COMPUTER_ITEM, RackContent.RACK_TAG,
+                                    RackContent.AISLE_TAG,RackContent.CONNECTOR,
+                                    RackContent.PALLET_FILTER)) output.accept(new ItemStack(item));
                             BuiltInRegistries.ITEM.forEach(item -> {
                                 if (item == FunBarrelContent.ITEM) return;
                                 ItemStack stack = item.getDefaultInstance();
