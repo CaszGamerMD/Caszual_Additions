@@ -109,10 +109,10 @@ public final class PalletCargoCollisionBlock extends Block {
                 switch (facing) {
                     case NORTH -> {
                         x0 = root.getX() + u0; x1 = root.getX() + u1;
-                        z0 = root.getZ() - v1; z1 = root.getZ() - v0;
+                        z0 = root.getZ() + 1 - v1; z1 = root.getZ() + 1 - v0;
                     }
                     case SOUTH -> {
-                        x0 = root.getX() - u1; x1 = root.getX() - u0;
+                        x0 = root.getX() + 1 - u1; x1 = root.getX() + 1 - u0;
                         z0 = root.getZ() + v0; z1 = root.getZ() + v1;
                     }
                     case EAST -> {
@@ -120,8 +120,8 @@ public final class PalletCargoCollisionBlock extends Block {
                         z0 = root.getZ() + u0; z1 = root.getZ() + u1;
                     }
                     case WEST -> {
-                        x0 = root.getX() - v1; x1 = root.getX() - v0;
-                        z0 = root.getZ() - u1; z1 = root.getZ() - u0;
+                        x0 = root.getX() + 1 - v1; x1 = root.getX() + 1 - v0;
+                        z0 = root.getZ() + 1 - u1; z1 = root.getZ() + 1 - u0;
                     }
                     default -> { continue; }
                 }
