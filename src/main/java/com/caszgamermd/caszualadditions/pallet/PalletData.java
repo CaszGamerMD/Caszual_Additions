@@ -16,6 +16,18 @@ public final class PalletData {
 
     private PalletData() {}
 
+    public static ItemStack applyFilter(ItemStack stack,String filter) {
+        CompoundTag tag=stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();
+        if(filter==null || filter.isBlank())tag.remove("filter_item");
+        else tag.putString("filter_item",filter);
+        stack.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
+        return stack;
+    }
+    public static String filter(ItemStack stack) {
+        CompoundTag tag=stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();
+        return tag.getStringOr("filter_item","");
+    }
+
     public static ItemStack applyWood(ItemStack stack, List<Block> planks) {
         CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         for (int i = 0; i < 4; i++) {

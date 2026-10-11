@@ -39,6 +39,7 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
     public static final int MAX_ORDERS=16;
     private NonNullList<ItemStack> output=NonNullList.withSize(SLOTS,ItemStack.EMPTY);
     private ItemStack pallet=ItemStack.EMPTY;
+    private String palletFilter="";
     private int collectors;
     private final ArrayDeque<Order> queue=new ArrayDeque<>();
     private record Order(String id,int remaining) {}
@@ -47,11 +48,15 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
     public boolean hasPallet(){return !pallet.isEmpty();}
     public boolean installPallet(ItemStack stack){
         if(hasPallet())return false;
-        pallet=stack.copyWithCount(1);setChanged();return true;
+        pallet=stack.copyWithCount(1);
+        palletFilter=com.caszgamermd.caszualadditions.pallet.PalletData.filter(stack);
+        setChanged();return true;
     }
     public ItemStack removePallet() {
         if(!isEmpty())return ItemStack.EMPTY;
-        ItemStack old=pallet;pallet=ItemStack.EMPTY;setChanged();return old;
+        ItemStack old=com.caszgamermd.caszualadditions.pallet.PalletData.applyFilter(
+                pallet,palletFilter);
+        pallet=ItemStack.EMPTY;palletFilter="";setChanged();return old;
     }
     public boolean addCollector(){
         if(collectors>=3)return false;
@@ -96,13 +101,19 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         }
         return null;
     }
+    private boolean accepts(ItemStack sample) {
+        return hasPallet() && (palletFilter.isBlank()
+            || BuiltInRegistries.ITEM.getKey(sample.getItem()).toString().equals(palletFilter));
+    }
     private int freeSlot(ItemStack sample) {
+        if(!accepts(sample))return -1;
+        // Reuse matching partial stacks before consuming new pallet slots.
         for(int i=0;i<SLOTS;i++){
             ItemStack stack=output.get(i);
-            if(stack.isEmpty())return i;
-            if(ItemStack.isSameItemSameComponents(stack,sample)
+            if(!stack.isEmpty() && ItemStack.isSameItemSameComponents(stack,sample)
                     && stack.getCount()<stack.getMaxStackSize())return i;
         }
+        for(int i=0;i<SLOTS;i++)if(output.get(i).isEmpty())return i;
         return -1;
     }
     /** Consume only from the connected rack network and only matching IDs. */
@@ -200,7 +211,7 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
     @Override public int getContainerSize(){return SLOTS;}
     @Override public boolean isEmpty(){for(ItemStack i:output)if(!i.isEmpty())return false;return true;}
     @Override public ItemStack getItem(int slot){return slot>=0&&slot<SLOTS?output.get(slot):ItemStack.EMPTY;}
-    @Override public boolean canPlaceItem(int slot,ItemStack stack){return hasPallet();}
+    @Override public boolean canPlaceItem(int slot,ItemStack stack){return accepts(stack);}
     @Override public ItemStack removeItem(int slot,int count){
         ItemStack r=ContainerHelper.removeItem(output,slot,count);
         if(!r.isEmpty())setChanged();return r;
@@ -210,7 +221,7 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         if(!r.isEmpty())setChanged();return r;
     }
     @Override public void setItem(int slot,ItemStack stack){
-        if(slot<0||slot>=SLOTS||(!stack.isEmpty()&&!hasPallet()))return;
+        if(slot<0||slot>=SLOTS||(!stack.isEmpty()&&!accepts(stack)))return;
         output.set(slot,stack);setChanged();
     }
     @Override public void clearContent(){output=NonNullList.withSize(SLOTS,ItemStack.EMPTY);setChanged();}
@@ -220,6 +231,7 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         ContainerHelper.saveAllItems(output,this.output);
         if(hasPallet())output.store("output_pallet",ItemStack.CODEC,pallet);
         output.putInt("collectors",collectors);
+        output.putString("pallet_filter",palletFilter);
         output.putInt("order_count",queue.size());
         int i=0;
         for(Order order:queue){
@@ -234,6 +246,7 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         ContainerHelper.loadAllItems(input,output);
         pallet=input.read("output_pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
         collectors=Math.clamp(input.getIntOr("collectors",0),0,3);
+        palletFilter=input.getStringOr("pallet_filter","");
         queue.clear();
         int count=Math.clamp(input.getIntOr("order_count",0),0,MAX_ORDERS);
         for(int i=0;i<count;i++){
