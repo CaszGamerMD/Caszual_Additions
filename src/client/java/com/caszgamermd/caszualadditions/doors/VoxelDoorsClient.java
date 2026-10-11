@@ -4,7 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.fabric.api.client.model.loading.v1.PreparableModelLoadingPlugin;
-import net.minecraft.client.renderer.block.model.BlockModel;
+import net.minecraft.client.resources.model.cuboid.CuboidModel;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -52,14 +52,14 @@ public final class VoxelDoorsClient {
                 (store, executor) -> CompletableFuture.supplyAsync(
                         () -> prepare(store.resourceManager()), executor),
                 (models, context) -> context.modifyModelOnLoad().register((original, loadContext) -> {
-                    BlockModel replacement = models.get(loadContext.id());
+                    CuboidModel replacement = models.get(loadContext.id());
                     return replacement == null ? original : replacement;
                 })
         );
     }
 
-    private static Map<Identifier, BlockModel> prepare(ResourceManager resources) {
-        Map<Identifier, BlockModel> models = new HashMap<>();
+    private static Map<Identifier, CuboidModel> prepare(ResourceManager resources) {
+        Map<Identifier, CuboidModel> models = new HashMap<>();
         int doors = 0;
         int trapdoors = 0;
 
@@ -77,7 +77,7 @@ public final class VoxelDoorsClient {
                 Identifier id = Identifier.fromNamespaceAndPath(blockId.getNamespace(),
                         "block/" + blockId.getPath() + suffix);
                 try {
-                    BlockModel model = buildModel(resources, id, door);
+                    CuboidModel model = buildModel(resources, id, door);
                     if (model != null) {
                         models.put(id, model);
                         added++;
@@ -97,7 +97,7 @@ public final class VoxelDoorsClient {
         return Map.copyOf(models);
     }
 
-    private static BlockModel buildModel(ResourceManager resources, Identifier modelId, boolean door)
+    private static CuboidModel buildModel(ResourceManager resources, Identifier modelId, boolean door)
             throws IOException {
         JsonObject original = readJson(resources, modelLocation(modelId));
         if (original == null || !original.has("parent") || !original.has("textures")) {
@@ -183,7 +183,7 @@ public final class VoxelDoorsClient {
         generated.add("textures", textureSlots.deepCopy());
         generated.addProperty("ambientocclusion", false);
         generated.add("elements", threeDimensionalElements);
-        return BlockModel.fromStream(new StringReader(generated.toString()));
+        return CuboidModel.fromStream(new StringReader(generated.toString()));
     }
 
     private static boolean[][] readMask(BufferedImage image, JsonObject frontFace) {
@@ -196,10 +196,10 @@ public final class VoxelDoorsClient {
         for (int row = 0; row < 16; row++) {
             for (int col = 0; col < 16; col++) {
                 int px = (flipX ? 15 - col : col) * image.getWidth() / 16;
-                int py = (flipY ? 15 - row : row) * 16 / 16;
+                int py = (flipY ? 15 - row : row) * image.getWidth() / 16;
                 // Sample near the center of the source texel.
                 px = Math.min(image.getWidth() - 1, px + Math.max(0, image.getWidth() / 32));
-                py = Math.min(15, py);
+                py = Math.min(image.getHeight() - 1, py + Math.max(0, image.getWidth() / 32));
                 opaque[row][col] = ((image.getRGB(px, py) >>> 24) & 255) >= 32;
             }
         }
