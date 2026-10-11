@@ -185,8 +185,13 @@ public final class HeadVendingContent {
             new ConcurrentHashMap<>();
 
     private static CompletableFuture<CustomHeadCatalog.Head> mobTexture(String key) {
-        return MOB_TEXTURES.computeIfAbsent(key,
+        CompletableFuture<CustomHeadCatalog.Head> future = MOB_TEXTURES.computeIfAbsent(key,
                 id -> HeadDbSearch.findMobAsync(displayName(id)));
+        // Don't permanently cache a temporary API outage or an empty search.
+        future.whenComplete((head, failure) -> {
+            if (failure != null || head == null) MOB_TEXTURES.remove(key, future);
+        });
+        return future;
     }
 
     public static void initialize() {

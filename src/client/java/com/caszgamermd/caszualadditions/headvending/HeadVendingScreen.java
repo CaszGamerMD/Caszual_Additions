@@ -90,7 +90,10 @@ public final class HeadVendingScreen extends Screen {
         }
 
         refreshButton = addRenderableWidget(Button.builder(
-                Component.literal("Refresh"), ignored -> refreshResults()
+                Component.literal("Refresh"), ignored -> {
+                    if (tab == Tab.MOB) mobRequested.clear();
+                    refreshResults();
+                }
         ).bounds(left + 227, top + 10, 62, 18).build());
 
         search = addRenderableWidget(new EditBox(
@@ -343,7 +346,8 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void updateButtons() {
-        if (refreshButton != null) refreshButton.visible = tab == Tab.CUSTOM;
+        if (refreshButton != null)
+            refreshButton.visible = tab == Tab.CUSTOM || tab == Tab.MOB;
         if (categoryButton != null) {
             categoryButton.visible = tab == Tab.CUSTOM;
             String label = category.length() > 11 ? category.substring(0, 10) + "..." : category;
