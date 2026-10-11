@@ -47,21 +47,21 @@ public final class StorageGolemDispatch {
         }
         return null;
     }
-    private static PtpBlockEntity outputPoint(ServerLevel level,
+    static PtpBlockEntity outputPoint(ServerLevel level,
             List<StorageGolemShelfEntity> group,BlockPos computer){
         for(StorageGolemShelfEntity shelf:group)
             for(Direction dir:Direction.values()){
                 BlockPos p=shelf.getBlockPos().relative(dir);
                 if(!level.hasChunkAt(p))continue;
                 PtpBlockEntity point=PtpBlock.controller(level,p);
-                if(point!=null&&point.readyForOutput()&&point.nextOutputOrder()!=null)
+                if(point!=null&&!point.input())
                     return point;
             }
         for(Direction dir:Direction.values()){
             BlockPos p=computer.relative(dir);
             if(!level.hasChunkAt(p))continue;
             PtpBlockEntity point=PtpBlock.controller(level,p);
-            if(point!=null&&point.readyForOutput()&&point.nextOutputOrder()!=null)
+            if(point!=null&&!point.input())
                 return point;
         }
         return null;
@@ -83,7 +83,7 @@ public final class StorageGolemDispatch {
     private static boolean dispatchOutput(ServerLevel level,StorageGolemShelfEntity shelf,
             List<StorageGolemShelfEntity> group,BlockPos terminal){
         PtpBlockEntity point=outputPoint(level,group,terminal);
-        if(point==null)return false;
+        if(point==null||!point.readyForOutput())return false;
         PtpBlockEntity.OutputOrder order=point.nextOutputOrder();
         if(order==null)return false;
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
