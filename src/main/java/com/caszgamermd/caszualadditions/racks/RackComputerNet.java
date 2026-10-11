@@ -43,7 +43,7 @@ public final class RackComputerNet {
         public static final Type<Snapshot> TYPE=new Type<>(CaszualAdditions.id("rack_computer_snapshot"));
         public static final StreamCodec<RegistryFriendlyByteBuf,Snapshot> CODEC=
                 StreamCodec.composite(BlockPos.STREAM_CODEC,Snapshot::computer,
-                        ByteBufCodecs.stringUtf8(60000),Snapshot::json,Snapshot::new);
+                        ByteBufCodecs.stringUtf8(120000),Snapshot::json,Snapshot::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
     public record OrderRequest(BlockPos computer,String itemId,int quantity)
@@ -81,7 +81,7 @@ public final class RackComputerNet {
             for(BlockPos p:map.keySet()){
                 if(!level.hasChunkAt(p))continue;
                 double x=p.getX()+.5,y=p.getY()+1.4,z=p.getZ()+.5;
-                level.sendParticles(ParticleTypes.END_ROD,x,y,z,12,.85,1.0,.85,.01);
+                level.sendParticles(ParticleTypes.END_ROD,x,y,z,5,.85,1.0,.85,.01);
             }
         });
     }
@@ -141,7 +141,7 @@ public final class RackComputerNet {
         for(RackBlockEntity rack:racks){
             if(rack.getBlockPos().equals(query.selected())) selected=rack;
             totalItems+=(int)Math.min(Integer.MAX_VALUE-rack.totalItems(),rack.totalItems());
-            if(list.size()>=128)continue;
+            if(list.size()>=RackNetwork.LIMIT)continue;
             boolean hit=term.isEmpty() || RackNetwork.label(level,rack).toLowerCase(java.util.Locale.ROOT).contains(term);
             if(!hit) {
                 for(int i=0;i<rack.getContainerSize();i++){
@@ -166,7 +166,7 @@ public final class RackComputerNet {
             row.addProperty("pallet",rack.hasPallet());
             row.addProperty("filter",rack.filter());
             list.add(row);
-            if(!term.isEmpty() && matches<=32)
+            if(!term.isEmpty() && matches<=RackNetwork.LIMIT)
                 HIGHLIGHTS.computeIfAbsent(level,l->new HashMap<>())
                         .put(rack.getBlockPos(),level.getGameTime()+200);
         }
