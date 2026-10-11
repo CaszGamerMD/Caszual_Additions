@@ -30,7 +30,7 @@ public final class HeadVendingBookmarks {
             CaszualAdditions.id("head_vending_history"),
             b -> b.initializer(List::of).persistent(Codec.STRING.listOf()).copyOnDeath());
 
-    public record Toggle(BlockPos pos, String kind, String target, String label)
+    public record Toggle(BlockPos pos, String kind, String target, String label, boolean add)
             implements CustomPacketPayload {
         public static final Type<Toggle> TYPE = new Type<>(CaszualAdditions.id("head_vending_favorite"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Toggle> CODEC =
@@ -39,6 +39,7 @@ public final class HeadVendingBookmarks {
                         ByteBufCodecs.stringUtf8(12), Toggle::kind,
                         ByteBufCodecs.stringUtf8(128), Toggle::target,
                         ByteBufCodecs.stringUtf8(100), Toggle::label,
+                        ByteBufCodecs.BOOL, Toggle::add,
                         Toggle::new);
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
@@ -88,8 +89,9 @@ public final class HeadVendingBookmarks {
         List<String> favorites = new ArrayList<>(player.getAttachedOrElse(FAVORITES, List.of()));
         // Identify by kind and target even if the item's visible label changed.
         String prefix = kind + "|" + target + "|";
-        boolean removed = favorites.removeIf(entry -> entry.startsWith(prefix));
-        if (!removed) {
+        // Explicit add/remove is idempotent even with rapid successive clicks.
+        favorites.removeIf(entry -> entry.startsWith(prefix));
+        if (toggle.add()) {
             favorites.add(0, saved);
             if (favorites.size() > MAX_FAVORITES)
                 favorites = new ArrayList<>(favorites.subList(0, MAX_FAVORITES));
