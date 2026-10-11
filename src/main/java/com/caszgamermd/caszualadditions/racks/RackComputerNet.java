@@ -135,6 +135,19 @@ public final class RackComputerNet {
         JsonArray list=new JsonArray();
         root.addProperty("query",term);
         root.addProperty("networkSize",racks.size());
+        // A PTP must be physically next to the computer. This discovery
+        // does not imply golem order fulfillment is implemented yet.
+        for(net.minecraft.core.Direction side:net.minecraft.core.Direction.values()){
+            BlockPos adjacent=computer.relative(side);
+            if(!level.hasChunkAt(adjacent))continue;
+            PtpBlockEntity ptp=PtpBlock.controller(level,adjacent);
+            if(ptp==null)continue;
+            root.addProperty("ptpSummary","PTP "+(ptp.input()?"INPUT":"OUTPUT")
+                    +" / "+(ptp.hasPallet()?"pallet loaded":"no pallet")
+                    +(ptp.sealed()?" / SEALED":"")
+                    +(ptp.hasAdapter()?" / hopper adapter":""));
+            break;
+        }
         int matches=0;
         int totalItems=0;
         RackBlockEntity selected=null;

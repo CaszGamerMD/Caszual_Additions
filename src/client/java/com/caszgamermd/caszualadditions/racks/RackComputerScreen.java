@@ -24,6 +24,7 @@ public final class RackComputerScreen extends Screen {
     private int selectedX=Integer.MIN_VALUE, selectedY,selectedZ;
     private int totalRacks, totalItems, scroll;
     private String status="Connecting to racks...";
+    private String transferPointStatus="";
     private int savedQueryLength;
 
     public RackComputerScreen(BlockPos computer) {
@@ -93,6 +94,8 @@ public final class RackComputerScreen extends Screen {
             contents=obj.has("contents")?obj.getAsJsonArray("contents"):new JsonArray();
             totalRacks=obj.get("networkSize").getAsInt();
             totalItems=obj.get("totalItems").getAsInt();
+            transferPointStatus=obj.has("ptpSummary")
+                    ?obj.get("ptpSummary").getAsString():"";
             status=(racks.size())+" matching racks in "+totalRacks+" connected racks";
             scroll=Math.min(scroll,Math.max(0,racks.size()-1));
         }catch(RuntimeException e){status="Unable to read network information.";}
@@ -114,6 +117,9 @@ public final class RackComputerScreen extends Screen {
         graphics.text(font,Component.literal(status),22,77,0xff9fedaf,false);
         graphics.text(font,Component.literal("Total stored: "+totalItems+" items"),
                 width-197,77,0xffa4d5b7,false);
+        if(!transferPointStatus.isBlank())
+            graphics.text(font,Component.literal(compact(transferPointStatus,
+                    Math.max(16,(width-42)/6))),22,88,0xffa4d5b7,false);
         int splitter=Math.max(200,width/2);
         graphics.fill(20,97,splitter-5,height-45,0xff21392e);
         graphics.fill(splitter,97,width-20,height-45,0xff22382f);
