@@ -86,6 +86,46 @@ public final class HeadDbSearch {
         }, Util.nonCriticalIoPool());
     }
 
+    /**
+     * Revalidate a selected or favorited head after a server restart or
+     * VERIFIED cache reset. The client sends its original display name as a
+     * SEARCH HINT, never as proof: only accept the exact texture hash if it
+     * appears in the remote HeadDB response.
+     */
+    public static CompletableFuture<CustomHeadCatalog.Head> verifyForCheckoutAsync(
+            String hash, String displayName) {
+        String wanted = hash == null ? "" : hash.toLowerCase(Locale.ROOT);
+        if (!wanted.matches("[a-f0-9]{32,128}"))
+            return CompletableFuture.completedFuture(null);
+        CustomHeadCatalog.Head cached = verified(wanted);
+        if (cached != null) return CompletableFuture.completedFuture(cached);
+        String query = displayName == null ? "" : displayName.strip();
+        if (query.isBlank() || query.length() > 100)
+            return CompletableFuture.completedFuture(null);
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                RemotePage first = requestPage(query, "all", 1);
+                int remotePages = Math.min(10,
+                        (first.total() + UPSTREAM_PAGE_SIZE - 1) / UPSTREAM_PAGE_SIZE);
+                for (int page = 1; page <= Math.max(1, remotePages); page++) {
+                    RemotePage current = page == 1 ? first
+                            : requestPage(query, "all", page);
+                    for (JsonElement raw : current.items()) {
+                        CustomHeadCatalog.Head found = parseHead(raw);
+                        if (found != null && found.hash().equals(wanted))
+                            return found;
+                    }
+                }
+                return null;
+            } catch (Exception exception) {
+                org.slf4j.LoggerFactory.getLogger("CaszualAdditions/HeadVending")
+                        .warn("Could not reverify HeadDB texture {} (name '{}')",
+                                wanted, query, exception);
+                return null;
+            }
+        }, Util.nonCriticalIoPool());
+    }
+
     public static CustomHeadCatalog.Head verified(String hash) {
         return hash == null ? null : VERIFIED.get(hash.toLowerCase(Locale.ROOT));
     }

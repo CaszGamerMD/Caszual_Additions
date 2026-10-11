@@ -169,7 +169,7 @@ public final class HeadVendingContent {
                 new Type<>(CaszualAdditions.id("checkout_heads"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Checkout> CODEC =
                 StreamCodec.composite(BlockPos.STREAM_CODEC, Checkout::pos,
-                        ByteBufCodecs.stringUtf8(8192), Checkout::json, Checkout::new);
+                        ByteBufCodecs.stringUtf8(16384), Checkout::json, Checkout::new);
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
@@ -428,7 +428,7 @@ public final class HeadVendingContent {
                 head.name(), "custom", head.hash());
     }
 
-    private record CartLine(String kind, String target, int quantity) {}
+    private record CartLine(String kind, String target, int quantity, String label) {}
     private record Prepared(ItemStack stack, String label, String kind, String target) {}
 
     private static void checkoutMessage(ServerPlayer player, boolean success, String message) {
@@ -449,7 +449,9 @@ public final class HeadVendingContent {
                 String kind = row.get("kind").getAsString().toLowerCase(Locale.ROOT);
                 String target = row.get("target").getAsString().toLowerCase(Locale.ROOT);
                 int qty = row.get("qty").getAsInt();
-                if (qty < 1 || qty > 64 || target.length() > 128
+                String label = row.has("label") ? row.get("label").getAsString().strip() : "";
+                if (qty < 1 || qty > 64 || label.length() > 100
+                        || target.length() > 128
                         || !seen.add(kind + "|" + target)
                         || !(kind.equals("mob") || kind.equals("player") || kind.equals("custom")))
                     throw new IllegalArgumentException("Invalid cart entry.");
@@ -459,7 +461,7 @@ public final class HeadVendingContent {
                     throw new IllegalArgumentException("Unknown head in cart.");
                 units += qty;
                 if (units > 64) throw new IllegalArgumentException("64 heads maximum per checkout.");
-                entries.add(new CartLine(kind, target, qty));
+                entries.add(new CartLine(kind, target, qty, label));
             }
         } catch (RuntimeException invalid) {
             checkoutMessage(player, false, "Invalid cart: " + invalid.getMessage());
@@ -484,20 +486,39 @@ public final class HeadVendingContent {
                 case "mob" -> {
                     Item item = MOB_HEADS.get(key);
                     String label = displayName(key) + " Head";
-                    future = item != Items.PLAYER_HEAD
-                            ? CompletableFuture.completedFuture(new Prepared(
-                                    new ItemStack(item), label, "mob", key))
-                            : mobTexture(key).thenApply(head -> head == null ? null
-                                    : new Prepared(CustomHeadCatalog.createHead(label, head.hash()),
-                                            label, "mob", key));
+                    // Use the real All The Heads item with its head-type data
+                    // component whenever that mod has the requested mob variant.
+                    // All factory/registry work stays on the server thread.
+                    ItemStack compatible = AllTheHeadsCompat.create(
+                            player.registryAccess(), key);
+                    if (!compatible.isEmpty()) {
+                        future = CompletableFuture.completedFuture(
+                                new Prepared(compatible, label, "mob", key));
+                    } else if (item != Items.PLAYER_HEAD) {
+                        future = CompletableFuture.completedFuture(new Prepared(
+                                new ItemStack(item), label, "mob", key));
+                    } else {
+                        future = mobTexture(key).thenApply(head -> head == null ? null
+                                : new Prepared(CustomHeadCatalog.createHead(label, head.hash()),
+                                        label, "mob", key));
+                    }
                 }
                 case "custom" -> {
-                    CustomHeadCatalog.Head head = HeadDbSearch.verified(key);
-                    String label = head != null ? head.name()
-                            : HeadVendingBookmarks.previouslyPurchasedCustom(player, key);
-                    future = CompletableFuture.completedFuture(label == null ? null
-                            : new Prepared(CustomHeadCatalog.createHead(label, key),
-                                    label, "custom", key));
+                    // Search pages and favorites can outlive the in-memory
+                    // verified hash cache. Re-query HeadDB using the supplied
+                    // name *only as a hint*; verify the exact hash server-side.
+                    String prior = HeadVendingBookmarks.previouslyPurchasedCustom(player, key);
+                    if (prior != null) {
+                        future = CompletableFuture.completedFuture(new Prepared(
+                                CustomHeadCatalog.createHead(prior, key),
+                                prior, "custom", key));
+                    } else {
+                        future = HeadDbSearch.verifyForCheckoutAsync(
+                                key, entry.label()).thenApply(head -> head == null
+                                        ? null : new Prepared(
+                                                CustomHeadCatalog.createHead(head.name(), key),
+                                                head.name(), "custom", key));
+                    }
                 }
                 default -> throw new IllegalStateException();
             }
@@ -518,8 +539,8 @@ public final class HeadVendingContent {
                         Prepared item = pending.get(i).getNow(null);
                         if (item == null || item.stack().isEmpty()) {
                             checkoutMessage(current, false,
-                                    "Missing head: " + entries.get(i).target()
-                                            + ". Please try again later.");
+                                    "Could not verify head: " + entries.get(i).label()
+                                            + ". Refresh the search and try again.");
                             return;
                         }
                         for (int q = 0; q < entries.get(i).quantity(); q++) output.add(item);
