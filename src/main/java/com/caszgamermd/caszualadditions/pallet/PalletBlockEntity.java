@@ -39,6 +39,19 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
             Blocks.OAK_PLANKS
     };
     private int plasticColor = PalletData.DEFAULT_PLASTIC_COLOR;
+    private String filterItem = "";
+
+    public void setFilter(ItemStack sample) {
+        PalletBlockEntity c=controller();
+        c.filterItem=BuiltInRegistries.ITEM.getKey(sample.getItem()).toString();
+        c.sync();
+    }
+    public void clearFilter() { PalletBlockEntity c=controller();c.filterItem="";c.sync(); }
+    public String filter(){return controller().filterItem;}
+    @Override public boolean canPlaceItem(int slot, ItemStack stack) {
+        String filter=controller().filterItem;
+        return filter.isBlank() || BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(filter);
+    }
 
     public PalletBlockEntity(BlockPos pos, BlockState state) {
         super(PalletContent.PALLET_BLOCK_ENTITY, pos, state);
@@ -146,6 +159,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         PalletBlockEntity c = controller();
         if (slot < 0 || slot >= SLOTS) return;
 
+        if(!stack.isEmpty() && !c.canPlaceItem(slot,stack))return;
         c.items.set(slot, stack);
         if (stack.getCount() > c.getMaxStackSize(stack)) {
             stack.setCount(c.getMaxStackSize(stack));
@@ -196,6 +210,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         output.store("root", BlockPos.CODEC, rootPos);
         output.putInt("part", part);
         output.putInt("plastic_color", plasticColor);
+        output.putString("filter_item",filterItem);
 
         for (int i = 0; i < 4; i++) {
             output.putString(
@@ -220,6 +235,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
                         : 0
         );
         plasticColor = input.getIntOr("plastic_color", PalletData.DEFAULT_PLASTIC_COLOR);
+        filterItem=input.getStringOr("filter_item","");
 
         for (int i = 0; i < 4; i++) {
             Identifier id = Identifier.tryParse(

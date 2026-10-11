@@ -55,6 +55,11 @@ public final class PalletPageContainer implements Container {
     }
 
     @Override
+    public boolean canPlaceItem(int slot, ItemStack stack) {
+        return backing.canPlaceItem(actual(slot),stack);
+    }
+
+    @Override
     public void setItem(int slot, ItemStack stack) {
         backing.setItem(actual(slot), stack);
     }
