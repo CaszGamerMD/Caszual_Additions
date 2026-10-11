@@ -104,8 +104,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         this.rootPos = root.immutable();
         this.part = part;
         this.filterItem=PalletData.filter(stack);
-        PalletBlockEntity root=controller();
-        if(root==this){
+        if(isRoot()){
             filterScope=PalletData.filterScope(stack);
             filterMode=PalletData.filterMode(stack);
             filterSignature=PalletData.filterSignature(stack);
