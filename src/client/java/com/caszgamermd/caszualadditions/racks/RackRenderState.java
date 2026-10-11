@@ -18,6 +18,7 @@ public final class RackRenderState extends BlockEntityRenderState {
     public final boolean[] boxed=new boolean[CARGO];
     public Direction facing=Direction.NORTH;
     public boolean pallet;
+    public boolean sealed;
     public int visible;
     public RackRenderState() {
         for(int i=0;i<boards.length;i++)boards[i]=new BlockModelRenderState();
