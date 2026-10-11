@@ -206,7 +206,7 @@ public final class PalletBlockEntityRenderer
             if (state.boxed[i]) {
                 // World/block models are built in 0..1 cube coordinates.
                 poseStack.translate(x, y, z);
-                poseStack.scale(cell, cell, cell);
+                poseStack.scale((float)cell, (float)cell, (float)cell);
                 state.carton.submit(poseStack, collector, state.lightCoords,
                         OverlayTexture.NO_OVERLAY, 0);
                 // Inventory item sprites use a centered pivot, unlike
@@ -223,7 +223,7 @@ public final class PalletBlockEntityRenderer
                 // CENTER in the cell so it sits on the deck and cannot
                 // hang over any of the four pallet edges.
                 poseStack.translate(x + cell * .5, y + cell * .5, z + cell * .5);
-                poseStack.scale(cell, cell, cell);
+                poseStack.scale((float)cell, (float)cell, (float)cell);
                 state.items[i].submit(poseStack, collector, state.lightCoords,
                         OverlayTexture.NO_OVERLAY, 0);
             }

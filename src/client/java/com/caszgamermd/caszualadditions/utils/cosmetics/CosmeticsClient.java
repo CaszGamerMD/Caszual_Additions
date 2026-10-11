@@ -53,16 +53,16 @@ public final class CosmeticsClient {
     private static final class ItemIconButton extends Button {
         private final java.util.function.Supplier<ItemStack> icon;
 
-        private ItemIconButton(Builder builder,
-                java.util.function.Supplier<ItemStack> icon) {
-            super(builder);
+        private ItemIconButton(int x, int y, int width, int height,
+                Button.OnPress action, java.util.function.Supplier<ItemStack> icon) {
+            super(x, y, width, height, Component.empty(), action, DEFAULT_NARRATION);
             this.icon = icon;
         }
 
         @Override
         public void extractContents(GuiGraphicsExtractor graphics, int mouseX,
                                     int mouseY, float partialTick) {
-            super.extractContents(graphics, mouseX, mouseY, partialTick);
+            extractDefaultSprite(graphics);
             graphics.item(icon.get(), getX() + 2, getY() + 2);
         }
     }
@@ -78,13 +78,11 @@ public final class CosmeticsClient {
             b.setMessage(iconOnly ? Component.empty() : armorLabel());
             b.setTooltip(Tooltip.create(armorTooltip()));
         };
-        var builder = Button.builder(iconOnly ? Component.empty() : armorLabel(), action)
-                .bounds(x, y, width, 20);
         Button button = iconOnly
-                ? new ItemIconButton(builder,
+                ? new ItemIconButton(x, y, width, 20, action,
                         () -> new ItemStack(armorHidden()
                                 ? Items.CHAINMAIL_CHESTPLATE : Items.DIAMOND_CHESTPLATE))
-                : builder.build();
+                : Button.builder(armorLabel(), action).bounds(x, y, width, 20).build();
         button.setTooltip(Tooltip.create(armorTooltip()));
         return button;
     }
@@ -111,10 +109,9 @@ public final class CosmeticsClient {
                 var pos = (ContainerScreenAccessor)screen;
                 var widgets = (ScreenWidgetAccessor)(Object)screen;
                 var open = new ItemIconButton(
-                        Button.builder(Component.empty(),
-                                b -> ClientPlayNetworking.send(new OpenCosmetics()))
-                                .bounds(pos.caszual_additions$left() - 22,
-                                        pos.caszual_additions$top() + 108, 20, 20),
+                        pos.caszual_additions$left() - 22,
+                        pos.caszual_additions$top() + 108, 20, 20,
+                        b -> ClientPlayNetworking.send(new OpenCosmetics()),
                         () -> new ItemStack(Items.ARMOR_STAND));
                 open.setTooltip(Tooltip.create(
                         Component.literal("Open cosmetic slots")));
@@ -142,13 +139,12 @@ public final class CosmeticsClient {
             // Separate, recognizable chestplate icons distinguish visible / hidden armor.
             var hide = armorButton(left + 126, top + 61, 20);
             var toggle = new ItemIconButton(
-                    Button.builder(Component.empty(), button -> {
+                    left - 22, top + 83, 20, 20, button -> {
                         shown[0] = !shown[0];
                         CosmeticSlotPreferences.setExpanded(client, shown[0]);
                         placeCosmeticSlots(inventoryScreen, shown[0]);
                         button.setTooltip(Tooltip.create(cosmeticTooltip(shown[0])));
-                    }).bounds(left - 22, top + 83, 20, 20),
-                    () -> new ItemStack(Items.ARMOR_STAND));
+                    }, () -> new ItemStack(Items.ARMOR_STAND));
             toggle.setTooltip(Tooltip.create(cosmeticTooltip(shown[0])));
 
             widgets.caszual_additions$addRenderableWidget(hide);
