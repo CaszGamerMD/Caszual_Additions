@@ -208,6 +208,13 @@ public final class RackBlock extends Block implements EntityBlock {
                 return InteractionResult.SUCCESS;
             }
         }
+        // Normal use on any segment opens the installed pallet even while
+        // holding ordinary inventory items. Leave rack upgrades above intact.
+        if(rack.hasPallet()){
+            if(!level.isClientSide() && player instanceof ServerPlayer server)
+                server.openMenu(rack);
+            return InteractionResult.SUCCESS;
+        }
         return InteractionResult.PASS;
     }
 

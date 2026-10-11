@@ -2,6 +2,8 @@ package com.caszgamermd.caszualadditions.pallet;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -15,11 +17,11 @@ import net.minecraft.world.entity.player.Inventory;
  */
 public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
     private static final int IMAGE_W = 370;
-    private static final int IMAGE_H = 296;
+    private static final int IMAGE_H = 342;
     private static final int STORAGE_X = 23;
     private static final int STORAGE_Y = 51;
     private static final int PLAYER_X = 104;
-    private static final int PLAYER_Y = 207;
+    private static final int PLAYER_Y = 253;
 
     // Neutral industrial styling, coordinated with Minecraft's own slot colors.
     private static final int OUTER = 0xff111923;
@@ -33,8 +35,9 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
     private static final int MUTED = 0xff546473;
     private static final int ACCENT = 0xff3d9c9e;
 
-    private Button previous;
-    private Button next;
+    private Button previous,next,modeButton,scopeButton,sampleButton,applyButton;
+    private EditBox targetField;
+    private String lastRule = "";
 
     public PalletScreen(PalletMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, IMAGE_W, IMAGE_H);
@@ -42,7 +45,7 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
         this.titleLabelX = 16;
         this.titleLabelY = 16;
         this.inventoryLabelX = PLAYER_X;
-        this.inventoryLabelY = 195;
+        this.inventoryLabelY = 241;
     }
 
     @Override
@@ -54,7 +57,40 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
         next = addRenderableWidget(Button.builder(
                 Component.literal("Next ▶"), button -> changePage(1))
                 .bounds(leftPos + imageWidth - 110, topPos + 163, 92, 21).build());
+        modeButton=addRenderableWidget(Button.builder(Component.literal("Whitelist"),
+                button->changeFilter(2)).bounds(leftPos+55,topPos+195,85,20).build());
+        scopeButton=addRenderableWidget(Button.builder(Component.literal("Item"),
+                button->changeFilter(3)).bounds(leftPos+143,topPos+195,103,20).build());
+        sampleButton=addRenderableWidget(Button.builder(Component.literal("Use Offhand Sample"),
+                button->changeFilter(4)).bounds(leftPos+55,topPos+218,191,18).build());
+        targetField=addRenderableWidget(new EditBox(font,leftPos+251,topPos+195,
+                104,20,Component.literal("Filter target")));
+        targetField.setMaxLength(96);
+        targetField.setHint(Component.literal("namespace:id / tag"));
+        targetField.setValue(menu.filterTarget());
+        lastRule=menu.filterTarget();
+        applyButton=addRenderableWidget(Button.builder(Component.literal("Apply Target"),
+                button->applyTarget()).bounds(leftPos+251,topPos+218,104,18).build());
         updateControls();
+    }
+
+    private void changeFilter(int action){
+        if(minecraft==null||minecraft.player==null||minecraft.gameMode==null
+                || !menu.hasFilter())return;
+        if(menu.clickMenuButton(minecraft.player,action))
+            minecraft.gameMode.handleInventoryButtonClick(menu.containerId,action);
+        if(action==3||action==4){
+            String next=menu.filterTarget();
+            targetField.setValue(next);
+            lastRule=next;
+        }
+        updateControls();
+    }
+
+    private void applyTarget(){
+        if(!menu.hasFilter()||targetField==null)return;
+        ClientPlayNetworking.send(new PalletFilterNet.SetTarget(
+                menu.containerId,targetField.getValue()));
     }
 
     @Override
@@ -66,6 +102,23 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
     private void updateControls() {
         if (previous != null) previous.active = menu.page() > 0;
         if (next != null) next.active = menu.page() < 1;
+        boolean enabled=menu.hasFilter();
+        if(modeButton!=null){
+            modeButton.active=enabled;
+            modeButton.setMessage(Component.literal(menu.filterMode()==0?"Whitelist":"Blacklist"));
+        }
+        if(scopeButton!=null){
+            scopeButton.active=enabled;
+            String[] names={"Item","Whole Mod","Item Tag","Exact Data"};
+            scopeButton.setMessage(Component.literal(names[menu.filterScope()]));
+        }
+        if(sampleButton!=null){
+            sampleButton.active=enabled && menu.filterScope()!=2;
+            sampleButton.setMessage(Component.literal(menu.filterScope()==2
+                    ?"Type tag ID →":"Use Offhand Sample"));
+        }
+        if(applyButton!=null)applyButton.active=enabled&&menu.filterScope()!=3;
+        if(targetField!=null)targetField.active=enabled&&menu.filterScope()!=3;
     }
 
     @Override
@@ -94,15 +147,19 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
         graphics.fill(x + 12, y + 161, x + IMAGE_W - 12, y + 187, CONTENT);
         graphics.fill(x + 116, y + 164, x + IMAGE_W - 116, y + 184, HEADER);
 
-        // Subtle separator and a separate player's inventory section.
-        graphics.fill(x + 12, y + 190, x + IMAGE_W - 12, y + 191, SLOT_EDGE);
-        graphics.fill(x + 12, y + 202, x + IMAGE_W - 12, y + 287, PANEL);
-        graphics.fill(x + PLAYER_X - 5, y + PLAYER_Y - 4,
-                x + PLAYER_X + 167, y + 262, SLOT_EDGE);
+        // Dedicated filter module with whitelist/blacklist and match type.
+        graphics.fill(x+12,y+190,x+IMAGE_W-12,y+239,PANEL);
+        graphics.fill(x+17,y+196,x+48,y+232,SLOT_EDGE);
+        drawSlots(graphics,x+24,y+204,1,1);
+        // Player inventory begins beneath the separate filter panel.
+        graphics.fill(x+12,y+240,x+IMAGE_W-12,y+241,SLOT_EDGE);
+        graphics.fill(x+12,y+248,x+IMAGE_W-12,y+333,PANEL);
+        graphics.fill(x+PLAYER_X-5,y+PLAYER_Y-4,
+                x+PLAYER_X+167,y+308,SLOT_EDGE);
         drawSlots(graphics, x + PLAYER_X, y + PLAYER_Y, 9, 3);
 
-        graphics.fill(x + PLAYER_X - 5, y + 262,
-                x + PLAYER_X + 167, y + 286, SLOT_EDGE);
+        graphics.fill(x+PLAYER_X-5,y+308,
+                x+PLAYER_X+167,y+333,SLOT_EDGE);
         drawSlots(graphics, x + PLAYER_X, y + PLAYER_Y + 58, 9, 1);
     }
 
@@ -138,12 +195,14 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
                 (imageWidth - font.width(page)) / 2, 170,
                 0xffe8f4f7, false);
 
+        graphics.text(font, Component.literal("FILTER"),
+                24, 187, TEXT, false);
         graphics.text(font, Component.literal("PLAYER INVENTORY"),
-                PLAYER_X, 194, TEXT, false);
+                PLAYER_X, 240, TEXT, false);
 
         Component hotbar = Component.literal("HOTBAR");
         graphics.text(font, hotbar,
-                imageWidth - 22 - font.width(hotbar), 194, MUTED, false);
+                imageWidth - 22 - font.width(hotbar), 240, MUTED, false);
     }
 
     private void changePage(int page) {

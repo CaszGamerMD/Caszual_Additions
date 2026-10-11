@@ -49,6 +49,7 @@ public final class PalletContent {
     private PalletContent() {}
 
     public static void initialize() {
+        PalletFilterNet.initialize();
         Identifier cargoId = CaszualAdditions.id("pallet_cargo_collision");
         ResourceKey<Block> cargoKey = ResourceKey.create(Registries.BLOCK, cargoId);
         PALLET_CARGO_COLLISION = Registry.register(BuiltInRegistries.BLOCK, cargoKey,
