@@ -6,6 +6,8 @@ import com.caszgamermd.caszualadditions.pallet.PalletData;
 import com.caszgamermd.caszualadditions.pallet.PalletKind;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import java.util.Map;
+import java.util.WeakHashMap;
 import net.minecraft.client.gui.Font;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -37,6 +39,10 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
     private final BlockModelResolver blocks;
     private final ItemModelResolver items;
     private final Font font;
+    // Aisle discovery is bounded but scans connected racks. Do not perform
+    // that traversal for every rack on every rendered frame.
+    private record AisleCache(String name,long expiresAt) {}
+    private final Map<RackBlockEntity,AisleCache> aisleCache=new WeakHashMap<>();
     public RackBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
         blocks=context.blockModelResolver();
         items=context.itemModelResolver();
@@ -49,7 +55,17 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
         BlockEntityRenderer.super.extractRenderState(rack,state,partial,camera,cracks);
         state.facing=rack.facing();
         var world=rack.getLevel();
-        String aisle=world==null?"":RackNetwork.aisle(world,rack);
+        String aisle="";
+        if(world!=null){
+            long now=world.getGameTime();
+            AisleCache cached=aisleCache.get(rack);
+            if(cached==null||now>=cached.expiresAt()){
+                aisle=RackNetwork.aisle(world,rack);
+                // Spread updates between frames; changes show within 1–2 s.
+                long phase=Math.floorMod(rack.getBlockPos().hashCode(),20);
+                aisleCache.put(rack,new AisleCache(aisle,now+20+phase));
+            }else aisle=cached.name();
+        }
         state.rackLabel=rack.hasRackPlate()
                 ?(aisle.isBlank()||rack.rackName().isBlank()
                     ?rack.displayName():aisle+"-"+rack.rackName()):"";
