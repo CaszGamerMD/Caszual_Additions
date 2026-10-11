@@ -581,9 +581,11 @@ public final class HeadVendingContent {
         for (int i = 0; i < Math.min(36, simulated.size()); i++)
             inventory.setItem(i, simulated.get(i));
         inventory.setChanged();
-        for (Prepared item : heads) {
-            HeadVendingBookmarks.recordPurchase(player, item.kind(), item.target(), item.label());
-        }
+        List<String> purchased = new ArrayList<>();
+        for (Prepared item : heads)
+            purchased.add(HeadVendingBookmarks.encode(
+                    item.kind(), item.target(), item.label()));
+        HeadVendingBookmarks.recordPurchases(player, purchased);
         checkoutMessage(player, true, creative
                 ? "Created " + amount + " heads for free."
                 : "Purchased " + amount + " heads for " + amount + " emeralds.");

@@ -101,11 +101,21 @@ public final class HeadVendingBookmarks {
     }
 
     public static void recordPurchase(ServerPlayer player, String kind, String target, String label) {
-        String prefix = kind + "|" + target.toLowerCase(Locale.ROOT) + "|";
+        recordPurchases(player, List.of(encode(kind, target.toLowerCase(Locale.ROOT), label)));
+    }
+
+    /** One saved attachment update and one packet for an entire cart checkout. */
+    public static void recordPurchases(ServerPlayer player, List<String> purchases) {
         List<String> history = new ArrayList<>(player.getAttachedOrElse(HISTORY, List.of()));
-        history.removeIf(entry -> entry.startsWith(prefix));
-        history.add(0, encode(kind, target.toLowerCase(Locale.ROOT), label));
-        if (history.size() > MAX_HISTORY) history = new ArrayList<>(history.subList(0, MAX_HISTORY));
+        for (String purchased : purchases) {
+            String[] fields = purchased.split("\\|", 3);
+            if (fields.length != 3) continue;
+            String prefix = fields[0] + "|" + fields[1] + "|";
+            history.removeIf(entry -> entry.startsWith(prefix));
+            history.add(0, purchased);
+        }
+        if (history.size() > MAX_HISTORY)
+            history = new ArrayList<>(history.subList(0, MAX_HISTORY));
         player.setAttached(HISTORY, List.copyOf(history));
         sync(player);
     }

@@ -216,11 +216,13 @@ public final class HeadVendingScreen extends Screen {
                 }
             }
             total = results.size();
-            if (tab != Tab.PLAYER && total > MAX_RESULTS) {
+            if (tab != Tab.PLAYER) {
                 int last = Math.max(0, (total - 1) / MAX_RESULTS);
                 page = Math.clamp(page, 0, last);
-                results.subList(0, page * MAX_RESULTS).clear();
-                if (results.size() > MAX_RESULTS) results.subList(MAX_RESULTS, results.size()).clear();
+                int skip = page * MAX_RESULTS;
+                if (skip > 0) results.subList(0, skip).clear();
+                if (results.size() > MAX_RESULTS)
+                    results.subList(MAX_RESULTS, results.size()).clear();
             }
         }
         updateButtons();
