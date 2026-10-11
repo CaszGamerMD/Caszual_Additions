@@ -1,0 +1,142 @@
+package com.caszgamermd.caszualadditions.racks;
+
+import com.caszgamermd.caszualadditions.CaszualAdditions;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+
+/** Authoritative, loaded-chunk-only rack search and inspection protocol. */
+public final class RackComputerNet {
+    public record Open(BlockPos computer) implements CustomPacketPayload {
+        public static final Type<Open> TYPE=new Type<>(CaszualAdditions.id("rack_computer_open"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,Open> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,Open::computer,Open::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
+    public record Query(BlockPos computer,String query,BlockPos selected) implements CustomPacketPayload {
+        public static final Type<Query> TYPE=new Type<>(CaszualAdditions.id("rack_computer_query"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,Query> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,Query::computer,
+                        ByteBufCodecs.stringUtf8(70),Query::query,
+                        BlockPos.STREAM_CODEC,Query::selected,Query::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
+    public record Snapshot(BlockPos computer,String json) implements CustomPacketPayload {
+        public static final Type<Snapshot> TYPE=new Type<>(CaszualAdditions.id("rack_computer_snapshot"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,Snapshot> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,Snapshot::computer,
+                        ByteBufCodecs.stringUtf8(60000),Snapshot::json,Snapshot::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
+    private static final Map<ServerLevel,Map<BlockPos,Long>> HIGHLIGHTS=new WeakHashMap<>();
+    private RackComputerNet() {}
+
+    public static void initialize() {
+        PayloadTypeRegistry.clientboundPlay().register(Open.TYPE,Open.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(Query.TYPE,Query.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(Snapshot.TYPE,Snapshot.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(Query.TYPE,(payload,context)->
+                context.server().execute(()->answer(context.player(),payload)));
+        ServerTickEvents.END_WORLD_TICK.register(level->{
+            Map<BlockPos,Long> map=HIGHLIGHTS.get(level);
+            if(map==null||level.getGameTime()%10!=0)return;
+            map.entrySet().removeIf(e->e.getValue()<=level.getGameTime());
+            for(BlockPos p:map.keySet()){
+                if(!level.hasChunkAt(p))continue;
+                double x=p.getX()+.5,y=p.getY()+1.4,z=p.getZ()+.5;
+                level.sendParticles(ParticleTypes.END_ROD,x,y,z,12,.85,1.0,.85,.01);
+            }
+        });
+    }
+
+    private static void answer(ServerPlayer player,Query query) {
+        ServerLevel level=player.level();
+        BlockPos computer=query.computer();
+        if(player.distanceToSqr(computer.getX()+.5,computer.getY()+.5,computer.getZ()+.5)>100
+                || !level.getBlockState(computer).is(RackContent.RACK_COMPUTER))return;
+        List<RackBlockEntity> racks=RackNetwork.fromComputer(level,computer);
+        String term=query.query().strip().toLowerCase(java.util.Locale.ROOT);
+        JsonObject root=new JsonObject();
+        JsonArray list=new JsonArray();
+        root.addProperty("query",term);
+        root.addProperty("networkSize",racks.size());
+        int matches=0;
+        int totalItems=0;
+        RackBlockEntity selected=null;
+        for(RackBlockEntity rack:racks){
+            if(rack.getBlockPos().equals(query.selected())) selected=rack;
+            totalItems+=(int)Math.min(Integer.MAX_VALUE-rack.totalItems(),rack.totalItems());
+            if(list.size()>=128)continue;
+            boolean hit=term.isEmpty() || RackNetwork.label(level,rack).toLowerCase(java.util.Locale.ROOT).contains(term);
+            if(!hit) {
+                for(int i=0;i<rack.getContainerSize();i++){
+                    ItemStack stack=rack.getItem(i);
+                    if(!stack.isEmpty() && (stack.getHoverName().getString().toLowerCase(java.util.Locale.ROOT).contains(term)
+                            || BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().contains(term))) {
+                        hit=true;break;
+                    }
+                }
+            }
+            if(!hit)continue;
+            matches++;
+            JsonObject row=new JsonObject();
+            row.addProperty("name",RackNetwork.label(level,rack));
+            row.addProperty("aisle",RackNetwork.aisle(level,rack));
+            row.addProperty("x",rack.getBlockPos().getX());
+            row.addProperty("y",rack.getBlockPos().getY());
+            row.addProperty("z",rack.getBlockPos().getZ());
+            row.addProperty("slots",rack.occupiedSlots());
+            row.addProperty("capacity",rack.getContainerSize());
+            row.addProperty("items",rack.totalItems());
+            row.addProperty("pallet",rack.hasPallet());
+            row.addProperty("filter",rack.filter());
+            list.add(row);
+            if(!term.isEmpty() && matches<=32)
+                HIGHLIGHTS.computeIfAbsent(level,l->new HashMap<>())
+                        .put(rack.getBlockPos(),level.getGameTime()+200);
+        }
+        root.add("racks",list);
+        root.addProperty("matches",matches);
+        root.addProperty("totalItems",totalItems);
+        if(selected!=null){
+            JsonArray contents=new JsonArray();
+            Map<String,Integer> combined=new LinkedHashMap<>();
+            for(int i=0;i<selected.getContainerSize();i++){
+                ItemStack stack=selected.getItem(i);
+                if(stack.isEmpty())continue;
+                String name=stack.getHoverName().getString();
+                String key=BuiltInRegistries.ITEM.getKey(stack.getItem()).toString()+"|"+name;
+                combined.merge(key,stack.getCount(),Integer::sum);
+            }
+            for(var e:combined.entrySet()){
+                if(contents.size()>=96)break;
+                String[] parts=e.getKey().split("\\|",2);
+                JsonObject row=new JsonObject();
+                row.addProperty("id",parts[0]);
+                row.addProperty("name",parts.length==2?parts[1]:parts[0]);
+                row.addProperty("count",e.getValue());
+                contents.add(row);
+            }
+            root.add("contents",contents);
+        }
+        ServerPlayNetworking.send(player,new Snapshot(computer,root.toString()));
+    }
+}
