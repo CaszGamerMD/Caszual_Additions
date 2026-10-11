@@ -41,6 +41,11 @@ public final class ShulkerTankEntity extends BlockEntity implements Container {
         }
         return false;
     }
+    public ItemStack peek() {
+        for (int i=CAPACITY-1;i>=0;i--)
+            if(!boxes.get(i).isEmpty())return boxes.get(i).copyWithCount(1);
+        return ItemStack.EMPTY;
+    }
     public ItemStack take() {
         for(int i=CAPACITY-1;i>=0;i--){
             ItemStack box=boxes.get(i);

@@ -147,9 +147,11 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
             ShulkerTankEntity tank=hub.tank(level);
             // Any empty named/color shulker can carry up to 27 regular item
             // stacks, retaining every original stack's custom components.
-            boolean pack=tank!=null && !tank.isEmpty() && target.canFitInsideContainerItems();
+            ItemStack emptyPreview=tank==null?ItemStack.EMPTY:tank.peek();
+            boolean pack=!emptyPreview.isEmpty() && target.canFitInsideContainerItems()
+                    && hub.freeSlot(emptyPreview)>=0;
             if(pack){
-                int slot=hub.freeSlot(new ItemStack(Items.SHULKER_BOX));
+                int slot=hub.freeSlot(emptyPreview);
                 if(slot<0 || !hub.output.get(slot).isEmpty())continue;
                 ItemStack empty=tank.take();
                 if(empty.isEmpty())continue;

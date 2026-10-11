@@ -69,11 +69,33 @@ public final class RackBlock extends Block implements EntityBlock {
                     || !level.getWorldBorder().isWithinBounds(p)
                     || !level.getBlockState(p).canBeReplaced()) return false;
         }
-        // Leave an actual approach space for rack upgrade cards and access.
-        for (int i = 0; i < 2; i++) {
-            BlockPos access = cell(root, facing, i).relative(facing);
-            if (!level.getBlockState(access).canBeReplaced()) return false;
+        // Leave a full one-block-deep approach, across both columns and
+        // all three heights, for rack labels, connectors and filter upgrades.
+        for (int height = 0; height < 3; height++) {
+            for (int column = 0; column < 2; column++) {
+                BlockPos access = cell(root, facing, height * 4 + column).relative(facing);
+                if (level.isOutsideBuildHeight(access)
+                        || !level.getBlockState(access).canBeReplaced()) return false;
+            }
         }
+        // A newly placed rack must also not cover the upgrade corridor of
+        // an existing rack. Only check loaded nearby positions.
+        java.util.Set<BlockPos> proposed = new java.util.HashSet<>();
+        for (int part = 0; part < 12; part++) proposed.add(cell(root, facing, part));
+        for (int dx = -4; dx <= 4; dx++) for (int dy = -3; dy <= 3; dy++)
+            for (int dz = -4; dz <= 4; dz++) {
+                BlockPos oldRoot = root.offset(dx, dy, dz);
+                if (!level.hasChunkAt(oldRoot)) continue;
+                BlockState old = level.getBlockState(oldRoot);
+                if (!(old.getBlock() instanceof RackBlock)
+                        || old.getValue(PART) != 0) continue;
+                Direction oldFacing = old.getValue(FACING);
+                for (int height = 0; height < 3; height++)
+                    for (int column = 0; column < 2; column++)
+                        if (proposed.contains(
+                                cell(oldRoot, oldFacing, height * 4 + column)
+                                        .relative(oldFacing))) return false;
+            }
         return true;
     }
 
