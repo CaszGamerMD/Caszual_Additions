@@ -12,6 +12,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelResolver;
+import net.minecraft.client.renderer.block.BlockModelRenderState;
 import net.minecraft.client.renderer.block.model.BlockDisplayContext;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
