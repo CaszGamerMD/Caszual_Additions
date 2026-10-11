@@ -60,16 +60,16 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
     @Override public void setFilterUpgrade(ItemStack item){
         filterUpgrade=item.is(com.caszgamermd.caszualadditions.racks.RackContent.PALLET_FILTER)
                 ?item.copyWithCount(1):ItemStack.EMPTY;
-        unused
+        controller().sync();
     }
     @Override public int filterMode(){return filterMode;}
-    @Override public void setFilterMode(int mode){filterMode=Math.clamp(mode,0,1);unused}
+    @Override public void setFilterMode(int mode){filterMode=Math.clamp(mode,0,1);controller().sync();}
     @Override public int filterScope(){return filterScope;}
-    @Override public void setFilterScope(int scope){filterScope=Math.clamp(scope,0,3);unused}
+    @Override public void setFilterScope(int scope){filterScope=Math.clamp(scope,0,3);controller().sync();}
     @Override public String filterTarget(){return controller().filterItem;}
-    @Override public void setFilterTarget(String target){controller().filterItem=target;unused}
+    @Override public void setFilterTarget(String target){controller().filterItem=target;controller().sync();}
     @Override public String filterComponentSignature(){return filterSignature;}
-    @Override public void setFilterComponentSignature(String signature){filterSignature=signature;unused}
+    @Override public void setFilterComponentSignature(String signature){filterSignature=signature;controller().sync();}
     public PalletBlockEntity(BlockPos pos, BlockState state) {
         super(PalletContent.PALLET_BLOCK_ENTITY, pos, state);
         this.part = state.hasProperty(PalletBlock.PART) ? state.getValue(PalletBlock.PART) : 0;
