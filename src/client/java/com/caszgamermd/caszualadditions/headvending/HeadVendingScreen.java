@@ -92,7 +92,8 @@ public final class HeadVendingScreen extends Screen {
         frameTop = margin;
         frameWidth = Math.max(1, width - margin * 2);
         frameHeight = Math.max(1, height - margin * 2);
-        sidebar = width >= 760;
+        // Require height as well as width for a useful persistent cart.
+        sidebar = width >= 760 && height >= 400;
         sidebarWidth = sidebar ? Math.clamp(width / 4, 220, 300) : 0;
         sidebarLeft = frameLeft + frameWidth - sidebarWidth - 12;
         gridLeft = frameLeft + 14;
