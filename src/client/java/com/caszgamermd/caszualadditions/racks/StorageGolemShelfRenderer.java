@@ -30,7 +30,7 @@ public final class StorageGolemShelfRenderer implements
         BlockEntityRenderer.super.extractRenderState(shelf,state,partial,camera,cracks);
         state.docked=shelf.docked();
         blocks.update(state.frame,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
-        blocks.update(state.lamp,Blocks.CYAN_CONCRETE.defaultBlockState(),DISPLAY);
+        blocks.update(state.lamp,Blocks.DIAMOND_BLOCK.defaultBlockState(),DISPLAY);
     }
     @Override public void submit(StorageGolemShelfRenderState state,PoseStack poses,
             SubmitNodeCollector collector,CameraRenderState camera){
