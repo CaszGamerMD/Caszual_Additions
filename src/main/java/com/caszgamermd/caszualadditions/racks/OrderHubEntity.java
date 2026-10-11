@@ -116,19 +116,19 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         return null;
     }
     private boolean accepts(ItemStack sample) {return hasPallet() && allows(sample);}
-    @Override public ItemStack filterUpgrade(){return filterUpgrade.copy();setChanged();}
+    @Override public ItemStack filterUpgrade(){return filterUpgrade.copy();}
     @Override public void setFilterUpgrade(ItemStack item){
         filterUpgrade=item.is(com.caszgamermd.caszualadditions.racks.RackContent.PALLET_FILTER)
                 ?item.copyWithCount(1):ItemStack.EMPTY;
         setChanged();
     }
-    @Override public int filterMode(){return filterMode;setChanged();}
+    @Override public int filterMode(){return filterMode;}
     @Override public void setFilterMode(int mode){filterMode=Math.clamp(mode,0,1);setChanged();}
-    @Override public int filterScope(){return filterScope;setChanged();}
+    @Override public int filterScope(){return filterScope;}
     @Override public void setFilterScope(int scope){filterScope=Math.clamp(scope,0,3);setChanged();}
-    @Override public String filterTarget(){return palletFilter;setChanged();}
+    @Override public String filterTarget(){return palletFilter;}
     @Override public void setFilterTarget(String target){palletFilter=target;setChanged();}
-    @Override public String filterComponentSignature(){return filterSignature;setChanged();}
+    @Override public String filterComponentSignature(){return filterSignature;}
     @Override public void setFilterComponentSignature(String signature){filterSignature=signature;setChanged();}
 
     private int freeSlot(ItemStack sample) {
