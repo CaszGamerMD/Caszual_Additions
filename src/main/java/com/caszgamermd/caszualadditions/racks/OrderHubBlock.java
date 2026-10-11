@@ -56,7 +56,8 @@ public final class OrderHubBlock extends Block implements EntityBlock {
         for(int i=0;i<4;i++){
             BlockPos at=cell(pos,i);
             if(context.getLevel().isOutsideBuildHeight(at)
-                    ||!context.getLevel().getBlockState(at).canBeReplaced())return null;
+                    ||!context.getLevel().getBlockState(at).canBeReplaced()
+                    ||RackBlock.reservedForAccess(context.getLevel(),at))return null;
         }
         return defaultBlockState();
     }

@@ -99,6 +99,25 @@ public final class RackBlock extends Block implements EntityBlock {
         return true;
     }
 
+    /**
+     * Never put our warehouse fixtures in the mandatory one-block-deep
+     * front approach of an already-built rack.
+     */
+    public static boolean reservedForAccess(Level level,BlockPos position) {
+        for(int dx=-4;dx<=4;dx++)for(int dy=-3;dy<=3;dy++)for(int dz=-4;dz<=4;dz++){
+            BlockPos root=position.offset(dx,dy,dz);
+            if(!level.hasChunkAt(root))continue;
+            BlockState old=level.getBlockState(root);
+            if(!(old.getBlock() instanceof RackBlock)||old.getValue(PART)!=0)continue;
+            Direction front=old.getValue(FACING);
+            for(int h=0;h<3;h++)for(int col=0;col<2;col++){
+                BlockPos free=cell(root,front,h*4+col).relative(front);
+                if(free.equals(position))return true;
+            }
+        }
+        return false;
+    }
+
     @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
         Direction facing = context.getHorizontalDirection().getOpposite();
         return fits(context.getLevel(), context.getClickedPos(), facing)

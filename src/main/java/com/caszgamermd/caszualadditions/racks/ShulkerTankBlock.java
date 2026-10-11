@@ -49,6 +49,8 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
         BlockPos upper=context.getClickedPos().above();
         return context.getLevel().isOutsideBuildHeight(upper)
                 || !context.getLevel().getBlockState(upper).canBeReplaced()
+                || RackBlock.reservedForAccess(context.getLevel(),context.getClickedPos())
+                || RackBlock.reservedForAccess(context.getLevel(),upper)
                 ?null:defaultBlockState();
     }
     @Override public void setPlacedBy(Level level,BlockPos pos,BlockState state,

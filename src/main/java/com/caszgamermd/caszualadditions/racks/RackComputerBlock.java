@@ -3,6 +3,8 @@ package com.caszgamermd.caszualadditions.racks;
 import com.mojang.serialization.MapCodec;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import org.jspecify.annotations.Nullable;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -17,6 +19,11 @@ public final class RackComputerBlock extends Block {
     private final MapCodec<RackComputerBlock> codec=MapCodec.unit(this);
     public RackComputerBlock(BlockBehaviour.Properties properties){super(properties);}
     @Override protected MapCodec<? extends Block> codec(){return codec;}
+
+    @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
+        return RackBlock.reservedForAccess(context.getLevel(),context.getClickedPos())
+                ?null:super.getStateForPlacement(context);
+    }
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,
             BlockPos pos,Player player,BlockHitResult hit){
         if(!level.isClientSide() && player instanceof ServerPlayer server){
