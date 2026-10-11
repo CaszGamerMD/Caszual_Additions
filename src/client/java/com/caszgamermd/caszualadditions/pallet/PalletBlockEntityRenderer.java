@@ -89,13 +89,8 @@ public final class PalletBlockEntityRenderer
                 int displayIndex = state.visibleCount++;
                 if (stack.getItem() instanceof BlockItem blockItem) {
                     state.boxed[displayIndex] = false;
-                    // A block item in FIXED display context is transformed like
-                    // an inventory object, with an off-center pivot. That made
-                    // cargo float and spread apart. Real block models instead
-                    // occupy exactly the half-block cargo cell.
-                    // Raw item models have complete geometry on all faces.
-                    // Terrain block models may cull internal faces when used
-                    // outside the world renderer and appear hollow.
+                    // Render full item geometry in a cubic display cell.
+                    // The submit method centers this item model explicitly.
                     itemModelResolver.updateForTopItem(
                             state.items[displayIndex], stack, ItemDisplayContext.NONE,
                             blockEntity.getLevel(), null, slot);
@@ -147,18 +142,15 @@ public final class PalletBlockEntityRenderer
         if (!state.legacy) {
             switch (state.facing) {
                 case NORTH -> {
-                    poseStack.translate(0, 0, 1);
                     poseStack.mulPose(Axis.YP.rotationDegrees(90));
                 }
                 case EAST -> {
                     // The home block is the south-west corner of this square.
                 }
                 case SOUTH -> {
-                    poseStack.translate(1, 0, 0);
                     poseStack.mulPose(Axis.YP.rotationDegrees(-90));
                 }
                 case WEST -> {
-                    poseStack.translate(1, 0, 1);
                     poseStack.mulPose(Axis.YP.rotationDegrees(180));
                 }
                 default -> {}
@@ -187,19 +179,19 @@ public final class PalletBlockEntityRenderer
                 switch (state.facing) {
                     case NORTH -> {
                         x = col * cell;
-                        z = 1.0 - (row + 1) * cell;
+                        z = -(row + 1) * cell;
                     }
                     case EAST -> {
                         x = row * cell;
                         z = col * cell;
                     }
                     case SOUTH -> {
-                        x = 1.0 - (col + 1) * cell;
+                        x = -(col + 1) * cell;
                         z = row * cell;
                     }
                     case WEST -> {
-                        x = 1.0 - (row + 1) * cell;
-                        z = 1.0 - (col + 1) * cell;
+                        x = -(row + 1) * cell;
+                        z = -(col + 1) * cell;
                     }
                     default -> {
                         x = col * cell;
@@ -211,15 +203,14 @@ public final class PalletBlockEntityRenderer
                     + layer * PalletBlockEntityRenderState.LAYER_SPACING;
 
             poseStack.pushPose();
-            poseStack.translate(x, y, z);
-            poseStack.scale(PalletBlockEntityRenderState.ITEM_SCALE,
-                    PalletBlockEntityRenderState.ITEM_SCALE,
-                    PalletBlockEntityRenderState.ITEM_SCALE);
             if (state.boxed[i]) {
+                // World/block models are built in 0..1 cube coordinates.
+                poseStack.translate(x, y, z);
+                poseStack.scale(cell, cell, cell);
                 state.carton.submit(poseStack, collector, state.lightCoords,
                         OverlayTexture.NO_OVERLAY, 0);
-                // Stamp a small item icon onto the front of each carton, not
-                // a floating full-sized inventory model around the carton.
+                // Inventory item sprites use a centered pivot, unlike
+                // the block model supporting them.
                 poseStack.pushPose();
                 poseStack.translate(.5f, .5f, -0.016f);
                 poseStack.scale(.44f, .44f, .44f);
@@ -227,6 +218,12 @@ public final class PalletBlockEntityRenderer
                         OverlayTexture.NO_OVERLAY, 0);
                 poseStack.popPose();
             } else {
+                // The ITEM model uses a centered -0.5..+0.5 pivot, not
+                // the 0..1 corner of terrain block geometry. Place its
+                // CENTER in the cell so it sits on the deck and cannot
+                // hang over any of the four pallet edges.
+                poseStack.translate(x + cell * .5, y + cell * .5, z + cell * .5);
+                poseStack.scale(cell, cell, cell);
                 state.items[i].submit(poseStack, collector, state.lightCoords,
                         OverlayTexture.NO_OVERLAY, 0);
             }

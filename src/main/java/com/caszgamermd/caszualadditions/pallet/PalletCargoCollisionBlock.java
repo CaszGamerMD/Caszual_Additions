@@ -17,15 +17,16 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * Invisible collision extenders for pallet cargo above the base.
  *
  * Minecraft only checks collision shapes in the block cells around an entity;
- * a five-block-tall shape on the floor pallet alone cannot be stood on at its
- * upper tiers. Proxy cells provide the actual collision at y=1..4.
+ * an upper-tier shape on the floor pallet alone cannot be stood on.
+ * Proxy cells supply the actual collision at y=1..2, and stale proxies
+ * above that height are removed on refresh (for old 7-tier pallets).
  *
- * The dynamic shape matches the same tightly packed 3x3x7 cubes used by the
+ * The dynamic shape matches the same tightly packed 3x3x3 cubes used by the
  * renderer, including partially occupied upper rows and rotated footprints.
  */
 public final class PalletCargoCollisionBlock extends Block {
     private final MapCodec<PalletCargoCollisionBlock> codec = MapCodec.unit(this);
-    private static final int CAPACITY = 63;
+    private static final int CAPACITY = 27;
     private static final int CELLS_PER_LAYER = 9;
     private static final double CELL = 2.0 / 3.0;
     private static final double FLOOR = 0.3125;
@@ -59,8 +60,8 @@ public final class PalletCargoCollisionBlock extends Block {
         for (int i = 0; i < entity.getContainerSize() && count < CAPACITY; i++) {
             if (!entity.getItem(i).isEmpty()) count++;
         }
-        int layers = 7;
-        for (int height = 1; height <= 4; height++) {
+        int layers = 3;
+        for (int height = 1; height <= 2; height++) {
             for (int part = 0; part < 4; part++) {
                 BlockPos cell = PalletBlock.partPos(root, part, home).above(height);
                 BlockState above = level.getBlockState(cell);
@@ -108,10 +109,10 @@ public final class PalletCargoCollisionBlock extends Block {
                 switch (facing) {
                     case NORTH -> {
                         x0 = root.getX() + u0; x1 = root.getX() + u1;
-                        z0 = root.getZ() + 1 - v1; z1 = root.getZ() + 1 - v0;
+                        z0 = root.getZ() - v1; z1 = root.getZ() - v0;
                     }
                     case SOUTH -> {
-                        x0 = root.getX() + 1 - u1; x1 = root.getX() + 1 - u0;
+                        x0 = root.getX() - u1; x1 = root.getX() - u0;
                         z0 = root.getZ() + v0; z1 = root.getZ() + v1;
                     }
                     case EAST -> {
@@ -119,8 +120,8 @@ public final class PalletCargoCollisionBlock extends Block {
                         z0 = root.getZ() + u0; z1 = root.getZ() + u1;
                     }
                     case WEST -> {
-                        x0 = root.getX() + 1 - v1; x1 = root.getX() + 1 - v0;
-                        z0 = root.getZ() + 1 - u1; z1 = root.getZ() + 1 - u0;
+                        x0 = root.getX() - v1; x1 = root.getX() - v0;
+                        z0 = root.getZ() - u1; z1 = root.getZ() - u0;
                     }
                     default -> { continue; }
                 }
@@ -145,10 +146,11 @@ public final class PalletCargoCollisionBlock extends Block {
         if (!(home.getBlock() instanceof PalletBlock)) return;
         for (int part = 0; part < 4; part++) {
             BlockPos floor = PalletBlock.partPos(root, part, home);
+            // Clean up old 5-high cargo collision blocks at y=3/4 too.
             for (int height = 1; height <= 4; height++) {
                 BlockPos at = floor.above(height);
                 BlockState existing = level.getBlockState(at);
-                boolean needed = !shapeFor(level, at).isEmpty();
+                boolean needed = height <= 2 && !shapeFor(level, at).isEmpty();
                 if (needed && existing.isAir()) {
                     level.setBlock(at, PalletContent.PALLET_CARGO_COLLISION.defaultBlockState(), 3);
                 } else if (!needed && existing.is(PalletContent.PALLET_CARGO_COLLISION)) {

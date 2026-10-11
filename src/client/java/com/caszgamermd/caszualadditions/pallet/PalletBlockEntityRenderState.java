@@ -7,18 +7,19 @@ import net.minecraft.core.Direction;
 
 public final class PalletBlockEntityRenderState extends BlockEntityRenderState {
     /*
-     * One shared 2x2 controller draws a tightly packed 3x3x7
-     * display. Every cell is 2/3 of a block wide with no gaps;
-     * seven full tiers reach just below five blocks above ground.
-     * Storage capacity remains 216 slots (63 visible).
+     * Only 3 contiguous tiers of 3x3 items are visible on the 2x2 deck
+     * (27 display positions, unchanged 216-slot storage capacity).
+     * Each cell is 2/3 of a block on every axis, and the first tier
+     * starts at the actual top of the pallet without protruding below.
      */
     public static final int DISPLAY_COLUMNS = 3;
     public static final int DISPLAY_ROWS = 3;
-    public static final int DISPLAY_LAYERS = 7;
+    public static final int DISPLAY_LAYERS = 3;
     public static final int DISPLAY_CAPACITY =
             DISPLAY_COLUMNS * DISPLAY_ROWS * DISPLAY_LAYERS;
     public static final float ITEM_SCALE = 2.0F / 3.0F;
-    public static final float FIRST_LAYER_Y = 0.3125F;
+    // 5/16 is the collision height; deck board tops are at 0.295.
+    public static final float FIRST_LAYER_Y = 5.0F / 16.0F;
     public static final float LAYER_SPACING = ITEM_SCALE;
 
     public final BlockModelRenderState base = new BlockModelRenderState();

@@ -6,6 +6,7 @@ import com.caszgamermd.caszualadditions.utils.mixin.SlotAccessor;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.MenuScreens;
@@ -44,9 +45,31 @@ public final class CosmeticsClient {
                 : "Cosmetic slots closed - click to open");
     }
 
+    /**
+     * Draw the armor icon INSIDE the button's normal extraction phase.
+     * The previous ScreenEvents.afterExtract rendered it after item tooltips,
+     * causing the chestplate to float visibly over tooltip text.
+     */
+    private static final class ItemIconButton extends Button {
+        private final java.util.function.Supplier<ItemStack> icon;
+
+        private ItemIconButton(Builder builder,
+                java.util.function.Supplier<ItemStack> icon) {
+            super(builder);
+            this.icon = icon;
+        }
+
+        @Override
+        public void extractContents(GuiGraphicsExtractor graphics, int mouseX,
+                                    int mouseY, float partialTick) {
+            super.extractContents(graphics, mouseX, mouseY, partialTick);
+            graphics.item(icon.get(), getX() + 2, getY() + 2);
+        }
+    }
+
     public static Button armorButton(int x, int y, int width) {
         boolean iconOnly = width <= 22;
-        var button = Button.builder(iconOnly ? Component.empty() : armorLabel(), b -> {
+        Button.OnPress action = b -> {
             var player = Minecraft.getInstance().player;
             if (player == null) return;
             boolean hidden = !Cosmetics.hideArmor(player);
@@ -54,7 +77,14 @@ public final class CosmeticsClient {
             Cosmetics.setHideArmor(player, hidden);
             b.setMessage(iconOnly ? Component.empty() : armorLabel());
             b.setTooltip(Tooltip.create(armorTooltip()));
-        }).bounds(x, y, width, 20).build();
+        };
+        var builder = Button.builder(iconOnly ? Component.empty() : armorLabel(), action)
+                .bounds(x, y, width, 20);
+        Button button = iconOnly
+                ? new ItemIconButton(builder,
+                        () -> new ItemStack(armorHidden()
+                                ? Items.CHAINMAIL_CHESTPLATE : Items.DIAMOND_CHESTPLATE))
+                : builder.build();
         button.setTooltip(Tooltip.create(armorTooltip()));
         return button;
     }
@@ -74,19 +104,28 @@ public final class CosmeticsClient {
         MenuScreens.register(Cosmetics.MENU, CosmeticsScreen::new);
 
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
-            // Creative does not synchronize extra InventoryMenu slots. Open the
-            // server-backed cosmetics menu instead of creating ghost/drop slots.
-            if (screen instanceof CreativeModeInventoryScreen) {
+            // Creative mode must use the server-backed cosmetics menu,
+            // but the old wide "Cosmetics" text button covered creative slots.
+            // Replace it with a compact armor-stand icon outside the item grid.
+            if (screen instanceof CreativeModeInventoryScreen creativeScreen) {
                 var pos = (ContainerScreenAccessor)screen;
                 var widgets = (ScreenWidgetAccessor)(Object)screen;
-                var open = Button.builder(Component.literal("Cosmetics"),
-                        b -> ClientPlayNetworking.send(new OpenCosmetics()))
-                        .bounds(pos.caszual_additions$left() + 117,
-                                pos.caszual_additions$top() + 62, 74, 20)
-                        .build();
-                open.setTooltip(Tooltip.create(Component.literal(
-                        "Edit cosmetics with normal cursor pickup and placement")));
+                var open = new ItemIconButton(
+                        Button.builder(Component.empty(),
+                                b -> ClientPlayNetworking.send(new OpenCosmetics()))
+                                .bounds(pos.caszual_additions$left() - 22,
+                                        pos.caszual_additions$top() + 108, 20, 20),
+                        () -> new ItemStack(Items.ARMOR_STAND));
+                open.setTooltip(Tooltip.create(
+                        Component.literal("Open cosmetic slots")));
                 widgets.caszual_additions$addRenderableWidget(open);
+                ScreenEvents.beforeExtract(screen).register((s, graphics, mx, my, partial) -> {
+                    int left = pos.caszual_additions$left();
+                    int top = pos.caszual_additions$top();
+                    open.setPosition(left - 22, top + 108);
+                    open.visible = creativeScreen.isInventoryOpen();
+                    open.active = open.visible;
+                });
                 return;
             }
             if (!(screen instanceof InventoryScreen inventoryScreen)) return;
@@ -102,12 +141,14 @@ public final class CosmeticsClient {
             int top = positions.caszual_additions$top();
             // Separate, recognizable chestplate icons distinguish visible / hidden armor.
             var hide = armorButton(left + 126, top + 61, 20);
-            var toggle = Button.builder(Component.empty(), button -> {
-                shown[0] = !shown[0];
-                CosmeticSlotPreferences.setExpanded(client, shown[0]);
-                placeCosmeticSlots(inventoryScreen, shown[0]);
-                button.setTooltip(Tooltip.create(cosmeticTooltip(shown[0])));
-            }).bounds(left - 22, top + 83, 20, 20).build();
+            var toggle = new ItemIconButton(
+                    Button.builder(Component.empty(), button -> {
+                        shown[0] = !shown[0];
+                        CosmeticSlotPreferences.setExpanded(client, shown[0]);
+                        placeCosmeticSlots(inventoryScreen, shown[0]);
+                        button.setTooltip(Tooltip.create(cosmeticTooltip(shown[0])));
+                    }).bounds(left - 22, top + 83, 20, 20),
+                    () -> new ItemStack(Items.ARMOR_STAND));
             toggle.setTooltip(Tooltip.create(cosmeticTooltip(shown[0])));
 
             widgets.caszual_additions$addRenderableWidget(hide);
@@ -133,20 +174,8 @@ public final class CosmeticsClient {
                 }
             });
 
-            // Draw real Minecraft item icons instead of font-dependent glyphs (the
-            // old unicode symbols rendered as tiny dots/dashes on some systems).
-            ScreenEvents.afterExtract(screen).register((s, graphics, mx, my, partial) -> {
-                if (!hide.visible || !toggle.visible) return;
-                int x = positions.caszual_additions$left();
-                int y = positions.caszual_additions$top();
-                graphics.item(new ItemStack(armorHidden()
-                        ? Items.CHAINMAIL_CHESTPLATE : Items.DIAMOND_CHESTPLATE),
-                        x + 128, y + 63);
-                graphics.item(new ItemStack(Items.ARMOR_STAND), x - 20, y + 85);
-                // Small state pip: green = cosmetic slots open; grey = closed.
-                graphics.fill(x - 7, y + 98, x - 4, y + 101,
-                        shown[0] ? 0xff62e69a : 0xff666666);
-            });
+            // Both item icons are rendered by their own Button during normal
+            // widget extraction, before tooltips. Never draw via AFTER_EXTRACT.
         });
     }
 }
