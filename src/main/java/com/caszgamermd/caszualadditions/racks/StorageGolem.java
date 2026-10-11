@@ -136,6 +136,17 @@ public final class StorageGolem extends PathfinderMob {
         itemId=in.getStringOr("item","");
         waitTicks=Math.max(0,in.getIntOr("wait",0));
     }
+    @Override public void die(net.minecraft.world.damagesource.DamageSource source){
+        if(level() instanceof ServerLevel server &&!isDeadOrDying()){
+            if(!cargo.isEmpty()){
+                Containers.dropItemStack(server,getX(),getY(),getZ(),cargo);
+                cargo=ItemStack.EMPTY;
+            }
+            Containers.dropItemStack(server,getX(),getY(),getZ(),
+                    new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
+        }
+        super.die(source);
+    }
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(level().isClientSide())return InteractionResult.SUCCESS;
         if(!player.isShiftKeyDown())return InteractionResult.PASS;
