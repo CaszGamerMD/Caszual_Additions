@@ -94,5 +94,8 @@
   "item.caszual_additions.pallet_filter": "Pallet Filter",
   "block.caszual_additions.order_collector_hub": "Order Collector Hub",
   "block.caszual_additions.shulker_tank": "Shulker Tank",
-  "item.caszual_additions.order_collector": "Order Collector"
+  "item.caszual_additions.order_collector": "Order Collector",
+  "block.caszual_additions.pallet_transfer_block": "Pallet Transfer Block",
+  "block.caszual_additions.ptp_hopper_adapter": "PTP Hopper Adapter",
+  "block.caszual_additions.ptp_wrap_unit": "PTP Wrap Unit"
 }
