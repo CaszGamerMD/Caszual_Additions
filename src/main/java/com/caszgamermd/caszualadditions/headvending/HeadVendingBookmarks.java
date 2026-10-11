@@ -30,7 +30,7 @@ public final class HeadVendingBookmarks {
             CaszualAdditions.id("head_vending_history"),
             b -> b.initializer(List::of).persistent(Codec.STRING.listOf()).copyOnDeath());
 
-    public record Toggle(BlockPos pos, String kind, String target, String label)
+    public record Toggle(BlockPos pos, String kind, String target, String label, boolean add)
             implements CustomPacketPayload {
         public static final Type<Toggle> TYPE = new Type<>(CaszualAdditions.id("head_vending_favorite"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Toggle> CODEC =
@@ -39,6 +39,7 @@ public final class HeadVendingBookmarks {
                         ByteBufCodecs.stringUtf8(12), Toggle::kind,
                         ByteBufCodecs.stringUtf8(128), Toggle::target,
                         ByteBufCodecs.stringUtf8(100), Toggle::label,
+                        ByteBufCodecs.BOOL, Toggle::add,
                         Toggle::new);
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
@@ -88,8 +89,9 @@ public final class HeadVendingBookmarks {
         List<String> favorites = new ArrayList<>(player.getAttachedOrElse(FAVORITES, List.of()));
         // Identify by kind and target even if the item's visible label changed.
         String prefix = kind + "|" + target + "|";
-        boolean removed = favorites.removeIf(entry -> entry.startsWith(prefix));
-        if (!removed) {
+        // Explicit add/remove is idempotent even with rapid successive clicks.
+        favorites.removeIf(entry -> entry.startsWith(prefix));
+        if (toggle.add()) {
             favorites.add(0, saved);
             if (favorites.size() > MAX_FAVORITES)
                 favorites = new ArrayList<>(favorites.subList(0, MAX_FAVORITES));
@@ -99,11 +101,21 @@ public final class HeadVendingBookmarks {
     }
 
     public static void recordPurchase(ServerPlayer player, String kind, String target, String label) {
-        String prefix = kind + "|" + target.toLowerCase(Locale.ROOT) + "|";
+        recordPurchases(player, List.of(encode(kind, target.toLowerCase(Locale.ROOT), label)));
+    }
+
+    /** One saved attachment update and one packet for an entire cart checkout. */
+    public static void recordPurchases(ServerPlayer player, List<String> purchases) {
         List<String> history = new ArrayList<>(player.getAttachedOrElse(HISTORY, List.of()));
-        history.removeIf(entry -> entry.startsWith(prefix));
-        history.add(0, encode(kind, target.toLowerCase(Locale.ROOT), label));
-        if (history.size() > MAX_HISTORY) history = new ArrayList<>(history.subList(0, MAX_HISTORY));
+        for (String purchased : purchases) {
+            String[] fields = purchased.split("\\|", 3);
+            if (fields.length != 3) continue;
+            String prefix = fields[0] + "|" + fields[1] + "|";
+            history.removeIf(entry -> entry.startsWith(prefix));
+            history.add(0, purchased);
+        }
+        if (history.size() > MAX_HISTORY)
+            history = new ArrayList<>(history.subList(0, MAX_HISTORY));
         player.setAttached(HISTORY, List.copyOf(history));
         sync(player);
     }

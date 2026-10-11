@@ -3,6 +3,18 @@ package com.caszgamermd.caszualadditions.headvending;
 import com.caszgamermd.caszualadditions.CaszualAdditions;
 import com.mojang.authlib.GameProfile;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.minecraft.world.entity.MobCategory;
 import java.util.Map;
 import java.util.Optional;
@@ -128,6 +140,60 @@ public final class HeadVendingContent {
         }
     }
 
+    /** One response per mob; verified HeadDB hash, never arbitrary client texture. */
+    public record MobPreviewRequest(BlockPos pos, String key) implements CustomPacketPayload {
+        public static final Type<MobPreviewRequest> TYPE =
+                new Type<>(CaszualAdditions.id("mob_head_preview_request"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, MobPreviewRequest> CODEC =
+                StreamCodec.composite(BlockPos.STREAM_CODEC, MobPreviewRequest::pos,
+                        ByteBufCodecs.stringUtf8(48), MobPreviewRequest::key,
+                        MobPreviewRequest::new);
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record MobPreviewReply(BlockPos pos, String key, String hash) implements CustomPacketPayload {
+        public static final Type<MobPreviewReply> TYPE =
+                new Type<>(CaszualAdditions.id("mob_head_preview_reply"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, MobPreviewReply> CODEC =
+                StreamCodec.composite(BlockPos.STREAM_CODEC, MobPreviewReply::pos,
+                        ByteBufCodecs.stringUtf8(48), MobPreviewReply::key,
+                        ByteBufCodecs.stringUtf8(128), MobPreviewReply::hash,
+                        MobPreviewReply::new);
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record Checkout(BlockPos pos, String json) implements CustomPacketPayload {
+        public static final Type<Checkout> TYPE =
+                new Type<>(CaszualAdditions.id("checkout_heads"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, Checkout> CODEC =
+                StreamCodec.composite(BlockPos.STREAM_CODEC, Checkout::pos,
+                        ByteBufCodecs.stringUtf8(8192), Checkout::json, Checkout::new);
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record CheckoutReply(boolean success, String message) implements CustomPacketPayload {
+        public static final Type<CheckoutReply> TYPE =
+                new Type<>(CaszualAdditions.id("checkout_heads_reply"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, CheckoutReply> CODEC =
+                StreamCodec.composite(ByteBufCodecs.BOOL, CheckoutReply::success,
+                        ByteBufCodecs.stringUtf8(180), CheckoutReply::message,
+                        CheckoutReply::new);
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    private static final Map<String, CompletableFuture<CustomHeadCatalog.Head>> MOB_TEXTURES =
+            new ConcurrentHashMap<>();
+
+    private static CompletableFuture<CustomHeadCatalog.Head> mobTexture(String key) {
+        CompletableFuture<CustomHeadCatalog.Head> future = MOB_TEXTURES.computeIfAbsent(key,
+                id -> HeadDbSearch.findMobAsync(displayName(id)));
+        // Don't permanently cache a temporary API outage or an empty search.
+        future.whenComplete((head, failure) -> {
+            if (failure != null || head == null) MOB_TEXTURES.remove(key, future);
+        });
+        return future;
+    }
+
     public static void initialize() {
         HeadVendingBookmarks.initialize();
         Identifier id = CaszualAdditions.id("player_head_vending_machine");
@@ -180,6 +246,10 @@ public final class HeadVendingContent {
         PayloadTypeRegistry.serverboundPlay().register(SearchCustom.TYPE, SearchCustom.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(BuyCustom.TYPE, BuyCustom.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(CustomResults.TYPE, CustomResults.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(MobPreviewRequest.TYPE, MobPreviewRequest.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(MobPreviewReply.TYPE, MobPreviewReply.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(Checkout.TYPE, Checkout.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(CheckoutReply.TYPE, CheckoutReply.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(
                 Purchase.TYPE,
@@ -198,6 +268,25 @@ public final class HeadVendingContent {
                 (payload, context) -> context.server().execute(() ->
                         handleCustomPurchase(context.server(), context.player(), payload))
         );
+        ServerPlayNetworking.registerGlobalReceiver(MobPreviewRequest.TYPE,
+                (payload, context) -> context.server().execute(() -> {
+                    ServerPlayer player = context.player();
+                    if (!validMachine(player, payload.pos())) return;
+                    String key = payload.key().toLowerCase(Locale.ROOT);
+                    if (MOB_HEADS.get(key) != Items.PLAYER_HEAD) return;
+                    mobTexture(key).whenComplete((head, error) ->
+                            context.server().execute(() -> {
+                                ServerPlayer current = context.server().getPlayerList()
+                                        .getPlayer(player.getUUID());
+                                if (current != null && validMachine(current, payload.pos())) {
+                                    ServerPlayNetworking.send(current, new MobPreviewReply(
+                                            payload.pos(), key, head == null ? "" : head.hash()));
+                                }
+                            }));
+                }));
+        ServerPlayNetworking.registerGlobalReceiver(Checkout.TYPE,
+                (payload, context) -> context.server().execute(() ->
+                        handleCheckout(context.server(), context.player(), payload)));
     }
 
     public static String displayName(String key) {
@@ -277,7 +366,7 @@ public final class HeadVendingContent {
             return;
         }
 
-        HeadDbSearch.findMobAsync(key.replace('_', ' ')).whenComplete((head, error) ->
+        mobTexture(key).whenComplete((head, error) ->
                 server.execute(() -> {
                     ServerPlayer current = server.getPlayerList().getPlayer(player.getUUID());
                     if (current == null || !validMachine(current, payload.pos())) return;
@@ -334,6 +423,177 @@ public final class HeadVendingContent {
         }
         completePurchase(player, CustomHeadCatalog.createHead(head.name(), head.hash()),
                 head.name(), "custom", head.hash());
+    }
+
+    private record CartLine(String kind, String target, int quantity) {}
+    private record Prepared(ItemStack stack, String label, String kind, String target) {}
+
+    private static void checkoutMessage(ServerPlayer player, boolean success, String message) {
+        ServerPlayNetworking.send(player, new CheckoutReply(success, message));
+    }
+
+    private static void handleCheckout(MinecraftServer server, ServerPlayer player, Checkout request) {
+        if (!validMachine(player, request.pos())) return;
+        List<CartLine> entries = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        int units = 0;
+        try {
+            JsonArray array = JsonParser.parseString(request.json()).getAsJsonArray();
+            if (array.size() < 1 || array.size() > 64)
+                throw new IllegalArgumentException("Cart must contain 1-64 different heads.");
+            for (JsonElement element : array) {
+                JsonObject row = element.getAsJsonObject();
+                String kind = row.get("kind").getAsString().toLowerCase(Locale.ROOT);
+                String target = row.get("target").getAsString().toLowerCase(Locale.ROOT);
+                int qty = row.get("qty").getAsInt();
+                if (qty < 1 || qty > 64 || target.length() > 128
+                        || !seen.add(kind + "|" + target)
+                        || !(kind.equals("mob") || kind.equals("player") || kind.equals("custom")))
+                    throw new IllegalArgumentException("Invalid cart entry.");
+                if (kind.equals("mob") && !MOB_HEADS.containsKey(target)
+                        || kind.equals("player") && !PLAYER_NAME.matcher(target).matches()
+                        || kind.equals("custom") && !target.matches("[a-f0-9]{32,128}"))
+                    throw new IllegalArgumentException("Unknown head in cart.");
+                units += qty;
+                if (units > 64) throw new IllegalArgumentException("64 heads maximum per checkout.");
+                entries.add(new CartLine(kind, target, qty));
+            }
+        } catch (RuntimeException invalid) {
+            checkoutMessage(player, false, "Invalid cart: " + invalid.getMessage());
+            return;
+        }
+
+        List<CompletableFuture<Prepared>> pending = new ArrayList<>();
+        for (CartLine entry : entries) {
+            String key = entry.target();
+            CompletableFuture<Prepared> future;
+            switch (entry.kind()) {
+                case "player" -> future = CompletableFuture.supplyAsync(() ->
+                        server.services().profileResolver().fetchByName(key)
+                                .map(profile -> {
+                                    ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
+                                    stack.set(DataComponents.PROFILE,
+                                            ResolvableProfile.createResolved(profile));
+                                    String label = profile.name() + "'s Head";
+                                    stack.set(DataComponents.ITEM_NAME, Component.literal(label));
+                                    return new Prepared(stack, label, "player", key);
+                                }).orElse(null), Util.nonCriticalIoPool());
+                case "mob" -> {
+                    Item item = MOB_HEADS.get(key);
+                    String label = displayName(key) + " Head";
+                    future = item != Items.PLAYER_HEAD
+                            ? CompletableFuture.completedFuture(new Prepared(
+                                    new ItemStack(item), label, "mob", key))
+                            : mobTexture(key).thenApply(head -> head == null ? null
+                                    : new Prepared(CustomHeadCatalog.createHead(label, head.hash()),
+                                            label, "mob", key));
+                }
+                case "custom" -> {
+                    CustomHeadCatalog.Head head = HeadDbSearch.verified(key);
+                    String label = head != null ? head.name()
+                            : HeadVendingBookmarks.previouslyPurchasedCustom(player, key);
+                    future = CompletableFuture.completedFuture(label == null ? null
+                            : new Prepared(CustomHeadCatalog.createHead(label, key),
+                                    label, "custom", key));
+                }
+                default -> throw new IllegalStateException();
+            }
+            pending.add(future);
+        }
+
+        final int totalUnits = units;
+        CompletableFuture.allOf(pending.toArray(new CompletableFuture[0]))
+                .whenComplete((ignored, failure) -> server.execute(() -> {
+                    ServerPlayer current = server.getPlayerList().getPlayer(player.getUUID());
+                    if (current == null || !validMachine(current, request.pos())) return;
+                    if (failure != null) {
+                        checkoutMessage(current, false, "Could not load head textures; retry.");
+                        return;
+                    }
+                    List<Prepared> output = new ArrayList<>();
+                    for (int i = 0; i < entries.size(); i++) {
+                        Prepared item = pending.get(i).getNow(null);
+                        if (item == null || item.stack().isEmpty()) {
+                            checkoutMessage(current, false,
+                                    "Missing head: " + entries.get(i).target()
+                                            + ". Please try again later.");
+                            return;
+                        }
+                        for (int q = 0; q < entries.get(i).quantity(); q++) output.add(item);
+                    }
+                    finalizeCheckout(current, output, totalUnits);
+                }));
+    }
+
+    /**
+     * Validate entire checkout against the inventory snapshot BEFORE removing
+     * emeralds. Roll back inventory if something unexpectedly fails to insert.
+     */
+    private static void finalizeCheckout(ServerPlayer player, List<Prepared> heads, int amount) {
+        Inventory inventory = player.getInventory();
+        boolean creative = player.getAbilities().instabuild;
+        List<ItemStack> original = new ArrayList<>();
+        for (int i = 0; i < inventory.getContainerSize(); i++)
+            original.add(inventory.getItem(i).copy());
+        List<ItemStack> simulated = new ArrayList<>();
+        for (ItemStack slot : original) simulated.add(slot.copy());
+        int emeralds = 0;
+        for (int i = 0; i < Math.min(36, simulated.size()); i++)
+            if (simulated.get(i).is(Items.EMERALD)) emeralds += simulated.get(i).getCount();
+        if (!creative && emeralds < amount) {
+            checkoutMessage(player, false, "Need " + amount + " emeralds (have " + emeralds + ").");
+            return;
+        }
+        if (!creative) {
+            int remaining = amount;
+            for (int i = 0; i < Math.min(36, simulated.size()) && remaining > 0; i++) {
+                ItemStack stack = simulated.get(i);
+                if (!stack.is(Items.EMERALD)) continue;
+                int take = Math.min(remaining, stack.getCount());
+                stack.shrink(take);
+                remaining -= take;
+            }
+        }
+
+        for (Prepared prepared : heads) {
+            ItemStack item = prepared.stack();
+            boolean placed = false;
+            for (int i = 0; i < Math.min(36, simulated.size()); i++) {
+                ItemStack slot = simulated.get(i);
+                if (!slot.isEmpty() && ItemStack.isSameItemSameComponents(slot, item)
+                        && slot.getCount() < slot.getMaxStackSize()) {
+                    slot.grow(1);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                for (int i = 0; i < Math.min(36, simulated.size()); i++) {
+                    if (simulated.get(i).isEmpty()) {
+                        simulated.set(i, item.copyWithCount(1));
+                        placed = true;
+                        break;
+                    }
+                }
+            }
+            if (!placed) {
+                checkoutMessage(player, false, "Not enough inventory space for " + amount + " heads.");
+                return;
+            }
+        }
+
+        // Commit the simulated inventory once, as one transaction.
+        for (int i = 0; i < Math.min(36, simulated.size()); i++)
+            inventory.setItem(i, simulated.get(i));
+        inventory.setChanged();
+        List<String> purchased = new ArrayList<>();
+        for (Prepared item : heads)
+            purchased.add(HeadVendingBookmarks.encode(
+                    item.kind(), item.target(), item.label()));
+        HeadVendingBookmarks.recordPurchases(player, purchased);
+        checkoutMessage(player, true, creative
+                ? "Created " + amount + " heads for free."
+                : "Purchased " + amount + " heads for " + amount + " emeralds.");
     }
 
     private static boolean validMachine(ServerPlayer player, BlockPos pos) {

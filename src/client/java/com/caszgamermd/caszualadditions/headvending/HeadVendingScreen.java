@@ -5,6 +5,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.world.item.Item;
 import java.util.List;
 import java.util.Locale;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -24,13 +28,30 @@ public final class HeadVendingScreen extends Screen {
     private static final int HEIGHT = 282;
     private static final int MAX_RESULTS = CustomHeadCatalog.PAGE_SIZE;
 
-    private enum Tab { CUSTOM, PLAYER, MOB, FAVORITES, HISTORY }
+    private enum Tab { CUSTOM, PLAYER, MOB, FAVORITES, HISTORY, CART }
     private enum Kind { CUSTOM, PLAYER, MOB }
+    private static final class CartEntry {
+        Result result;
+        int amount;
+        CartEntry(Result result) { this.result = result; this.amount = 1; }
+    }
 
     private final BlockPos machinePos;
     private final List<Result> results = new ArrayList<>();
-    private final List<Button> buyButtons = new ArrayList<>();
-    private final List<Button> starButtons = new ArrayList<>();
+    private static final int GRID_COLS = 6;
+    private static final int GRID_X = 18;
+    private static final int GRID_Y = 94;
+    private static final int CELL_W = 50;
+    private static final int CELL_H = 47;
+    private static final int CART_LIMIT = 64;
+    private final Map<String, CartEntry> cart = new LinkedHashMap<>();
+    private final Map<String, String> mobTextures = new java.util.HashMap<>();
+    private final java.util.Set<String> mobRequested = new java.util.HashSet<>();
+    private Button checkoutButton;
+    private Button favoriteCartButton;
+    private Button clearCartButton;
+    private String notice = "";
+    private String hovered = "";
     private final List<SavedHead> favorites = new ArrayList<>();
     private final List<SavedHead> history = new ArrayList<>();
     private List<String> categories = List.of("all");
@@ -59,17 +80,20 @@ public final class HeadVendingScreen extends Screen {
         int top = (height - HEIGHT) / 2;
         String priorText = search == null ? "" : search.getValue();
 
-        String[] names = {"Custom", "Players", "Mobs", "Favorites", "History"};
+        String[] names = {"Custom", "Players", "Mobs", "Favorites", "History", "Cart"};
         Tab[] tabs = Tab.values();
         for (int i = 0; i < tabs.length; i++) {
             final Tab selected = tabs[i];
             addRenderableWidget(Button.builder(Component.literal(names[i]),
                     ignored -> setTab(selected))
-                    .bounds(left + 15 + i * 62, top + 36, 61, 21).build());
+                    .bounds(left + 13 + i * 52, top + 36, 51, 21).build());
         }
 
         refreshButton = addRenderableWidget(Button.builder(
-                Component.literal("Refresh"), ignored -> refreshResults()
+                Component.literal("Refresh"), ignored -> {
+                    if (tab == Tab.MOB) mobRequested.clear();
+                    refreshResults();
+                }
         ).bounds(left + 227, top + 10, 62, 18).build());
 
         search = addRenderableWidget(new EditBox(
@@ -89,20 +113,15 @@ public final class HeadVendingScreen extends Screen {
                 ignored -> cycleCategory()
         ).bounds(left + 208, top + 64, 111, 20).build());
 
-        buyButtons.clear();
-        for (int i = 0; i < MAX_RESULTS; i++) {
-            final int resultIndex = i;
-            Button star = Button.builder(Component.literal("☆"),
-                    ignored -> toggleFavorite(resultIndex))
-                    .bounds(left + 221, top + 94 + i * 21, 23, 18).build();
-            starButtons.add(star);
-            addRenderableWidget(star);
-            Button button = Button.builder(Component.literal("Buy"),
-                    ignored -> buy(resultIndex))
-                    .bounds(left + 245, top + 94 + i * 21, 75, 18).build();
-            buyButtons.add(button);
-            addRenderableWidget(button);
-        }
+        checkoutButton = addRenderableWidget(Button.builder(
+                Component.literal("Checkout"), ignored -> checkout())
+                .bounds(left + 18, top + 247, 96, 19).build());
+        favoriteCartButton = addRenderableWidget(Button.builder(
+                Component.literal("☆ Cart"), ignored -> favoriteCart())
+                .bounds(left + 120, top + 247, 96, 19).build());
+        clearCartButton = addRenderableWidget(Button.builder(
+                Component.literal("Clear Cart"), ignored -> clearCart())
+                .bounds(left + 222, top + 247, 96, 19).build());
 
         previousButton = addRenderableWidget(Button.builder(
                 Component.literal("< Previous"), ignored -> changePage(-1)
@@ -122,6 +141,7 @@ public final class HeadVendingScreen extends Screen {
             case MOB -> "Search vanilla mob heads...";
             case FAVORITES -> "Filter your favorites...";
             case HISTORY -> "Filter recent purchases...";
+            case CART -> "Filter items in cart...";
         };
     }
 
@@ -181,7 +201,7 @@ public final class HeadVendingScreen extends Screen {
                     if (query.isEmpty() || key.contains(query.replace(' ', '_'))
                             || label.toLowerCase(Locale.ROOT).contains(query)) {
                         results.add(new Result(label, "Vanilla Mob",
-                                new ItemStack(entry.getValue()), Kind.MOB, key));
+                                mobPreview(key, entry.getValue()), Kind.MOB, key));
                     }
                 }
             }
@@ -192,12 +212,20 @@ public final class HeadVendingScreen extends Screen {
                     if (result != null) results.add(result);
                 }
             }
+            if (tab == Tab.CART) {
+                for (CartEntry entry : cart.values()) {
+                    if (query.isEmpty() || entry.result.label().toLowerCase(Locale.ROOT).contains(query))
+                        results.add(entry.result);
+                }
+            }
             total = results.size();
-            if (tab != Tab.PLAYER && total > MAX_RESULTS) {
+            if (tab != Tab.PLAYER) {
                 int last = Math.max(0, (total - 1) / MAX_RESULTS);
                 page = Math.clamp(page, 0, last);
-                results.subList(0, page * MAX_RESULTS).clear();
-                if (results.size() > MAX_RESULTS) results.subList(MAX_RESULTS, results.size()).clear();
+                int skip = page * MAX_RESULTS;
+                if (skip > 0) results.subList(0, skip).clear();
+                if (results.size() > MAX_RESULTS)
+                    results.subList(MAX_RESULTS, results.size()).clear();
             }
         }
         updateButtons();
@@ -206,6 +234,8 @@ public final class HeadVendingScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        if (tab == Tab.MOB || tab == Tab.FAVORITES || tab == Tab.HISTORY || tab == Tab.CART)
+            requestVisibleMobTextures();
         if (tab == Tab.CUSTOM && searchDelay >= 0) {
             if (searchDelay-- == 0) {
                 ClientPlayNetworking.send(new HeadVendingContent.SearchCustom(
@@ -316,22 +346,8 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void updateButtons() {
-        for (int i = 0; i < buyButtons.size(); i++) {
-            Button button = buyButtons.get(i);
-            button.visible = i < results.size();
-            button.active = i < results.size();
-            boolean free = minecraft != null && minecraft.player != null
-                    && minecraft.player.getAbilities().instabuild;
-            button.setMessage(Component.literal(free ? "Free" : "1 Emerald"));
-            Button star = starButtons.get(i);
-            star.visible = i < results.size();
-            star.active = star.visible;
-            if (star.visible) {
-                Result entry = results.get(i);
-                star.setMessage(Component.literal(isFavorite(entry) ? "★" : "☆"));
-            }
-        }
-        if (refreshButton != null) refreshButton.visible = tab == Tab.CUSTOM;
+        if (refreshButton != null)
+            refreshButton.visible = tab == Tab.CUSTOM || tab == Tab.MOB;
         if (categoryButton != null) {
             categoryButton.visible = tab == Tab.CUSTOM;
             String label = category.length() > 11 ? category.substring(0, 10) + "..." : category;
@@ -344,6 +360,19 @@ public final class HeadVendingScreen extends Screen {
         if (nextButton != null) {
             nextButton.visible = tab != Tab.PLAYER;
             nextButton.active = !loading && (page + 1) * MAX_RESULTS < total;
+        }
+        if (checkoutButton != null) {
+            checkoutButton.visible = tab == Tab.CART;
+            checkoutButton.active = !cart.isEmpty();
+            checkoutButton.setMessage(Component.literal("Checkout (" + cartCount() + ")"));
+        }
+        if (favoriteCartButton != null) {
+            favoriteCartButton.visible = tab == Tab.CART;
+            favoriteCartButton.active = !cart.isEmpty();
+        }
+        if (clearCartButton != null) {
+            clearCartButton.visible = tab == Tab.CART;
+            clearCartButton.active = !cart.isEmpty();
         }
     }
 
@@ -385,7 +414,7 @@ public final class HeadVendingScreen extends Screen {
                 kind = Kind.MOB;
                 var mob = HeadVendingContent.MOB_HEADS.get(saved.target());
                 if (mob == null) return null;
-                item = new ItemStack(mob);
+                item = mobPreview(saved.target(), mob);
             }
             case "custom" -> {
                 kind = Kind.CUSTOM;
@@ -403,24 +432,154 @@ public final class HeadVendingScreen extends Screen {
                 && entry.target().equalsIgnoreCase(result.target()));
     }
 
-    private void toggleFavorite(int index) {
-        if (index < 0 || index >= results.size()) return;
-        Result entry = results.get(index);
-        ClientPlayNetworking.send(new HeadVendingBookmarks.Toggle(machinePos,
-                entry.kind().name().toLowerCase(Locale.ROOT),
-                entry.target(), entry.label()));
+    private static String identity(Result result) {
+        return result.kind().name().toLowerCase(Locale.ROOT) + "|" +
+                result.target().toLowerCase(Locale.ROOT);
     }
 
-    private void buy(int index) {
-        if (index < 0 || index >= results.size()) return;
-        Result result = results.get(index);
-        if (result.kind() == Kind.CUSTOM) {
-            ClientPlayNetworking.send(
-                    new HeadVendingContent.BuyCustom(machinePos, result.target()));
-        } else {
-            ClientPlayNetworking.send(new HeadVendingContent.Purchase(
-                    machinePos, result.kind() == Kind.PLAYER, result.target()));
+    private int cartCount() {
+        int count = 0;
+        for (CartEntry entry : cart.values()) count += entry.amount;
+        return count;
+    }
+
+    private void addToCart(Result result) {
+        if (cartCount() >= CART_LIMIT) {
+            notice = "Cart is full (" + CART_LIMIT + " heads maximum).";
+            return;
         }
+        String key = identity(result);
+        CartEntry entry = cart.get(key);
+        if (entry == null) cart.put(key, new CartEntry(result));
+        else entry.amount++;
+        notice = result.label() + " added to cart.";
+        updateButtons();
+    }
+
+    private void removeFromCart(Result result) {
+        String key = identity(result);
+        CartEntry entry = cart.get(key);
+        if (entry == null) return;
+        if (--entry.amount <= 0) cart.remove(key);
+        refreshResults();
+        notice = result.label() + " removed from cart.";
+    }
+
+    private void setFavorite(Result result, boolean add) {
+        if (isFavorite(result) == add) return; // idempotent right-click
+        ClientPlayNetworking.send(new HeadVendingBookmarks.Toggle(machinePos,
+                result.kind().name().toLowerCase(Locale.ROOT),
+                result.target(), result.label(), add));
+        SavedHead saved = new SavedHead(result.kind().name().toLowerCase(Locale.ROOT),
+                result.target().toLowerCase(Locale.ROOT), result.label());
+        favorites.removeIf(entry -> entry.kind().equals(saved.kind())
+                && entry.target().equals(saved.target()));
+        if (add) favorites.add(0, saved);
+        if (tab == Tab.FAVORITES) refreshResults();
+        notice = add ? "Added to favorites." : "Removed from favorites.";
+    }
+
+    private void checkout() {
+        if (cart.isEmpty()) return;
+        JsonArray lines = new JsonArray();
+        for (CartEntry entry : cart.values()) {
+            JsonObject line = new JsonObject();
+            line.addProperty("kind", entry.result.kind().name().toLowerCase(Locale.ROOT));
+            line.addProperty("target", entry.result.target());
+            line.addProperty("qty", entry.amount);
+            lines.add(line);
+        }
+        ClientPlayNetworking.send(new HeadVendingContent.Checkout(machinePos, lines.toString()));
+        notice = "Checking out " + cartCount() + " heads...";
+        // Wait for server acknowledgement before clearing a cart: inventory full,
+        // missing emeralds or a failed remote lookup must not erase it.
+        checkoutButton.active = false;
+    }
+
+    public void acceptCheckout(boolean success, String message) {
+        notice = message;
+        if (success) {
+            cart.clear();
+            if (tab == Tab.CART) refreshResults();
+        }
+        updateButtons();
+    }
+
+    private void favoriteCart() {
+        for (CartEntry entry : cart.values())
+            setFavorite(entry.result, true);
+        notice = "Cart items added to favorites.";
+    }
+
+    private void clearCart() {
+        cart.clear();
+        notice = "Cart cleared.";
+        refreshResults();
+    }
+
+    private ItemStack mobPreview(String key, Item nativeItem) {
+        if (nativeItem != Items.PLAYER_HEAD) return new ItemStack(nativeItem);
+        String hash = mobTextures.get(key);
+        if (hash != null && hash.matches("[a-f0-9]{32,128}"))
+            return CustomHeadCatalog.createHead(HeadVendingContent.displayName(key) + " Head", hash);
+        return new ItemStack(Items.PLAYER_HEAD);
+    }
+
+    private void requestVisibleMobTextures() {
+        int sent = 0;
+        for (Result result : results) {
+            if (result.kind() != Kind.MOB
+                    || HeadVendingContent.MOB_HEADS.get(result.target()) != Items.PLAYER_HEAD
+                    || !mobRequested.add(result.target())) continue;
+            ClientPlayNetworking.send(new HeadVendingContent.MobPreviewRequest(
+                    machinePos, result.target()));
+            if (++sent == 2) break; // Avoid flooding HeadDB with a whole page at once.
+        }
+    }
+
+    public void acceptMobPreview(BlockPos pos, String key, String hash) {
+        if (!machinePos.equals(pos)) return;
+        if (!hash.matches("[a-f0-9]{32,128}")) return;
+        mobTextures.put(key, hash);
+        for (int i = 0; i < results.size(); i++) {
+            Result entry = results.get(i);
+            if (entry.kind() == Kind.MOB && entry.target().equals(key))
+                results.set(i, new Result(entry.label(), entry.category(),
+                        mobPreview(key, Items.PLAYER_HEAD), Kind.MOB, key));
+        }
+        // Refresh the cart snapshot as well so its previews update.
+        CartEntry inCart = cart.get("mob|" + key);
+        if (inCart != null) {
+            Result old = inCart.result;
+            inCart.result = new Result(old.label(), old.category(),
+                    mobPreview(key, Items.PLAYER_HEAD), Kind.MOB, key);
+        }
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        int left = (width - WIDTH) / 2;
+        int top = (height - HEIGHT) / 2;
+        double mx = event.x(), my = event.y();
+        if (mx >= left + GRID_X && mx < left + GRID_X + GRID_COLS * CELL_W
+                && my >= top + GRID_Y && my < top + GRID_Y + 3 * CELL_H) {
+            int col = (int)(mx - left - GRID_X) / CELL_W;
+            int row = (int)(my - top - GRID_Y) / CELL_H;
+            int index = row * GRID_COLS + col;
+            if (index >= 0 && index < results.size()) {
+                Result result = results.get(index);
+                if (event.button() == 0) {
+                    if (tab == Tab.CART) removeFromCart(result);
+                    else addToCart(result);
+                    return true;
+                }
+                if (event.button() == 1) {
+                    setFavorite(result, tab != Tab.FAVORITES);
+                    return true;
+                }
+            }
+        }
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
@@ -450,43 +609,62 @@ public final class HeadVendingScreen extends Screen {
             String message = !error.isEmpty() ? error
                     : loading ? "Searching custom-head database..."
                     : tab == Tab.PLAYER ? "Type a Minecraft username"
+                    : tab == Tab.CART ? "Your cart is empty"
                     : "No matching heads";
-            drawStatus(graphics, message, left + 18, top + 106, 3);
-        } else if (!error.isEmpty()) {
-            drawStatus(graphics, error, left + 18, top + 226, 2);
+            drawStatus(graphics, message, left + 18, top + 110, 3);
         }
-
+        hovered = "";
         for (int i = 0; i < results.size(); i++) {
             Result result = results.get(i);
-            int y = top + 94 + i * 21;
-            graphics.fill(left + 14, y - 1, left + WIDTH - 14, y + 19,
-                    (i & 1) == 0 ? 0xffc8cdd2 : 0xffbfc5cb);
+            int x = left + GRID_X + (i % GRID_COLS) * CELL_W;
+            int y = top + GRID_Y + (i / GRID_COLS) * CELL_H;
+            boolean hot = mouseX >= x && mouseX < x + CELL_W - 2
+                    && mouseY >= y && mouseY < y + CELL_H - 2;
+            graphics.fill(x, y, x + CELL_W - 2, y + CELL_H - 2,
+                    hot ? 0xffaabfd7 : (i % 2 == 0 ? 0xffc7cdd4 : 0xffbec6ce));
+            graphics.fill(x + 2, y + 2, x + CELL_W - 4, y + CELL_H - 4,
+                    0xffe7e9ec);
             try {
-                graphics.item(result.stack(), left + 19, y + 1);
-            } catch (RuntimeException previewError) {
-                // A bad skin must not crash the entire vending UI.
-                graphics.item(new ItemStack(Items.PLAYER_HEAD), left + 19, y + 1);
-                org.slf4j.LoggerFactory.getLogger("CaszualAdditions/HeadVending")
-                        .warn("Could not draw vending preview '{}'", result.label(), previewError);
+                graphics.item(result.stack(), x + 16, y + 5);
+            } catch (RuntimeException badPreview) {
+                graphics.item(new ItemStack(Items.PLAYER_HEAD), x + 16, y + 5);
             }
-            String label = result.label();
-            if (label.length() > 27) label = label.substring(0, 24) + "...";
-            graphics.text(font, Component.literal(label), left + 43,
-                    y + 1, 0xff202020, false);
-            String detail = result.category();
-            if (detail.length() > 28) detail = detail.substring(0, 25) + "...";
-            graphics.text(font, Component.literal(detail), left + 43,
-                    y + 11, 0xff5d5d5d, false);
+            String caption = result.label();
+            if (caption.length() > 9) caption = caption.substring(0, 8) + "...";
+            graphics.text(font, Component.literal(caption), x + 3, y + 26,
+                    0xff262b32, false);
+            if (isFavorite(result))
+                graphics.text(font, Component.literal("★"), x + 35, y + 3,
+                        0xffbc8a22, false);
+            CartEntry quantity = cart.get(identity(result));
+            if (quantity != null) {
+                graphics.text(font, Component.literal("" + quantity.amount),
+                        x + 36, y + 15, 0xff315a24, false);
+            }
+            if (hot) hovered = result.label() + " (" + result.category() + ")";
         }
-
+        if (!error.isEmpty() && !results.isEmpty()) {
+            drawStatus(graphics, error, left + 18, top + 234, 1);
+        } else if (!hovered.isEmpty()) {
+            String line = hovered.length() > 50 ? hovered.substring(0, 48) + "..." : hovered;
+            graphics.text(font, Component.literal(line), left + 18, top + 234,
+                    0xff394658, false);
+        } else if (!notice.isBlank()) {
+            String line = notice.length() > 50 ? notice.substring(0, 48) + "..." : notice;
+            graphics.text(font, Component.literal(line), left + 18, top + 234,
+                    0xff394658, false);
+        }
         if (tab != Tab.PLAYER) {
             int pages = Math.max(1, (total + MAX_RESULTS - 1) / MAX_RESULTS);
             graphics.text(font,
-                    Component.literal("Page " + (page + 1) + "/" + pages
-                            + "  (" + total + " heads)"),
-                    left + 112, top + 254, 0xff454545, false);
+                    Component.literal("Page " + (page + 1) + "/" + pages + "  (" + total + ")"),
+                    left + 117, top + 254, 0xff454545, false);
         }
-        graphics.text(font, Component.literal(free ? "Creative: free heads" : "1 emerald per head"),
+        boolean creative = minecraft != null && minecraft.player != null
+                && minecraft.player.getAbilities().instabuild;
+        graphics.text(font, Component.literal(tab == Tab.CART
+                        ? "Left click removes 1 · Right click favorites"
+                        : "Left click: cart · Right click: favorite"),
                 left + 18, top + HEIGHT - 12, 0xff555555, false);
     }
 

@@ -48,7 +48,7 @@ public final class CustomHeadCatalog {
     private static final long REFRESH_MILLIS = 6L * 60L * 60L * 1000L;
     private static final long RETRY_MILLIS = 2L * 60L * 1000L;
     private static final int MAX_DOWNLOAD_BYTES = 40_000_000;
-    public static final int PAGE_SIZE = 7;
+    public static final int PAGE_SIZE = 18;
 
     private static volatile CompletableFuture<Catalog> loading;
     private static volatile Catalog lastGood;
