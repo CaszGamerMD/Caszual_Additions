@@ -31,7 +31,7 @@ public final class HeadVendingScreen extends Screen {
     private enum Tab { CUSTOM, PLAYER, MOB, FAVORITES, HISTORY, CART }
     private enum Kind { CUSTOM, PLAYER, MOB }
     private static final class CartEntry {
-        final Result result;
+        Result result;
         int amount;
         CartEntry(Result result) { this.result = result; this.amount = 1; }
     }
@@ -224,13 +224,13 @@ public final class HeadVendingScreen extends Screen {
             }
         }
         updateButtons();
-        if (tab == Tab.MOB || tab == Tab.FAVORITES || tab == Tab.HISTORY || tab == Tab.CART)
-            requestVisibleMobTextures();
     }
 
     @Override
     public void tick() {
         super.tick();
+        if (tab == Tab.MOB || tab == Tab.FAVORITES || tab == Tab.HISTORY || tab == Tab.CART)
+            requestVisibleMobTextures();
         if (tab == Tab.CUSTOM && searchDelay >= 0) {
             if (searchDelay-- == 0) {
                 ClientPlayNetworking.send(new HeadVendingContent.SearchCustom(
@@ -348,11 +348,11 @@ public final class HeadVendingScreen extends Screen {
             categoryButton.setMessage(Component.literal("Category: " + label));
         }
         if (previousButton != null) {
-            previousButton.visible = tab != Tab.PLAYER && tab != Tab.CART;
+            previousButton.visible = tab != Tab.PLAYER;
             previousButton.active = !loading && page > 0;
         }
         if (nextButton != null) {
-            nextButton.visible = tab != Tab.PLAYER && tab != Tab.CART;
+            nextButton.visible = tab != Tab.PLAYER;
             nextButton.active = !loading && (page + 1) * MAX_RESULTS < total;
         }
         if (checkoutButton != null) {
@@ -520,12 +520,14 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void requestVisibleMobTextures() {
+        int sent = 0;
         for (Result result : results) {
             if (result.kind() != Kind.MOB
                     || HeadVendingContent.MOB_HEADS.get(result.target()) != Items.PLAYER_HEAD
                     || !mobRequested.add(result.target())) continue;
             ClientPlayNetworking.send(new HeadVendingContent.MobPreviewRequest(
                     machinePos, result.target()));
+            if (++sent == 2) break; // Avoid flooding HeadDB with a whole page at once.
         }
     }
 
@@ -540,8 +542,12 @@ public final class HeadVendingScreen extends Screen {
                         mobPreview(key, Items.PLAYER_HEAD), Kind.MOB, key));
         }
         // Refresh the cart snapshot as well so its previews update.
-        // Cart entries keep their original target; rebuilt snapshots will use
-        // the updated texture on the next cart refresh.
+        CartEntry inCart = cart.get("mob|" + key);
+        if (inCart != null) {
+            Result old = inCart.result;
+            inCart.result = new Result(old.label(), old.category(),
+                    mobPreview(key, Items.PLAYER_HEAD), Kind.MOB, key);
+        }
     }
 
     @Override
@@ -642,7 +648,7 @@ public final class HeadVendingScreen extends Screen {
             graphics.text(font, Component.literal(line), left + 18, top + 234,
                     0xff394658, false);
         }
-        if (tab != Tab.PLAYER && tab != Tab.CART) {
+        if (tab != Tab.PLAYER) {
             int pages = Math.max(1, (total + MAX_RESULTS - 1) / MAX_RESULTS);
             graphics.text(font,
                     Component.literal("Page " + (page + 1) + "/" + pages + "  (" + total + ")"),
