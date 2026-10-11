@@ -47,14 +47,14 @@ public final class RackComputerScreen extends Screen {
                 b->sendQuery()).bounds(width-225,y,90,23).build());
         addRenderableWidget(Button.builder(Component.literal("Refresh"),
                 b->sendQuery()).bounds(width-128,y,90,23).build());
+        int orderInputX=Math.max(22,width-230);
         golemButton=addRenderableWidget(Button.builder(
                 Component.literal("GOLEMS: AUTO"),btn->{
                     ClientPlayNetworking.send(new RackComputerNet.GolemControl(
                             computer,!golemSorting));
-                }).bounds(22,height-63,142,22).build());
+                }).bounds(22,height-63,Math.max(40,orderInputX-30),22).build());
         // Put the order controls in their own full-width footer so they
         // remain clickable at high Minecraft GUI Scale settings.
-        int orderInputX=Math.max(22,width-230);
         orderQuantity=addRenderableWidget(new EditBox(font,orderInputX,height-63,
                 56,22,Component.literal("Order quantity")));
         orderQuantity.setMaxLength(4);

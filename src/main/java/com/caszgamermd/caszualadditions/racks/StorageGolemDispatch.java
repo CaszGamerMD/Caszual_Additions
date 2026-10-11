@@ -14,9 +14,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  */
 public final class StorageGolemDispatch {
     private StorageGolemDispatch(){}
-    private static boolean anyAccess(ServerLevel level,BlockPos place){
-        return level.hasChunkAt(place);
-    }
+    // Only loaded shelf groups and their physically adjacent computer/point
+    // are discovered; workers never force-load remote chunks.
     private static BlockPos computer(ServerLevel level,List<StorageGolemShelfEntity> group){
         for(StorageGolemShelfEntity shelf:group){
             for(Direction side:Direction.values()){
@@ -103,7 +102,7 @@ public final class StorageGolemDispatch {
         if(shelf.docked()==0)return;
         List<StorageGolemShelfEntity> group=StorageGolemShelfEntity.linked(
                 level,shelf.getBlockPos());
-        if(group.isEmpty()||!group.get(0).getBlockPos().equals(shelf.getBlockPos()))return;
+        if(group.isEmpty())return;
         BlockPos terminal=computer(level,group);
         if(terminal==null)return;
         PtpBlockEntity ptp=inputPoint(level,group,terminal);

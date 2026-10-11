@@ -240,9 +240,13 @@ than teleporting items between containers.
    docked (zero, one, or two).
 3. Place a **3×3 Pallet Transfer Point** touching a shelf from this group
    **or the Rack Computer**. Install a pallet and set the PTP to **INPUT**.
-4. Fill the input pallet. Every 40 ticks a stocked shelf checks whether
+4. In the Rack Computer, use **GOLEMS: AUTO / PAUSED** to control
+   automatic sorting for all shelves physically linked to that computer.
+   The button shows currently docked workers. The permission check runs
+   server-side and the sorting state persists.
+5. Fill the input pallet. Every 40 ticks a stocked shelf checks whether
    cargo can be accepted by any loaded rack in the computer's network.
-5. A Storage Golem physically leaves a shelf, walks to the input PTP,
+6. A Storage Golem physically leaves a shelf, walks to the input PTP,
    picks up up to one stack and carries it to a compatible rack. It then
    walks home and redocks, freeing its worker slot again.
 
