@@ -27,13 +27,16 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 /** Persistent rack state; only part=0 owns a block entity and inventory. */
-public final class RackBlockEntity extends BlockEntity implements Container, ExtendedMenuProvider<BlockPos> {
+public final class RackBlockEntity extends BlockEntity implements Container, ExtendedMenuProvider<BlockPos>, com.caszgamermd.caszualadditions.pallet.PalletFilterCarrier {
     public static final int CAPACITY = 216;
     private NonNullList<ItemStack> items = NonNullList.withSize(CAPACITY, ItemStack.EMPTY);
     private ItemStack pallet = ItemStack.EMPTY;
     private String rackName = "";
     private String aisleName = "";
     private String filterItem = "";
+    private ItemStack filterUpgrade = ItemStack.EMPTY;
+    private int filterMode,filterScope;
+    private String filterSignature="";
     private int connectors;
 
     public RackBlockEntity(BlockPos pos, BlockState state) {
@@ -46,6 +49,11 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         if (hasPallet()) return;
         pallet = item.copyWithCount(1);
         filterItem=com.caszgamermd.caszualadditions.pallet.PalletData.filter(item);
+        filterMode=com.caszgamermd.caszualadditions.pallet.PalletData.filterMode(item);
+        filterScope=com.caszgamermd.caszualadditions.pallet.PalletData.filterScope(item);
+        filterSignature=com.caszgamermd.caszualadditions.pallet.PalletData.filterSignature(item);
+        filterUpgrade=com.caszgamermd.caszualadditions.pallet.PalletData.filterInstalled(item)
+                ?new ItemStack(RackContent.PALLET_FILTER):ItemStack.EMPTY;
         setChanged();
     }
     public ItemStack takePallet() {
@@ -55,10 +63,12 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     /** Explicit break path: inventory is separately dropped by the rack. */
     public ItemStack dropPallet() {
         if(!hasPallet())return ItemStack.EMPTY;
-        ItemStack result = com.caszgamermd.caszualadditions.pallet.PalletData.applyFilter(
-                pallet,filterItem);
+        ItemStack result = com.caszgamermd.caszualadditions.pallet.PalletData.applyFilterSettings(
+                pallet,this);
         pallet = ItemStack.EMPTY;
         filterItem = "";
+        filterUpgrade=ItemStack.EMPTY;
+        filterSignature="";
         setChanged();
         return result;
     }
@@ -72,11 +82,29 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     private static String trim(String value) { return value == null ? "" : value.strip().substring(0,Math.min(48,value.strip().length())); }
 
     public void setFilter(ItemStack sample) {
-        filterItem = BuiltInRegistries.ITEM.getKey(sample.getItem()).toString();
+        if(!hasPallet())return;
+        filterItem=BuiltInRegistries.ITEM.getKey(sample.getItem()).toString();
+        filterScope=0;filterMode=0;filterSignature="";
+        if(filterUpgrade.isEmpty())filterUpgrade=new ItemStack(RackContent.PALLET_FILTER);
         setChanged();
     }
-    public String filter() { return filterItem; }
-    public void clearFilter() { filterItem = ""; setChanged(); }
+    public String filter() {return filterItem;}
+    public void clearFilter(){setFilterTarget("");}
+    @Override public ItemStack filterUpgrade(){return filterUpgrade.copy();}
+    @Override public void setFilterUpgrade(ItemStack item){
+        filterUpgrade=item.is(com.caszgamermd.caszualadditions.racks.RackContent.PALLET_FILTER)
+                ?item.copyWithCount(1):ItemStack.EMPTY;
+        setChanged();
+    }
+    @Override public int filterMode(){return filterMode;}
+    @Override public void setFilterMode(int mode){filterMode=Math.clamp(mode,0,1);setChanged();}
+    @Override public int filterScope(){return filterScope;}
+    @Override public void setFilterScope(int scope){filterScope=Math.clamp(scope,0,3);setChanged();}
+    @Override public String filterTarget(){return filterItem;}
+    @Override public void setFilterTarget(String target){filterItem=target;setChanged();}
+    @Override public String filterComponentSignature(){return filterSignature;}
+    @Override public void setFilterComponentSignature(String signature){filterSignature=signature;setChanged();}
+
     public boolean hasConnector(Direction side) { return (connectors & (1 << side.get3DDataValue())) != 0; }
     public void toggleConnector(Direction side) { connectors ^= 1 << side.get3DDataValue(); setChanged(); }
     public Direction facing() { return getBlockState().getValue(RackBlock.FACING); }
@@ -109,8 +137,7 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         return take;
     }
     @Override public boolean canPlaceItem(int slot,ItemStack stack) {
-        return hasPallet() && (filterItem.isBlank()
-            || BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(filterItem));
+        return hasPallet() && allows(stack);
     }
     @Override public void setItem(int slot,ItemStack stack) {
         if(slot<0||slot>=CAPACITY)return;
@@ -136,6 +163,10 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         output.putString("rack_name",rackName);
         output.putString("aisle_name",aisleName);
         output.putString("filter_item",filterItem);
+        output.putInt("filter_mode",filterMode);
+        output.putInt("filter_scope",filterScope);
+        output.putString("filter_signature",filterSignature);
+        if(!filterUpgrade.isEmpty())output.store("filter_upgrade",ItemStack.CODEC,filterUpgrade);
         output.putInt("connectors",connectors);
     }
     @Override protected void loadAdditional(ValueInput input) {
@@ -146,6 +177,12 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         rackName=input.getStringOr("rack_name","");
         aisleName=input.getStringOr("aisle_name","");
         filterItem=input.getStringOr("filter_item","");
+        filterMode=Math.clamp(input.getIntOr("filter_mode",0),0,1);
+        filterScope=Math.clamp(input.getIntOr("filter_scope",0),0,3);
+        filterSignature=input.getStringOr("filter_signature","");
+        filterUpgrade=input.read("filter_upgrade",ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        if(filterUpgrade.isEmpty()&&!filterItem.isBlank())
+            filterUpgrade=new ItemStack(RackContent.PALLET_FILTER);
         connectors=input.getIntOr("connectors",0);
     }
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider provider){

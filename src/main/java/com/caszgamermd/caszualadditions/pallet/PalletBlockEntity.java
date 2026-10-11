@@ -26,7 +26,7 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
-public final class PalletBlockEntity extends BlockEntity implements Container, ExtendedMenuProvider<BlockPos> {
+public final class PalletBlockEntity extends BlockEntity implements Container, ExtendedMenuProvider<BlockPos>, PalletFilterCarrier {
     public static final int SLOTS = 216;
 
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
@@ -40,19 +40,36 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
     };
     private int plasticColor = PalletData.DEFAULT_PLASTIC_COLOR;
     private String filterItem = "";
+    private ItemStack filterUpgrade = ItemStack.EMPTY;
+    private int filterMode, filterScope;
+    private String filterSignature = "";
 
     public void setFilter(ItemStack sample) {
         PalletBlockEntity c=controller();
         c.filterItem=BuiltInRegistries.ITEM.getKey(sample.getItem()).toString();
+        c.filterScope=0;c.filterMode=0;c.filterSignature="";
+        if(c.filterUpgrade.isEmpty())c.filterUpgrade=new ItemStack(
+                com.caszgamermd.caszualadditions.racks.RackContent.PALLET_FILTER);
         c.sync();
     }
-    public void clearFilter() { PalletBlockEntity c=controller();c.filterItem="";c.sync(); }
+    public void clearFilter(){setFilterTarget("");}
     public String filter(){return controller().filterItem;}
-    @Override public boolean canPlaceItem(int slot, ItemStack stack) {
-        String filter=controller().filterItem;
-        return filter.isBlank() || BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(filter);
-    }
+    @Override public boolean canPlaceItem(int slot,ItemStack stack){return controller().allows(stack);}
 
+    @Override public ItemStack filterUpgrade(){return filterUpgrade.copy();}
+    @Override public void setFilterUpgrade(ItemStack item){
+        filterUpgrade=item.is(com.caszgamermd.caszualadditions.racks.RackContent.PALLET_FILTER)
+                ?item.copyWithCount(1):ItemStack.EMPTY;
+        unused
+    }
+    @Override public int filterMode(){return filterMode;}
+    @Override public void setFilterMode(int mode){filterMode=Math.clamp(mode,0,1);unused}
+    @Override public int filterScope(){return filterScope;}
+    @Override public void setFilterScope(int scope){filterScope=Math.clamp(scope,0,3);unused}
+    @Override public String filterTarget(){return controller().filterItem;}
+    @Override public void setFilterTarget(String target){controller().filterItem=target;unused}
+    @Override public String filterComponentSignature(){return filterSignature;}
+    @Override public void setFilterComponentSignature(String signature){filterSignature=signature;unused}
     public PalletBlockEntity(BlockPos pos, BlockState state) {
         super(PalletContent.PALLET_BLOCK_ENTITY, pos, state);
         this.part = state.hasProperty(PalletBlock.PART) ? state.getValue(PalletBlock.PART) : 0;
@@ -87,6 +104,15 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         this.rootPos = root.immutable();
         this.part = part;
         this.filterItem=PalletData.filter(stack);
+        PalletBlockEntity root=controller();
+        if(root==this){
+            filterScope=PalletData.filterScope(stack);
+            filterMode=PalletData.filterMode(stack);
+            filterSignature=PalletData.filterSignature(stack);
+            filterUpgrade=PalletData.filterInstalled(stack)
+                    ?new ItemStack(com.caszgamermd.caszualadditions.racks.RackContent.PALLET_FILTER)
+                    :ItemStack.EMPTY;
+        }
 
         if (getBlockState().getBlock() instanceof PalletBlock pallet) {
             if (pallet.kind() == PalletKind.WOOD) {
@@ -111,7 +137,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
                 stack = PalletData.applyPlasticColor(stack, plasticColor);
             }
         }
-        return PalletData.applyFilter(stack,filterItem);
+        return PalletData.applyFilterSettings(stack,controller());
     }
 
     private PalletBlockEntity controller() {
@@ -212,6 +238,10 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         output.putInt("part", part);
         output.putInt("plastic_color", plasticColor);
         output.putString("filter_item",filterItem);
+        output.putInt("filter_mode",filterMode);
+        output.putInt("filter_scope",filterScope);
+        output.putString("filter_signature",filterSignature);
+        if(!filterUpgrade.isEmpty())output.store("filter_upgrade",ItemStack.CODEC,filterUpgrade);
 
         for (int i = 0; i < 4; i++) {
             output.putString(
@@ -237,6 +267,12 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         );
         plasticColor = input.getIntOr("plastic_color", PalletData.DEFAULT_PLASTIC_COLOR);
         filterItem=input.getStringOr("filter_item","");
+        filterMode=Math.clamp(input.getIntOr("filter_mode",0),0,1);
+        filterScope=Math.clamp(input.getIntOr("filter_scope",0),0,3);
+        filterSignature=input.getStringOr("filter_signature","");
+        filterUpgrade=input.read("filter_upgrade",ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        if(filterUpgrade.isEmpty() && !filterItem.isBlank())
+            filterUpgrade=new ItemStack(com.caszgamermd.caszualadditions.racks.RackContent.PALLET_FILTER);
 
         for (int i = 0; i < 4; i++) {
             Identifier id = Identifier.tryParse(

@@ -34,12 +34,15 @@ import org.jspecify.annotations.Nullable;
  * Server-authoritative order queue. Does not withdraw items unless the hub has
  * a pallet and destination capacity. At most three workers are active.
  */
-public final class OrderHubEntity extends BlockEntity implements Container,ExtendedMenuProvider<BlockPos> {
+public final class OrderHubEntity extends BlockEntity implements Container,ExtendedMenuProvider<BlockPos>, com.caszgamermd.caszualadditions.pallet.PalletFilterCarrier {
     public static final int SLOTS=216;
     public static final int MAX_ORDERS=16;
     private NonNullList<ItemStack> output=NonNullList.withSize(SLOTS,ItemStack.EMPTY);
     private ItemStack pallet=ItemStack.EMPTY;
     private String palletFilter="";
+    private ItemStack filterUpgrade=ItemStack.EMPTY;
+    private int filterMode,filterScope;
+    private String filterSignature="";
     private int collectors;
     private final ArrayDeque<Order> queue=new ArrayDeque<>();
     private record Order(String id,int remaining) {}
@@ -50,6 +53,11 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         if(hasPallet())return false;
         pallet=stack.copyWithCount(1);
         palletFilter=com.caszgamermd.caszualadditions.pallet.PalletData.filter(stack);
+        filterMode=com.caszgamermd.caszualadditions.pallet.PalletData.filterMode(stack);
+        filterScope=com.caszgamermd.caszualadditions.pallet.PalletData.filterScope(stack);
+        filterSignature=com.caszgamermd.caszualadditions.pallet.PalletData.filterSignature(stack);
+        filterUpgrade=com.caszgamermd.caszualadditions.pallet.PalletData.filterInstalled(stack)
+                ?new ItemStack(RackContent.PALLET_FILTER):ItemStack.EMPTY;
         setChanged();return true;
     }
     public ItemStack removePallet() {
@@ -59,9 +67,10 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
     /** Breaking the hub separately drops its output inventory and pallet. */
     public ItemStack dropPallet() {
         if(!hasPallet())return ItemStack.EMPTY;
-        ItemStack old=com.caszgamermd.caszualadditions.pallet.PalletData.applyFilter(
-                pallet,palletFilter);
-        pallet=ItemStack.EMPTY;palletFilter="";setChanged();return old;
+        ItemStack old=com.caszgamermd.caszualadditions.pallet.PalletData.applyFilterSettings(
+                pallet,this);
+        pallet=ItemStack.EMPTY;palletFilter="";filterUpgrade=ItemStack.EMPTY;
+        filterSignature="";setChanged();return old;
     }
     public boolean addCollector(){
         if(collectors>=3)return false;
@@ -106,10 +115,22 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         }
         return null;
     }
-    private boolean accepts(ItemStack sample) {
-        return hasPallet() && (palletFilter.isBlank()
-            || BuiltInRegistries.ITEM.getKey(sample.getItem()).toString().equals(palletFilter));
+    private boolean accepts(ItemStack sample) {return hasPallet() && allows(sample);}
+    @Override public ItemStack filterUpgrade(){return filterUpgrade.copy();}
+    @Override public void setFilterUpgrade(ItemStack item){
+        filterUpgrade=item.is(com.caszgamermd.caszualadditions.racks.RackContent.PALLET_FILTER)
+                ?item.copyWithCount(1):ItemStack.EMPTY;
+        
     }
+    @Override public int filterMode(){return filterMode;}
+    @Override public void setFilterMode(int mode){filterMode=Math.clamp(mode,0,1);}
+    @Override public int filterScope(){return filterScope;}
+    @Override public void setFilterScope(int scope){filterScope=Math.clamp(scope,0,3);}
+    @Override public String filterTarget(){return palletFilter;}
+    @Override public void setFilterTarget(String target){palletFilter=target;}
+    @Override public String filterComponentSignature(){return filterSignature;}
+    @Override public void setFilterComponentSignature(String signature){filterSignature=signature;}
+
     private int freeSlot(ItemStack sample) {
         if(!accepts(sample))return -1;
         // Reuse matching partial stacks before consuming new pallet slots.
@@ -239,6 +260,10 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         if(hasPallet())output.store("output_pallet",ItemStack.CODEC,pallet);
         output.putInt("collectors",collectors);
         output.putString("pallet_filter",palletFilter);
+        output.putInt("filter_mode",filterMode);
+        output.putInt("filter_scope",filterScope);
+        output.putString("filter_signature",filterSignature);
+        if(!filterUpgrade.isEmpty())output.store("filter_upgrade",ItemStack.CODEC,filterUpgrade);
         output.putInt("order_count",queue.size());
         int i=0;
         for(Order order:queue){
@@ -254,6 +279,12 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         pallet=input.read("output_pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
         collectors=Math.clamp(input.getIntOr("collectors",0),0,3);
         palletFilter=input.getStringOr("pallet_filter","");
+        filterMode=Math.clamp(input.getIntOr("filter_mode",0),0,1);
+        filterScope=Math.clamp(input.getIntOr("filter_scope",0),0,3);
+        filterSignature=input.getStringOr("filter_signature","");
+        filterUpgrade=input.read("filter_upgrade",ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        if(filterUpgrade.isEmpty()&&!palletFilter.isBlank())
+            filterUpgrade=new ItemStack(RackContent.PALLET_FILTER);
         queue.clear();
         int count=Math.clamp(input.getIntOr("order_count",0),0,MAX_ORDERS);
         for(int i=0;i<count;i++){
