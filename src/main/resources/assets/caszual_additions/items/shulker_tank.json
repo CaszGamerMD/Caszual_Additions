@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "caszual_additions:block/shulker_tank"
+    "model": "caszual_additions:block/shulker_tank_lower"
   }
 }

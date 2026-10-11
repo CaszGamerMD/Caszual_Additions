@@ -1,7 +1,10 @@
 {
   "variants": {
-    "": {
-      "model": "caszual_additions:block/shulker_tank"
+    "half=lower": {
+      "model": "caszual_additions:block/shulker_tank_lower"
+    },
+    "half=upper": {
+      "model": "caszual_additions:block/shulker_tank_upper"
     }
   }
 }
