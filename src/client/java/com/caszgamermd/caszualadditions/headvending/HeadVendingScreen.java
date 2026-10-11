@@ -560,6 +560,9 @@ public final class HeadVendingScreen extends Screen {
             JsonObject line = new JsonObject();
             line.addProperty("kind", entry.result.kind().name().toLowerCase(Locale.ROOT));
             line.addProperty("target", entry.result.target());
+            // Only a search hint; the server re-verifies the exact texture hash
+            // with HeadDB before charging for a previously uncached head.
+            line.addProperty("label", entry.result.label());
             line.addProperty("qty", entry.amount);
             lines.add(line);
         }
@@ -595,6 +598,10 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private ItemStack mobPreview(String key, Item nativeItem) {
+        if (minecraft != null && minecraft.level != null) {
+            ItemStack actual = AllTheHeadsCompat.create(minecraft.level.registryAccess(), key);
+            if (!actual.isEmpty()) return actual;
+        }
         if (nativeItem != Items.PLAYER_HEAD) return new ItemStack(nativeItem);
         String hash = mobTextures.get(key);
         if (hash != null && hash.matches("[a-f0-9]{32,128}"))
