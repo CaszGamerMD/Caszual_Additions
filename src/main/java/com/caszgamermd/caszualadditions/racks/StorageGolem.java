@@ -83,7 +83,10 @@ public final class StorageGolem extends PathfinderMob {
         getNavigation().stop();
         if(stage==0){
             Container from=loaded(level,source);
-            if(from==null){stage=2;return;}
+            if(from==null || from instanceof PtpBlockEntity station
+                    &&(!station.input()||station.sealed())){
+                stage=2;return;
+            }
             for(int i=0;i<from.getContainerSize();i++){
                 ItemStack sample=from.getItem(i);
                 if(sample.isEmpty() || !net.minecraft.core.registries.BuiltInRegistries.ITEM
@@ -105,6 +108,7 @@ public final class StorageGolem extends PathfinderMob {
                 // different compatible rack, but keep the cargo on failure.
                 BlockPos alternate=StorageGolemDispatch.findRackFor(level,home,cargo);
                 if(alternate!=null)destination=alternate;
+                else stage=2; // return and drop real cargo safely at its shelf
                 waitTicks=0;
             }
             return;
