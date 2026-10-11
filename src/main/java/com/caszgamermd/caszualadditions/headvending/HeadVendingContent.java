@@ -92,7 +92,8 @@ public final class HeadVendingContent {
 
 
     /** Search/filter requests are processed against the server's catalog only. */
-    public record SearchCustom(BlockPos pos, String query, String category, int page)
+    public record SearchCustom(BlockPos pos, String query, String category, int page,
+                               int pageSize)
             implements CustomPacketPayload {
         public static final Type<SearchCustom> TYPE =
                 new Type<>(CaszualAdditions.id("search_custom_heads"));
@@ -102,6 +103,7 @@ public final class HeadVendingContent {
                         ByteBufCodecs.stringUtf8(48), SearchCustom::query,
                         ByteBufCodecs.stringUtf8(40), SearchCustom::category,
                         ByteBufCodecs.INT, SearchCustom::page,
+                        ByteBufCodecs.INT, SearchCustom::pageSize,
                         SearchCustom::new);
 
         @Override
@@ -386,7 +388,8 @@ public final class HeadVendingContent {
             MinecraftServer server, ServerPlayer player, SearchCustom request
     ) {
         if (!validMachine(player, request.pos())) return;
-        HeadDbSearch.searchAsync(request.query(), request.category(), request.page())
+        HeadDbSearch.searchAsync(request.query(), request.category(), request.page(),
+                        request.pageSize())
                 .whenComplete((data, error) -> server.execute(() -> {
                     ServerPlayer current = server.getPlayerList().getPlayer(player.getUUID());
                     if (current == null || !validMachine(current, request.pos())) return;

@@ -24,9 +24,20 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ResolvableProfile;
 
 public final class HeadVendingScreen extends Screen {
-    private static final int WIDTH = 336;
-    private static final int HEIGHT = 282;
-    private static final int MAX_RESULTS = CustomHeadCatalog.PAGE_SIZE;
+    // Full-screen within Minecraft's GUI-scaled window. The icon size and
+    // number of columns/rows adapt independently to GUI scale and resolution.
+    private static final int EDGE = 8;
+    private static final int CELL_W = 54;
+    private static final int CELL_H = 56;
+    private static final int CART_LIMIT = 64;
+    private int frameLeft, frameTop, frameWidth, frameHeight;
+    private int gridLeft, gridTop, gridRight, gridBottom, gridCols, gridRows;
+    private int pageSize = CustomHeadCatalog.PAGE_SIZE;
+    private boolean sidebar;
+    private boolean compactHeight;
+    private int sidebarLeft, sidebarWidth;
+    private int cartScroll;
+    private final List<Button> tabButtons = new ArrayList<>();
 
     private enum Tab { CUSTOM, PLAYER, MOB, FAVORITES, HISTORY, CART }
     private enum Kind { CUSTOM, PLAYER, MOB }
@@ -38,12 +49,6 @@ public final class HeadVendingScreen extends Screen {
 
     private final BlockPos machinePos;
     private final List<Result> results = new ArrayList<>();
-    private static final int GRID_COLS = 6;
-    private static final int GRID_X = 18;
-    private static final int GRID_Y = 94;
-    private static final int CELL_W = 50;
-    private static final int CELL_H = 47;
-    private static final int CART_LIMIT = 64;
     private final Map<String, CartEntry> cart = new LinkedHashMap<>();
     private final Map<String, String> mobTextures = new java.util.HashMap<>();
     private final java.util.Set<String> mobRequested = new java.util.HashSet<>();
@@ -75,32 +80,73 @@ public final class HeadVendingScreen extends Screen {
         this.machinePos = machinePos;
     }
 
+    /**
+     * GUI pixels already follow Minecraft's GUI Scale setting. Use the entire
+     * drawable screen and recompute the available tiles when the window/scale
+     * changes. A sidebar appears only when it leaves sufficient tile width.
+     */
+    private void computeLayout() {
+        compactHeight = height < 310;
+        int margin = compactHeight ? 3 : EDGE;
+        frameLeft = margin;
+        frameTop = margin;
+        frameWidth = Math.max(1, width - margin * 2);
+        frameHeight = Math.max(1, height - margin * 2);
+        // Require height as well as width for a useful persistent cart.
+        sidebar = width >= 760 && height >= 400;
+        sidebarWidth = sidebar ? Math.clamp(width / 4, 220, 300) : 0;
+        sidebarLeft = frameLeft + frameWidth - sidebarWidth - 12;
+        gridLeft = frameLeft + 14;
+        gridRight = sidebar ? sidebarLeft - 12 : frameLeft + frameWidth - 14;
+        gridTop = frameTop + (compactHeight ? 94 : 118);
+        // Reserve independent status, action and pagination rows.
+        gridBottom = frameTop + frameHeight
+                - (compactHeight ? 82 : sidebar ? 76 : 96);
+        int available = Math.max(40, gridRight - gridLeft);
+        gridCols = Math.clamp(available / CELL_W, 1, 12);
+        int maxRows = Math.max(1, 72 / gridCols);
+        gridRows = Math.clamp(Math.max(1, (gridBottom - gridTop) / CELL_H),
+                1, Math.min(8, maxRows));
+        pageSize = gridCols * gridRows;
+    }
+
     @Override
     protected void init() {
-        int left = (width - WIDTH) / 2;
-        int top = (height - HEIGHT) / 2;
         String priorText = search == null ? "" : search.getValue();
+        int priorPageSize = pageSize;
+        computeLayout();
+        if (priorPageSize != pageSize) page = 0;
+        tabButtons.clear();
 
         String[] names = {"Custom", "Players", "Mobs", "Favorites", "History", "Cart"};
         Tab[] tabs = Tab.values();
+        int tabsX = frameLeft + 14;
+        int tabsWidth = frameWidth - 28;
         for (int i = 0; i < tabs.length; i++) {
             final Tab selected = tabs[i];
-            addRenderableWidget(Button.builder(Component.literal(names[i]),
-                    ignored -> setTab(selected))
-                    .bounds(left + 13 + i * 52, top + 36, 51, 21).build());
+            int startX = tabsX + i * tabsWidth / tabs.length;
+            int endX = tabsX + (i + 1) * tabsWidth / tabs.length;
+            Button button = addRenderableWidget(Button.builder(
+                    Component.literal(names[i]), ignored -> setTab(selected))
+                    .bounds(startX, frameTop + (compactHeight ? 29 : 39),
+                            Math.max(1, endX - startX - 2),
+                            compactHeight ? 20 : 24).build());
+            tabButtons.add(button);
         }
 
         refreshButton = addRenderableWidget(Button.builder(
                 Component.literal("Refresh"), ignored -> {
                     if (tab == Tab.MOB) mobRequested.clear();
                     refreshResults();
-                }
-        ).bounds(left + 227, top + 10, 62, 18).build());
+                }).bounds(frameLeft + frameWidth - 97,
+                        frameTop + (compactHeight ? 4 : 9), 80,
+                        compactHeight ? 20 : 22).build());
 
+        int searchWidth = Math.max(80, gridRight - gridLeft - 143);
         search = addRenderableWidget(new EditBox(
-                font, left + 18, top + 64, 185, 20,
-                Component.translatable("screen.caszual_additions.head_vending.search")
-        ));
+                font, gridLeft, frameTop + (compactHeight ? 53 : 75),
+                searchWidth, compactHeight ? 20 : 22,
+                Component.translatable("screen.caszual_additions.head_vending.search")));
         search.setMaxLength(48);
         search.setValue(priorText);
         search.setHint(Component.literal(hint()));
@@ -110,29 +156,42 @@ public final class HeadVendingScreen extends Screen {
         });
 
         categoryButton = addRenderableWidget(Button.builder(
-                Component.literal("Category: All"),
-                ignored -> cycleCategory()
-        ).bounds(left + 208, top + 64, 111, 20).build());
-
-        checkoutButton = addRenderableWidget(Button.builder(
-                Component.literal("Checkout"), ignored -> checkout())
-                .bounds(left + 18, top + 247, 96, 19).build());
-        favoriteCartButton = addRenderableWidget(Button.builder(
-                Component.literal("☆ Cart"), ignored -> favoriteCart())
-                .bounds(left + 120, top + 247, 96, 19).build());
-        clearCartButton = addRenderableWidget(Button.builder(
-                Component.literal("Clear Cart"), ignored -> clearCart())
-                .bounds(left + 222, top + 247, 96, 19).build());
+                Component.literal("Category: All"), ignored -> cycleCategory())
+                .bounds(gridLeft + searchWidth + 8,
+                        frameTop + (compactHeight ? 53 : 75),
+                        128, compactHeight ? 20 : 22).build());
 
         previousButton = addRenderableWidget(Button.builder(
-                Component.literal("< Previous"), ignored -> changePage(-1)
-        ).bounds(left + 18, top + 248, 86, 19).build());
+                Component.literal("◀ Previous"), ignored -> changePage(-1))
+                .bounds(gridLeft, frameTop + frameHeight
+                        - (compactHeight ? 33 : 35), 102,
+                        compactHeight ? 21 : 23).build());
         nextButton = addRenderableWidget(Button.builder(
-                Component.literal("Next >"), ignored -> changePage(1)
-        ).bounds(left + WIDTH - 104, top + 248, 86, 19).build());
+                Component.literal("Next ▶"), ignored -> changePage(1))
+                .bounds(gridRight - 102, frameTop + frameHeight
+                        - (compactHeight ? 33 : 35), 102,
+                        compactHeight ? 21 : 23).build());
 
+        int actionsX = sidebar ? sidebarLeft + 10 : gridLeft;
+        int actionsW = sidebar ? sidebarWidth - 20 : gridRight - gridLeft;
+        int actionsY = sidebar ? frameTop + frameHeight - 118
+                : frameTop + frameHeight - (compactHeight ? 61 : 66);
+        int actionGap = sidebar ? 4 : 6;
+        int actionHeight = sidebar ? 24 : compactHeight ? 20 : 23;
+        int actionWidth = sidebar ? actionsW : Math.max(40, (actionsW - 2 * actionGap) / 3);
+        checkoutButton = addRenderableWidget(Button.builder(
+                Component.literal("Checkout"), ignored -> checkout())
+                .bounds(actionsX, actionsY, actionWidth, actionHeight).build());
+        favoriteCartButton = addRenderableWidget(Button.builder(
+                Component.literal("☆ Favorite Cart"), ignored -> favoriteCart())
+                .bounds(sidebar ? actionsX : actionsX + actionWidth + actionGap,
+                        sidebar ? actionsY + 29 : actionsY, actionWidth, actionHeight).build());
+        clearCartButton = addRenderableWidget(Button.builder(
+                Component.literal("Clear Cart"), ignored -> clearCart())
+                .bounds(sidebar ? actionsX : actionsX + 2 * (actionWidth + actionGap),
+                        sidebar ? actionsY + 58 : actionsY, actionWidth, actionHeight).build());
         refreshResults();
-        setInitialFocus(search);
+        setInitialFocus(tab == Tab.CART && !sidebar ? checkoutButton : search);
     }
 
     private String hint() {
@@ -167,7 +226,7 @@ public final class HeadVendingScreen extends Screen {
 
     private void changePage(int direction) {
         if (tab == Tab.PLAYER) return;
-        int lastPage = Math.max(0, (total - 1) / MAX_RESULTS);
+        int lastPage = Math.max(0, (total - 1) / pageSize);
         int target = Math.clamp(page + direction, 0, lastPage);
         if (target == page) return;
         page = target;
@@ -221,12 +280,12 @@ public final class HeadVendingScreen extends Screen {
             }
             total = results.size();
             if (tab != Tab.PLAYER) {
-                int last = Math.max(0, (total - 1) / MAX_RESULTS);
+                int last = Math.max(0, (total - 1) / pageSize);
                 page = Math.clamp(page, 0, last);
-                int skip = page * MAX_RESULTS;
+                int skip = page * pageSize;
                 if (skip > 0) results.subList(0, skip).clear();
-                if (results.size() > MAX_RESULTS)
-                    results.subList(MAX_RESULTS, results.size()).clear();
+                if (results.size() > pageSize)
+                    results.subList(pageSize, results.size()).clear();
             }
         }
         updateButtons();
@@ -240,7 +299,7 @@ public final class HeadVendingScreen extends Screen {
         if (tab == Tab.CUSTOM && searchDelay >= 0) {
             if (searchDelay-- == 0) {
                 ClientPlayNetworking.send(new HeadVendingContent.SearchCustom(
-                        machinePos, search.getValue().trim(), category, page));
+                        machinePos, search.getValue().trim(), category, page, pageSize));
             }
         }
     }
@@ -259,7 +318,9 @@ public final class HeadVendingScreen extends Screen {
             }
             if (!search.getValue().trim().equals(data.get("query").getAsString())
                     || !category.equals(data.get("category").getAsString())
-                    || page != data.get("page").getAsInt()) {
+                    || page != data.get("page").getAsInt()
+                    || data.has("pageSize")
+                    && pageSize != data.get("pageSize").getAsInt()) {
                 return; // Ignore replies to earlier searches.
             }
 
@@ -281,7 +342,7 @@ public final class HeadVendingScreen extends Screen {
             JsonArray items = data.has("items") && data.get("items").isJsonArray()
                     ? data.getAsJsonArray("items") : new JsonArray();
             for (JsonElement element : items) {
-                if (results.size() >= MAX_RESULTS) break;
+                if (results.size() >= pageSize) break;
                 try {
                     if (!element.isJsonObject()) {
                         rejected++;
@@ -347,45 +408,42 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void updateButtons() {
-        int left = (width - WIDTH) / 2;
-        int top = (height - HEIGHT) / 2;
-        if (search != null) {
-            // The cart uses the search row for its own pagination; keep
-            // the checkout actions in the footer completely unobstructed.
-            search.visible = tab != Tab.CART;
-            search.active = search.visible;
+        for (int i = 0; i < tabButtons.size(); i++) {
+            Tab item = Tab.values()[i];
+            tabButtons.get(i).active = item != tab;
         }
         if (refreshButton != null)
             refreshButton.visible = tab == Tab.CUSTOM || tab == Tab.MOB;
         if (categoryButton != null) {
             categoryButton.visible = tab == Tab.CUSTOM;
-            String label = category.length() > 11 ? category.substring(0, 10) + "..." : category;
+            String label = category.length() > 13 ? category.substring(0, 12) + "..." : category;
             categoryButton.setMessage(Component.literal("Category: " + label));
         }
         if (previousButton != null) {
-            previousButton.setPosition(left + 18,
-                    tab == Tab.CART ? top + 64 : top + 248);
             previousButton.visible = tab != Tab.PLAYER;
             previousButton.active = !loading && page > 0;
         }
         if (nextButton != null) {
-            nextButton.setPosition(left + WIDTH - 104,
-                    tab == Tab.CART ? top + 64 : top + 248);
             nextButton.visible = tab != Tab.PLAYER;
-            nextButton.active = !loading && (page + 1) * MAX_RESULTS < total;
+            nextButton.active = !loading && (page + 1) * pageSize < total;
         }
+        boolean showActions = sidebar || tab == Tab.CART;
         if (checkoutButton != null) {
-            checkoutButton.visible = tab == Tab.CART;
+            checkoutButton.visible = showActions;
             checkoutButton.active = !cart.isEmpty() && !checkoutPending;
             checkoutButton.setMessage(Component.literal("Checkout (" + cartCount() + ")"));
         }
         if (favoriteCartButton != null) {
-            favoriteCartButton.visible = tab == Tab.CART;
+            favoriteCartButton.visible = showActions;
             favoriteCartButton.active = !cart.isEmpty() && !checkoutPending;
         }
         if (clearCartButton != null) {
-            clearCartButton.visible = tab == Tab.CART;
+            clearCartButton.visible = showActions;
             clearCartButton.active = !cart.isEmpty() && !checkoutPending;
+        }
+        if (search != null) {
+            search.visible = tab != Tab.CART || sidebar;
+            search.active = search.visible;
         }
     }
 
@@ -575,16 +633,32 @@ public final class HeadVendingScreen extends Screen {
         }
     }
 
+    private int visibleSideRows() {
+        // The summary and action buttons own the bottom of the cart panel;
+        // never draw scrollable cart rows behind them.
+        int listTop = gridTop + 57;
+        int summaryY = frameTop + frameHeight - 151;
+        return Math.max(0, (summaryY - listTop - 8) / 29);
+    }
+
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        int left = (width - WIDTH) / 2;
-        int top = (height - HEIGHT) / 2;
         double mx = event.x(), my = event.y();
-        if (mx >= left + GRID_X && mx < left + GRID_X + GRID_COLS * CELL_W
-                && my >= top + GRID_Y && my < top + GRID_Y + 3 * CELL_H) {
-            int col = (int)(mx - left - GRID_X) / CELL_W;
-            int row = (int)(my - top - GRID_Y) / CELL_H;
-            int index = row * GRID_COLS + col;
+        if (event.button() == 0 && sidebar && !checkoutPending
+                && mx >= sidebarLeft + 10 && mx < sidebarLeft + sidebarWidth - 10) {
+            int row = (int)(my - (gridTop + 57)) / 29;
+            int max = Math.min(visibleSideRows(), cart.size());
+            if (my >= gridTop + 57 && row >= 0 && row < max) {
+                CartEntry entry = new ArrayList<>(cart.values()).get(row);
+                removeFromCart(entry.result);
+                return true;
+            }
+        }
+        if (mx >= gridLeft && mx < gridLeft + gridCols * CELL_W
+                && my >= gridTop && my < gridTop + gridRows * CELL_H) {
+            int col = (int)(mx - gridLeft) / CELL_W;
+            int row = (int)(my - gridTop) / CELL_H;
+            int index = row * gridCols + col;
             if (index >= 0 && index < results.size()) {
                 Result result = results.get(index);
                 if (event.button() == 0) {
@@ -601,93 +675,177 @@ public final class HeadVendingScreen extends Screen {
         return super.mouseClicked(event, doubleClick);
     }
 
+    private String fit(String value, int pixels) {
+        if (font.width(value) <= pixels) return value;
+        String text = value;
+        while (!text.isEmpty() && font.width(text + "…") > pixels)
+            text = text.substring(0, text.length() - 1);
+        return text + "…";
+    }
+
+    private void drawItemScaled(GuiGraphicsExtractor graphics, ItemStack stack,
+                                int x, int y, float scale) {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x, y);
+        graphics.pose().scale(scale, scale);
+        try {
+            graphics.item(stack, 0, 0);
+        } catch (RuntimeException failedSkin) {
+            graphics.item(new ItemStack(Items.PLAYER_HEAD), 0, 0);
+        } finally {
+            graphics.pose().popMatrix();
+        }
+    }
+
+    private void drawCartPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        int x = sidebarLeft;
+        int right = sidebarLeft + sidebarWidth;
+        int y = frameTop + 107;
+        int bottom = frameTop + frameHeight - 12;
+        graphics.fill(x, y, right, bottom, 0xff1a2531);
+        graphics.fill(x + 2, y + 2, right - 2, bottom - 2, 0xffe1e6ec);
+        graphics.fill(x + 2, y + 2, right - 2, y + 34, 0xff34485c);
+        graphics.text(font, Component.literal("YOUR CART"),
+                x + 12, y + 12, 0xffffffff, false);
+        String count = cartCount() + "/64";
+        graphics.text(font, Component.literal(count),
+                right - font.width(count) - 13, y + 12, 0xffc8f0ed, false);
+
+        int listTop = gridTop + 57;
+        int max = Math.min(visibleSideRows(), cart.size());
+        int index = 0;
+        for (CartEntry item : cart.values()) {
+            if (index >= max) break;
+            int rowY = listTop + index * 29;
+            boolean hot = mouseX >= x + 10 && mouseX < right - 10
+                    && mouseY >= rowY && mouseY < rowY + 27;
+            graphics.fill(x + 10, rowY, right - 10, rowY + 27,
+                    hot ? 0xffcadbe6 : 0xfff2f5f8);
+            graphics.fill(x + 10, rowY + 26, right - 10, rowY + 27, 0xffc2cbd4);
+            graphics.item(item.result.stack(), x + 14, rowY + 5);
+            String name = fit(item.result.label(), sidebarWidth - 92);
+            graphics.text(font, Component.literal(name), x + 36, rowY + 9,
+                    0xff26384a, false);
+            String qty = "×" + item.amount;
+            graphics.text(font, Component.literal(qty),
+                    right - font.width(qty) - 17, rowY + 9, 0xff345b63, false);
+            index++;
+        }
+        if (cart.isEmpty()) {
+            graphics.text(font, Component.literal("Your cart is empty."),
+                    x + 18, gridTop + 65, 0xff697989, false);
+            graphics.text(font, Component.literal("Left-click a head to add it."),
+                    x + 18, gridTop + 83, 0xff697989, false);
+        } else if (cart.size() > max) {
+            String extra = "+" + (cart.size() - max) + " more — open Cart tab";
+            graphics.text(font, Component.literal(extra),
+                    x + 16, listTop + 29 * max + 4, 0xff516677, false);
+        }
+        int summaryY = frameTop + frameHeight - 151;
+        graphics.fill(x + 10, summaryY, right - 10, summaryY + 26, 0xffc3d1da);
+        boolean free = minecraft != null && minecraft.player != null
+                && minecraft.player.getAbilities().instabuild;
+        String cost = free ? "Total: FREE" : "Total: " + cartCount() + " emeralds";
+        graphics.text(font, Component.literal(cost), x + 18,
+                summaryY + 9, 0xff173748, false);
+    }
+
     @Override
     public void extractBackground(
             GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick
     ) {
         super.extractBackground(graphics, mouseX, mouseY, partialTick);
-        int left = (width - WIDTH) / 2;
-        int top = (height - HEIGHT) / 2;
 
-        graphics.fill(left, top, left + WIDTH, top + HEIGHT, 0xff25292f);
-        graphics.fill(left + 3, top + 3, left + WIDTH - 3, top + HEIGHT - 3, 0xffd9dde2);
-        graphics.fill(left + 8, top + 8, left + WIDTH - 8, top + 31, 0xff59636f);
-        graphics.text(font, title, left + 16, top + 15, 0xffffffff, false);
+        graphics.fill(0, 0, width, height, 0xdd0c141d);
+        graphics.fill(frameLeft, frameTop,
+                frameLeft + frameWidth, frameTop + frameHeight, 0xff17222e);
+        graphics.fill(frameLeft + 2, frameTop + 2,
+                frameLeft + frameWidth - 2, frameTop + frameHeight - 2, 0xffd8e0e8);
+        int headerBottom = frameTop + (compactHeight ? 25 : 34);
+        graphics.fill(frameLeft + 2, frameTop + 2,
+                frameLeft + frameWidth - 2, headerBottom, 0xff273a4c);
+        graphics.fill(frameLeft + 2, headerBottom - 1,
+                frameLeft + frameWidth - 2, headerBottom + 1, 0xff3ba5ad);
+        String heading = fit("HEAD VENDING  /  MARKETPLACE",
+                Math.max(80, frameWidth - 128));
+        graphics.text(font, Component.literal(heading),
+                frameLeft + 16, frameTop + (compactHeight ? 8 : 14),
+                0xffffffff, false);
         boolean free = minecraft != null && minecraft.player != null
                 && minecraft.player.getAbilities().instabuild;
-        if (free) {
-            graphics.text(font, Component.literal("FREE"), left + WIDTH - 46,
-                    top + 17, 0xffaaffaa, false);
-        } else {
-            graphics.item(new ItemStack(Items.EMERALD), left + WIDTH - 34, top + 12);
-            graphics.text(font, Component.literal("1"), left + WIDTH - 16,
-                    top + 17, 0xffffffff, false);
-        }
+        String rate = free ? "CREATIVE • FREE" : "1 EMERALD / HEAD";
+        int rateX = frameLeft + frameWidth - font.width(rate) - 112;
+        if (rateX > frameLeft + 225)
+            graphics.text(font, Component.literal(rate), rateX, frameTop + 14,
+                    0xffb8e3d4, false);
+
+        graphics.fill(gridLeft - 4, gridTop - 4,
+                gridRight + 4, gridBottom + 4, 0xffb9c5d0);
+        graphics.fill(gridLeft - 2, gridTop - 2,
+                gridRight + 2, gridBottom + 2, 0xffeff2f6);
+        graphics.text(font, Component.literal(
+                tab == Tab.CART ? "CART CONTENTS" : tab.name() + " HEADS"),
+                gridLeft, gridTop - 16, 0xff2c4255, false);
+        String help = tab == Tab.CART ? "Left-click: remove one · Right-click: favorite"
+                : tab == Tab.FAVORITES ? "Right-click: remove favorite · Left-click: add to cart"
+                : "Left-click: add to cart · Right-click: favorite";
+        String helpText = fit(help, Math.max(20, gridRight - gridLeft - 105));
+        graphics.text(font, Component.literal(helpText), gridLeft + 102,
+                gridTop - 16, 0xff597081, false);
 
         if (results.isEmpty()) {
             String message = !error.isEmpty() ? error
-                    : loading ? "Searching custom-head database..."
-                    : tab == Tab.PLAYER ? "Type a Minecraft username"
-                    : tab == Tab.CART ? "Your cart is empty"
-                    : "No matching heads";
-            drawStatus(graphics, message, left + 18, top + 110, 3);
+                    : loading ? "Searching the head database..."
+                    : tab == Tab.PLAYER ? "Enter a player username above."
+                    : tab == Tab.CART ? "Your cart is empty."
+                    : "No matching heads.";
+            drawStatus(graphics, message, gridLeft + 12, gridTop + 24, 3);
         }
+
         hovered = "";
         for (int i = 0; i < results.size(); i++) {
             Result result = results.get(i);
-            int x = left + GRID_X + (i % GRID_COLS) * CELL_W;
-            int y = top + GRID_Y + (i / GRID_COLS) * CELL_H;
+            int x = gridLeft + (i % gridCols) * CELL_W;
+            int y = gridTop + (i / gridCols) * CELL_H;
             boolean hot = mouseX >= x && mouseX < x + CELL_W - 2
                     && mouseY >= y && mouseY < y + CELL_H - 2;
-            graphics.fill(x, y, x + CELL_W - 2, y + CELL_H - 2,
-                    hot ? 0xffaabfd7 : (i % 2 == 0 ? 0xffc7cdd4 : 0xffbec6ce));
-            graphics.fill(x + 2, y + 2, x + CELL_W - 4, y + CELL_H - 4,
-                    0xffe7e9ec);
-            try {
-                graphics.item(result.stack(), x + 16, y + 5);
-            } catch (RuntimeException badPreview) {
-                graphics.item(new ItemStack(Items.PLAYER_HEAD), x + 16, y + 5);
-            }
-            String caption = result.label();
-            if (caption.length() > 9) caption = caption.substring(0, 8) + "...";
-            graphics.text(font, Component.literal(caption), x + 3, y + 26,
-                    0xff262b32, false);
+            graphics.fill(x + 2, y + 2, x + CELL_W - 2, y + CELL_H - 2,
+                    hot ? 0xffabcbd5 : 0xffd5dfe7);
+            graphics.fill(x + 4, y + 4, x + CELL_W - 4, y + CELL_H - 4,
+                    hot ? 0xffe2f3f6 : 0xfff6f8fa);
+            drawItemScaled(graphics, result.stack(), x + 15, y + 5, 1.5f);
+            graphics.text(font, Component.literal(fit(result.label(), CELL_W - 9)),
+                    x + 5, y + 39, 0xff293b48, false);
             if (isFavorite(result))
-                graphics.text(font, Component.literal("★"), x + 35, y + 3,
-                        0xffbc8a22, false);
+                graphics.text(font, Component.literal("★"),
+                        x + CELL_W - 14, y + 5, 0xffbc8a22, false);
             CartEntry quantity = cart.get(identity(result));
-            if (quantity != null) {
+            if (quantity != null)
                 graphics.text(font, Component.literal("" + quantity.amount),
-                        x + 36, y + 15, 0xff315a24, false);
-            }
-            if (hot) hovered = result.label() + " (" + result.category() + ")";
+                        x + CELL_W - 13, y + 22, 0xff2f7e56, false);
+            if (hot) hovered = result.label() + "  ·  " + result.category();
         }
-        if (!error.isEmpty() && !results.isEmpty()) {
-            drawStatus(graphics, error, left + 18, top + 234, 1);
-        } else if (!hovered.isEmpty()) {
-            String line = hovered.length() > 50 ? hovered.substring(0, 48) + "..." : hovered;
-            graphics.text(font, Component.literal(line), left + 18, top + 234,
-                    0xff394658, false);
-        } else if (!notice.isBlank()) {
-            String line = notice.length() > 50 ? notice.substring(0, 48) + "..." : notice;
-            graphics.text(font, Component.literal(line), left + 18, top + 234,
-                    0xff394658, false);
-        }
+
+        int statusY = frameTop + frameHeight
+                - (compactHeight ? 77 : sidebar ? 58 : 91);
+        String status = !error.isEmpty() ? error : !notice.isEmpty() ? notice : hovered;
+        if (!status.isBlank())
+            graphics.text(font, Component.literal(fit(status,
+                    gridRight - gridLeft - 10)), gridLeft + 4, statusY,
+                    error.isEmpty() ? 0xff455c6d : 0xffa24b36, false);
+
         if (tab != Tab.PLAYER) {
-            int pages = Math.max(1, (total + MAX_RESULTS - 1) / MAX_RESULTS);
-            graphics.text(font,
-                    Component.literal("Page " + (page + 1) + "/" + pages
-                            + (tab == Tab.CART ? "" : "  (" + total + ")")),
-                    left + (tab == Tab.CART ? 127 : 117),
-                    top + (tab == Tab.CART ? 70 : 254),
-                    0xff454545, false);
+            int pages = Math.max(1, (total + pageSize - 1) / pageSize);
+            String paging = gridRight - gridLeft < 440
+                    ? (page + 1) + " / " + pages
+                    : "PAGE " + (page + 1) + " / " + pages
+                    + "   •   " + total + " RESULTS";
+            graphics.text(font, Component.literal(paging),
+                    gridLeft + Math.max(0, (gridRight - gridLeft - font.width(paging)) / 2),
+                    frameTop + frameHeight
+                            - (compactHeight ? 26 : 28), 0xff3f5365, false);
         }
-        boolean creative = minecraft != null && minecraft.player != null
-                && minecraft.player.getAbilities().instabuild;
-        graphics.text(font, Component.literal(tab == Tab.CART
-                        ? "Left click removes 1 · Right click favorites"
-                        : "Left click: cart · Right click: favorite"),
-                left + 18, top + HEIGHT - 12, 0xff555555, false);
+        if (sidebar) drawCartPanel(graphics, mouseX, mouseY);
     }
 
     /** Wrap errors instead of clipping their useful diagnostic text to one row. */
