@@ -6,6 +6,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.BlockItem;
 
 /** Shared filter upgrade behavior for free-standing, racked, and transfer pallets. */
 public interface PalletFilterCarrier {
@@ -30,7 +31,12 @@ public interface PalletFilterCarrier {
             case 1 -> item.getNamespace().equals(target);
             case 2 -> {
                 Identifier tag=Identifier.tryParse(target);
-                yield tag!=null && candidate.is(TagKey.create(Registries.ITEM,tag));
+                if(tag==null)yield false;
+                boolean itemTag=candidate.is(TagKey.create(Registries.ITEM,tag));
+                boolean blockTag=candidate.getItem() instanceof BlockItem blockItem
+                        && blockItem.getBlock().defaultBlockState().is(
+                                TagKey.create(Registries.BLOCK,tag));
+                yield itemTag||blockTag;
             }
             case 3 -> item.toString().equals(target) &&
                     candidate.getComponents().toString().equals(filterComponentSignature());

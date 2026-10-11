@@ -160,7 +160,7 @@ public final class RackBlock extends Block implements EntityBlock {
             if (held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem
                     && blockItem.getBlock() instanceof PalletBlock) {
                 if (rack.hasPallet()) {
-                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal("This rack already has a pallet."));
+                    server.openMenu(rack);
                     return InteractionResult.SUCCESS;
                 }
                 rack.install(held.copyWithCount(1));
@@ -192,6 +192,12 @@ public final class RackBlock extends Block implements EntityBlock {
             }
             if (held.is(RackContent.PALLET_FILTER)) {
                 ItemStack sample = player.getOffhandItem();
+                boolean alreadyInstalled=!rack.filterUpgrade().isEmpty();
+                if(!rack.hasPallet()){
+                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                            "Install a pallet before applying a filter."));
+                    return InteractionResult.SUCCESS;
+                }
                 if (sample.isEmpty()) {
                     rack.clearFilter();
                     server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
@@ -203,7 +209,8 @@ public final class RackBlock extends Block implements EntityBlock {
                     rack.setFilter(sample);
                     server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
                             "Pallet accepts only " + sample.getHoverName().getString()));
-                    if (!player.getAbilities().instabuild) held.shrink(1);
+                    if (!alreadyInstalled && !player.getAbilities().instabuild)
+                        held.shrink(1);
                 }
                 return InteractionResult.SUCCESS;
             }

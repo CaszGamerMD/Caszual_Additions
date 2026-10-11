@@ -95,6 +95,7 @@ public final class PalletMenu extends AbstractContainerMenu {
             @Override public boolean mayPlace(ItemStack stack) {
                 return stack.is(RackContent.PALLET_FILTER) && filter!=null;
             }
+            @Override public int getMaxStackSize(){return 1;}
         });
         // Player inventory is shifted down to make space for the rule editor.
         int playerX = 104;
