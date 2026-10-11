@@ -31,5 +31,17 @@ public final class HeadVendingClient {
                     }
                 })
         );
+        ClientPlayNetworking.registerGlobalReceiver(
+                HeadVendingContent.MobPreviewReply.TYPE,
+                (payload, context) -> context.client().execute(() -> {
+                    if (context.client().gui.screen() instanceof HeadVendingScreen screen)
+                        screen.acceptMobPreview(payload.pos(), payload.key(), payload.hash());
+                }));
+        ClientPlayNetworking.registerGlobalReceiver(
+                HeadVendingContent.CheckoutReply.TYPE,
+                (payload, context) -> context.client().execute(() -> {
+                    if (context.client().gui.screen() instanceof HeadVendingScreen screen)
+                        screen.acceptCheckout(payload.success(), payload.message());
+                }));
     }
 }
