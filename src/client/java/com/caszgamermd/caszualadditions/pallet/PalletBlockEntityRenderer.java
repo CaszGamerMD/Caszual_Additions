@@ -142,15 +142,23 @@ public final class PalletBlockEntityRenderer
         if (!state.legacy) {
             switch (state.facing) {
                 case NORTH -> {
+                    // North-facing 2x2 occupies local x=0..2, z=-1..1.
+                    // A +90 rotation alone places it at z=-2..0 (one
+                    // block behind the actual two pallet block positions).
+                    poseStack.translate(0, 0, 1);
                     poseStack.mulPose(Axis.YP.rotationDegrees(90));
                 }
                 case EAST -> {
                     // The home block is the south-west corner of this square.
                 }
                 case SOUTH -> {
+                    // Southwest side of the home block must be included.
+                    poseStack.translate(1, 0, 0);
                     poseStack.mulPose(Axis.YP.rotationDegrees(-90));
                 }
                 case WEST -> {
+                    // Negative axes need a one-block offset (not two).
+                    poseStack.translate(1, 0, 1);
                     poseStack.mulPose(Axis.YP.rotationDegrees(180));
                 }
                 default -> {}
@@ -179,19 +187,19 @@ public final class PalletBlockEntityRenderer
                 switch (state.facing) {
                     case NORTH -> {
                         x = col * cell;
-                        z = -(row + 1) * cell;
+                        z = 1.0 - (row + 1) * cell;
                     }
                     case EAST -> {
                         x = row * cell;
                         z = col * cell;
                     }
                     case SOUTH -> {
-                        x = -(col + 1) * cell;
+                        x = 1.0 - (col + 1) * cell;
                         z = row * cell;
                     }
                     case WEST -> {
-                        x = -(row + 1) * cell;
-                        z = -(col + 1) * cell;
+                        x = 1.0 - (row + 1) * cell;
+                        z = 1.0 - (col + 1) * cell;
                     }
                     default -> {
                         x = col * cell;

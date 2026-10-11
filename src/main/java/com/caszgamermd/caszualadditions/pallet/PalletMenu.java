@@ -43,16 +43,18 @@ public final class PalletMenu extends AbstractContainerMenu {
         };
         addDataSlot(pageData);
 
-        int startX = 8;
-        int startY = 18;
+        // Shared with PalletScreen: 18 x 6 warehouse shelves (108 per page).
+        int startX = 23;
+        int startY = 51;
         for (int y = 0; y < ROWS; y++) {
             for (int x = 0; x < COLS; x++) {
                 addSlot(new Slot(paged, x + y * COLS, startX + x * 18, startY + y * 18));
             }
         }
 
-        int playerX = 89;
-        int playerY = 140;
+        // Center the 9-wide player inventory below the page controls.
+        int playerX = 104;
+        int playerY = 207;
         addStandardInventorySlots(inventory, playerX, playerY);
     }
 
