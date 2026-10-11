@@ -9,6 +9,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
+import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -16,6 +19,10 @@ import net.minecraft.world.level.block.Block;
 
 public final class RackContent {
     public static RackBlock RACK;
+    public static StorageGolemShelfBlock STORAGE_SHELF;
+    public static BlockEntityType<StorageGolemShelfEntity> STORAGE_SHELF_ENTITY;
+    public static Item STORAGE_SHELF_ITEM,STORAGE_GOLEM_ITEM;
+    public static EntityType<StorageGolem> STORAGE_GOLEM_TYPE;
     public static Block RACK_COMPUTER;
     public static OrderHubBlock ORDER_HUB;
     public static ShulkerTankBlock SHULKER_TANK;
@@ -122,6 +129,23 @@ public final class RackContent {
         PTP_PORT_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
                 CaszualAdditions.id("ptp_hopper_port"),
                 FabricBlockEntityTypeBuilder.create(PtpHopperPort::new,PTP_HOPPER).build());
+
+        Identifier shelfId=CaszualAdditions.id("storage_golem_shelf");
+        ResourceKey<Block> shelfKey=ResourceKey.create(Registries.BLOCK,shelfId);
+        STORAGE_SHELF=Registry.register(BuiltInRegistries.BLOCK,shelfKey,
+                new StorageGolemShelfBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
+                        .strength(3.5f).noOcclusion().setId(shelfKey)));
+        STORAGE_SHELF_ITEM=blockItem("storage_golem_shelf",STORAGE_SHELF);
+        STORAGE_SHELF_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
+                CaszualAdditions.id("storage_golem_shelf"),
+                FabricBlockEntityTypeBuilder.create(StorageGolemShelfEntity::new,STORAGE_SHELF).build());
+        STORAGE_GOLEM_ITEM=item("storage_golem");
+        ResourceKey<EntityType<?>> golemKey=ResourceKey.create(
+                Registries.ENTITY_TYPE,CaszualAdditions.id("storage_golem"));
+        STORAGE_GOLEM_TYPE=Registry.register(BuiltInRegistries.ENTITY_TYPE,golemKey,
+                EntityType.Builder.<StorageGolem>of(StorageGolem::new,MobCategory.MISC)
+                        .sized(0.70f,1.45f).build(golemKey));
+        FabricDefaultAttributeRegistry.register(STORAGE_GOLEM_TYPE,StorageGolem.attributes());
 
         RackComputerNet.initialize();
     }
