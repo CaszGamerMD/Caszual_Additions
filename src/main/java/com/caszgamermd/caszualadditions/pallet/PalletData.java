@@ -28,6 +28,40 @@ public final class PalletData {
         return tag.getStringOr("filter_item","");
     }
 
+    /**
+     * Pallet items retain their filter upgrade and rule while moving through
+     * racks, transfer hubs, or the player's inventory. The legacy filter_item
+     * key is preserved for older saves and recipes.
+     */
+    public static ItemStack applyFilterSettings(ItemStack stack,PalletFilterCarrier policy) {
+        CompoundTag tag=stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();
+        if(policy.filterTarget().isBlank())tag.remove("filter_item");
+        else tag.putString("filter_item",policy.filterTarget());
+        tag.putBoolean("filter_installed",policy.filterUpgrade()
+                .is(com.caszgamermd.caszualadditions.racks.RackContent.PALLET_FILTER));
+        tag.putInt("filter_mode",policy.filterMode());
+        tag.putInt("filter_scope",policy.filterScope());
+        tag.putString("filter_signature",policy.filterComponentSignature());
+        stack.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
+        return stack;
+    }
+    public static boolean filterInstalled(ItemStack stack) {
+        CompoundTag tag=stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();
+        return tag.getBooleanOr("filter_installed",!filter(stack).isBlank());
+    }
+    public static int filterMode(ItemStack stack) {
+        return Math.clamp(stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY)
+                .copyTag().getIntOr("filter_mode",0),0,1);
+    }
+    public static int filterScope(ItemStack stack) {
+        return Math.clamp(stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY)
+                .copyTag().getIntOr("filter_scope",0),0,3);
+    }
+    public static String filterSignature(ItemStack stack) {
+        return stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY)
+                .copyTag().getStringOr("filter_signature","");
+    }
+
     public static ItemStack applyWood(ItemStack stack, List<Block> planks) {
         CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         for (int i = 0; i < 4; i++) {

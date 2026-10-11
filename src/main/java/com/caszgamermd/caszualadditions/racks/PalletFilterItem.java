@@ -21,6 +21,7 @@ public final class PalletFilterItem extends Item {
         var pos=PalletBlock.rootPos(context.getClickedPos(),state);
         if(!(level.getBlockEntity(pos) instanceof PalletBlockEntity pallet))
             return InteractionResult.FAIL;
+        boolean alreadyInstalled=!pallet.filterUpgrade().isEmpty();
         ItemStack sample=player.getOffhandItem();
         if(sample.isEmpty() || sample.is(this)){
             pallet.clearFilter();
@@ -31,7 +32,8 @@ public final class PalletFilterItem extends Item {
                     "Pallet accepts only " + sample.getHoverName().getString()));
         }
         // Clearing does not consume another filter module.
-        if(!sample.isEmpty()&&!sample.is(this) && !player.getAbilities().instabuild)
+        if(!sample.isEmpty()&&!sample.is(this) && !alreadyInstalled
+                && !player.getAbilities().instabuild)
             context.getItemInHand().shrink(1);
         return InteractionResult.SUCCESS;
     }

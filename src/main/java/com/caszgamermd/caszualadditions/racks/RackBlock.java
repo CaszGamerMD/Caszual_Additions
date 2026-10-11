@@ -160,7 +160,7 @@ public final class RackBlock extends Block implements EntityBlock {
             if (held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem
                     && blockItem.getBlock() instanceof PalletBlock) {
                 if (rack.hasPallet()) {
-                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal("This rack already has a pallet."));
+                    server.openMenu(rack);
                     return InteractionResult.SUCCESS;
                 }
                 rack.install(held.copyWithCount(1));
@@ -192,6 +192,12 @@ public final class RackBlock extends Block implements EntityBlock {
             }
             if (held.is(RackContent.PALLET_FILTER)) {
                 ItemStack sample = player.getOffhandItem();
+                boolean alreadyInstalled=!rack.filterUpgrade().isEmpty();
+                if(!rack.hasPallet()){
+                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                            "Install a pallet before applying a filter."));
+                    return InteractionResult.SUCCESS;
+                }
                 if (sample.isEmpty()) {
                     rack.clearFilter();
                     server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
@@ -203,10 +209,18 @@ public final class RackBlock extends Block implements EntityBlock {
                     rack.setFilter(sample);
                     server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
                             "Pallet accepts only " + sample.getHoverName().getString()));
-                    if (!player.getAbilities().instabuild) held.shrink(1);
+                    if (!alreadyInstalled && !player.getAbilities().instabuild)
+                        held.shrink(1);
                 }
                 return InteractionResult.SUCCESS;
             }
+        }
+        // Normal use on any segment opens the installed pallet even while
+        // holding ordinary inventory items. Leave rack upgrades above intact.
+        if(rack.hasPallet()){
+            if(!level.isClientSide() && player instanceof ServerPlayer server)
+                server.openMenu(rack);
+            return InteractionResult.SUCCESS;
         }
         return InteractionResult.PASS;
     }
@@ -270,10 +284,17 @@ public final class RackBlock extends Block implements EntityBlock {
         double z=pos.getZ()==minZ?0:15;
         var post=Block.box(x,0,z,x+1,16,z+1);
         var cargo=RackCargoCollision.shape(level,pos,state);
-        if(state.getValue(PART)<4) {
+        // Each segment's visual model has narrow outer frame rails along the
+        // top and bottom. Give them real collision instead of permitting players
+        // to walk through steel beams. These join posts without solid walls.
+        var railX=Block.box(0,0,z,16,1,z+1);
+        var railXTop=Block.box(0,15,z,16,16,z+1);
+        var railZ=Block.box(x,0,0,x+1,1,16);
+        var railZTop=Block.box(x,15,0,x+1,16,16);
+        if(state.getValue(PART)<4)
             return net.minecraft.world.phys.shapes.Shapes.or(
-                    Block.box(0,0,0,16,2,16),post,cargo);
-        }
-        return net.minecraft.world.phys.shapes.Shapes.or(post,cargo);
+                    Block.box(0,0,0,16,2,16),post,railX,railXTop,railZ,railZTop,cargo);
+        return net.minecraft.world.phys.shapes.Shapes.or(
+                post,railX,railXTop,railZ,railZTop,cargo);
     }
 }
