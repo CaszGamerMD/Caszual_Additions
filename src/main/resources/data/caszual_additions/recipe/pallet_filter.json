@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " P ",
+    "PHP",
+    " P "
+  ],
+  "key": {
+    "P": "minecraft:paper",
+    "H": "minecraft:hopper"
+  },
+  "result": {
+    "id": "caszual_additions:pallet_filter",
+    "count": 1
+  }
+}
