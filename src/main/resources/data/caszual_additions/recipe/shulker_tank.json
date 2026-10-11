@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IGI",
+    "ISI",
+    "IGI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:glass_pane",
+    "S": "minecraft:shulker_shell"
+  },
+  "result": {
+    "id": "caszual_additions:shulker_tank",
+    "count": 1
+  }
+}

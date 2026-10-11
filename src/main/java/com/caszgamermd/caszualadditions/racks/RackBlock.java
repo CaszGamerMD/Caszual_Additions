@@ -69,12 +69,53 @@ public final class RackBlock extends Block implements EntityBlock {
                     || !level.getWorldBorder().isWithinBounds(p)
                     || !level.getBlockState(p).canBeReplaced()) return false;
         }
-        // Leave an actual approach space for rack upgrade cards and access.
-        for (int i = 0; i < 2; i++) {
-            BlockPos access = cell(root, facing, i).relative(facing);
-            if (!level.getBlockState(access).canBeReplaced()) return false;
+        // Leave a full one-block-deep approach, across both columns and
+        // all three heights, for rack labels, connectors and filter upgrades.
+        for (int height = 0; height < 3; height++) {
+            for (int column = 0; column < 2; column++) {
+                BlockPos access = cell(root, facing, height * 4 + column).relative(facing);
+                if (level.isOutsideBuildHeight(access)
+                        || !level.getBlockState(access).canBeReplaced()) return false;
+            }
         }
+        // A newly placed rack must also not cover the upgrade corridor of
+        // an existing rack. Only check loaded nearby positions.
+        java.util.Set<BlockPos> proposed = new java.util.HashSet<>();
+        for (int part = 0; part < 12; part++) proposed.add(cell(root, facing, part));
+        for (int dx = -4; dx <= 4; dx++) for (int dy = -3; dy <= 3; dy++)
+            for (int dz = -4; dz <= 4; dz++) {
+                BlockPos oldRoot = root.offset(dx, dy, dz);
+                if (!level.hasChunkAt(oldRoot)) continue;
+                BlockState old = level.getBlockState(oldRoot);
+                if (!(old.getBlock() instanceof RackBlock)
+                        || old.getValue(PART) != 0) continue;
+                Direction oldFacing = old.getValue(FACING);
+                for (int height = 0; height < 3; height++)
+                    for (int column = 0; column < 2; column++)
+                        if (proposed.contains(
+                                cell(oldRoot, oldFacing, height * 4 + column)
+                                        .relative(oldFacing))) return false;
+            }
         return true;
+    }
+
+    /**
+     * Never put our warehouse fixtures in the mandatory one-block-deep
+     * front approach of an already-built rack.
+     */
+    public static boolean reservedForAccess(Level level,BlockPos position) {
+        for(int dx=-4;dx<=4;dx++)for(int dy=-3;dy<=3;dy++)for(int dz=-4;dz<=4;dz++){
+            BlockPos root=position.offset(dx,dy,dz);
+            if(!level.hasChunkAt(root))continue;
+            BlockState old=level.getBlockState(root);
+            if(!(old.getBlock() instanceof RackBlock)||old.getValue(PART)!=0)continue;
+            Direction front=old.getValue(FACING);
+            for(int h=0;h<3;h++)for(int col=0;col<2;col++){
+                BlockPos free=cell(root,front,h*4+col).relative(front);
+                if(free.equals(position))return true;
+            }
+        }
+        return false;
     }
 
     @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
@@ -137,18 +178,27 @@ public final class RackBlock extends Block implements EntityBlock {
             }
             if (held.is(RackContent.CONNECTOR)) {
                 Direction side = hit.getDirection();
+                boolean removing = rack.hasConnector(side);
                 rack.toggleConnector(side);
-                if (!player.getAbilities().instabuild) held.shrink(1);
+                if (!player.getAbilities().instabuild) {
+                    if (removing) player.getInventory().placeItemBackInInventory(
+                            new ItemStack(RackContent.CONNECTOR));
+                    else held.shrink(1);
+                }
                 server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "Rack connector " + (rack.hasConnector(side) ? "enabled" : "disabled")
+                        "Rack connector " + (removing ? "removed" : "enabled")
                         + " on " + side.getName()));
                 return InteractionResult.SUCCESS;
             }
             if (held.is(RackContent.PALLET_FILTER)) {
                 ItemStack sample = player.getOffhandItem();
-                if (sample.isEmpty() || sample.is(RackContent.PALLET_FILTER)) {
+                if (sample.isEmpty()) {
+                    rack.clearFilter();
                     server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                            "Hold a sample item in your offhand to set this pallet's filter."));
+                            "Pallet filter cleared."));
+                } else if (sample.is(RackContent.PALLET_FILTER)) {
+                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                            "Hold an ordinary sample item in your offhand to set the filter."));
                 } else {
                     rack.setFilter(sample);
                     server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
@@ -187,7 +237,7 @@ public final class RackBlock extends Block implements EntityBlock {
             RackBlockEntity rack = level.getBlockEntity(root) instanceof RackBlockEntity be ? be : null;
             if (rack != null && !player.getAbilities().instabuild) {
                 Containers.dropContents(level, root, rack);
-                if (rack.hasPallet()) Block.popResource(level, root, rack.takePallet());
+                if (rack.hasPallet()) Block.popResource(level, root, rack.dropPallet());
                 Block.popResource(level, root, new ItemStack(this));
             }
             for (int i=0;i<12;i++) {
@@ -203,8 +253,27 @@ public final class RackBlock extends Block implements EntityBlock {
     }
     @Override protected List<ItemStack> getDrops(BlockState state, LootParams.Builder b) { return List.of(); }
     @Override protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(BlockState state,
-            net.minecraft.world.level.BlockGetter level, BlockPos pos, net.minecraft.world.phys.shapes.CollisionContext context) {
-        // Frame rails are narrow enough to leave front access free.
-        return Block.box(0, 0, 0, 16, 2, 16);
+            net.minecraft.world.level.BlockGetter level, BlockPos pos,
+            net.minecraft.world.phys.shapes.CollisionContext context) {
+        // The lower deck supports the pallet. All twelve rack parts have
+        // collision on their OUTSIDE corner posts, not a fake floor in every
+        // upper segment. Cargo collision is identical to the 3x3x3 display.
+        BlockPos root=root(pos,state);
+        Direction facing=state.getValue(FACING);
+        int minX=Integer.MAX_VALUE,minZ=Integer.MAX_VALUE;
+        for(int i=0;i<4;i++){
+            BlockPos cell=cell(root,facing,i);
+            minX=Math.min(minX,cell.getX());
+            minZ=Math.min(minZ,cell.getZ());
+        }
+        double x=pos.getX()==minX?0:15;
+        double z=pos.getZ()==minZ?0:15;
+        var post=Block.box(x,0,z,x+1,16,z+1);
+        var cargo=RackCargoCollision.shape(level,pos,state);
+        if(state.getValue(PART)<4) {
+            return net.minecraft.world.phys.shapes.Shapes.or(
+                    Block.box(0,0,0,16,2,16),post,cargo);
+        }
+        return net.minecraft.world.phys.shapes.Shapes.or(post,cargo);
     }
 }

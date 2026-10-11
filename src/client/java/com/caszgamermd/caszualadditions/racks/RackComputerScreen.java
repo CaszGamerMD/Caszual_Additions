@@ -18,7 +18,8 @@ import net.minecraft.network.chat.Component;
  */
 public final class RackComputerScreen extends Screen {
     private final BlockPos computer;
-    private EditBox search;
+    private EditBox search, orderQuantity;
+    private String selectedItemId = "";
     private JsonArray racks=new JsonArray(), contents=new JsonArray();
     private int selectedX=Integer.MIN_VALUE, selectedY,selectedZ;
     private int totalRacks, totalItems, scroll;
@@ -42,6 +43,17 @@ public final class RackComputerScreen extends Screen {
                 b->sendQuery()).bounds(width-225,y,90,23).build());
         addRenderableWidget(Button.builder(Component.literal("Refresh"),
                 b->sendQuery()).bounds(width-128,y,90,23).build());
+        // Put the order controls in their own full-width footer so they
+        // remain clickable at high Minecraft GUI Scale settings.
+        int orderInputX=Math.max(22,width-230);
+        orderQuantity=addRenderableWidget(new EditBox(font,orderInputX,height-63,
+                56,22,Component.literal("Order quantity")));
+        orderQuantity.setMaxLength(4);
+        orderQuantity.setValue("64");
+        int orderButtonX=orderInputX+64;
+        addRenderableWidget(Button.builder(Component.literal("REQUEST ITEMS"),
+                b->requestItem()).bounds(orderButtonX,height-63,
+                        Math.max(60,width-orderButtonX-20),22).build());
         addRenderableWidget(Button.builder(Component.literal("Close"),
                 b->onClose()).bounds(width-99,height-34,80,22).build());
         addRenderableWidget(Button.builder(Component.literal("▲"),
@@ -61,6 +73,17 @@ public final class RackComputerScreen extends Screen {
                 selectedX==Integer.MIN_VALUE?BlockPos.ZERO
                         :new BlockPos(selectedX,selectedY,selectedZ)));
     }
+
+    private void requestItem() {
+        if(selectedItemId.isBlank()){status="Click an item in the inspected rack first.";return;}
+        int count;
+        try{count=Integer.parseInt(orderQuantity.getValue().strip());}
+        catch(NumberFormatException e){status="Enter a quantity from 1 to 4096.";return;}
+        if(count<1||count>4096){status="Order quantity must be 1–4096.";return;}
+        ClientPlayNetworking.send(new RackComputerNet.OrderRequest(computer,selectedItemId,count));
+    }
+
+    public void acceptOrderReply(String message){status=message;}
 
     public void accept(BlockPos pos,String raw) {
         if(!computer.equals(pos))return;
@@ -114,11 +137,13 @@ public final class RackComputerScreen extends Screen {
             graphics.fill(32,y+18,splitter-68,y+21,0xff4c6655);
             graphics.fill(32,y+18,32+(int)((splitter-100)*pct),y+21,0xff64d98a);
         }
-        int remaining=Math.max(0,(height-166)/17);
+        int remaining=Math.max(0,(height-220)/17);
         for(int i=0;i<contents.size()&&i<remaining;i++){
             JsonObject item=contents.get(i).getAsJsonObject();
             int y=123+i*17;
-            if(i%2==0)graphics.fill(splitter+7,y-2,width-27,y+14,0xff2b4538);
+            if(item.get("id").getAsString().equals(selectedItemId))
+                graphics.fill(splitter+7,y-2,width-27,y+14,0xff43835a);
+            else if(i%2==0)graphics.fill(splitter+7,y-2,width-27,y+14,0xff2b4538);
             graphics.text(font,Component.literal(compact(item.get("name").getAsString(),
                     Math.max(9,(width-splitter-95)/6))),
                     splitter+13,y,0xffd8f5de,false);
@@ -132,6 +157,14 @@ public final class RackComputerScreen extends Screen {
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {
         int split=Math.max(200,width/2);
         int mx=(int)event.x(),my=(int)event.y();
+        if(mx>=split+7&&mx<width-27 && my>=121 && my<height-95){
+            int index=(my-121)/17;
+            if(index>=0&&index<contents.size()){
+                selectedItemId=contents.get(index).getAsJsonObject().get("id").getAsString();
+                status="Selected "+selectedItemId+". Enter quantity and request.";
+                return true;
+            }
+        }
         int rows=Math.max(0,(height-173)/25);
         if(mx>=25&&mx<split-11&&my>=120&&my<120+rows*25) {
             int index=scroll+(my-120)/25;
@@ -140,6 +173,7 @@ public final class RackComputerScreen extends Screen {
                 selectedX=row.get("x").getAsInt();
                 selectedY=row.get("y").getAsInt();
                 selectedZ=row.get("z").getAsInt();
+                selectedItemId="";
                 sendQuery();
                 return true;
             }

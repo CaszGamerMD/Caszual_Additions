@@ -86,6 +86,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
     public void initialize(BlockPos root, int part, ItemStack stack) {
         this.rootPos = root.immutable();
         this.part = part;
+        this.filterItem=PalletData.filter(stack);
 
         if (getBlockState().getBlock() instanceof PalletBlock pallet) {
             if (pallet.kind() == PalletKind.WOOD) {
@@ -110,7 +111,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
                 stack = PalletData.applyPlasticColor(stack, plasticColor);
             }
         }
-        return stack;
+        return PalletData.applyFilter(stack,filterItem);
     }
 
     private PalletBlockEntity controller() {

@@ -9,6 +9,11 @@ public final class RackComputerClient {
         ClientPlayNetworking.registerGlobalReceiver(RackComputerNet.Open.TYPE,
                 (payload,context)->context.client().execute(()->
                         Minecraft.getInstance().gui.setScreen(new RackComputerScreen(payload.computer()))));
+        ClientPlayNetworking.registerGlobalReceiver(RackComputerNet.OrderReply.TYPE,
+                (payload,context)->context.client().execute(()->{
+                    if(Minecraft.getInstance().gui.screen() instanceof RackComputerScreen screen)
+                        screen.acceptOrderReply(payload.message());
+                }));
         ClientPlayNetworking.registerGlobalReceiver(RackComputerNet.Snapshot.TYPE,
                 (payload,context)->context.client().execute(()->{
                     if(Minecraft.getInstance().gui.screen() instanceof RackComputerScreen screen)

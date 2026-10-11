@@ -9,6 +9,9 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -38,14 +41,22 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     }
 
     public boolean hasPallet() { return !pallet.isEmpty(); }
+    public ItemStack palletStack(){return pallet.copy();}
     public void install(ItemStack item) {
         if (hasPallet()) return;
         pallet = item.copyWithCount(1);
+        filterItem=com.caszgamermd.caszualadditions.pallet.PalletData.filter(item);
         setChanged();
     }
     public ItemStack takePallet() {
         if (!isEmpty()) return ItemStack.EMPTY;
-        ItemStack result = pallet;
+        return dropPallet();
+    }
+    /** Explicit break path: inventory is separately dropped by the rack. */
+    public ItemStack dropPallet() {
+        if(!hasPallet())return ItemStack.EMPTY;
+        ItemStack result = com.caszgamermd.caszualadditions.pallet.PalletData.applyFilter(
+                pallet,filterItem);
         pallet = ItemStack.EMPTY;
         filterItem = "";
         setChanged();
@@ -136,6 +147,12 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         aisleName=input.getStringOr("aisle_name","");
         filterItem=input.getStringOr("filter_item","");
         connectors=input.getIntOr("connectors",0);
+    }
+    @Override public CompoundTag getUpdateTag(HolderLookup.Provider provider){
+        return saveWithoutMetadata(provider);
+    }
+    @Override public ClientboundBlockEntityDataPacket getUpdatePacket(){
+        return ClientboundBlockEntityDataPacket.create(this);
     }
     @Override public Component getDisplayName(){return Component.literal(displayName());}
     @Override public @Nullable AbstractContainerMenu createMenu(int id,Inventory inventory,Player player){
