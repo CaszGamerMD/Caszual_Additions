@@ -39,17 +39,39 @@ public final class RackNetwork {
         return neighbors;
     }
 
-    public static boolean aisleNeighbors(RackBlockEntity a,RackBlockEntity b) {
-        if(a.facing()!=b.facing() || a.getBlockPos().getY()!=b.getBlockPos().getY())return false;
-        Direction right=a.facing().getCounterClockWise();
-        int dx=b.getBlockPos().getX()-a.getBlockPos().getX();
-        int dz=b.getBlockPos().getZ()-a.getBlockPos().getZ();
-        return (dx==right.getStepX()*2 && dz==right.getStepZ()*2)
-                || (dx==-right.getStepX()*2 && dz==-right.getStepZ()*2);
+    public static boolean aisleNeighbors(ServerLevel level,RackBlockEntity a,RackBlockEntity b) {
+        if(a.getBlockPos().getY()!=b.getBlockPos().getY())return false;
+        // Parallel side-by-side bays share an aisle automatically.
+        if(a.facing()==b.facing()){
+            Direction right=a.facing().getCounterClockWise();
+            int dx=b.getBlockPos().getX()-a.getBlockPos().getX();
+            int dz=b.getBlockPos().getZ()-a.getBlockPos().getZ();
+            if((dx==right.getStepX()*2&&dz==right.getStepZ()*2)
+                    ||(dx==-right.getStepX()*2&&dz==-right.getStepZ()*2))return true;
+        }
+        // Paired connectors on the actual SIDE faces extend an aisle even
+        // across differently-oriented bays. Front/back/vertical connectors
+        // link the computer network but start/retain distinct aisles.
+        for(int i=0;i<4;i++) {
+            BlockPos p=RackBlock.cell(a.getBlockPos(),a.facing(),i);
+            for(Direction direction:Direction.Plane.HORIZONTAL){
+                if(direction.getAxis()==a.facing().getAxis()
+                        || direction.getAxis()==b.facing().getAxis()
+                        || !a.hasConnector(direction)
+                        || !b.hasConnector(direction.getOpposite()))continue;
+                BlockPos neighboring=p.relative(direction);
+                if(!level.hasChunkAt(neighboring))continue;
+                BlockState other=level.getBlockState(neighboring);
+                if(other.getBlock() instanceof RackBlock
+                        && RackBlock.root(neighboring,other).equals(b.getBlockPos()))
+                    return true;
+            }
+        }
+        return false;
     }
 
     public static boolean connected(ServerLevel level,RackBlockEntity a,RackBlockEntity b) {
-        if(aisleNeighbors(a,b))return true;
+        if(aisleNeighbors(level,a,b))return true;
         // Connectors must match the ACTUAL shared face. Checking only whether
         // the racks have some complementary connector sides could connect
         // touching racks across a completely different axis by mistake.
@@ -100,7 +122,7 @@ public final class RackNetwork {
             RackBlockEntity rack=queue.removeFirst();
             if(!rack.aisleName().isBlank())return rack.aisleName();
             for(RackBlockEntity other:touching(level,rack.getBlockPos()))
-                if(aisleNeighbors(rack,other)&&seen.add(other.getBlockPos()))queue.add(other);
+                if(aisleNeighbors(level,rack,other)&&seen.add(other.getBlockPos()))queue.add(other);
         }
         return "";
     }
