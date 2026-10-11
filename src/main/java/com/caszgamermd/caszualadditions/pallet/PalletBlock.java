@@ -190,17 +190,16 @@ public final class PalletBlock extends Block implements EntityBlock {
             BlockPos target = partPos(pos, part, state);
             level.setBlock(target, state.setValue(PART, part), 3);
         }
-        for (int part = 0; part < 4; part++) {
-            BlockPos target = partPos(pos, part, state);
-            if (level.getBlockEntity(target) instanceof PalletBlockEntity be) {
-                be.initialize(pos, part, stack);
-            }
+        // A 2x2 pallet is ONE inventory/controller. The other three cells
+        // reserve the world footprint but never hold independent block entities.
+        if (level.getBlockEntity(pos) instanceof PalletBlockEntity be) {
+            be.initialize(pos, 0, stack);
         }
     }
 
     @Override
-    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return new PalletBlockEntity(pos, state);
+    public @Nullable BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return state.getValue(PART) == 0 ? new PalletBlockEntity(pos, state) : null;
     }
 
     private static @Nullable PalletBlockEntity rootEntity(Level level, BlockPos pos, BlockState state) {
