@@ -47,6 +47,34 @@ approach and any neighboring rack's access lane.
   above the pallet deck, bounded by the rack frame. Visible items and exterior
   posts have matching physical collision.
 
+### Pallet Filter upgrade (redesign Issue #34 — first pass)
+
+The **Pallet Filter** is now a *real upgrade module*, installed in the
+**FILTER** section of the Pallet Storage interface. Use the same storage
+screen on a pallet placed on the ground, on a pallet mounted in a rack,
+and on the output pallet of a legacy Order Collector Hub.
+
+1. Put a Pallet Filter in its small dedicated slot. Only one fits.
+   Removing it **disables** filtering without deleting the rule.
+2. Choose **Whitelist** (accept matches) or **Blacklist** (reject matches).
+3. Cycle the target type: **Item**, **Whole Mod**, **Item Tag**, or
+   **Exact Data**.
+4. For an item, mod, or exact item with components, put a sample in your
+   *offhand* and select **Use Offhand Sample**.
+5. For item or block tags, type the registry ID (e.g.,
+   `minecraft:logs`) and select **Apply Target**. For custom mods,
+   type the mod namespace (e.g., `create`).
+
+Exact Data compares a sample item's item ID and its data components. This
+first pass uses a component signature and should be regression-tested across
+save/reload and across servers with different mod configurations. Advanced
+multi-rule expressions and visual autocomplete remain planned.
+
+Existing simple filter IDs are automatically read as installed whitelist
+filters; your existing contents are not discarded by this migration. Rack
+storage can now also be opened with an ordinary item held in hand, while
+holding an upgrade item continues to use that upgrade.
+
 ### Rack names, aisle names, and connectivity
 
 - **Rack Tag:** Rename the item on an anvil and right-click a rack. Its name
