@@ -91,7 +91,17 @@ public final class PalletBlock extends Block implements EntityBlock {
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return SHAPE;
+        // All four occupancy cells present ONE shared 2x2 deck outline.
+        // Retain per-cell collision below, so movement physics remain local.
+        BlockPos root=rootPos(pos,state);
+        int minX=Integer.MAX_VALUE, minZ=Integer.MAX_VALUE;
+        for(int i=0;i<4;i++){
+            BlockPos part=partPos(root,i,state);
+            minX=Math.min(minX,part.getX());
+            minZ=Math.min(minZ,part.getZ());
+        }
+        return Block.box((minX-pos.getX())*16,0,(minZ-pos.getZ())*16,
+                (minX-pos.getX()+2)*16,5,(minZ-pos.getZ()+2)*16);
     }
 
     @Override
