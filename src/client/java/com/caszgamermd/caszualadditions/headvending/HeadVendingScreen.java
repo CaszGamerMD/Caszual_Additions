@@ -750,7 +750,9 @@ public final class HeadVendingScreen extends Screen {
                 frameLeft + frameWidth - 2, frameTop + 34, 0xff273a4c);
         graphics.fill(frameLeft + 2, frameTop + 33,
                 frameLeft + frameWidth - 2, frameTop + 35, 0xff3ba5ad);
-        graphics.text(font, Component.literal("HEAD VENDING  /  MARKETPLACE"),
+        String heading = fit("HEAD VENDING  /  MARKETPLACE",
+                Math.max(80, frameWidth - 128));
+        graphics.text(font, Component.literal(heading),
                 frameLeft + 16, frameTop + 14, 0xffffffff, false);
         boolean free = minecraft != null && minecraft.player != null
                 && minecraft.player.getAbilities().instabuild;
@@ -816,7 +818,9 @@ public final class HeadVendingScreen extends Screen {
 
         if (tab != Tab.PLAYER) {
             int pages = Math.max(1, (total + pageSize - 1) / pageSize);
-            String paging = "PAGE " + (page + 1) + " / " + pages
+            String paging = gridRight - gridLeft < 440
+                    ? (page + 1) + " / " + pages
+                    : "PAGE " + (page + 1) + " / " + pages
                     + "   •   " + total + " RESULTS";
             graphics.text(font, Component.literal(paging),
                     gridLeft + Math.max(0, (gridRight - gridLeft - font.width(paging)) / 2),
