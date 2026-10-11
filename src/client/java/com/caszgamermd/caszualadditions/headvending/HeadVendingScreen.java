@@ -24,9 +24,19 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ResolvableProfile;
 
 public final class HeadVendingScreen extends Screen {
-    private static final int WIDTH = 336;
-    private static final int HEIGHT = 282;
-    private static final int MAX_RESULTS = CustomHeadCatalog.PAGE_SIZE;
+    // Full-screen within Minecraft's GUI-scaled window. The icon size and
+    // number of columns/rows adapt independently to GUI scale and resolution.
+    private static final int EDGE = 8;
+    private static final int CELL_W = 54;
+    private static final int CELL_H = 56;
+    private static final int CART_LIMIT = 64;
+    private int frameLeft, frameTop, frameWidth, frameHeight;
+    private int gridLeft, gridTop, gridRight, gridBottom, gridCols, gridRows;
+    private int pageSize = CustomHeadCatalog.PAGE_SIZE;
+    private boolean sidebar;
+    private int sidebarLeft, sidebarWidth;
+    private int cartScroll;
+    private final List<Button> tabButtons = new ArrayList<>();
 
     private enum Tab { CUSTOM, PLAYER, MOB, FAVORITES, HISTORY, CART }
     private enum Kind { CUSTOM, PLAYER, MOB }
@@ -38,12 +48,6 @@ public final class HeadVendingScreen extends Screen {
 
     private final BlockPos machinePos;
     private final List<Result> results = new ArrayList<>();
-    private static final int GRID_COLS = 6;
-    private static final int GRID_X = 18;
-    private static final int GRID_Y = 94;
-    private static final int CELL_W = 50;
-    private static final int CELL_H = 47;
-    private static final int CART_LIMIT = 64;
     private final Map<String, CartEntry> cart = new LinkedHashMap<>();
     private final Map<String, String> mobTextures = new java.util.HashMap<>();
     private final java.util.Set<String> mobRequested = new java.util.HashSet<>();
@@ -75,32 +79,64 @@ public final class HeadVendingScreen extends Screen {
         this.machinePos = machinePos;
     }
 
+    /**
+     * GUI pixels already follow Minecraft's GUI Scale setting. Use the entire
+     * drawable screen and recompute the available tiles when the window/scale
+     * changes. A sidebar appears only when it leaves sufficient tile width.
+     */
+    private void computeLayout() {
+        frameLeft = EDGE;
+        frameTop = EDGE;
+        frameWidth = Math.max(1, width - EDGE * 2);
+        frameHeight = Math.max(1, height - EDGE * 2);
+        sidebar = width >= 760;
+        sidebarWidth = sidebar ? Math.clamp(width / 4, 220, 300) : 0;
+        sidebarLeft = frameLeft + frameWidth - sidebarWidth - 12;
+        gridLeft = frameLeft + 14;
+        gridRight = sidebar ? sidebarLeft - 12 : frameLeft + frameWidth - 14;
+        gridTop = frameTop + 118;
+        gridBottom = frameTop + frameHeight - 76;
+        int available = Math.max(40, gridRight - gridLeft);
+        gridCols = Math.clamp(available / CELL_W, 1, 12);
+        int maxRows = Math.max(1, 72 / gridCols);
+        gridRows = Math.clamp(Math.max(1, (gridBottom - gridTop) / CELL_H),
+                1, Math.min(8, maxRows));
+        pageSize = gridCols * gridRows;
+    }
+
     @Override
     protected void init() {
-        int left = (width - WIDTH) / 2;
-        int top = (height - HEIGHT) / 2;
         String priorText = search == null ? "" : search.getValue();
+        int priorPageSize = pageSize;
+        computeLayout();
+        if (priorPageSize != pageSize) page = 0;
+        tabButtons.clear();
 
         String[] names = {"Custom", "Players", "Mobs", "Favorites", "History", "Cart"};
         Tab[] tabs = Tab.values();
+        int tabsX = frameLeft + 14;
+        int tabsWidth = frameWidth - 28;
         for (int i = 0; i < tabs.length; i++) {
             final Tab selected = tabs[i];
-            addRenderableWidget(Button.builder(Component.literal(names[i]),
-                    ignored -> setTab(selected))
-                    .bounds(left + 13 + i * 52, top + 36, 51, 21).build());
+            int startX = tabsX + i * tabsWidth / tabs.length;
+            int endX = tabsX + (i + 1) * tabsWidth / tabs.length;
+            Button button = addRenderableWidget(Button.builder(
+                    Component.literal(names[i]), ignored -> setTab(selected))
+                    .bounds(startX, frameTop + 39,
+                            Math.max(1, endX - startX - 2), 24).build());
+            tabButtons.add(button);
         }
 
         refreshButton = addRenderableWidget(Button.builder(
                 Component.literal("Refresh"), ignored -> {
                     if (tab == Tab.MOB) mobRequested.clear();
                     refreshResults();
-                }
-        ).bounds(left + 227, top + 10, 62, 18).build());
+                }).bounds(frameLeft + frameWidth - 97, frameTop + 9, 80, 22).build());
 
+        int searchWidth = Math.max(80, gridRight - gridLeft - 143);
         search = addRenderableWidget(new EditBox(
-                font, left + 18, top + 64, 185, 20,
-                Component.translatable("screen.caszual_additions.head_vending.search")
-        ));
+                font, gridLeft, frameTop + 75, searchWidth, 22,
+                Component.translatable("screen.caszual_additions.head_vending.search")));
         search.setMaxLength(48);
         search.setValue(priorText);
         search.setHint(Component.literal(hint()));
@@ -110,29 +146,36 @@ public final class HeadVendingScreen extends Screen {
         });
 
         categoryButton = addRenderableWidget(Button.builder(
-                Component.literal("Category: All"),
-                ignored -> cycleCategory()
-        ).bounds(left + 208, top + 64, 111, 20).build());
-
-        checkoutButton = addRenderableWidget(Button.builder(
-                Component.literal("Checkout"), ignored -> checkout())
-                .bounds(left + 18, top + 247, 96, 19).build());
-        favoriteCartButton = addRenderableWidget(Button.builder(
-                Component.literal("☆ Cart"), ignored -> favoriteCart())
-                .bounds(left + 120, top + 247, 96, 19).build());
-        clearCartButton = addRenderableWidget(Button.builder(
-                Component.literal("Clear Cart"), ignored -> clearCart())
-                .bounds(left + 222, top + 247, 96, 19).build());
+                Component.literal("Category: All"), ignored -> cycleCategory())
+                .bounds(gridLeft + searchWidth + 8, frameTop + 75, 128, 22).build());
 
         previousButton = addRenderableWidget(Button.builder(
-                Component.literal("< Previous"), ignored -> changePage(-1)
-        ).bounds(left + 18, top + 248, 86, 19).build());
+                Component.literal("◀ Previous"), ignored -> changePage(-1))
+                .bounds(gridLeft, frameTop + frameHeight - 35, 102, 23).build());
         nextButton = addRenderableWidget(Button.builder(
-                Component.literal("Next >"), ignored -> changePage(1)
-        ).bounds(left + WIDTH - 104, top + 248, 86, 19).build());
+                Component.literal("Next ▶"), ignored -> changePage(1))
+                .bounds(gridRight - 102, frameTop + frameHeight - 35, 102, 23).build());
 
+        int actionsX = sidebar ? sidebarLeft + 10 : gridLeft;
+        int actionsW = sidebar ? sidebarWidth - 20 : gridRight - gridLeft;
+        int actionsY = sidebar
+                ? frameTop + frameHeight - 118 : frameTop + frameHeight - 66;
+        int actionGap = sidebar ? 4 : 6;
+        int actionHeight = sidebar ? 24 : 23;
+        int actionWidth = sidebar ? actionsW : Math.max(40, (actionsW - 2 * actionGap) / 3);
+        checkoutButton = addRenderableWidget(Button.builder(
+                Component.literal("Checkout"), ignored -> checkout())
+                .bounds(actionsX, actionsY, actionWidth, actionHeight).build());
+        favoriteCartButton = addRenderableWidget(Button.builder(
+                Component.literal("☆ Favorite Cart"), ignored -> favoriteCart())
+                .bounds(sidebar ? actionsX : actionsX + actionWidth + actionGap,
+                        sidebar ? actionsY + 29 : actionsY, actionWidth, actionHeight).build());
+        clearCartButton = addRenderableWidget(Button.builder(
+                Component.literal("Clear Cart"), ignored -> clearCart())
+                .bounds(sidebar ? actionsX : actionsX + 2 * (actionWidth + actionGap),
+                        sidebar ? actionsY + 58 : actionsY, actionWidth, actionHeight).build());
         refreshResults();
-        setInitialFocus(search);
+        setInitialFocus(tab == Tab.CART && !sidebar ? checkoutButton : search);
     }
 
     private String hint() {
@@ -167,7 +210,7 @@ public final class HeadVendingScreen extends Screen {
 
     private void changePage(int direction) {
         if (tab == Tab.PLAYER) return;
-        int lastPage = Math.max(0, (total - 1) / MAX_RESULTS);
+        int lastPage = Math.max(0, (total - 1) / pageSize);
         int target = Math.clamp(page + direction, 0, lastPage);
         if (target == page) return;
         page = target;
@@ -221,12 +264,12 @@ public final class HeadVendingScreen extends Screen {
             }
             total = results.size();
             if (tab != Tab.PLAYER) {
-                int last = Math.max(0, (total - 1) / MAX_RESULTS);
+                int last = Math.max(0, (total - 1) / pageSize);
                 page = Math.clamp(page, 0, last);
-                int skip = page * MAX_RESULTS;
+                int skip = page * pageSize;
                 if (skip > 0) results.subList(0, skip).clear();
-                if (results.size() > MAX_RESULTS)
-                    results.subList(MAX_RESULTS, results.size()).clear();
+                if (results.size() > pageSize)
+                    results.subList(pageSize, results.size()).clear();
             }
         }
         updateButtons();
@@ -240,7 +283,7 @@ public final class HeadVendingScreen extends Screen {
         if (tab == Tab.CUSTOM && searchDelay >= 0) {
             if (searchDelay-- == 0) {
                 ClientPlayNetworking.send(new HeadVendingContent.SearchCustom(
-                        machinePos, search.getValue().trim(), category, page));
+                        machinePos, search.getValue().trim(), category, page, pageSize));
             }
         }
     }
@@ -259,7 +302,9 @@ public final class HeadVendingScreen extends Screen {
             }
             if (!search.getValue().trim().equals(data.get("query").getAsString())
                     || !category.equals(data.get("category").getAsString())
-                    || page != data.get("page").getAsInt()) {
+                    || page != data.get("page").getAsInt()
+                    || data.has("pageSize")
+                    && pageSize != data.get("pageSize").getAsInt()) {
                 return; // Ignore replies to earlier searches.
             }
 
@@ -281,7 +326,7 @@ public final class HeadVendingScreen extends Screen {
             JsonArray items = data.has("items") && data.get("items").isJsonArray()
                     ? data.getAsJsonArray("items") : new JsonArray();
             for (JsonElement element : items) {
-                if (results.size() >= MAX_RESULTS) break;
+                if (results.size() >= pageSize) break;
                 try {
                     if (!element.isJsonObject()) {
                         rejected++;
@@ -347,45 +392,42 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void updateButtons() {
-        int left = (width - WIDTH) / 2;
-        int top = (height - HEIGHT) / 2;
-        if (search != null) {
-            // The cart uses the search row for its own pagination; keep
-            // the checkout actions in the footer completely unobstructed.
-            search.visible = tab != Tab.CART;
-            search.active = search.visible;
+        for (int i = 0; i < tabButtons.size(); i++) {
+            Tab item = Tab.values()[i];
+            tabButtons.get(i).active = item != tab;
         }
         if (refreshButton != null)
             refreshButton.visible = tab == Tab.CUSTOM || tab == Tab.MOB;
         if (categoryButton != null) {
             categoryButton.visible = tab == Tab.CUSTOM;
-            String label = category.length() > 11 ? category.substring(0, 10) + "..." : category;
+            String label = category.length() > 13 ? category.substring(0, 12) + "..." : category;
             categoryButton.setMessage(Component.literal("Category: " + label));
         }
         if (previousButton != null) {
-            previousButton.setPosition(left + 18,
-                    tab == Tab.CART ? top + 64 : top + 248);
             previousButton.visible = tab != Tab.PLAYER;
             previousButton.active = !loading && page > 0;
         }
         if (nextButton != null) {
-            nextButton.setPosition(left + WIDTH - 104,
-                    tab == Tab.CART ? top + 64 : top + 248);
             nextButton.visible = tab != Tab.PLAYER;
-            nextButton.active = !loading && (page + 1) * MAX_RESULTS < total;
+            nextButton.active = !loading && (page + 1) * pageSize < total;
         }
+        boolean showActions = sidebar || tab == Tab.CART;
         if (checkoutButton != null) {
-            checkoutButton.visible = tab == Tab.CART;
+            checkoutButton.visible = showActions;
             checkoutButton.active = !cart.isEmpty() && !checkoutPending;
             checkoutButton.setMessage(Component.literal("Checkout (" + cartCount() + ")"));
         }
         if (favoriteCartButton != null) {
-            favoriteCartButton.visible = tab == Tab.CART;
+            favoriteCartButton.visible = showActions;
             favoriteCartButton.active = !cart.isEmpty() && !checkoutPending;
         }
         if (clearCartButton != null) {
-            clearCartButton.visible = tab == Tab.CART;
+            clearCartButton.visible = showActions;
             clearCartButton.active = !cart.isEmpty() && !checkoutPending;
+        }
+        if (search != null) {
+            search.visible = tab != Tab.CART || sidebar;
+            search.active = search.visible;
         }
     }
 
