@@ -287,6 +287,8 @@ both. Deployed golems can be retrieved separately.
    delivers them to the output pallet. A persisted single active reservation
    per output point prevents multiple workers overfilling the same order.
    The order quantity only decreases for items actually deposited.
+   Reservations use renewable two-minute leases so an orphaned worker cannot
+   permanently prevent a future pickup after its destination reloads.
 5. Full/filtered/sealed output pallets suspend future pickups. If capacity
    or mode changes during travel, the worker walks back to its source rack,
    returns any remaining cargo, and releases the unfulfilled reservation.
