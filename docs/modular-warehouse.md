@@ -78,13 +78,17 @@ holding an upgrade item continues to use that upgrade.
 ### Rack names, aisle names, and connectivity
 
 - **Rack Tag:** Rename the item on an anvil, then right-click any part
-  of a rack. The tag becomes a **physical dark-steel sign on the front**,
-  with readable pale text. Its name also appears in the Rack Computer.
-- **Aisle Tag:** Rename in an anvil, then apply it to a rack in a horizontal
-  aisle. A **second physical sign on the front** uses amber text.
-  Side-by-side racks inherit the aisle prefix in the computer:
-  `Aisle Name - Rack Name`. Each physical sign is attached to the rack
-  on which you installed the corresponding tag.
+  of a rack. It makes a **physical dark-steel sign on the rack front**.
+  If the rack also belongs to a named aisle, its visible rack tag and the
+  Rack Computer entry inherit the prefix **with no spaces**: aisle
+  `A` + rack `12` displays **`A-12`**. Racks without Rack Tags remain
+  unnumbered rather than acquiring an automatic `A-` prefix.
+- **Aisle Tag:** Rename in an anvil and apply it to any rack in a connected
+  aisle. Its amber **aisle signage appears on the outer SIDE ends of the
+  aisle row**, not above individual racks' front signs. When the row grows,
+  inner aisle signs disappear and the signs follow the exposed ends.
+  The label is inherited along connected aisle neighbors, including racks
+  tagged earlier; rack front labels update without reapplying their tags.
 - **Existing labels:** Older rack names are automatically displayed as
   physical signs after loading the updated mod; they need no re-tagging.
 - **Rack Connector:** Right-click the rack frame face to attach a
@@ -309,7 +313,8 @@ on a backed-up test world.
   rack or pallet mesh protrudes outside its 2×2×3 footprint.
 - Stack racks and put racks back-to-back, using paired connectors; verify that
   the computer scans each group once, and doesn't scan unconnected racks.
-- Apply tags to an anvil and ensure aisle prefix only affects that aisle.
+- Apply an anvil-named Aisle Tag A and Rack Tag 12; verify side aisle signs and A-12 front/computer labeling throughout that aisle only.
+- Add another rack to an aisle end: the side sign should move to the new exposed edge without leaving a duplicate between racks.
 - Fill a filtered rack, try to insert disallowed items by hand and quick-move.
 - Search for the same item in two racks; verify both highlight for ten seconds.
 - Queue an order without an output pallet; add one later and verify completion.
