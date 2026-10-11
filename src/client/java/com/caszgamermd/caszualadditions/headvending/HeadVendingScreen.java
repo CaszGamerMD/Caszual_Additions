@@ -51,6 +51,7 @@ public final class HeadVendingScreen extends Screen {
     private Button favoriteCartButton;
     private Button clearCartButton;
     private String notice = "";
+    private boolean checkoutPending;
     private String hovered = "";
     private final List<SavedHead> favorites = new ArrayList<>();
     private final List<SavedHead> history = new ArrayList<>();
@@ -153,7 +154,7 @@ public final class HeadVendingScreen extends Screen {
         search.setValue("");
         search.setHint(Component.literal(hint()));
         refreshResults();
-        setInitialFocus(search);
+        setInitialFocus(tab == Tab.CART ? checkoutButton : search);
     }
 
     private void cycleCategory() {
@@ -346,6 +347,14 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void updateButtons() {
+        int left = (width - WIDTH) / 2;
+        int top = (height - HEIGHT) / 2;
+        if (search != null) {
+            // The cart uses the search row for its own pagination; keep
+            // the checkout actions in the footer completely unobstructed.
+            search.visible = tab != Tab.CART;
+            search.active = search.visible;
+        }
         if (refreshButton != null)
             refreshButton.visible = tab == Tab.CUSTOM || tab == Tab.MOB;
         if (categoryButton != null) {
@@ -354,25 +363,29 @@ public final class HeadVendingScreen extends Screen {
             categoryButton.setMessage(Component.literal("Category: " + label));
         }
         if (previousButton != null) {
+            previousButton.setPosition(left + 18,
+                    tab == Tab.CART ? top + 64 : top + 248);
             previousButton.visible = tab != Tab.PLAYER;
             previousButton.active = !loading && page > 0;
         }
         if (nextButton != null) {
+            nextButton.setPosition(left + WIDTH - 104,
+                    tab == Tab.CART ? top + 64 : top + 248);
             nextButton.visible = tab != Tab.PLAYER;
             nextButton.active = !loading && (page + 1) * MAX_RESULTS < total;
         }
         if (checkoutButton != null) {
             checkoutButton.visible = tab == Tab.CART;
-            checkoutButton.active = !cart.isEmpty();
+            checkoutButton.active = !cart.isEmpty() && !checkoutPending;
             checkoutButton.setMessage(Component.literal("Checkout (" + cartCount() + ")"));
         }
         if (favoriteCartButton != null) {
             favoriteCartButton.visible = tab == Tab.CART;
-            favoriteCartButton.active = !cart.isEmpty();
+            favoriteCartButton.active = !cart.isEmpty() && !checkoutPending;
         }
         if (clearCartButton != null) {
             clearCartButton.visible = tab == Tab.CART;
-            clearCartButton.active = !cart.isEmpty();
+            clearCartButton.active = !cart.isEmpty() && !checkoutPending;
         }
     }
 
@@ -444,6 +457,7 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void addToCart(Result result) {
+        if (checkoutPending) return;
         if (cartCount() >= CART_LIMIT) {
             notice = "Cart is full (" + CART_LIMIT + " heads maximum).";
             return;
@@ -457,6 +471,7 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void removeFromCart(Result result) {
+        if (checkoutPending) return;
         String key = identity(result);
         CartEntry entry = cart.get(key);
         if (entry == null) return;
@@ -480,7 +495,8 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void checkout() {
-        if (cart.isEmpty()) return;
+        if (cart.isEmpty() || checkoutPending) return;
+        checkoutPending = true;
         JsonArray lines = new JsonArray();
         for (CartEntry entry : cart.values()) {
             JsonObject line = new JsonObject();
@@ -493,10 +509,11 @@ public final class HeadVendingScreen extends Screen {
         notice = "Checking out " + cartCount() + " heads...";
         // Wait for server acknowledgement before clearing a cart: inventory full,
         // missing emeralds or a failed remote lookup must not erase it.
-        checkoutButton.active = false;
+        updateButtons();
     }
 
     public void acceptCheckout(boolean success, String message) {
+        checkoutPending = false;
         notice = message;
         if (success) {
             cart.clear();
@@ -506,12 +523,14 @@ public final class HeadVendingScreen extends Screen {
     }
 
     private void favoriteCart() {
+        if (checkoutPending) return;
         for (CartEntry entry : cart.values())
             setFavorite(entry.result, true);
         notice = "Cart items added to favorites.";
     }
 
     private void clearCart() {
+        if (checkoutPending) return;
         cart.clear();
         notice = "Cart cleared.";
         refreshResults();
@@ -657,8 +676,11 @@ public final class HeadVendingScreen extends Screen {
         if (tab != Tab.PLAYER) {
             int pages = Math.max(1, (total + MAX_RESULTS - 1) / MAX_RESULTS);
             graphics.text(font,
-                    Component.literal("Page " + (page + 1) + "/" + pages + "  (" + total + ")"),
-                    left + 117, top + 254, 0xff454545, false);
+                    Component.literal("Page " + (page + 1) + "/" + pages
+                            + (tab == Tab.CART ? "" : "  (" + total + ")")),
+                    left + (tab == Tab.CART ? 127 : 117),
+                    top + (tab == Tab.CART ? 70 : 254),
+                    0xff454545, false);
         }
         boolean creative = minecraft != null && minecraft.player != null
                 && minecraft.player.getAbilities().instabuild;
