@@ -228,7 +228,7 @@ public final class RackBlock extends Block implements EntityBlock {
             RackBlockEntity rack = level.getBlockEntity(root) instanceof RackBlockEntity be ? be : null;
             if (rack != null && !player.getAbilities().instabuild) {
                 Containers.dropContents(level, root, rack);
-                if (rack.hasPallet()) Block.popResource(level, root, rack.takePallet());
+                if (rack.hasPallet()) Block.popResource(level, root, rack.dropPallet());
                 Block.popResource(level, root, new ItemStack(this));
             }
             for (int i=0;i<12;i++) {

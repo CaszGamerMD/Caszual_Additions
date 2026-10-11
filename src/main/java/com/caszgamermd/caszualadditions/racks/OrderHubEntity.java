@@ -54,6 +54,11 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
     }
     public ItemStack removePallet() {
         if(!isEmpty())return ItemStack.EMPTY;
+        return dropPallet();
+    }
+    /** Breaking the hub separately drops its output inventory and pallet. */
+    public ItemStack dropPallet() {
+        if(!hasPallet())return ItemStack.EMPTY;
         ItemStack old=com.caszgamermd.caszualadditions.pallet.PalletData.applyFilter(
                 pallet,palletFilter);
         pallet=ItemStack.EMPTY;palletFilter="";setChanged();return old;

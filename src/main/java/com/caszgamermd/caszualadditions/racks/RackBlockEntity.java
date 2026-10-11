@@ -50,6 +50,11 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     }
     public ItemStack takePallet() {
         if (!isEmpty()) return ItemStack.EMPTY;
+        return dropPallet();
+    }
+    /** Explicit break path: inventory is separately dropped by the rack. */
+    public ItemStack dropPallet() {
+        if(!hasPallet())return ItemStack.EMPTY;
         ItemStack result = com.caszgamermd.caszualadditions.pallet.PalletData.applyFilter(
                 pallet,filterItem);
         pallet = ItemStack.EMPTY;

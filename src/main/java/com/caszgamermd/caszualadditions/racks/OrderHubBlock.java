@@ -132,7 +132,7 @@ public final class OrderHubBlock extends Block implements EntityBlock {
             OrderHubEntity hub=level.getBlockEntity(root) instanceof OrderHubEntity e?e:null;
             if(hub!=null&&!player.getAbilities().instabuild){
                 Containers.dropContents(level,root,hub);
-                if(hub.hasPallet())Block.popResource(level,root,hub.removePallet());
+                if(hub.hasPallet())Block.popResource(level,root,hub.dropPallet());
                 for(int i=0;i<hub.collectors();i++)Block.popResource(level,root,new ItemStack(RackContent.ORDER_COLLECTOR));
                 Block.popResource(level,root,new ItemStack(this));
             }
