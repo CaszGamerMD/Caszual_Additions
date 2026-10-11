@@ -120,7 +120,7 @@ public final class RackComputerNet {
         if(!hub.queue(order.itemId(),order.quantity())){
             reply(player,"Hub's order queue is full (16 orders max).");return;
         }
-        reply(player,"Order queued: "+order.quantity()+" × "+item.getName().getString()
+        reply(player,"Order queued: "+order.quantity()+" × "+new ItemStack(item).getHoverName().getString()
                 +(hub.hasPallet()?"":" — waiting for a pallet on the hub."));
     }
 
