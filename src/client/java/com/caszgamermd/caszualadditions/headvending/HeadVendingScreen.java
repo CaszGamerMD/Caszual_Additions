@@ -95,7 +95,8 @@ public final class HeadVendingScreen extends Screen {
         gridLeft = frameLeft + 14;
         gridRight = sidebar ? sidebarLeft - 12 : frameLeft + frameWidth - 14;
         gridTop = frameTop + 118;
-        gridBottom = frameTop + frameHeight - 76;
+        // Leave a status line above the compact Cart action bar.
+        gridBottom = frameTop + frameHeight - (sidebar ? 76 : 96);
         int available = Math.max(40, gridRight - gridLeft);
         gridCols = Math.clamp(available / CELL_W, 1, 12);
         int maxRows = Math.max(1, 72 / gridCols);
@@ -806,7 +807,7 @@ public final class HeadVendingScreen extends Screen {
             if (hot) hovered = result.label() + "  ·  " + result.category();
         }
 
-        int statusY = frameTop + frameHeight - (sidebar || tab != Tab.CART ? 58 : 96);
+        int statusY = frameTop + frameHeight - (sidebar ? 58 : 91);
         String status = !error.isEmpty() ? error : !notice.isEmpty() ? notice : hovered;
         if (!status.isBlank())
             graphics.text(font, Component.literal(fit(status,
