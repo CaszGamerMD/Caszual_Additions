@@ -100,6 +100,12 @@ public final class PtpBlock extends Block implements EntityBlock {
             return;
         }
     }
+    @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context){
+        // The full front approach of a rack stays available for physical
+        // aisle tags, connector upgrades and pallet access.
+        return RackBlock.reservedForAccess(context.getLevel(),context.getClickedPos())
+                ?null:super.getStateForPlacement(context);
+    }
     @Override public void setPlacedBy(Level level,BlockPos pos,BlockState state,
             @Nullable LivingEntity player,ItemStack stack){
         super.setPlacedBy(level,pos,state,player,stack);
