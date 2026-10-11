@@ -178,18 +178,27 @@ public final class RackBlock extends Block implements EntityBlock {
             }
             if (held.is(RackContent.CONNECTOR)) {
                 Direction side = hit.getDirection();
+                boolean removing = rack.hasConnector(side);
                 rack.toggleConnector(side);
-                if (!player.getAbilities().instabuild) held.shrink(1);
+                if (!player.getAbilities().instabuild) {
+                    if (removing) player.getInventory().placeItemBackInInventory(
+                            new ItemStack(RackContent.CONNECTOR));
+                    else held.shrink(1);
+                }
                 server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "Rack connector " + (rack.hasConnector(side) ? "enabled" : "disabled")
+                        "Rack connector " + (removing ? "removed" : "enabled")
                         + " on " + side.getName()));
                 return InteractionResult.SUCCESS;
             }
             if (held.is(RackContent.PALLET_FILTER)) {
                 ItemStack sample = player.getOffhandItem();
-                if (sample.isEmpty() || sample.is(RackContent.PALLET_FILTER)) {
+                if (sample.isEmpty()) {
+                    rack.clearFilter();
                     server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                            "Hold a sample item in your offhand to set this pallet's filter."));
+                            "Pallet filter cleared."));
+                } else if (sample.is(RackContent.PALLET_FILTER)) {
+                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                            "Hold an ordinary sample item in your offhand to set the filter."));
                 } else {
                     rack.setFilter(sample);
                     server.sendSystemMessage(net.minecraft.network.chat.Component.literal(

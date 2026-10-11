@@ -30,7 +30,8 @@ public final class PalletFilterItem extends Item {
             player.sendSystemMessage(Component.literal(
                     "Pallet accepts only " + sample.getHoverName().getString()));
         }
-        if(!player.getAbilities().instabuild)
+        // Clearing does not consume another filter module.
+        if(!sample.isEmpty()&&!sample.is(this) && !player.getAbilities().instabuild)
             context.getItemInHand().shrink(1);
         return InteractionResult.SUCCESS;
     }
