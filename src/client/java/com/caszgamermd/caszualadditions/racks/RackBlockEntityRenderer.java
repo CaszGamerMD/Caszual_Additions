@@ -5,8 +5,14 @@ import com.caszgamermd.caszualadditions.pallet.PalletContent;
 import com.caszgamermd.caszualadditions.pallet.PalletData;
 import com.caszgamermd.caszualadditions.pallet.PalletKind;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.gui.Font;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelResolver;
+import net.minecraft.client.renderer.block.BlockModelRenderState;
 import net.minecraft.client.renderer.block.model.BlockDisplayContext;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -30,9 +36,11 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
     private static final BlockDisplayContext DISPLAY=BlockDisplayContext.create();
     private final BlockModelResolver blocks;
     private final ItemModelResolver items;
+    private final Font font;
     public RackBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
         blocks=context.blockModelResolver();
         items=context.itemModelResolver();
+        font=context.font();
     }
     @Override public RackRenderState createRenderState(){return new RackRenderState();}
 
@@ -40,6 +48,30 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             float partial,Vec3 camera,ModelFeatureRenderer.@Nullable CrumblingOverlay cracks){
         BlockEntityRenderer.super.extractRenderState(rack,state,partial,camera,cracks);
         state.facing=rack.facing();
+        state.rackLabel=rack.hasRackPlate()?rack.displayName():"";
+        state.aisleLabel=rack.hasAislePlate()?rack.aisleName():"";
+        blocks.update(state.crossBeam,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
+        blocks.update(state.nameplate,Blocks.POLISHED_DEEPSLATE.defaultBlockState(),DISPLAY);
+        for(Direction side:Direction.values()){
+            boolean connected=false;
+            // Only a pair of connectors across an ACTUAL shared rack face
+            // produces a cross brace. A single connector is not a network link.
+            if(rack.hasConnector(side) && rack.getLevel()!=null){
+                for(int i=0;i<12&&!connected;i++){
+                    BlockPos current=RackBlock.cell(rack.getBlockPos(),rack.facing(),i);
+                    BlockPos adjacent=current.relative(side);
+                    if(!rack.getLevel().hasChunkAt(adjacent))continue;
+                    RackBlockEntity other=RackBlock.controller(rack.getLevel(),adjacent);
+                    if(other!=null && !other.getBlockPos().equals(rack.getBlockPos())
+                            && other.hasConnector(side.getOpposite()))
+                        connected=true;
+                }
+            }
+            // Draw the shared brace only on its positive-axis owner to
+            // prevent two touching rack renderers creating coplanar beams.
+            state.linkedFaces[side.get3DDataValue()]=connected
+                    && (side==Direction.EAST || side==Direction.SOUTH || side==Direction.UP);
+        }
         state.pallet=rack.hasPallet();
         state.visible=0;
         if(!state.pallet){
@@ -84,6 +116,7 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
 
     @Override public void submit(RackRenderState state,PoseStack poses,
             SubmitNodeCollector collector,CameraRenderState camera){
+        submitRackAccessories(state,poses,collector);
         if(!state.pallet)return;
         // Four rotated rack footprints all fit exactly inside the two-by-two
         // world blocks owned by the rack's front-left root.
@@ -127,6 +160,94 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             }
             poses.popPose();
         }
+        poses.popPose();
+    }
+
+    /** Metal X-braces and two small real-world name plates on the rack front. */
+    private void submitRackAccessories(RackRenderState state,PoseStack poses,
+            SubmitNodeCollector collector) {
+        Direction front=state.facing;
+        Direction right=front.getCounterClockWise();
+        Direction back=front.getOpposite();
+        float x=(float)Math.min(0,Math.min(right.getStepX(),
+                Math.min(back.getStepX(),right.getStepX()+back.getStepX())));
+        float z=(float)Math.min(0,Math.min(right.getStepZ(),
+                Math.min(back.getStepZ(),right.getStepZ()+back.getStepZ())));
+
+        for(Direction side:Direction.values()){
+            if(!state.linkedFaces[side.get3DDataValue()])continue;
+            poses.pushPose();
+            if(side==Direction.UP){
+                // Vertical connectors join the matching upper/lower frame
+                // edges without occupying any pallet cargo cells.
+                poses.translate(x,0,z);
+                for(float dx:new float[]{.10f,1.84f})
+                    for(float dz:new float[]{.10f,1.84f})
+                        board(state.crossBeam,state,poses,collector,dx,2.77f,dz,
+                                .06f,.46f,.06f);
+            }else{
+                boolean alongZ=side==Direction.EAST;
+                double cx=alongZ ? x+2.0 : x+1.0;
+                double cz=alongZ ? z+1.0 : z+2.0;
+                poses.translate(cx,1.48,cz);
+                if(alongZ)poses.mulPose(Axis.YP.rotationDegrees(90));
+                // Two braces in an X on the *actual* shared boundary.
+                for(float degrees:new float[]{-31f,31f}){
+                    poses.pushPose();
+                    poses.mulPose(Axis.ZP.rotationDegrees(degrees));
+                    board(state.crossBeam,state,poses,collector,
+                            -.97f,-.047f,-.038f,1.94f,.094f,.076f);
+                    poses.popPose();
+                }
+            }
+            poses.popPose();
+        }
+
+        if(state.rackLabel.isBlank()&&state.aisleLabel.isBlank())return;
+        poses.pushPose();
+        poses.translate(x+1.0,0,z+1.0);
+        float angle=switch(front){
+            case NORTH -> 0f;
+            case EAST -> -90f;
+            case SOUTH -> 180f;
+            case WEST -> 90f;
+            default -> 0f;
+        };
+        poses.mulPose(Axis.YP.rotationDegrees(angle));
+        // After rotation local NORTH always points into the clear upgrade aisle.
+        poses.translate(-1.0,0,-1.0);
+        if(!state.aisleLabel.isBlank())
+            submitPlate(state,poses,collector,state.aisleLabel,2.61f,0xffffde9b);
+        if(!state.rackLabel.isBlank())
+            submitPlate(state,poses,collector,state.rackLabel,2.31f,0xffe4f0f5);
+        poses.popPose();
+    }
+
+    private void submitPlate(RackRenderState state,PoseStack poses,
+            SubmitNodeCollector collector,String label,float y,int color) {
+        // Plate face projects only 0.06 blocks into the empty access aisle;
+        // offset text farther out by 0.003 to avoid Z-fighting with its metal.
+        board(state.nameplate,state,poses,collector,
+                .20f,y,-.060f,1.60f,.255f,.055f);
+        String visible=label;
+        while(visible.length()>1 && font.width(visible)>113)
+            visible=visible.substring(0,visible.length()-1);
+        if(!visible.equals(label)&&visible.length()>1)
+            visible=visible.substring(0,visible.length()-1)+"…";
+        poses.pushPose();
+        poses.translate(1.0f,y+.13f,-.066f);
+        poses.scale(-.013f,-.013f,.013f);
+        collector.submitText(poses,-font.width(visible)/2f,-4.0f,
+                Component.literal(visible).getVisualOrderText(),false,
+                Font.DisplayMode.POLYGON_OFFSET,state.lightCoords,color,0,0);
+        poses.popPose();
+    }
+
+    private static void board(BlockModelRenderState model,RackRenderState state,
+            PoseStack poses,SubmitNodeCollector collector,
+            float x,float y,float z,float width,float height,float depth){
+        poses.pushPose();poses.translate(x,y,z);poses.scale(width,height,depth);
+        model.submit(poses,collector,state.lightCoords,OverlayTexture.NO_OVERLAY,0);
         poses.popPose();
     }
 

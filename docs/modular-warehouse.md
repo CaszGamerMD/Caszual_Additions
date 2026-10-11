@@ -77,23 +77,31 @@ holding an upgrade item continues to use that upgrade.
 
 ### Rack names, aisle names, and connectivity
 
-- **Rack Tag:** Rename the item on an anvil and right-click a rack. Its name
-  appears in the Rack Computer.
-- **Aisle Tag:** Rename on an anvil and apply to a rack in a horizontal
-  side-by-side aisle. Its text prefixes that aisle's rack names:
-  `Aisle Name - Rack Name`.
-- **Rack Connector:** Right-click a side of a rack to toggle a connector
-  on that face. A paired connector on the opposite physical face of the
-  neighboring rack joins their two networks. Side-by-side same-facing racks
-  already automatically form a common aisle.
-- **Pallet Filter:** Hold a sample item in the **offhand**, use the filter
-  item in the main hand, then click a placed pallet or a rack. Only that item
-  type can then be inserted. On a placed pallet, an empty offhand removes the
-  filter. The filter is saved in the pallet item when picked up and follows
-  that pallet into racks and the output hub.
+- **Rack Tag:** Rename the item on an anvil, then right-click any part
+  of a rack. The tag becomes a **physical dark-steel sign on the front**,
+  with readable pale text. Its name also appears in the Rack Computer.
+- **Aisle Tag:** Rename in an anvil, then apply it to a rack in a horizontal
+  aisle. A **second physical sign on the front** uses amber text.
+  Side-by-side racks inherit the aisle prefix in the computer:
+  `Aisle Name - Rack Name`. Each physical sign is attached to the rack
+  on which you installed the corresponding tag.
+- **Existing labels:** Older rack names are automatically displayed as
+  physical signs after loading the updated mod; they need no re-tagging.
+- **Rack Connector:** Right-click the rack frame face to attach a
+  connector. Two rack frames with **paired opposite connectors on their
+  actual shared face** now display steel **X-shaped cross-braces** bridging
+  the frames. Vertical pairs display short linking brackets.
+  Unpaired connectors do not show a bridge or add an unintended network edge.
+  The cross-brace is rendered only once per pair to avoid z-fighting.
+- **Pallet Filter:** Use the real module slot and whitelist/blacklist controls
+  in the pallet UI (detailed in the previous section). Rules and module state
+  persist when pallets move into or out of a rack.
 
-The initial filter applies to item **type**, not tags, durability ranges, or
-arbitrary data components.
+**Pallet ownership:** New 2×2 pallets use exactly one block entity on the
+home corner, not four independent tile entities. The other three footprint
+cells still reserve space and collision, and breaking any part removes the
+whole pallet. All four pieces share the same 2×2 selection outline. Existing
+saved inventory data remains on the home controller.
 
 ## Rack Computer
 

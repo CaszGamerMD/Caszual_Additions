@@ -33,6 +33,9 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     private ItemStack pallet = ItemStack.EMPTY;
     private String rackName = "";
     private String aisleName = "";
+    // These are physical signs on the FRONT of a rack, rather than names
+    // stored only in the computer interface. Default to legacy names on load.
+    private boolean rackPlate, aislePlate;
     private String filterItem = "";
     private ItemStack filterUpgrade = ItemStack.EMPTY;
     private int filterMode,filterScope;
@@ -74,8 +77,16 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     }
     public String rackName() { return rackName; }
     public String aisleName() { return aisleName; }
-    public void setRackName(String name) { rackName = trim(name); setChanged(); }
-    public void setAisleName(String name) { aisleName = trim(name); setChanged(); }
+    public void setRackName(String name) {
+        rackName=trim(name);rackPlate=true;setChanged();
+    }
+    public void setAisleName(String name) {
+        aisleName=trim(name);aislePlate=true;setChanged();
+    }
+    public boolean hasRackPlate(){return rackPlate;}
+    public boolean hasAislePlate(){return aislePlate;}
+    public void clearRackPlate(){rackPlate=false;rackName="";setChanged();}
+    public void clearAislePlate(){aislePlate=false;aisleName="";setChanged();}
     public String displayName() {
         return rackName.isBlank() ? "Rack " + worldPosition.getX() + "," + worldPosition.getY() + "," + worldPosition.getZ() : rackName;
     }
@@ -162,6 +173,8 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         if(!pallet.isEmpty()) output.store("pallet",ItemStack.CODEC,pallet);
         output.putString("rack_name",rackName);
         output.putString("aisle_name",aisleName);
+        output.putBoolean("rack_plate",rackPlate);
+        output.putBoolean("aisle_plate",aislePlate);
         output.putString("filter_item",filterItem);
         output.putInt("filter_mode",filterMode);
         output.putInt("filter_scope",filterScope);
@@ -176,6 +189,10 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         pallet=input.read("pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
         rackName=input.getStringOr("rack_name","");
         aisleName=input.getStringOr("aisle_name","");
+        // Existing rack names from pre-plate builds automatically appear as
+        // physical plates after update, without requiring players to retag.
+        rackPlate=input.getBooleanOr("rack_plate",!rackName.isBlank());
+        aislePlate=input.getBooleanOr("aisle_plate",!aisleName.isBlank());
         filterItem=input.getStringOr("filter_item","");
         filterMode=Math.clamp(input.getIntOr("filter_mode",0),0,1);
         filterScope=Math.clamp(input.getIntOr("filter_scope",0),0,3);
