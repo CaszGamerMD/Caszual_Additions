@@ -40,6 +40,22 @@ public final class PtpBlockEntity extends BlockEntity
     public static final int MAX_OUTPUT_ORDERS=16;
     private final ArrayDeque<OutputOrder> outputOrders=new ArrayDeque<>();
     private int activeTicket,ticketSequence,reservedOutput;
+    // Leases survive reload. A missing worker cannot permanently block FIFO.
+    private long ticketDeadline;
+    private static final long TICKET_LEASE_TICKS=2400; // two minutes
+    private void expireTicket(){
+        if(activeTicket!=0 && level!=null && level.getGameTime()>ticketDeadline){
+            activeTicket=0;reservedOutput=0;ticketDeadline=0;
+            setChanged();
+        }
+    }
+    public void renewOutput(int ticket){
+        if(ticket!=0&&ticket==activeTicket&&level!=null){
+            ticketDeadline=level.getGameTime()+TICKET_LEASE_TICKS;
+            // Heartbeats refresh in memory. Avoid chunk saves every 10 ticks;
+            // the persisted lease is also refreshed at pickup/delivery.
+        }
+    }
     public PtpBlockEntity(BlockPos pos,BlockState state){super(RackContent.PTP_ENTITY,pos,state);}
     public boolean input(){return input;}
     public void setInput(boolean v){input=v;setChanged();}
@@ -62,6 +78,7 @@ public final class PtpBlockEntity extends BlockEntity
     }
     /** At most one outbound job per output point, across all linked shelves. */
     public int reserveOutput(String itemId,int quantity){
+        expireTicket();
         OutputOrder next=outputOrders.peekFirst();
         if(!readyForOutput()||activeTicket!=0||next==null||quantity<1
                 ||quantity>next.remaining()||!next.itemId().equals(itemId))return 0;
@@ -69,10 +86,12 @@ public final class PtpBlockEntity extends BlockEntity
         if(ticketSequence==0)ticketSequence=1;
         activeTicket=ticketSequence;
         reservedOutput=quantity;
+        ticketDeadline=level==null?0:level.getGameTime()+TICKET_LEASE_TICKS;
         setChanged();
         return activeTicket;
     }
     public boolean hasReservation(int ticket){
+        expireTicket();
         return ticket!=0&&ticket==activeTicket&&reservedOutput>0;
     }
     /** Commit only items that actually reached this output pallet. */
@@ -85,13 +104,14 @@ public final class PtpBlockEntity extends BlockEntity
         outputOrders.removeFirst();
         if(order.remaining()>done)
             outputOrders.addFirst(new OutputOrder(order.itemId(),order.remaining()-done));
-        if(reservedOutput==0)activeTicket=0;
+        if(reservedOutput==0){activeTicket=0;ticketDeadline=0;}
+        else if(level!=null)ticketDeadline=level.getGameTime()+TICKET_LEASE_TICKS;
         setChanged();
     }
     /** A failed, recalled or killed worker must free the unfulfilled quantity. */
     public void releaseOutput(int ticket){
         if(ticket!=0&&ticket==activeTicket){
-            activeTicket=0;reservedOutput=0;setChanged();
+            activeTicket=0;reservedOutput=0;ticketDeadline=0;setChanged();
         }
     }
     public ItemStack palletStack(){return pallet.copy();}
@@ -209,6 +229,7 @@ public final class PtpBlockEntity extends BlockEntity
         out.putInt("output_ticket_sequence",ticketSequence);
         out.putInt("output_active_ticket",activeTicket);
         out.putInt("output_reserved",reservedOutput);
+        out.putLong("output_ticket_deadline",ticketDeadline);
     }
     @Override protected void loadAdditional(ValueInput in){
         super.loadAdditional(in);
@@ -233,8 +254,9 @@ public final class PtpBlockEntity extends BlockEntity
         ticketSequence=Math.max(0,in.getIntOr("output_ticket_sequence",0));
         activeTicket=Math.max(0,in.getIntOr("output_active_ticket",0));
         reservedOutput=Math.max(0,in.getIntOr("output_reserved",0));
+        ticketDeadline=in.getLongOr("output_ticket_deadline",0);
         if(outputOrders.isEmpty()||reservedOutput==0||activeTicket==0){
-            activeTicket=0;reservedOutput=0;
+            activeTicket=0;reservedOutput=0;ticketDeadline=0;
         }else reservedOutput=Math.min(reservedOutput,outputOrders.peekFirst().remaining());
     }
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider lookup){return saveWithoutMetadata(lookup);}
