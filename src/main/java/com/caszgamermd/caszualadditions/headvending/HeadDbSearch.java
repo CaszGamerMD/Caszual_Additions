@@ -353,11 +353,12 @@ public final class HeadDbSearch {
                 ? object.getAsJsonArray(name) : null;
     }
 
-    private static String error(String query, String category, int page, Exception exception) {
+    private static String error(String query, String category, int page, int pageSize, Exception exception) {
         JsonObject response = new JsonObject();
         response.addProperty("query", query);
         response.addProperty("category", category);
         response.addProperty("page", page);
+        response.addProperty("pageSize", pageSize);
         response.addProperty("total", 0);
         response.add("items", new JsonArray());
         JsonArray categories = new JsonArray();
