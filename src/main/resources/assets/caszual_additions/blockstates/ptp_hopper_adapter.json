@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "part=0": {
+      "model": "caszual_additions:block/ptp_hopper_adapter"
+    },
+    "part=1": {
+      "model": "caszual_additions:block/ptp_hopper_adapter"
+    },
+    "part=2": {
+      "model": "caszual_additions:block/ptp_hopper_adapter"
+    },
+    "part=3": {
+      "model": "caszual_additions:block/ptp_hopper_adapter"
+    },
+    "part=4": {
+      "model": "caszual_additions:block/ptp_hopper_adapter"
+    },
+    "part=5": {
+      "model": "caszual_additions:block/ptp_hopper_adapter"
+    },
+    "part=6": {
+      "model": "caszual_additions:block/ptp_hopper_adapter"
+    },
+    "part=7": {
+      "model": "caszual_additions:block/ptp_hopper_adapter"
+    },
+    "part=8": {
+      "model": "caszual_additions:block/ptp_hopper_adapter"
+    },
+    "part=9": {
+      "model": "caszual_additions:block/ptp_hopper_adapter"
+    }
+  }
+}

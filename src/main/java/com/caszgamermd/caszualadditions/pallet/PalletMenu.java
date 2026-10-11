@@ -22,7 +22,7 @@ public final class PalletMenu extends AbstractContainerMenu {
     private final PalletPageContainer paged;
     private final DataSlot pageData;
     private final PalletFilterCarrier filter;
-    private int page, mode, scope;
+    private int page, mode, scope, ptpInputMode;
     public static final int FILTER_SLOT=PAGE_SIZE;
 
     public PalletMenu(int containerId, Inventory inventory, BlockPos pos) {
@@ -35,6 +35,8 @@ public final class PalletMenu extends AbstractContainerMenu {
         this.filter = backing instanceof PalletFilterCarrier carrier ? carrier : null;
         this.mode=filter==null?0:filter.filterMode();
         this.scope=filter==null?0:filter.filterScope();
+        this.ptpInputMode=backing instanceof com.caszgamermd.caszualadditions.racks.PtpBlockEntity point
+                &&point.input()?1:0;
         this.paged = new PalletPageContainer(backing);
         this.pageData = new DataSlot() {
             @Override
@@ -56,6 +58,14 @@ public final class PalletMenu extends AbstractContainerMenu {
         addDataSlot(new DataSlot() {
             @Override public int get(){return filter==null?scope:filter.filterScope();}
             @Override public void set(int value){scope=Math.clamp(value,0,3);}
+        });
+
+        addDataSlot(new DataSlot() {
+            @Override public int get(){
+                return backing instanceof com.caszgamermd.caszualadditions.racks.PtpBlockEntity point
+                        &&point.input()?1:0;
+            }
+            @Override public void set(int value){ptpInputMode=value;}
         });
 
         // Shared with PalletScreen: 18 x 6 warehouse shelves (108 per page).
@@ -108,6 +118,7 @@ public final class PalletMenu extends AbstractContainerMenu {
         if(be instanceof PalletBlockEntity pallet)return pallet;
         if(be instanceof com.caszgamermd.caszualadditions.racks.RackBlockEntity rack)return rack;
         if(be instanceof com.caszgamermd.caszualadditions.racks.OrderHubEntity hub)return hub;
+        if(be instanceof com.caszgamermd.caszualadditions.racks.PtpBlockEntity ptp)return ptp;
         return new SimpleContainer(PalletBlockEntity.SLOTS);
     }
 
@@ -116,6 +127,10 @@ public final class PalletMenu extends AbstractContainerMenu {
     public int filterScope(){return scope;}
     public String filterTarget(){return filter==null?"":filter.filterTarget();}
     public boolean hasFilter(){return filter!=null&&!filter.filterUpgrade().isEmpty();}
+    public boolean isTransferPoint(){
+        return backing instanceof com.caszgamermd.caszualadditions.racks.PtpBlockEntity;
+    }
+    public boolean ptpInput(){return ptpInputMode!=0;}
 
     public void applyFilterTarget(String raw) {
         if(!hasFilter())return;
@@ -137,6 +152,12 @@ public final class PalletMenu extends AbstractContainerMenu {
 
     @Override
     public boolean clickMenuButton(Player player,int id) {
+        if(id==5 && backing instanceof com.caszgamermd.caszualadditions.racks.PtpBlockEntity point
+                &&stillValid(player)){
+            point.setInput(!point.input());
+            ptpInputMode=point.input()?1:0;
+            broadcastFullState();return true;
+        }
         if(id==0||id==1){
             page=id;paged.setPage(page);pageData.set(page);broadcastFullState();return true;
         }

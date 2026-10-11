@@ -19,6 +19,10 @@ public final class RackContent {
     public static Block RACK_COMPUTER;
     public static OrderHubBlock ORDER_HUB;
     public static ShulkerTankBlock SHULKER_TANK;
+    public static PtpBlock PTP_TRANSFER,PTP_HOPPER,PTP_WRAP;
+    public static Item PTP_TRANSFER_ITEM,PTP_HOPPER_ITEM,PTP_WRAP_ITEM;
+    public static BlockEntityType<PtpBlockEntity> PTP_ENTITY;
+    public static BlockEntityType<PtpHopperPort> PTP_PORT_ENTITY;
     public static Item RACK_ITEM, COMPUTER_ITEM, HUB_ITEM, TANK_ITEM, ORDER_COLLECTOR;
     public static Item RACK_TAG, AISLE_TAG, CONNECTOR, PALLET_FILTER;
     public static BlockEntityType<RackBlockEntity> RACK_ENTITY;
@@ -83,6 +87,42 @@ public final class RackContent {
                 CaszualAdditions.id("shulker_tank"),
                 FabricBlockEntityTypeBuilder.create(ShulkerTankEntity::new,SHULKER_TANK).build());
         ORDER_COLLECTOR=item("order_collector");
+
+        // New modular nine-cell Pallet Transfer Points are added alongside
+        // legacy two-by-two Order Collector Hubs; old contents aren't migrated
+        // or silently destroyed by a registry rename.
+        Identifier ptpId=CaszualAdditions.id("pallet_transfer_block");
+        ResourceKey<Block> ptpKey=ResourceKey.create(Registries.BLOCK,ptpId);
+        PTP_TRANSFER=Registry.register(BuiltInRegistries.BLOCK,ptpKey,
+                new PtpBlock(PtpBlock.Kind.TRANSFER,BlockBehaviour.Properties
+                        .ofFullCopy(Blocks.IRON_BLOCK).strength(3.5f)
+                        .noOcclusion().setId(ptpKey)));
+        PTP_TRANSFER_ITEM=blockItem("pallet_transfer_block",PTP_TRANSFER);
+
+        Identifier adapterId=CaszualAdditions.id("ptp_hopper_adapter");
+        ResourceKey<Block> adapterKey=ResourceKey.create(Registries.BLOCK,adapterId);
+        PTP_HOPPER=Registry.register(BuiltInRegistries.BLOCK,adapterKey,
+                new PtpBlock(PtpBlock.Kind.HOPPER,BlockBehaviour.Properties
+                        .ofFullCopy(Blocks.IRON_BLOCK).strength(3.5f)
+                        .noOcclusion().setId(adapterKey)));
+        PTP_HOPPER_ITEM=blockItem("ptp_hopper_adapter",PTP_HOPPER);
+
+        Identifier wrapId=CaszualAdditions.id("ptp_wrap_unit");
+        ResourceKey<Block> wrapKey=ResourceKey.create(Registries.BLOCK,wrapId);
+        PTP_WRAP=Registry.register(BuiltInRegistries.BLOCK,wrapKey,
+                new PtpBlock(PtpBlock.Kind.WRAP,BlockBehaviour.Properties
+                        .ofFullCopy(Blocks.IRON_BLOCK).strength(3.5f)
+                        .noOcclusion().setId(wrapKey)));
+        PTP_WRAP_ITEM=blockItem("ptp_wrap_unit",PTP_WRAP);
+
+        PTP_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
+                CaszualAdditions.id("pallet_transfer_point"),
+                FabricBlockEntityTypeBuilder.create(PtpBlockEntity::new,
+                        PTP_TRANSFER,PTP_HOPPER,PTP_WRAP).build());
+        PTP_PORT_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
+                CaszualAdditions.id("ptp_hopper_port"),
+                FabricBlockEntityTypeBuilder.create(PtpHopperPort::new,PTP_HOPPER).build());
+
         RackComputerNet.initialize();
     }
 }

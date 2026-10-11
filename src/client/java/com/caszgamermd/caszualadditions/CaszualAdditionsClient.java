@@ -5,6 +5,7 @@ import com.caszgamermd.caszualadditions.pallet.PalletBlockEntityRenderer;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
 import com.caszgamermd.caszualadditions.racks.RackContent;
 import com.caszgamermd.caszualadditions.racks.RackBlockEntityRenderer;
+import com.caszgamermd.caszualadditions.racks.PtpRenderer;
 import com.caszgamermd.caszualadditions.racks.RackComputerClient;
 import com.caszgamermd.caszualadditions.pallet.PalletScreen;
 import com.caszgamermd.caszualadditions.funbarrel.FunBarrelContent;
@@ -50,6 +51,7 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
                 PalletBlockEntityRenderer::new
         );
         BlockEntityRenderers.register(RackContent.RACK_ENTITY,RackBlockEntityRenderer::new);
+        BlockEntityRenderers.register(RackContent.PTP_ENTITY,PtpRenderer::new);
 
         MenuScreens.register(PalletContent.PALLET_MENU, PalletScreen::new);
         MenuScreens.register(FunBarrelContent.MENU, FunBarrelScreen::new);

@@ -115,7 +115,20 @@ public final class RackComputerNet {
         }
         if(!found){reply(player,"Item not found in connected racks.");return;}
         OrderHubEntity hub=OrderHubEntity.nextToComputer(level,computer);
-        if(hub==null) {reply(player,"Place a 2x2 Order Collector Hub next to this computer.");return;}
+        if(hub==null) {
+            for(net.minecraft.core.Direction side:net.minecraft.core.Direction.values()){
+                BlockPos candidate=computer.relative(side);
+                if(!level.hasChunkAt(candidate))continue;
+                PtpBlockEntity point=PtpBlock.controller(level,candidate);
+                if(point!=null){
+                    reply(player,"PTP detected: automated collection requires future Storage Golems. "
+                            +"Use a legacy collector hub for now.");
+                    return;
+                }
+            }
+            reply(player,"Attach a collector hub or a 3x3 Pallet Transfer Point.");
+            return;
+        }
         if(hub.collectors()==0){reply(player,"Insert up to 3 Order Collectors into the hub.");return;}
         if(!hub.queue(order.itemId(),order.quantity())){
             reply(player,"Hub's order queue is full (16 orders max).");return;
@@ -135,6 +148,19 @@ public final class RackComputerNet {
         JsonArray list=new JsonArray();
         root.addProperty("query",term);
         root.addProperty("networkSize",racks.size());
+        // A PTP must be physically next to the computer. This discovery
+        // does not imply golem order fulfillment is implemented yet.
+        for(net.minecraft.core.Direction side:net.minecraft.core.Direction.values()){
+            BlockPos adjacent=computer.relative(side);
+            if(!level.hasChunkAt(adjacent))continue;
+            PtpBlockEntity ptp=PtpBlock.controller(level,adjacent);
+            if(ptp==null)continue;
+            root.addProperty("ptpSummary","PTP "+(ptp.input()?"INPUT":"OUTPUT")
+                    +" / "+(ptp.hasPallet()?"pallet loaded":"no pallet")
+                    +(ptp.sealed()?" / SEALED":"")
+                    +(ptp.hasAdapter()?" / hopper adapter":""));
+            break;
+        }
         int matches=0;
         int totalItems=0;
         RackBlockEntity selected=null;

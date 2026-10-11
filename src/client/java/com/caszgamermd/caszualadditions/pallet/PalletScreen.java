@@ -35,7 +35,7 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
     private static final int MUTED = 0xff546473;
     private static final int ACCENT = 0xff3d9c9e;
 
-    private Button previous,next,modeButton,scopeButton,sampleButton,applyButton;
+    private Button previous,next,modeButton,scopeButton,sampleButton,applyButton,ptpButton;
     private EditBox targetField;
     private String lastRule = "";
 
@@ -71,6 +71,18 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
         lastRule=menu.filterTarget();
         applyButton=addRenderableWidget(Button.builder(Component.literal("Apply Target"),
                 button->applyTarget()).bounds(leftPos+251,topPos+218,104,18).build());
+        if(menu.isTransferPoint()){
+            ptpButton=addRenderableWidget(Button.builder(Component.literal("PTP: INPUT"),
+                    button->togglePtp()).bounds(leftPos+14,topPos+266,86,34).build());
+        }
+        updateControls();
+    }
+
+    private void togglePtp(){
+        if(minecraft==null||minecraft.player==null||minecraft.gameMode==null
+                ||!menu.isTransferPoint())return;
+        if(menu.clickMenuButton(minecraft.player,5))
+            minecraft.gameMode.handleInventoryButtonClick(menu.containerId,5);
         updateControls();
     }
 
@@ -101,6 +113,8 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
 
     private void updateControls() {
         if (previous != null) previous.active = menu.page() > 0;
+        if(ptpButton!=null)
+            ptpButton.setMessage(Component.literal(menu.ptpInput()?"PTP: INPUT":"PTP: OUTPUT"));
         if (next != null) next.active = menu.page() < 1;
         boolean enabled=menu.hasFilter();
         if(modeButton!=null){

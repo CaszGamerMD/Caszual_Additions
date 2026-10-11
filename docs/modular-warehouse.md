@@ -168,6 +168,62 @@ than dropping items**.
 - Auto-sorting, cross-dimensional networks, unloaded-chunk operation, and
   hopper/direct pipe integration are not part of this first implementation.
 
+## New 3×3 Pallet Transfer Point — first implementation (Issue #34)
+
+The original 2×2 **Order Collector Hub** remains as a legacy block. Its stored
+orders, collectors and pallet inventory are not automatically converted or
+deleted. **Do not replace an occupied old hub without emptying it.**
+
+### Building a basic point
+
+1. Craft **9 Pallet Transfer Blocks** (one shaped recipe outputs nine).
+2. Place all nine in one **3×3 square on the ground**. The ninth block
+   automatically activates one shared controller in the central square.
+3. Right-click any cell holding a pallet item. The pallet sits **centered**
+   over the platform, with its full 2×2 deck and up to three cargo layers
+   rendered above the platform.
+4. Right-click normally to open the existing pallet inventory and advanced
+   filter screen. **Sneak-right-click with an empty hand** to switch between
+   **INPUT** and **OUTPUT**. The mode persists through saves.
+5. To remove an empty pallet, sneak-right-click a platform while holding
+   another pallet item. Items stored in the platform must first be removed.
+
+All nine platform cells are separate replaceable material blocks but together
+form **one logical storage controller and inventory**. Breaking any cell
+unforms the platform, drops stored inventory and the installed pallet once
+in Survival, and leaves the other eight building blocks to reuse.
+
+### Optional modules
+
+- **PTP Hopper Adapter:** Right-click a platform **corner** using a Hopper
+  Adapter block item. It replaces that corner cell and extends above the floor
+  as a tall adapter fin. A hopper/pipe targeting that cell accesses the
+  *same* pallet inventory, not an extra cache. In **INPUT** mode it accepts
+  incoming stacks (subject to pallet filters); in **OUTPUT** mode it allows
+  extraction. The previous corner building block is returned when upgraded
+  in Survival. Transfer behavior assumes the connected pipe/hopper respects
+  the Minecraft `Container` inventory interface.
+- **PTP Wrap Unit:** Right-click one of the **four side-middle** platform
+  cells using a Wrap Unit block item. Click the Wrap Unit **empty-handed**
+  to seal a loaded pallet. Wrapped pallets have external retaining bands,
+  block access to the inventory and prevent hopper transfers.
+  **Shears** unwrap the pallet to restore its normal interactions.
+- Neither module can be installed in the center cell. These modules form the
+  initial material/capability framework; additional platform materials and
+  upgrades will be added in later phases.
+
+### Current limits
+
+This phase establishes the physical input/output **endpoint**, not a fully
+automatic storage network. New **Storage Golems**, golem shelves, scanner-based
+pallet movement, PTP-to-rack sorting and Rack Computer order selection for the
+new PTP are not implemented in this phase. Legacy Order Collector Hubs retain
+their prior virtual order logic until a safe migration is available.
+
+Test module orientation, shulker contents, module cell break/reassembly,
+read/write pipe direction, filter enforcement, sealing, and world persistence
+on a backed-up test world. Automated CI build success is not in-game proof.
+
 ## Suggested in-game regression checks
 
 - Place adjacent racks at north/east/south/west orientations and verify no
