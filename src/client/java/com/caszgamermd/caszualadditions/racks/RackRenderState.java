@@ -14,6 +14,7 @@ public final class RackRenderState extends BlockEntityRenderState {
     public final BlockModelRenderState nameplate=new BlockModelRenderState();
     public final boolean[] linkedFaces=new boolean[6];
     public String rackLabel="",aisleLabel="";
+    public final boolean[] aisleEndFaces=new boolean[6];
     public final ItemStackRenderState[] items=new ItemStackRenderState[CARGO];
     public final boolean[] boxed=new boolean[CARGO];
     public Direction facing=Direction.NORTH;
