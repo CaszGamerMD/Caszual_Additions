@@ -116,8 +116,12 @@ Open the computer with an empty hand. It can:
 - Click an item in a selected rack, type an order quantity (1–4096), and
   choose **REQUEST ITEMS**.
 
-The computer must be next to at least one rack for search, and next to an
-Order Collector Hub to queue collection orders. The terminal validates requests
+The computer must touch at least one rack to search. For orders, connect a
+Storage Golem Shelf group and an **OUTPUT** Pallet Transfer Point (touching
+either a shelf in the linked group or the Rack Computer). The terminal queues
+up to 16 pending output orders on that PTP; requests can wait safely for an
+unsealed output pallet or available stock. Legacy Order Collector Hubs
+remain supported if no output PTP is connected. All requests are validated
 on the server.
 
 ## Order Collector Hub
@@ -214,11 +218,11 @@ in Survival, and leaves the other eight building blocks to reuse.
 
 ### Current limits
 
-This phase establishes the physical input/output **endpoint**, not a fully
-automatic storage network. New **Storage Golems**, golem shelves, scanner-based
-pallet movement, PTP-to-rack sorting and Rack Computer order selection for the
-new PTP are not implemented in this phase. Legacy Order Collector Hubs retain
-their prior virtual order logic until a safe migration is available.
+The physical endpoint supports Storage Golem input sorting and output order
+fulfillment; both require a connected shelf and Rack Computer. The Storage
+Scanner, four-golem transport of wrapped pallets, and shelf-attached Shulker
+Tank packing are still planned. Existing legacy hubs retain their virtual
+order logic and saved state; no automatic migration is performed.
 
 Test module orientation, shulker contents, module cell break/reassembly,
 read/write pipe direction, filter enforcement, sealing, and world persistence
@@ -262,14 +266,37 @@ Breaking a shelf drops its currently *docked* workers, not deployed workers:
 a golem exists as either a shelved unit or an active world entity, never
 both. Deployed golems can be retrieved separately.
 
-### What's not automated yet
+### Output orders — physical Storage Golem retrieval
 
-This first worker phase handles **PTP INPUT sorting only**. Output orders
-from the Rack Computer still use the **legacy 2×2 Order Collector Hub**.
-Linked shelf-attached Shulker Tanks, golem-packed shulker shipments,
-real queued output retrieval, the Storage Scanner and coordinated
-four-golem wrapped pallet moving are subsequent phases. This prototype
-does not claim those features.
+1. Set a completed PTP to **OUTPUT** (sneak-right-click empty-handed);
+   install a pallet, and leave it **unsealed** for deliveries. Make sure its
+   pallet filter accepts the requested items.
+2. Place the output PTP touching the Rack Computer or a shelf in its linked
+   Storage Golem Shelf group. The computer still needs a physically connected
+   rack network.
+3. From the computer, select a rack item, enter the quantity (1–4096), and
+   click **REQUEST ITEMS**. Up to **16 FIFO orders per output PTP** are saved
+   across reloads. The computer shows pending order/item counts. Orders can
+   be submitted before the output pallet is ready.
+4. When a docked worker is available and sorting is in **AUTO**, it walks
+   to a rack with matching stock, withdraws at most 64 items, and physically
+   delivers them to the output pallet. A persisted single active reservation
+   per output point prevents multiple workers overfilling the same order.
+   The order quantity only decreases for items actually deposited.
+5. Full/filtered/sealed output pallets suspend future pickups. If capacity
+   or mode changes during travel, the worker walks back to its source rack,
+   returns any remaining cargo, and releases the unfulfilled reservation.
+   If returning cargo is impossible, the actual items drop by the rack for
+   recovery; cargo is never silently deleted. Breaking or recalling a worker
+   also releases a currently loaded output reservation.
+
+Output retrieval currently transports **loose items**. Linked shelf-attached
+Shulker Tanks and golem-packed shipments, the Storage Scanner, and coordinated
+four-golem sealed pallet moving are later phases. The original 2×2
+Order Collector Hub continues to operate independently.
+
+The new worker system needs client-side pathfinding and server reload QA;
+compilation alone cannot verify movement, collision, and recovery.
 
 CI verifies code compilation but not real mob navigation. Verify clearance
 around your shelves, golem pathing to the outside of racks and transfer
@@ -286,6 +313,13 @@ on a backed-up test world.
 - Fill a filtered rack, try to insert disallowed items by hand and quick-move.
 - Search for the same item in two racks; verify both highlight for ten seconds.
 - Queue an order without an output pallet; add one later and verify completion.
+- Request more than one stack through an OUTPUT PTP and confirm exact delivered count.
+- Seal the PTP or fill it mid-trip; verify the golem walks stock back and the
+  order resumes only after the PTP accepts more cargo.
+- Kill or recall a worker mid-output trip; confirm its cargo remains recoverable
+  and the outstanding order/reservation is not lost on a normal loaded-chunk run.
+- Save/reload during an outbound shipment and ensure it neither duplicates stock
+  nor strands the order reservation.
 - With a full or filtered output pallet, verify stock is not removed/lost.
 - Mix named/color empty shulkers in the magazine, then complete a packing order
   and examine contents and names.
