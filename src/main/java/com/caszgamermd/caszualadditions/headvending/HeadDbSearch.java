@@ -29,9 +29,9 @@ import net.minecraft.util.Util;
  * Searches HeadDB's official, small public API pages rather than blocking
  * every vending-machine lookup on a multi-megabyte full-catalog download.
  *
- * Upstream requires a minimum limit of 12; the vending screen displays 7.
- * We bridge the underlying 12-head pages to continuous seven-head UI pages
- * so that no heads are skipped or repeated between vending pages.
+ * Upstream pages have 12 heads. The client requests a dynamically sized
+ * responsive grid (12..72 entries), so bridge multiple remote pages into
+ * contiguous UI pages without skipping or duplicating heads.
  *
  * The server retains the validated returned hashes for purchase authorization.
  * The client never supplies arbitrary skins.
@@ -39,6 +39,7 @@ import net.minecraft.util.Util;
 public final class HeadDbSearch {
     private static final String API = "https://headdb.net/api/v1/heads";
     private static final int UPSTREAM_PAGE_SIZE = 12;
+    public static final int MAX_VIEW_PAGE_SIZE = 72;
     private static final int MAX_RESPONSE_BYTES = 1_000_000;
     private static final Pattern SKIN_URL_HASH = Pattern.compile(
             "textures\\.minecraft\\.net/texture/([a-fA-F0-9]{32,128})");
@@ -51,12 +52,14 @@ public final class HeadDbSearch {
 
     private HeadDbSearch() {}
 
-    public static CompletableFuture<String> searchAsync(String query, String category, int page) {
+    public static CompletableFuture<String> searchAsync(String query, String category,
+                                                        int page, int pageSize) {
+        int safeSize = Math.clamp(pageSize, 1, MAX_VIEW_PAGE_SIZE);
         return CompletableFuture.supplyAsync(() -> {
             try {
-                return search(query, category, page);
+                return search(query, category, page, safeSize);
             } catch (Exception failure) {
-                return error(query, category, page, failure);
+                return error(query, category, page, safeSize, failure);
             }
         }, Util.nonCriticalIoPool());
     }
@@ -91,23 +94,31 @@ public final class HeadDbSearch {
         return raw == null || raw.isBlank() ? "all" : raw.strip().toLowerCase(Locale.ROOT);
     }
 
-    private static String search(String query, String category, int requestedPage) throws Exception {
+    private static String search(String query, String category, int requestedPage,
+                                 int requestedSize) throws Exception {
         int page = Math.clamp(requestedPage, 0, 10_000);
-        int start = page * CustomHeadCatalog.PAGE_SIZE;
+        int pageSize = Math.clamp(requestedSize, 1, MAX_VIEW_PAGE_SIZE);
+        int start = page * pageSize;
         int remoteFirst = start / UPSTREAM_PAGE_SIZE + 1;
-        int remoteLast = (start + CustomHeadCatalog.PAGE_SIZE - 1) / UPSTREAM_PAGE_SIZE + 1;
+        int remoteLast = (start + pageSize - 1) / UPSTREAM_PAGE_SIZE + 1;
 
+        // Fetch only the 12-head API pages needed to fill this particular
+        // window-size grid. Do not retrieve the whole HeadDB catalog.
+        Map<Integer, RemotePage> sourcePages = new java.util.HashMap<>();
         RemotePage first = requestPage(query, category, remoteFirst);
-        RemotePage second = remoteLast == remoteFirst
-                ? first : requestPage(query, category, remoteLast);
-
-        JsonArray visible = new JsonArray();
+        sourcePages.put(remoteFirst, first);
         int total = first.total();
+        int lastAvailable = Math.min(remoteLast, Math.max(remoteFirst,
+                (Math.max(1, total) - 1) / UPSTREAM_PAGE_SIZE + 1));
+        for (int remote = remoteFirst + 1; remote <= lastAvailable; remote++) {
+            sourcePages.put(remote, requestPage(query, category, remote));
+        }
+        JsonArray visible = new JsonArray();
         int invalid = 0;
-        for (int i = start; i < Math.min(start + CustomHeadCatalog.PAGE_SIZE, total); i++) {
-            RemotePage source = i / UPSTREAM_PAGE_SIZE + 1 == remoteFirst ? first : second;
+        for (int i = start; i < Math.min(start + pageSize, total); i++) {
+            RemotePage source = sourcePages.get(i / UPSTREAM_PAGE_SIZE + 1);
             int index = i % UPSTREAM_PAGE_SIZE;
-            if (index >= source.items().size()) continue;
+            if (source == null || index >= source.items().size()) continue;
             CustomHeadCatalog.Head head = parseHead(source.items().get(index));
             if (head == null) {
                 invalid++;
@@ -125,6 +136,7 @@ public final class HeadDbSearch {
         response.addProperty("query", query);
         response.addProperty("category", category);
         response.addProperty("page", requestedPage);
+        response.addProperty("pageSize", pageSize);
         response.addProperty("total", total);
         JsonArray categories = new JsonArray();
         for (String name : knownCategories) categories.add(name);
