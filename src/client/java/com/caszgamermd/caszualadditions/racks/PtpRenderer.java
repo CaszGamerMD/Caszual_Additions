@@ -68,7 +68,7 @@ public final class PtpRenderer implements BlockEntityRenderer<PtpBlockEntity,Rac
             if(plastic)state.boards[i].tintLayers().add(PalletData.plasticColor(item));
         }
         blocks.update(state.carton,PalletContent.CARDBOARD_RENDER_PROXY.defaultBlockState(),DISPLAY);
-        blocks.update(state.nameplate,Blocks.LIGHT_GRAY_WOOL.defaultBlockState(),DISPLAY);
+        blocks.update(state.nameplate,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
         for(int slot=0;slot<ptp.getContainerSize() && state.visible<RackRenderState.CARGO;slot++){
             ItemStack stack=ptp.displayItem(slot);
             if(stack.isEmpty())continue;
