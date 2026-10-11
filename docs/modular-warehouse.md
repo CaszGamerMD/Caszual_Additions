@@ -224,6 +224,54 @@ Test module orientation, shulker contents, module cell break/reassembly,
 read/write pipe direction, filter enforcement, sealing, and world persistence
 on a backed-up test world. Automated CI build success is not in-game proof.
 
+## Storage Golems and linked shelves — input-sorting prototype
+
+**Storage Golems are their own small slate-steel and cyan warehouse mobs.**
+They are not Copper Golems. They use normal server-side pathfinding rather
+than teleporting items between containers.
+
+### Shelf and input sorting setup
+
+1. Craft a **Storage Golem Shelf** and place it next to a **Rack Computer**
+   that physically connects to your loaded rack network.
+2. Adjacent shelves connect into one bounded shelf group. Each block holds
+   **up to two docked Storage Golems**. Right-click a shelf with a crafted
+   Storage Golem item to insert it. The shelf renders the number currently
+   docked (zero, one, or two).
+3. Place a **3×3 Pallet Transfer Point** touching a shelf from this group
+   **or the Rack Computer**. Install a pallet and set the PTP to **INPUT**.
+4. Fill the input pallet. Every 40 ticks a stocked shelf checks whether
+   cargo can be accepted by any loaded rack in the computer's network.
+5. A Storage Golem physically leaves a shelf, walks to the input PTP,
+   picks up up to one stack and carries it to a compatible rack. It then
+   walks home and redocks, freeing its worker slot again.
+
+Pallet filters are respected. If the destination fills while a worker is
+traveling, it seeks another compatible rack. If none exists, it returns to
+the shelf and physically drops the actual cargo for recovery. A loaded
+worker and its cargo survive world saves/reloads; unloaded chunks are not
+force-loaded to fulfill work.
+
+**Sneak-right-click a deployed worker** to retrieve it as a Storage Golem
+item. If it has cargo, that cargo is returned to the player's inventory.
+Breaking a shelf drops its currently *docked* workers, not deployed workers:
+a golem exists as either a shelved unit or an active world entity, never
+both. Deployed golems can be retrieved separately.
+
+### What's not automated yet
+
+This first worker phase handles **PTP INPUT sorting only**. Output orders
+from the Rack Computer still use the **legacy 2×2 Order Collector Hub**.
+Linked shelf-attached Shulker Tanks, golem-packed shulker shipments,
+real queued output retrieval, the Storage Scanner and coordinated
+four-golem wrapped pallet moving are subsequent phases. This prototype
+does not claim those features.
+
+CI verifies code compilation but not real mob navigation. Verify clearance
+around your shelves, golem pathing to the outside of racks and transfer
+points, safe handling of full destinations, death and drops, and reloads
+on a backed-up test world.
+
 ## Suggested in-game regression checks
 
 - Place adjacent racks at north/east/south/west orientations and verify no
