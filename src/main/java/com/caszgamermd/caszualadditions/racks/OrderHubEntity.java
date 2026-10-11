@@ -161,37 +161,34 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
                 hub.queue.removeFirst();
                 if(rest>0)hub.queue.addFirst(new Order(order.id(),rest));
             } else {
-                // An ordinary output pallet can hold loose items even without
-                // a connected shulker tank; capacity is checked before taking.
-                int slot=hub.freeSlot(new ItemStack(target));
+                // FIRST identify the exact source stack, including components.
+                // Then reserve a compatible destination slot. Only afterwards
+                // remove items; a full pallet can never destroy items in transit.
+                RackBlockEntity source=null;
+                int sourceSlot=-1;
+                ItemStack sample=ItemStack.EMPTY;
+                outer: for(RackBlockEntity rack:racks){
+                    if(!rack.hasPallet())continue;
+                    for(int i=0;i<rack.getContainerSize();i++){
+                        ItemStack candidate=rack.getItem(i);
+                        if(!candidate.isEmpty()&&candidate.getItem()==target){
+                            source=rack;sourceSlot=i;sample=candidate;
+                            break outer;
+                        }
+                    }
+                }
+                if(source==null)continue;
+                int slot=hub.freeSlot(sample);
                 if(slot<0)continue;
                 ItemStack current=hub.output.get(slot);
-                int available=current.isEmpty()?new ItemStack(target).getMaxStackSize()
+                int available=current.isEmpty()?sample.getMaxStackSize()
                         :current.getMaxStackSize()-current.getCount();
                 if(available<=0)continue;
-                ItemStack received=take(level,racks,target,
+                ItemStack received=source.removeItem(sourceSlot,
                         Math.min(available,order.remaining()));
                 if(received.isEmpty())continue;
                 if(current.isEmpty())hub.output.set(slot,received);
-                else if(ItemStack.isSameItemSameComponents(current,received))
-                    current.grow(received.getCount());
-                else {
-                    // Different item components: use an empty output slot.
-                    int spare=-1;
-                    for(int i=0;i<SLOTS;i++)if(hub.output.get(i).isEmpty()){spare=i;break;}
-                    if(spare<0) {
-                        // Return rather than destroy items if all slots fill.
-                        for(RackBlockEntity rack:racks){
-                            for(int i=0;i<rack.getContainerSize();i++)
-                                if(rack.getItem(i).isEmpty() && rack.canPlaceItem(i,received)){
-                                    rack.setItem(i,received);spare=-2;break;
-                                }
-                            if(spare==-2)break;
-                        }
-                        continue;
-                    }
-                    hub.output.set(spare,received);
-                }
+                else current.grow(received.getCount());
                 hub.setChanged();
                 int rest=order.remaining()-received.getCount();
                 hub.queue.removeFirst();
