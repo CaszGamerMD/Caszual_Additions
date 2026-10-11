@@ -38,7 +38,8 @@ public final class CaszualItemGroups {
                                     RackContent.PALLET_FILTER,RackContent.HUB_ITEM,
                                     RackContent.TANK_ITEM,RackContent.ORDER_COLLECTOR,
                                     RackContent.PTP_TRANSFER_ITEM,RackContent.PTP_HOPPER_ITEM,
-                                    RackContent.PTP_WRAP_ITEM))
+                                    RackContent.PTP_WRAP_ITEM,
+                                    RackContent.STORAGE_SHELF_ITEM,RackContent.STORAGE_GOLEM_ITEM))
                                 output.accept(new ItemStack(item));
                             BuiltInRegistries.ITEM.forEach(item -> {
                                 if (item == FunBarrelContent.ITEM) return;

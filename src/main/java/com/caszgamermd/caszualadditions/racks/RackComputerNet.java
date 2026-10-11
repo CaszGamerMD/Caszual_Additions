@@ -5,6 +5,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +63,15 @@ public final class RackComputerNet {
                 StreamCodec.composite(ByteBufCodecs.stringUtf8(220),OrderReply::message,OrderReply::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
+    public record GolemControl(BlockPos computer,boolean enabled)
+            implements CustomPacketPayload {
+        public static final Type<GolemControl> TYPE=new Type<>(
+                CaszualAdditions.id("storage_golem_control"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,GolemControl> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,GolemControl::computer,
+                        ByteBufCodecs.BOOL,GolemControl::enabled,GolemControl::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
     private static final Map<ServerLevel,Map<BlockPos,Long>> HIGHLIGHTS=new WeakHashMap<>();
     private RackComputerNet() {}
 
@@ -70,10 +81,13 @@ public final class RackComputerNet {
         PayloadTypeRegistry.clientboundPlay().register(Snapshot.TYPE,Snapshot.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(OrderRequest.TYPE,OrderRequest.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(OrderReply.TYPE,OrderReply.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(GolemControl.TYPE,GolemControl.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(Query.TYPE,(payload,context)->
                 context.server().execute(()->answer(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(OrderRequest.TYPE,(payload,context)->
                 context.server().execute(()->acceptOrder(context.player(),payload)));
+        ServerPlayNetworking.registerGlobalReceiver(GolemControl.TYPE,(payload,context)->
+                context.server().execute(()->setGolemSorting(context.player(),payload)));
         ServerTickEvents.END_LEVEL_TICK.register(level->{
             Map<BlockPos,Long> map=HIGHLIGHTS.get(level);
             if(map==null||level.getGameTime()%10!=0)return;
@@ -88,6 +102,31 @@ public final class RackComputerNet {
 
     private static void reply(ServerPlayer player,String message) {
         ServerPlayNetworking.send(player,new OrderReply(message));
+    }
+
+    private static List<StorageGolemShelfEntity> nearbyShelves(
+            ServerLevel level,BlockPos computer) {
+        List<StorageGolemShelfEntity> found=new ArrayList<>();
+        Set<BlockPos> seen=new HashSet<>();
+        for(net.minecraft.core.Direction side:net.minecraft.core.Direction.values()){
+            BlockPos at=computer.relative(side);
+            if(!level.hasChunkAt(at)
+                    ||!level.getBlockState(at).is(RackContent.STORAGE_SHELF))continue;
+            for(StorageGolemShelfEntity shelf:StorageGolemShelfEntity.linked(level,at))
+                if(seen.add(shelf.getBlockPos()))found.add(shelf);
+        }
+        return found;
+    }
+    private static void setGolemSorting(ServerPlayer player,GolemControl control){
+        ServerLevel level=player.level();
+        BlockPos at=control.computer();
+        if(player.distanceToSqr(at.getX()+.5,at.getY()+.5,at.getZ()+.5)>100
+                ||!level.getBlockState(at).is(RackContent.RACK_COMPUTER))return;
+        List<StorageGolemShelfEntity> shelves=nearbyShelves(level,at);
+        if(shelves.isEmpty()){reply(player,"Connect a Storage Golem Shelf to this computer.");return;}
+        for(StorageGolemShelfEntity s:shelves)s.setSortingEnabled(control.enabled());
+        reply(player,control.enabled()?"Storage Golem sorting enabled.":"Storage Golem sorting paused.");
+        answer(player,new Query(at,"",BlockPos.ZERO));
     }
 
     private static void acceptOrder(ServerPlayer player,OrderRequest order) {
@@ -148,6 +187,12 @@ public final class RackComputerNet {
         JsonArray list=new JsonArray();
         root.addProperty("query",term);
         root.addProperty("networkSize",racks.size());
+        List<StorageGolemShelfEntity> shelves=nearbyShelves(level,computer);
+        root.addProperty("shelfCount",shelves.size());
+        root.addProperty("dockedGolems",shelves.stream()
+                .mapToInt(StorageGolemShelfEntity::docked).sum());
+        root.addProperty("golemSortingEnabled",
+                !shelves.isEmpty()&&shelves.stream().anyMatch(StorageGolemShelfEntity::sortingEnabled));
         // A PTP must be physically next to the computer. This discovery
         // does not imply golem order fulfillment is implemented yet.
         for(net.minecraft.core.Direction side:net.minecraft.core.Direction.values()){

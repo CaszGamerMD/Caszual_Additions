@@ -25,6 +25,9 @@ public final class RackComputerScreen extends Screen {
     private int totalRacks, totalItems, scroll;
     private String status="Connecting to racks...";
     private String transferPointStatus="";
+    private Button golemButton;
+    private int shelfCount,dockedGolems;
+    private boolean golemSorting;
     private int savedQueryLength;
 
     public RackComputerScreen(BlockPos computer) {
@@ -44,9 +47,14 @@ public final class RackComputerScreen extends Screen {
                 b->sendQuery()).bounds(width-225,y,90,23).build());
         addRenderableWidget(Button.builder(Component.literal("Refresh"),
                 b->sendQuery()).bounds(width-128,y,90,23).build());
+        int orderInputX=Math.max(22,width-230);
+        golemButton=addRenderableWidget(Button.builder(
+                Component.literal("GOLEMS: AUTO"),btn->{
+                    ClientPlayNetworking.send(new RackComputerNet.GolemControl(
+                            computer,!golemSorting));
+                }).bounds(22,height-63,Math.max(40,orderInputX-30),22).build());
         // Put the order controls in their own full-width footer so they
         // remain clickable at high Minecraft GUI Scale settings.
-        int orderInputX=Math.max(22,width-230);
         orderQuantity=addRenderableWidget(new EditBox(font,orderInputX,height-63,
                 56,22,Component.literal("Order quantity")));
         orderQuantity.setMaxLength(4);
@@ -94,6 +102,15 @@ public final class RackComputerScreen extends Screen {
             contents=obj.has("contents")?obj.getAsJsonArray("contents"):new JsonArray();
             totalRacks=obj.get("networkSize").getAsInt();
             totalItems=obj.get("totalItems").getAsInt();
+            shelfCount=obj.has("shelfCount")?obj.get("shelfCount").getAsInt():0;
+            dockedGolems=obj.has("dockedGolems")?obj.get("dockedGolems").getAsInt():0;
+            golemSorting=obj.has("golemSortingEnabled")
+                    &&obj.get("golemSortingEnabled").getAsBoolean();
+            if(golemButton!=null){
+                golemButton.active=shelfCount>0;
+                golemButton.setMessage(Component.literal("GOLEMS: "
+                        +(golemSorting?"AUTO":"PAUSED")+" ("+dockedGolems+")"));
+            }
             transferPointStatus=obj.has("ptpSummary")
                     ?obj.get("ptpSummary").getAsString():"";
             status=(racks.size())+" matching racks in "+totalRacks+" connected racks";

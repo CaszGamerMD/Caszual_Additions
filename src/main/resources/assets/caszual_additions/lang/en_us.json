@@ -97,5 +97,8 @@
   "item.caszual_additions.order_collector": "Order Collector",
   "block.caszual_additions.pallet_transfer_block": "Pallet Transfer Block",
   "block.caszual_additions.ptp_hopper_adapter": "PTP Hopper Adapter",
-  "block.caszual_additions.ptp_wrap_unit": "PTP Wrap Unit"
+  "block.caszual_additions.ptp_wrap_unit": "PTP Wrap Unit",
+  "block.caszual_additions.storage_golem_shelf": "Storage Golem Shelf",
+  "item.caszual_additions.storage_golem": "Storage Golem",
+  "entity.caszual_additions.storage_golem": "Storage Golem"
 }
