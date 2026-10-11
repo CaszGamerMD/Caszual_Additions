@@ -55,7 +55,7 @@ public final class RackComputerNet {
         PayloadTypeRegistry.clientboundPlay().register(Snapshot.TYPE,Snapshot.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(Query.TYPE,(payload,context)->
                 context.server().execute(()->answer(context.player(),payload)));
-        ServerTickEvents.END_WORLD_TICK.register(level->{
+        ServerTickEvents.END_LEVEL_TICK.register(level->{
             Map<BlockPos,Long> map=HIGHLIGHTS.get(level);
             if(map==null||level.getGameTime()%10!=0)return;
             map.entrySet().removeIf(e->e.getValue()<=level.getGameTime());

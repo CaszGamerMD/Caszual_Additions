@@ -24,11 +24,11 @@ public final class PalletFilterItem extends Item {
         ItemStack sample=player.getOffhandItem();
         if(sample.isEmpty() || sample.is(this)){
             pallet.clearFilter();
-            player.displayClientMessage(Component.literal("Pallet filter removed."),true);
+            player.sendSystemMessage(Component.literal("Pallet filter removed."));
         } else {
             pallet.setFilter(sample);
-            player.displayClientMessage(Component.literal(
-                    "Pallet accepts only " + sample.getHoverName().getString()),true);
+            player.sendSystemMessage(Component.literal(
+                    "Pallet accepts only " + sample.getHoverName().getString()));
         }
         if(!player.getAbilities().instabuild)
             context.getItemInHand().shrink(1);

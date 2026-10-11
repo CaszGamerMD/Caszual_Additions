@@ -119,12 +119,12 @@ public final class RackBlock extends Block implements EntityBlock {
             if (held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem
                     && blockItem.getBlock() instanceof PalletBlock) {
                 if (rack.hasPallet()) {
-                    server.displayClientMessage(net.minecraft.network.chat.Component.literal("This rack already has a pallet."), true);
+                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal("This rack already has a pallet."));
                     return InteractionResult.SUCCESS;
                 }
                 rack.install(held.copyWithCount(1));
                 if (!player.getAbilities().instabuild) held.shrink(1);
-                server.displayClientMessage(net.minecraft.network.chat.Component.literal("Pallet installed."), true);
+                server.sendSystemMessage(net.minecraft.network.chat.Component.literal("Pallet installed."));
                 return InteractionResult.SUCCESS;
             }
             if (held.is(RackContent.RACK_TAG) || held.is(RackContent.AISLE_TAG)) {
@@ -132,27 +132,27 @@ public final class RackBlock extends Block implements EntityBlock {
                 if (held.is(RackContent.RACK_TAG)) rack.setRackName(name.equals("Rack Tag") ? "Rack" : name);
                 else rack.setAisleName(name.equals("Aisle Tag") ? "Aisle" : name);
                 if (!player.getAbilities().instabuild) held.shrink(1);
-                server.displayClientMessage(net.minecraft.network.chat.Component.literal("Label updated: " + rack.displayName()), true);
+                server.sendSystemMessage(net.minecraft.network.chat.Component.literal("Label updated: " + rack.displayName()));
                 return InteractionResult.SUCCESS;
             }
             if (held.is(RackContent.CONNECTOR)) {
                 Direction side = hit.getDirection();
                 rack.toggleConnector(side);
                 if (!player.getAbilities().instabuild) held.shrink(1);
-                server.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
                         "Rack connector " + (rack.hasConnector(side) ? "enabled" : "disabled")
-                        + " on " + side.getName()), true);
+                        + " on " + side.getName()));
                 return InteractionResult.SUCCESS;
             }
             if (held.is(RackContent.PALLET_FILTER)) {
                 ItemStack sample = player.getOffhandItem();
                 if (sample.isEmpty() || sample.is(RackContent.PALLET_FILTER)) {
-                    server.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                            "Hold a sample item in your offhand to set this pallet's filter."), true);
+                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                            "Hold a sample item in your offhand to set this pallet's filter."));
                 } else {
                     rack.setFilter(sample);
-                    server.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                            "Pallet accepts only " + sample.getHoverName().getString()), true);
+                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                            "Pallet accepts only " + sample.getHoverName().getString()));
                     if (!player.getAbilities().instabuild) held.shrink(1);
                 }
                 return InteractionResult.SUCCESS;
@@ -170,12 +170,12 @@ public final class RackBlock extends Block implements EntityBlock {
                     if (rack.hasPallet() && rack.isEmpty()) {
                         player.getInventory().placeItemBackInInventory(rack.takePallet());
                     } else {
-                        server.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                                "Empty this rack's pallet before removing it."), true);
+                        server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                                "Empty this rack's pallet before removing it."));
                     }
                 } else if (rack.hasPallet()) server.openMenu(rack);
-                else server.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                        "Right-click with a pallet item to load this rack."), true);
+                else server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                        "Right-click with a pallet item to load this rack."));
             }
         }
         return InteractionResult.SUCCESS;
