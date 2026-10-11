@@ -235,7 +235,9 @@ public final class RackComputerNet {
             if(rack.getBlockPos().equals(query.selected())) selected=rack;
             totalItems+=(int)Math.min(Integer.MAX_VALUE-rack.totalItems(),rack.totalItems());
             if(list.size()>=RackNetwork.LIMIT)continue;
-            boolean hit=term.isEmpty() || RackNetwork.label(level,rack).toLowerCase(java.util.Locale.ROOT).contains(term);
+            boolean hit=term.isEmpty()
+                    || RackNetwork.label(level,rack).toLowerCase(java.util.Locale.ROOT).contains(term)
+                    || RackNetwork.aisle(level,rack).toLowerCase(java.util.Locale.ROOT).contains(term);
             if(!hit) {
                 for(int i=0;i<rack.getContainerSize();i++){
                     ItemStack stack=rack.getItem(i);
