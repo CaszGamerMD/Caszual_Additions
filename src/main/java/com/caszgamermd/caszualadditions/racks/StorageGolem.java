@@ -93,6 +93,10 @@ public final class StorageGolem extends PathfinderMob {
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel level)||tickCount%10!=0)return;
+        if(outputJob&&outputTicket!=0){
+            PtpBlockEntity ptp=outputPoint(level);
+            if(ptp!=null)ptp.renewOutput(outputTicket);
+        }
         BlockPos target=stage==0||stage==3?source:stage==1?destination:home;
         BlockPos walkway=approach(level,target);
         if(!level.hasChunkAt(target) || !level.hasChunkAt(walkway))return;
