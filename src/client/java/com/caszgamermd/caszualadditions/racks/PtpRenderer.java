@@ -40,6 +40,9 @@ public final class PtpRenderer implements BlockEntityRenderer<PtpBlockEntity,Rac
         BlockEntityRenderer.super.extractRenderState(ptp,state,partial,camera,cracks);
         state.pallet=ptp.hasPallet();
         state.sealed=ptp.sealed();
+        state.inputMode=ptp.input();
+        blocks.update(state.statusLamp,(ptp.input()?Blocks.EMERALD_BLOCK:Blocks.REDSTONE_BLOCK)
+                .defaultBlockState(),DISPLAY);
         state.visible=0;
         if(!state.pallet){
             for(var item:state.items)item.clear();
@@ -87,6 +90,11 @@ public final class PtpRenderer implements BlockEntityRenderer<PtpBlockEntity,Rac
         // The controller is at the CENTER block of the 3x3 floor.
         // A 2x2 pallet centered over it must extend half a block each way.
         poses.translate(-.5,.25,-.5);
+        // Four indicator lamps occupy the exposed 3x3 ring, not the
+        // centered pallet. Green = input, red = output.
+        for(float x:new float[]{-.32f,2.15f})
+            for(float z:new float[]{-.32f,2.15f})
+                box(state.statusLamp,state,poses,collector,x,.015f,z,.17f,.09f,.17f);
         for(int i=0;i<4;i++){
             float x=.04f+i*.49f;
             box(state.boards[i],state,poses,collector,x,.19f,.015f,.43f,.105f,.985f);
