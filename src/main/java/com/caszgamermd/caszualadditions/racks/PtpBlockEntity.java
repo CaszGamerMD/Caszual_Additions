@@ -3,6 +3,7 @@ package com.caszgamermd.caszualadditions.racks;
 import com.caszgamermd.caszualadditions.pallet.PalletData;
 import com.caszgamermd.caszualadditions.pallet.PalletFilterCarrier;
 import com.caszgamermd.caszualadditions.pallet.PalletMenu;
+import java.util.ArrayDeque;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -32,12 +33,87 @@ public final class PtpBlockEntity extends BlockEntity
     private int filterMode,filterScope;
     private String filterTarget="",filterSignature="";
     private boolean input=true,sealed;
+    // Orders belong to the output endpoint, not a remote/global virtual hub.
+    // A persisted reservation prevents multiple walking workers from
+    // withdrawing more than the head order requests.
+    public record OutputOrder(String itemId,int remaining) {}
+    public static final int MAX_OUTPUT_ORDERS=16;
+    private final ArrayDeque<OutputOrder> outputOrders=new ArrayDeque<>();
+    private int activeTicket,ticketSequence,reservedOutput;
+    // Leases survive reload. A missing worker cannot permanently block FIFO.
+    private long ticketDeadline;
+    private static final long TICKET_LEASE_TICKS=2400; // two minutes
+    private void expireTicket(){
+        if(activeTicket!=0 && level!=null && level.getGameTime()>ticketDeadline){
+            activeTicket=0;reservedOutput=0;ticketDeadline=0;
+            setChanged();
+        }
+    }
+    public void renewOutput(int ticket){
+        if(ticket!=0&&ticket==activeTicket&&level!=null){
+            ticketDeadline=level.getGameTime()+TICKET_LEASE_TICKS;
+            // Heartbeats refresh in memory. Avoid chunk saves every 10 ticks;
+            // the persisted lease is also refreshed at pickup/delivery.
+        }
+    }
     public PtpBlockEntity(BlockPos pos,BlockState state){super(RackContent.PTP_ENTITY,pos,state);}
     public boolean input(){return input;}
     public void setInput(boolean v){input=v;setChanged();}
     public boolean sealed(){return sealed;}
     public void setSealed(boolean v){if(hasPallet()){sealed=v;setChanged();}}
     public boolean hasPallet(){return !pallet.isEmpty();}
+    public boolean readyForOutput(){return !input&&!sealed&&hasPallet();}
+    public int pendingOutputOrders(){return outputOrders.size();}
+    public int pendingOutputItems(){
+        int count=0;
+        for(OutputOrder order:outputOrders)count+=order.remaining();
+        return count;
+    }
+    public OutputOrder nextOutputOrder(){return outputOrders.peekFirst();}
+    public boolean queueOutput(String itemId,int quantity){
+        if(input||itemId==null||itemId.isBlank()||quantity<1||quantity>4096
+                ||outputOrders.size()>=MAX_OUTPUT_ORDERS)return false;
+        outputOrders.addLast(new OutputOrder(itemId,quantity));
+        setChanged();return true;
+    }
+    /** At most one outbound job per output point, across all linked shelves. */
+    public int reserveOutput(String itemId,int quantity){
+        expireTicket();
+        OutputOrder next=outputOrders.peekFirst();
+        if(!readyForOutput()||activeTicket!=0||next==null||quantity<1
+                ||quantity>next.remaining()||!next.itemId().equals(itemId))return 0;
+        ticketSequence=ticketSequence==Integer.MAX_VALUE?1:ticketSequence+1;
+        if(ticketSequence==0)ticketSequence=1;
+        activeTicket=ticketSequence;
+        reservedOutput=quantity;
+        ticketDeadline=level==null?0:level.getGameTime()+TICKET_LEASE_TICKS;
+        setChanged();
+        return activeTicket;
+    }
+    public boolean hasReservation(int ticket){
+        expireTicket();
+        return ticket!=0&&ticket==activeTicket&&reservedOutput>0;
+    }
+    /** Commit only items that actually reached this output pallet. */
+    public void outputDelivered(int ticket,int quantity){
+        if(!hasReservation(ticket)||quantity<=0)return;
+        OutputOrder order=outputOrders.peekFirst();
+        if(order==null)return;
+        int done=Math.min(quantity,Math.min(reservedOutput,order.remaining()));
+        reservedOutput-=done;
+        outputOrders.removeFirst();
+        if(order.remaining()>done)
+            outputOrders.addFirst(new OutputOrder(order.itemId(),order.remaining()-done));
+        if(reservedOutput==0){activeTicket=0;ticketDeadline=0;}
+        else if(level!=null)ticketDeadline=level.getGameTime()+TICKET_LEASE_TICKS;
+        setChanged();
+    }
+    /** A failed, recalled or killed worker must free the unfulfilled quantity. */
+    public void releaseOutput(int ticket){
+        if(ticket!=0&&ticket==activeTicket){
+            activeTicket=0;reservedOutput=0;ticketDeadline=0;setChanged();
+        }
+    }
     public ItemStack palletStack(){return pallet.copy();}
     public ItemStack displayItem(int slot){return slot>=0&&slot<SLOTS?contents.get(slot).copy():ItemStack.EMPTY;}
     public boolean emptyCargo(){for(ItemStack s:contents)if(!s.isEmpty())return false;return true;}
@@ -143,6 +219,17 @@ public final class PtpBlockEntity extends BlockEntity
         out.putInt("filter_mode",filterMode);
         out.putInt("filter_scope",filterScope);
         out.putBoolean("input",input);out.putBoolean("sealed",sealed);
+        out.putInt("output_orders",outputOrders.size());
+        int orderIndex=0;
+        for(OutputOrder order:outputOrders){
+            out.putString("output_order_id_"+orderIndex,order.itemId());
+            out.putInt("output_order_qty_"+orderIndex,order.remaining());
+            orderIndex++;
+        }
+        out.putInt("output_ticket_sequence",ticketSequence);
+        out.putInt("output_active_ticket",activeTicket);
+        out.putInt("output_reserved",reservedOutput);
+        out.putLong("output_ticket_deadline",ticketDeadline);
     }
     @Override protected void loadAdditional(ValueInput in){
         super.loadAdditional(in);
@@ -156,6 +243,21 @@ public final class PtpBlockEntity extends BlockEntity
         filterScope=Math.clamp(in.getIntOr("filter_scope",0),0,3);
         input=in.getBooleanOr("input",true);
         sealed=in.getBooleanOr("sealed",false)&&hasPallet();
+        outputOrders.clear();
+        int orders=Math.clamp(in.getIntOr("output_orders",0),0,MAX_OUTPUT_ORDERS);
+        for(int i=0;i<orders;i++){
+            String itemId=in.getStringOr("output_order_id_"+i,"");
+            int quantity=in.getIntOr("output_order_qty_"+i,0);
+            if(!itemId.isBlank()&&quantity>0&&quantity<=4096)
+                outputOrders.addLast(new OutputOrder(itemId,quantity));
+        }
+        ticketSequence=Math.max(0,in.getIntOr("output_ticket_sequence",0));
+        activeTicket=Math.max(0,in.getIntOr("output_active_ticket",0));
+        reservedOutput=Math.max(0,in.getIntOr("output_reserved",0));
+        ticketDeadline=in.getLongOr("output_ticket_deadline",0);
+        if(outputOrders.isEmpty()||reservedOutput==0||activeTicket==0){
+            activeTicket=0;reservedOutput=0;ticketDeadline=0;
+        }else reservedOutput=Math.min(reservedOutput,outputOrders.peekFirst().remaining());
     }
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider lookup){return saveWithoutMetadata(lookup);}
     @Override public ClientboundBlockEntityDataPacket getUpdatePacket(){

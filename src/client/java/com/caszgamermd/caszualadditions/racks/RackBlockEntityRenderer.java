@@ -6,6 +6,8 @@ import com.caszgamermd.caszualadditions.pallet.PalletData;
 import com.caszgamermd.caszualadditions.pallet.PalletKind;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import java.util.Map;
+import java.util.WeakHashMap;
 import net.minecraft.client.gui.Font;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -37,6 +39,10 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
     private final BlockModelResolver blocks;
     private final ItemModelResolver items;
     private final Font font;
+    // Aisle discovery is bounded but scans connected racks. Do not perform
+    // that traversal for every rack on every rendered frame.
+    private record AisleCache(String name,long expiresAt) {}
+    private final Map<RackBlockEntity,AisleCache> aisleCache=new WeakHashMap<>();
     public RackBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
         blocks=context.blockModelResolver();
         items=context.itemModelResolver();
@@ -48,8 +54,36 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             float partial,Vec3 camera,ModelFeatureRenderer.@Nullable CrumblingOverlay cracks){
         BlockEntityRenderer.super.extractRenderState(rack,state,partial,camera,cracks);
         state.facing=rack.facing();
-        state.rackLabel=rack.hasRackPlate()?rack.displayName():"";
-        state.aisleLabel=rack.hasAislePlate()?rack.aisleName():"";
+        var world=rack.getLevel();
+        String aisle="";
+        if(world!=null){
+            long now=world.getGameTime();
+            AisleCache cached=aisleCache.get(rack);
+            if(cached==null||now>=cached.expiresAt()){
+                aisle=RackNetwork.aisle(world,rack);
+                // Spread updates between frames; changes show within 1–2 s.
+                long phase=Math.floorMod(rack.getBlockPos().hashCode(),20);
+                aisleCache.put(rack,new AisleCache(aisle,now+20+phase));
+            }else aisle=cached.name();
+        }
+        state.rackLabel=rack.hasRackPlate()
+                ?(aisle.isBlank()||rack.rackName().isBlank()
+                    ?rack.displayName():aisle+"-"+rack.rackName()):"";
+        state.aisleLabel=aisle;
+        // The aisle sign belongs at the outer ends of the whole row,
+        // not over each rack's front. A new bay hides the old interior
+        // end plate and moves the label to the newly exposed end.
+        for(Direction side:Direction.values())state.aisleEndFaces[side.get3DDataValue()]=false;
+        if(world!=null&&!aisle.isBlank()){
+            for(Direction side:new Direction[]{
+                    rack.facing().getClockWise(),rack.facing().getCounterClockWise()}){
+                BlockPos neighboring=rack.getBlockPos().relative(side,2);
+                RackBlockEntity adjacent=world.hasChunkAt(neighboring)
+                        ?RackBlock.controller(world,neighboring):null;
+                state.aisleEndFaces[side.get3DDataValue()]=
+                        adjacent==null||!RackNetwork.aisleNeighbors(world,rack,adjacent);
+            }
+        }
         blocks.update(state.crossBeam,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
         blocks.update(state.nameplate,Blocks.POLISHED_DEEPSLATE.defaultBlockState(),DISPLAY);
         for(Direction side:Direction.values()){
@@ -163,7 +197,7 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
         poses.popPose();
     }
 
-    /** Metal X-braces and two small real-world name plates on the rack front. */
+    /** Metal X-braces, front rack ID, and aisle signs on the exposed row ends. */
     private void submitRackAccessories(RackRenderState state,PoseStack poses,
             SubmitNodeCollector collector) {
         Direction front=state.facing;
@@ -203,10 +237,28 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             poses.popPose();
         }
 
-        if(state.rackLabel.isBlank()&&state.aisleLabel.isBlank())return;
+        if(!state.rackLabel.isBlank())
+            submitFacingPlate(state,poses,collector,state.rackLabel,
+                    front,x,z,2.31f,0xffe4f0f5);
+        // Label both accessible ends of the aisle. Interior faces are
+        // automatically suppressed, even when the Aisle Tag was attached
+        // to a rack in the middle of the row.
+        if(!state.aisleLabel.isBlank()){
+            for(Direction side:new Direction[]{front.getClockWise(),
+                    front.getCounterClockWise()}){
+                if(state.aisleEndFaces[side.get3DDataValue()])
+                    submitFacingPlate(state,poses,collector,state.aisleLabel,
+                            side,x,z,2.61f,0xffffde9b);
+            }
+        }
+    }
+
+    private void submitFacingPlate(RackRenderState state,PoseStack poses,
+            SubmitNodeCollector collector,String label,Direction face,
+            float x,float z,float y,int color) {
         poses.pushPose();
         poses.translate(x+1.0,0,z+1.0);
-        float angle=switch(front){
+        float angle=switch(face){
             case NORTH -> 0f;
             case EAST -> -90f;
             case SOUTH -> 180f;
@@ -214,12 +266,8 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             default -> 0f;
         };
         poses.mulPose(Axis.YP.rotationDegrees(angle));
-        // After rotation local NORTH always points into the clear upgrade aisle.
         poses.translate(-1.0,0,-1.0);
-        if(!state.aisleLabel.isBlank())
-            submitPlate(state,poses,collector,state.aisleLabel,2.61f,0xffffde9b);
-        if(!state.rackLabel.isBlank())
-            submitPlate(state,poses,collector,state.rackLabel,2.31f,0xffe4f0f5);
+        submitPlate(state,poses,collector,label,y,color);
         poses.popPose();
     }
 

@@ -153,6 +153,20 @@ public final class RackComputerNet {
             if(found)break;
         }
         if(!found){reply(player,"Item not found in connected racks.");return;}
+        List<StorageGolemShelfEntity> shelves=nearbyShelves(level,computer);
+        PtpBlockEntity output=StorageGolemDispatch.outputPoint(level,shelves,computer);
+        if(output!=null){
+            if(shelves.isEmpty()){
+                reply(player,"Attach a Storage Golem Shelf to this Rack Computer.");return;
+            }
+            if(!output.queueOutput(order.itemId(),order.quantity())){
+                reply(player,"Output PTP order queue is full (16 max).");return;
+            }
+            reply(player,"Storage Golems queued "+order.quantity()+" × "
+                    +new ItemStack(item).getHoverName().getString()
+                    +(output.readyForOutput()?" for output.":" — awaiting an unsealed output pallet."));
+            return;
+        }
         OrderHubEntity hub=OrderHubEntity.nextToComputer(level,computer);
         if(hub==null) {
             for(net.minecraft.core.Direction side:net.minecraft.core.Direction.values()){
@@ -160,8 +174,8 @@ public final class RackComputerNet {
                 if(!level.hasChunkAt(candidate))continue;
                 PtpBlockEntity point=PtpBlock.controller(level,candidate);
                 if(point!=null){
-                    reply(player,"PTP detected: automated collection requires future Storage Golems. "
-                            +"Use a legacy collector hub for now.");
+                    reply(player,"Set a transfer point to OUTPUT and connect "
+                            +"a Storage Golem Shelf to this computer.");
                     return;
                 }
             }
@@ -193,17 +207,25 @@ public final class RackComputerNet {
                 .mapToInt(StorageGolemShelfEntity::docked).sum());
         root.addProperty("golemSortingEnabled",
                 !shelves.isEmpty()&&shelves.stream().anyMatch(StorageGolemShelfEntity::sortingEnabled));
-        // A PTP must be physically next to the computer. This discovery
-        // does not imply golem order fulfillment is implemented yet.
+        // Linked shelves can also reach an output PTP without requiring
+        // its controller to sit immediately against the computer.
+        PtpBlockEntity outbound=StorageGolemDispatch.outputPoint(level,shelves,computer);
+        if(outbound!=null)
+            root.addProperty("ptpSummary","PTP OUTPUT / "+
+                    (outbound.hasPallet()?"pallet loaded":"no pallet")
+                    +(outbound.sealed()?" / SEALED":"")
+                    +" / "+outbound.pendingOutputOrders()+" queued order(s)"
+                    +" / "+outbound.pendingOutputItems()+" outstanding items");
         for(net.minecraft.core.Direction side:net.minecraft.core.Direction.values()){
             BlockPos adjacent=computer.relative(side);
             if(!level.hasChunkAt(adjacent))continue;
             PtpBlockEntity ptp=PtpBlock.controller(level,adjacent);
             if(ptp==null)continue;
-            root.addProperty("ptpSummary","PTP "+(ptp.input()?"INPUT":"OUTPUT")
-                    +" / "+(ptp.hasPallet()?"pallet loaded":"no pallet")
-                    +(ptp.sealed()?" / SEALED":"")
-                    +(ptp.hasAdapter()?" / hopper adapter":""));
+            if(outbound==null)
+                root.addProperty("ptpSummary","PTP "+(ptp.input()?"INPUT":"OUTPUT")
+                        +" / "+(ptp.hasPallet()?"pallet loaded":"no pallet")
+                        +(ptp.sealed()?" / SEALED":"")
+                        +(ptp.hasAdapter()?" / hopper adapter":""));
             break;
         }
         int matches=0;
@@ -213,7 +235,9 @@ public final class RackComputerNet {
             if(rack.getBlockPos().equals(query.selected())) selected=rack;
             totalItems+=(int)Math.min(Integer.MAX_VALUE-rack.totalItems(),rack.totalItems());
             if(list.size()>=RackNetwork.LIMIT)continue;
-            boolean hit=term.isEmpty() || RackNetwork.label(level,rack).toLowerCase(java.util.Locale.ROOT).contains(term);
+            boolean hit=term.isEmpty()
+                    || RackNetwork.label(level,rack).toLowerCase(java.util.Locale.ROOT).contains(term)
+                    || RackNetwork.aisle(level,rack).toLowerCase(java.util.Locale.ROOT).contains(term);
             if(!hit) {
                 for(int i=0;i<rack.getContainerSize();i++){
                     ItemStack stack=rack.getItem(i);

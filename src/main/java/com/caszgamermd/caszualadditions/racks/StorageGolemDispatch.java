@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions.racks;
 
 import java.util.List;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -45,6 +46,72 @@ public final class StorageGolemDispatch {
                 return ptp;
         }
         return null;
+    }
+    static PtpBlockEntity outputPoint(ServerLevel level,
+            List<StorageGolemShelfEntity> group,BlockPos computer){
+        for(StorageGolemShelfEntity shelf:group)
+            for(Direction dir:Direction.values()){
+                BlockPos p=shelf.getBlockPos().relative(dir);
+                if(!level.hasChunkAt(p))continue;
+                PtpBlockEntity point=PtpBlock.controller(level,p);
+                if(point!=null&&!point.input())
+                    return point;
+            }
+        for(Direction dir:Direction.values()){
+            BlockPos p=computer.relative(dir);
+            if(!level.hasChunkAt(p))continue;
+            PtpBlockEntity point=PtpBlock.controller(level,p);
+            if(point!=null&&!point.input())
+                return point;
+        }
+        return null;
+    }
+    /** Capacity in actual compatible item slots, including partial stacks. */
+    private static int freeRoom(PtpBlockEntity point,ItemStack item){
+        if(!point.readyForOutput()||item.isEmpty())return 0;
+        int capacity=0;
+        for(int i=0;i<point.getContainerSize();i++){
+            if(!point.canPlaceItem(i,item))continue;
+            ItemStack existing=point.getItem(i);
+            if(existing.isEmpty())capacity+=item.getMaxStackSize();
+            else if(ItemStack.isSameItemSameComponents(existing,item))
+                capacity+=Math.max(0,existing.getMaxStackSize()-existing.getCount());
+            if(capacity>=64)return 64;
+        }
+        return capacity;
+    }
+    private static boolean dispatchOutput(ServerLevel level,StorageGolemShelfEntity shelf,
+            List<StorageGolemShelfEntity> group,BlockPos terminal){
+        PtpBlockEntity point=outputPoint(level,group,terminal);
+        if(point==null||!point.readyForOutput())return false;
+        PtpBlockEntity.OutputOrder order=point.nextOutputOrder();
+        if(order==null)return false;
+        for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
+            if(!rack.hasPallet()||rack.isEmpty())continue;
+            for(int i=0;i<rack.getContainerSize();i++){
+                ItemStack stack=rack.getItem(i);
+                if(stack.isEmpty() || !BuiltInRegistries.ITEM.getKey(stack.getItem())
+                        .toString().equals(order.itemId()))continue;
+                int amount=Math.min(order.remaining(),
+                        Math.min(stack.getCount(),freeRoom(point,stack)));
+                if(amount<=0)continue;
+                StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(level,
+                        net.minecraft.world.entity.EntitySpawnReason.EVENT);
+                if(worker==null)return false;
+                int ticket=point.reserveOutput(order.itemId(),amount);
+                if(ticket==0)return false;
+                worker.assignOutput(shelf.getBlockPos(),rack.getBlockPos(),
+                        point.getBlockPos(),stack,ticket,amount);
+                worker.setPos(shelf.getBlockPos().getX()+.5,
+                        shelf.getBlockPos().getY()+1,shelf.getBlockPos().getZ()+.5);
+                if(!shelf.take()){point.releaseOutput(ticket);return false;}
+                if(!level.addFreshEntity(worker)){
+                    shelf.add();point.releaseOutput(ticket);
+                }
+                return true;
+            }
+        }
+        return false;
     }
     public static boolean canInsert(ServerLevel level,BlockPos pos,ItemStack item){
         if(item.isEmpty() || !level.hasChunkAt(pos)
@@ -105,6 +172,9 @@ public final class StorageGolemDispatch {
         if(group.isEmpty())return;
         BlockPos terminal=computer(level,group);
         if(terminal==null)return;
+        // Real outbound orders take priority; input sorting continues whenever
+        // there is no dispatchable output item or output space.
+        if(dispatchOutput(level,shelf,group,terminal))return;
         PtpBlockEntity ptp=inputPoint(level,group,terminal);
         if(ptp==null)return;
         ItemStack sample=ItemStack.EMPTY;

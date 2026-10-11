@@ -33,8 +33,9 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     private ItemStack pallet = ItemStack.EMPTY;
     private String rackName = "";
     private String aisleName = "";
-    // These are physical signs on the FRONT of a rack, rather than names
-    // stored only in the computer interface. Default to legacy names on load.
+    // Rack tags are physical front plates; aisle labels are inherited
+    // throughout a row and rendered on its exposed side ends.
+    // Preserve existing sign flags and names on world load.
     private boolean rackPlate, aislePlate;
     private String filterItem = "";
     private ItemStack filterUpgrade = ItemStack.EMPTY;

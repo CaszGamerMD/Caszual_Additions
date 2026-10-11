@@ -8,6 +8,7 @@ import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
 /** Only follows loaded, physically touching 2x2x3 rack frames. */
@@ -17,7 +18,7 @@ public final class RackNetwork {
 
     public record Link(RackBlockEntity rack, boolean aisle) {}
 
-    public static List<RackBlockEntity> touching(ServerLevel level,BlockPos root) {
+    public static List<RackBlockEntity> touching(Level level,BlockPos root) {
         List<RackBlockEntity> neighbors=new ArrayList<>();
         BlockState state=level.getBlockState(root);
         if (!(state.getBlock() instanceof RackBlock))return neighbors;
@@ -39,7 +40,7 @@ public final class RackNetwork {
         return neighbors;
     }
 
-    public static boolean aisleNeighbors(ServerLevel level,RackBlockEntity a,RackBlockEntity b) {
+    public static boolean aisleNeighbors(Level level,RackBlockEntity a,RackBlockEntity b) {
         if(a.getBlockPos().getY()!=b.getBlockPos().getY())return false;
         // Parallel side-by-side bays share an aisle automatically.
         if(a.facing()==b.facing()){
@@ -113,7 +114,7 @@ public final class RackNetwork {
         return result;
     }
 
-    public static String aisle(ServerLevel level,RackBlockEntity start) {
+    public static String aisle(Level level,RackBlockEntity start) {
         ArrayDeque<RackBlockEntity> queue=new ArrayDeque<>();
         Set<BlockPos> seen=new HashSet<>();
         queue.add(start);seen.add(start.getBlockPos());
@@ -126,9 +127,13 @@ public final class RackNetwork {
         }
         return "";
     }
-    public static String label(ServerLevel level,RackBlockEntity rack) {
+    public static String label(Level level,RackBlockEntity rack) {
         String aisle=aisle(level,rack);
-        return aisle.isEmpty()?rack.displayName():aisle+" - "+rack.displayName();
+        // Only physically tagged racks receive the concise aisle prefix:
+        // Aisle "A" + Rack Tag "12" = "A-12".
+        if(!aisle.isBlank() && rack.hasRackPlate() && !rack.rackName().isBlank())
+            return aisle+"-"+rack.rackName();
+        return rack.displayName();
     }
 
     /** A computer can bridge ALL rack groups physically touching its faces. */

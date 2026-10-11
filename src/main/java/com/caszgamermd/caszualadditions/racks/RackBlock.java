@@ -173,7 +173,8 @@ public final class RackBlock extends Block implements EntityBlock {
                 if (held.is(RackContent.RACK_TAG)) rack.setRackName(name.equals("Rack Tag") ? "Rack" : name);
                 else rack.setAisleName(name.equals("Aisle Tag") ? "Aisle" : name);
                 if (!player.getAbilities().instabuild) held.shrink(1);
-                server.sendSystemMessage(net.minecraft.network.chat.Component.literal("Label updated: " + rack.displayName()));
+                server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                        "Label updated: "+RackNetwork.label(level,rack)));
                 return InteractionResult.SUCCESS;
             }
             if (held.is(RackContent.CONNECTOR)) {
