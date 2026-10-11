@@ -244,8 +244,27 @@ public final class RackBlock extends Block implements EntityBlock {
     }
     @Override protected List<ItemStack> getDrops(BlockState state, LootParams.Builder b) { return List.of(); }
     @Override protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(BlockState state,
-            net.minecraft.world.level.BlockGetter level, BlockPos pos, net.minecraft.world.phys.shapes.CollisionContext context) {
-        // Frame rails are narrow enough to leave front access free.
-        return Block.box(0, 0, 0, 16, 2, 16);
+            net.minecraft.world.level.BlockGetter level, BlockPos pos,
+            net.minecraft.world.phys.shapes.CollisionContext context) {
+        // The lower deck supports the pallet. All twelve rack parts have
+        // collision on their OUTSIDE corner posts, not a fake floor in every
+        // upper segment. Cargo collision is identical to the 3x3x3 display.
+        BlockPos root=root(pos,state);
+        Direction facing=state.getValue(FACING);
+        int minX=Integer.MAX_VALUE,minZ=Integer.MAX_VALUE;
+        for(int i=0;i<4;i++){
+            BlockPos cell=cell(root,facing,i);
+            minX=Math.min(minX,cell.getX());
+            minZ=Math.min(minZ,cell.getZ());
+        }
+        double x=pos.getX()==minX?0:15;
+        double z=pos.getZ()==minZ?0:15;
+        var post=Block.box(x,0,z,x+1,16,z+1);
+        var cargo=RackCargoCollision.shape(level,pos,state);
+        if(state.getValue(PART)<4) {
+            return net.minecraft.world.phys.shapes.Shapes.or(
+                    Block.box(0,0,0,16,2,16),post,cargo);
+        }
+        return net.minecraft.world.phys.shapes.Shapes.or(post,cargo);
     }
 }
