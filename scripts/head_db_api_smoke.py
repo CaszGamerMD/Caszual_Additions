@@ -39,3 +39,17 @@ try:
             print("Sample categories:", categories[:2])
 except Exception as error:
     print("Category API unavailable:", str(error))
+
+print("\nVanilla mob lookup sample (matches vending Mob tab):")
+try:
+    from urllib.parse import quote
+    mob = "armadillo"
+    url = "https://headdb.net/api/v1/heads?limit=12&sort=name&direction=asc&page=1&q=" + quote(mob)
+    with urlopen(Request(url, headers={"User-Agent":"CaszualAdditions-CI/1.0", "Accept":"application/json"}), timeout=20) as resp:
+        data = json.load(resp)
+        names = [item.get("name", "?") for item in data.get("items", [])]
+        print("Armadillo candidates:", names)
+        print("Exact match:", next((item.get("name") for item in data.get("items", [])
+                                    if item.get("name", "").lower() in {"armadillo", "armadillo head"}), None))
+except Exception as error:
+    print("Mob HeadDB sample temporarily unavailable:", repr(error))
