@@ -85,5 +85,11 @@
   "item.caszual_additions.boinkr": "Boink'r",
   "tooltip.caszual_additions.boinkr": "Shift + right-click to change mode",
   "block.caszual_additions.barrel_of_caszual_fun": "Barrel of Caszual Fun",
-  "container.caszual_additions.barrel_of_caszual_fun": "Barrel of Caszual Fun"
+  "container.caszual_additions.barrel_of_caszual_fun": "Barrel of Caszual Fun",
+  "block.caszual_additions.pallet_rack": "Pallet Rack",
+  "block.caszual_additions.rack_computer": "Rack Computer",
+  "item.caszual_additions.rack_tag": "Rack Tag",
+  "item.caszual_additions.aisle_tag": "Aisle Tag",
+  "item.caszual_additions.rack_connector": "Rack Connector",
+  "item.caszual_additions.pallet_filter": "Pallet Filter"
 }
