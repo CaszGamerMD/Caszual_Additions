@@ -48,27 +48,43 @@ public final class RackNetwork {
                 || (dx==-right.getStepX()*2 && dz==-right.getStepZ()*2);
     }
 
-    public static boolean connected(RackBlockEntity a,RackBlockEntity b) {
+    public static boolean connected(ServerLevel level,RackBlockEntity a,RackBlockEntity b) {
         if(aisleNeighbors(a,b))return true;
-        // Connector cards on any contacting face add the racks to the network.
-        // Side-to-side automatic links remain one aisle; front/back/vertical
-        // links let a warehouse contain multiple named aisles.
-        for(Direction dir:Direction.values()){
-            if(a.hasConnector(dir) && b.hasConnector(dir.getOpposite()))return true;
+        // Connectors must match the ACTUAL shared face. Checking only whether
+        // the racks have some complementary connector sides could connect
+        // touching racks across a completely different axis by mistake.
+        for(int part=0;part<12;part++){
+            BlockPos from=RackBlock.cell(a.getBlockPos(),a.facing(),part);
+            for(Direction direction:Direction.values()){
+                if(!a.hasConnector(direction)
+                        || !b.hasConnector(direction.getOpposite()))continue;
+                BlockPos target=from.relative(direction);
+                if(!level.hasChunkAt(target))continue;
+                BlockState other=level.getBlockState(target);
+                if(other.getBlock() instanceof RackBlock
+                        && RackBlock.root(target,other).equals(b.getBlockPos()))
+                    return true;
+            }
         }
         return false;
     }
 
     public static List<RackBlockEntity> network(ServerLevel level,RackBlockEntity start) {
+        return network(level,List.of(start));
+    }
+
+    public static List<RackBlockEntity> network(
+            ServerLevel level,List<RackBlockEntity> startingRacks) {
         List<RackBlockEntity> result=new ArrayList<>();
         ArrayDeque<RackBlockEntity> queue=new ArrayDeque<>();
         Set<BlockPos> seen=new HashSet<>();
-        queue.add(start);seen.add(start.getBlockPos());
+        for(RackBlockEntity rack:startingRacks)
+            if(rack!=null && seen.add(rack.getBlockPos()))queue.add(rack);
         while(!queue.isEmpty() && result.size()<LIMIT){
             RackBlockEntity rack=queue.removeFirst();
             result.add(rack);
             for(RackBlockEntity neighbor:touching(level,rack.getBlockPos())){
-                if(connected(rack,neighbor)&&seen.add(neighbor.getBlockPos()))
+                if(connected(level,rack,neighbor)&&seen.add(neighbor.getBlockPos()))
                     queue.add(neighbor);
             }
         }
@@ -93,14 +109,16 @@ public final class RackNetwork {
         return aisle.isEmpty()?rack.displayName():aisle+" - "+rack.displayName();
     }
 
-    /** A computer can attach to any cell of one neighboring rack. */
+    /** A computer can bridge ALL rack groups physically touching its faces. */
     public static List<RackBlockEntity> fromComputer(ServerLevel level,BlockPos computer) {
+        List<RackBlockEntity> attached=new ArrayList<>();
+        Set<BlockPos> seen=new HashSet<>();
         for(Direction side:Direction.values()){
             BlockPos p=computer.relative(side);
             if(!level.hasChunkAt(p))continue;
             RackBlockEntity root=RackBlock.controller(level,p);
-            if(root!=null)return network(level,root);
+            if(root!=null && seen.add(root.getBlockPos()))attached.add(root);
         }
-        return List.of();
+        return attached.isEmpty()?List.of():network(level,attached);
     }
 }
