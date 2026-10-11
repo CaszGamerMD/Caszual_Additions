@@ -108,6 +108,7 @@ public final class PalletMenu extends AbstractContainerMenu {
         if(be instanceof PalletBlockEntity pallet)return pallet;
         if(be instanceof com.caszgamermd.caszualadditions.racks.RackBlockEntity rack)return rack;
         if(be instanceof com.caszgamermd.caszualadditions.racks.OrderHubEntity hub)return hub;
+        if(be instanceof com.caszgamermd.caszualadditions.racks.PtpBlockEntity ptp)return ptp;
         return new SimpleContainer(PalletBlockEntity.SLOTS);
     }
 
