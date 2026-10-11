@@ -43,14 +43,17 @@ public final class RackComputerScreen extends Screen {
                 b->sendQuery()).bounds(width-225,y,90,23).build());
         addRenderableWidget(Button.builder(Component.literal("Refresh"),
                 b->sendQuery()).bounds(width-128,y,90,23).build());
-        int split=Math.max(200,width/2);
-        orderQuantity=addRenderableWidget(new EditBox(font,split+12,height-63,
-                60,22,Component.literal("Order quantity")));
+        // Put the order controls in their own full-width footer so they
+        // remain clickable at high Minecraft GUI Scale settings.
+        int orderInputX=Math.max(22,width-230);
+        orderQuantity=addRenderableWidget(new EditBox(font,orderInputX,height-63,
+                56,22,Component.literal("Order quantity")));
         orderQuantity.setMaxLength(4);
         orderQuantity.setValue("64");
-        addRenderableWidget(Button.builder(Component.literal("REQUEST SELECTED ITEM"),
-                b->requestItem()).bounds(split+80,height-63,
-                        Math.max(86,width-split-105),22).build());
+        int orderButtonX=orderInputX+64;
+        addRenderableWidget(Button.builder(Component.literal("REQUEST ITEMS"),
+                b->requestItem()).bounds(orderButtonX,height-63,
+                        Math.max(60,width-orderButtonX-20),22).build());
         addRenderableWidget(Button.builder(Component.literal("Close"),
                 b->onClose()).bounds(width-99,height-34,80,22).build());
         addRenderableWidget(Button.builder(Component.literal("▲"),
