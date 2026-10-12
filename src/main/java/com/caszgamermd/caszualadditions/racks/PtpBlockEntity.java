@@ -57,6 +57,10 @@ public final class PtpBlockEntity extends BlockEntity
     }
     public boolean hauling(){expireHaul();return haulTicket!=0;}
     public BlockPos haulDestination(){return haulRack;}
+    public int haulWorkersAtSource(){return hauling()?Integer.bitCount(haulSourceMask):0;}
+    public int haulWorkersAtDestination(){return hauling()?Integer.bitCount(haulArrivalMask):0;}
+    public String haulPhase(){return !hauling()?"IDLE":
+            haulSourceMask==15?"DELIVERING":"ASSEMBLING";}
     public boolean validHaul(int ticket,BlockPos rack){
         expireHaul();
         return ticket!=0&&ticket==haulTicket&&haulRack.equals(rack)
