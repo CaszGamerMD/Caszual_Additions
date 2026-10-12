@@ -31,18 +31,7 @@ public final class WarehouseConnections {
      * rack network or touching the computer itself. */
     public static List<StorageGolemShelfEntity> shelvesForComputer(
             ServerLevel level,BlockPos computer){
-        Map<BlockPos,StorageGolemShelfEntity> found=new LinkedHashMap<>();
-        for(Direction side:Direction.values())
-            collectShelf(level,computer.relative(side),found);
-        for(RackBlockEntity rack:RackNetwork.fromComputer(level,computer)){
-            for(int part=0;part<12;part++){
-                BlockPos segment=RackBlock.cell(rack.getBlockPos(),rack.facing(),part);
-                if(!level.hasChunkAt(segment))continue;
-                for(Direction side:Direction.values())
-                    collectShelf(level,segment.relative(side),found);
-            }
-        }
-        return new ArrayList<>(found.values());
+        return WarehouseNetwork.fromComputer(level,computer).shelves();
     }
 
     /** Resolve a connected computer from any shelf group touching racks.
