@@ -1,7 +1,7 @@
 {
   "ambientocclusion": false,
   "textures": {
-    "rod": "minecraft:block/polished_deepslate"
+    "rod": "minecraft:block/iron_block"
   },
   "elements": [
     {
