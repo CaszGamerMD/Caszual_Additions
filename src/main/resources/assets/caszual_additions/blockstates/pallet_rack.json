@@ -1,27 +1,27 @@
 {
   "variants": {
     "facing=north,part=0": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_lower",
       "y": 0
     },
     "facing=north,part=1": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_lower",
       "y": 0
     },
     "facing=north,part=2": {
-      "model": "caszual_additions:block/pallet_rack_segment_2",
+      "model": "caszual_additions:block/pallet_rack_segment_2_lower",
       "y": 0
     },
     "facing=north,part=3": {
-      "model": "caszual_additions:block/pallet_rack_segment_3",
+      "model": "caszual_additions:block/pallet_rack_segment_3_lower",
       "y": 0
     },
     "facing=north,part=4": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_middle",
       "y": 0
     },
     "facing=north,part=5": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_middle",
       "y": 0
     },
     "facing=north,part=6": {
@@ -33,11 +33,11 @@
       "y": 0
     },
     "facing=north,part=8": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_upper",
       "y": 0
     },
     "facing=north,part=9": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_upper",
       "y": 0
     },
     "facing=north,part=10": {
@@ -49,27 +49,27 @@
       "y": 0
     },
     "facing=east,part=0": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_lower",
       "y": 90
     },
     "facing=east,part=1": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_lower",
       "y": 90
     },
     "facing=east,part=2": {
-      "model": "caszual_additions:block/pallet_rack_segment_2",
+      "model": "caszual_additions:block/pallet_rack_segment_2_lower",
       "y": 90
     },
     "facing=east,part=3": {
-      "model": "caszual_additions:block/pallet_rack_segment_3",
+      "model": "caszual_additions:block/pallet_rack_segment_3_lower",
       "y": 90
     },
     "facing=east,part=4": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_middle",
       "y": 90
     },
     "facing=east,part=5": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_middle",
       "y": 90
     },
     "facing=east,part=6": {
@@ -81,11 +81,11 @@
       "y": 90
     },
     "facing=east,part=8": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_upper",
       "y": 90
     },
     "facing=east,part=9": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_upper",
       "y": 90
     },
     "facing=east,part=10": {
@@ -97,27 +97,27 @@
       "y": 90
     },
     "facing=south,part=0": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_lower",
       "y": 180
     },
     "facing=south,part=1": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_lower",
       "y": 180
     },
     "facing=south,part=2": {
-      "model": "caszual_additions:block/pallet_rack_segment_2",
+      "model": "caszual_additions:block/pallet_rack_segment_2_lower",
       "y": 180
     },
     "facing=south,part=3": {
-      "model": "caszual_additions:block/pallet_rack_segment_3",
+      "model": "caszual_additions:block/pallet_rack_segment_3_lower",
       "y": 180
     },
     "facing=south,part=4": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_middle",
       "y": 180
     },
     "facing=south,part=5": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_middle",
       "y": 180
     },
     "facing=south,part=6": {
@@ -129,11 +129,11 @@
       "y": 180
     },
     "facing=south,part=8": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_upper",
       "y": 180
     },
     "facing=south,part=9": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_upper",
       "y": 180
     },
     "facing=south,part=10": {
@@ -145,27 +145,27 @@
       "y": 180
     },
     "facing=west,part=0": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_lower",
       "y": 270
     },
     "facing=west,part=1": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_lower",
       "y": 270
     },
     "facing=west,part=2": {
-      "model": "caszual_additions:block/pallet_rack_segment_2",
+      "model": "caszual_additions:block/pallet_rack_segment_2_lower",
       "y": 270
     },
     "facing=west,part=3": {
-      "model": "caszual_additions:block/pallet_rack_segment_3",
+      "model": "caszual_additions:block/pallet_rack_segment_3_lower",
       "y": 270
     },
     "facing=west,part=4": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_middle",
       "y": 270
     },
     "facing=west,part=5": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_middle",
       "y": 270
     },
     "facing=west,part=6": {
@@ -177,11 +177,11 @@
       "y": 270
     },
     "facing=west,part=8": {
-      "model": "caszual_additions:block/pallet_rack_segment_0",
+      "model": "caszual_additions:block/pallet_rack_segment_0_upper",
       "y": 270
     },
     "facing=west,part=9": {
-      "model": "caszual_additions:block/pallet_rack_segment_1",
+      "model": "caszual_additions:block/pallet_rack_segment_1_upper",
       "y": 270
     },
     "facing=west,part=10": {
