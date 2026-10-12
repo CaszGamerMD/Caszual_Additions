@@ -66,8 +66,8 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             float offset=(i==0||i==3)?0:Mth.PI;
             leftLeg[i].xRot=Mth.cos(phase+offset)*1.15f*amount;
             rightLeg[i].xRot=Mth.cos(phase+offset+Mth.PI)*1.15f*amount;
-            leftArm[i].xRot=-1.40f;
-            rightArm[i].xRot=-1.40f;
+            leftArm[i].xRot=-1.40f*state.liftProgress;
+            rightArm[i].xRot=-1.40f*state.liftProgress;
         }
     }
 }
