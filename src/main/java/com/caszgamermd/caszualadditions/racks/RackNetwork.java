@@ -87,6 +87,20 @@ public final class RackNetwork {
             if((dx==right.getStepX()*2&&dz==right.getStepZ()*2)
                     ||(dx==-right.getStepX()*2&&dz==-right.getStepZ()*2))return true;
         }
+        // Rods that bridge the physical SIDES of parallel-facing racks
+        // also extend the SAME aisle name across a clear horizontal gap.
+        // Front-to-front links join the computer network, but do not
+        // overwrite the names of independently tagged aisles.
+        if(a.facing()==b.facing())
+            for(int part=0;part<12;part++){
+                BlockPos cell=RackBlock.cell(a.getBlockPos(),a.facing(),part);
+                for(Direction side:Direction.Plane.HORIZONTAL){
+                    if(side.getAxis()==a.facing().getAxis())continue;
+                    RackBlockEntity end=bridged(level,cell,side);
+                    if(end!=null&&end.getBlockPos().equals(b.getBlockPos()))
+                        return true;
+                }
+            }
         // Paired connectors on the actual SIDE faces extend an aisle even
         // across differently-oriented bays. Front/back/vertical connectors
         // link the computer network but start/retain distinct aisles.
