@@ -97,7 +97,8 @@ public final class PtpBlockEntity extends BlockEntity
             java.util.UUID owner){
         if(!playerHaulValid(ticket,owner)||haulStage(ticket)!=1
                 ||leader==null||!leader.isPlayerCarrier(owner,ticket))return false;
-        ItemStack deck=PalletData.applyFilterSettings(pallet,this);
+        ItemStack deck=com.caszgamermd.caszualadditions.pallet.GlassPalletWrap
+                .withWrap(PalletData.applyFilterSettings(pallet,this),true);
         if(deck.isEmpty()||!leader.loadPallet(deck,contents))return false;
         contents=NonNullList.withSize(SLOTS,ItemStack.EMPTY);
         pallet=ItemStack.EMPTY;
