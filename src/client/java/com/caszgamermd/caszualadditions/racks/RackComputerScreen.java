@@ -131,7 +131,6 @@ public final class RackComputerScreen extends Screen {
                 b->workerScroll=Math.min(Math.max(0,workers.size()-1),workerScroll+1))
                 .bounds(width-51,height-34,25,22).build());
         showPage(page);
-        sendQuery();
     }
 
     private void sendQuery() {
