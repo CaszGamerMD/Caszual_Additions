@@ -36,6 +36,11 @@ any world with valuable inventories before testing.
 - [ ] Verify no entity can walk through the outside frame or through cargo.
 - [ ] Try filtering by item, mod namespace, tag and exact components.
 - [ ] Check whitelist and blacklist behavior, removing/installing filter module.
+- [ ] Type two item IDs, mod namespaces or tags separated by commas in the
+      target field. A whitelist must accept either match; a blacklist
+      must reject either match. Test the eight-rule limit and invalid IDs.
+- [ ] Confirm Exact Data uses one component-bearing offhand sample and
+      is not accidentally split on commas.
 - [ ] Attempt shift-click transfer of a disallowed item; it must not enter.
 - [ ] Save and reload: items and filter settings persist.
 
