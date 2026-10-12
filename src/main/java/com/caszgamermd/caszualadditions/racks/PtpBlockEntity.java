@@ -12,6 +12,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
@@ -43,6 +44,111 @@ public final class PtpBlockEntity extends BlockEntity
     // Leases survive reload. A missing worker cannot permanently block FIFO.
     private long ticketDeadline;
     private static final long TICKET_LEASE_TICKS=2400; // two minutes
+    // A wrapped pallet is owned by this sealed PTP during the entire haul.
+    // The four walking Golems are an escort, NEVER a second inventory owner.
+    private int haulSequence,haulTicket,haulSourceMask,haulArrivalMask;
+    private BlockPos haulRack=BlockPos.ZERO;
+    private long haulDeadline;
+    private static final long HAUL_LEASE_TICKS=6000; // five minutes
+
+    private void expireHaul(){
+        if(haulTicket!=0&&level!=null&&level.getGameTime()>haulDeadline)
+            cancelHaul();
+    }
+    public boolean hauling(){expireHaul();return haulTicket!=0;}
+    public BlockPos haulDestination(){return haulRack;}
+    public boolean validHaul(int ticket,BlockPos rack){
+        expireHaul();
+        return ticket!=0&&ticket==haulTicket&&haulRack.equals(rack)
+                &&sealed&&hasPallet()&&hasWrap();
+    }
+    public void renewHaul(int ticket){
+        if(haulTicket!=0&&ticket==haulTicket&&level!=null)
+            haulDeadline=level.getGameTime()+HAUL_LEASE_TICKS;
+    }
+    /** Only dispatch on an assembled wrapped pallet, never an OUTPUT order. */
+    public int beginHaul(BlockPos destination){
+        expireHaul();
+        if(level==null||haulTicket!=0||!sealed||!hasPallet()||!hasWrap()
+                ||destination==null||!outputOrders.isEmpty()||activeTicket!=0)
+            return 0;
+        haulSequence=haulSequence==Integer.MAX_VALUE?1:haulSequence+1;
+        haulTicket=haulSequence;haulRack=destination.immutable();
+        haulSourceMask=0;haulArrivalMask=0;
+        haulDeadline=level.getGameTime()+HAUL_LEASE_TICKS;
+        setChanged();
+        return haulTicket;
+    }
+    public int haulStage(int ticket){
+        expireHaul();
+        if(haulTicket==0||haulTicket!=ticket)return -1;
+        return haulSourceMask==15?1:0;
+    }
+    public void assembleHaul(int ticket,int worker){
+        if(haulStage(ticket)<0||worker<0||worker>3)return;
+        int old=haulSourceMask;
+        haulSourceMask|=1<<worker;
+        if(old!=haulSourceMask)setChanged();
+    }
+    /** Idempotent: fourth worker's arrival alone attempts the pallet commit. */
+    public boolean arriveHaul(int ticket,int worker,ServerLevel server){
+        if(haulStage(ticket)!=1||worker<0||worker>3)return false;
+        int old=haulArrivalMask;
+        haulArrivalMask|=1<<worker;
+        if(old!=haulArrivalMask)setChanged();
+        if(haulArrivalMask==15)return completeHaul(server);
+        return false;
+    }
+    public void cancelHaul(){
+        if(haulTicket==0)return;
+        haulTicket=0;haulRack=BlockPos.ZERO;
+        haulSourceMask=0;haulArrivalMask=0;haulDeadline=0;
+        setChanged();
+    }
+    /**
+     * Commit on the server thread after all four reach the destination.
+     * Until this method succeeds, the source alone owns all 216 item slots.
+     * Failed validation leaves its wrapped pallet completely untouched.
+     */
+    private boolean completeHaul(ServerLevel server){
+        if(!validHaul(haulTicket,haulRack)||!server.hasChunkAt(haulRack))return false;
+        if(!(server.getBlockEntity(haulRack) instanceof RackBlockEntity rack)
+                ||rack.hasPallet()||!rack.isEmpty())return false;
+        ItemStack movedPallet=PalletData.applyFilterSettings(pallet,this);
+        if(movedPallet.isEmpty())return false;
+        // Validate cargo against the final transferred pallet filter before
+        // touching the destination; don't silently reject incompatible slots.
+        rack.install(movedPallet);
+        if(!rack.hasPallet())return false;
+        for(int i=0;i<SLOTS;i++){
+            ItemStack sample=contents.get(i);
+            if(!sample.isEmpty()&&!rack.canPlaceItem(i,sample)){
+                rack.dropPallet();
+                return false;
+            }
+        }
+        for(int i=0;i<SLOTS;i++){
+            ItemStack sample=contents.get(i);
+            if(sample.isEmpty())continue;
+            rack.setItem(i,sample.copy());
+            ItemStack stored=rack.getItem(i);
+            if(!ItemStack.isSameItemSameComponents(stored,sample)
+                    ||stored.getCount()!=sample.getCount()){
+                rack.clearContent();
+                rack.dropPallet();
+                return false;
+            }
+        }
+        // Destination is verified: ownership moves exactly once, after all
+        // 216 slots and the pallet stack were installed successfully.
+        contents=NonNullList.withSize(SLOTS,ItemStack.EMPTY);
+        pallet=ItemStack.EMPTY;filterUpgrade=ItemStack.EMPTY;
+        filterTarget="";filterSignature="";filterMode=0;filterScope=0;
+        sealed=false;
+        cancelHaul();
+        setChanged();
+        return true;
+    }
     private void expireTicket(){
         if(activeTicket!=0 && level!=null && level.getGameTime()>ticketDeadline){
             activeTicket=0;reservedOutput=0;ticketDeadline=0;
@@ -58,9 +164,9 @@ public final class PtpBlockEntity extends BlockEntity
     }
     public PtpBlockEntity(BlockPos pos,BlockState state){super(RackContent.PTP_ENTITY,pos,state);}
     public boolean input(){return input;}
-    public void setInput(boolean v){input=v;setChanged();}
+    public void setInput(boolean v){if(!hauling()){input=v;setChanged();}}
     public boolean sealed(){return sealed;}
-    public void setSealed(boolean v){if(hasPallet()){sealed=v;setChanged();}}
+    public void setSealed(boolean v){if(hasPallet()&&!hauling()){sealed=v;setChanged();}}
     public boolean hasPallet(){return !pallet.isEmpty();}
     public boolean readyForOutput(){return !input&&!sealed&&hasPallet();}
     public int pendingOutputOrders(){return outputOrders.size();}
@@ -152,7 +258,7 @@ public final class PtpBlockEntity extends BlockEntity
         return !sealed&&emptyCargo()?dropPallet():ItemStack.EMPTY;
     }
     public ItemStack dropPallet(){
-        if(!hasPallet())return ItemStack.EMPTY;
+        if(!hasPallet()||hauling())return ItemStack.EMPTY;
         ItemStack result=PalletData.applyFilterSettings(pallet,this);
         pallet=ItemStack.EMPTY;filterUpgrade=ItemStack.EMPTY;
         filterTarget="";filterSignature="";sealed=false;
@@ -230,6 +336,12 @@ public final class PtpBlockEntity extends BlockEntity
         out.putInt("output_active_ticket",activeTicket);
         out.putInt("output_reserved",reservedOutput);
         out.putLong("output_ticket_deadline",ticketDeadline);
+        out.putInt("haul_sequence",haulSequence);
+        out.putInt("haul_ticket",haulTicket);
+        out.putInt("haul_source_mask",haulSourceMask);
+        out.putInt("haul_arrival_mask",haulArrivalMask);
+        out.store("haul_rack",BlockPos.CODEC,haulRack);
+        out.putLong("haul_deadline",haulDeadline);
     }
     @Override protected void loadAdditional(ValueInput in){
         super.loadAdditional(in);
@@ -258,6 +370,15 @@ public final class PtpBlockEntity extends BlockEntity
         if(outputOrders.isEmpty()||reservedOutput==0||activeTicket==0){
             activeTicket=0;reservedOutput=0;ticketDeadline=0;
         }else reservedOutput=Math.min(reservedOutput,outputOrders.peekFirst().remaining());
+        haulSequence=Math.max(0,in.getIntOr("haul_sequence",0));
+        haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
+        haulSourceMask=in.getIntOr("haul_source_mask",0)&15;
+        haulArrivalMask=in.getIntOr("haul_arrival_mask",0)&15;
+        haulRack=in.read("haul_rack",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        haulDeadline=in.getLongOr("haul_deadline",0);
+        if(!sealed||!hasPallet()||haulRack.equals(BlockPos.ZERO)){
+            haulTicket=0;haulSourceMask=0;haulArrivalMask=0;haulDeadline=0;
+        }
     }
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider lookup){return saveWithoutMetadata(lookup);}
     @Override public ClientboundBlockEntityDataPacket getUpdatePacket(){
