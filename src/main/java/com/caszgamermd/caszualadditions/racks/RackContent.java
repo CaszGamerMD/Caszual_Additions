@@ -75,7 +75,10 @@ public final class RackContent {
         CONNECTOR_BLOCK=Registry.register(BuiltInRegistries.BLOCK,connectorKey,
                 new RackConnectorBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
                         .strength(3.5f).noOcclusion().setId(connectorKey)));
-        CONNECTOR=blockItem("rack_connector",CONNECTOR_BLOCK);
+        ResourceKey<Item> connectorItemKey=ResourceKey.create(Registries.ITEM,connectorId);
+        CONNECTOR=Registry.register(BuiltInRegistries.ITEM,connectorItemKey,
+                new RackConnectorItem(CONNECTOR_BLOCK,new Item.Properties()
+                        .stacksTo(16).setId(connectorItemKey).useBlockDescriptionPrefix()));
         ResourceKey<Item> kitKey=ResourceKey.create(Registries.ITEM,
                 CaszualAdditions.id("warehouse_test_kit"));
         WAREHOUSE_TEST_KIT=Registry.register(BuiltInRegistries.ITEM,kitKey,
