@@ -101,24 +101,6 @@ public final class RackNetwork {
                         return true;
                 }
             }
-        // Paired connectors on the actual SIDE faces extend an aisle even
-        // across differently-oriented bays. Front/back/vertical connectors
-        // link the computer network but start/retain distinct aisles.
-        for(int i=0;i<4;i++) {
-            BlockPos p=RackBlock.cell(a.getBlockPos(),a.facing(),i);
-            for(Direction direction:Direction.Plane.HORIZONTAL){
-                if(direction.getAxis()==a.facing().getAxis()
-                        || direction.getAxis()==b.facing().getAxis()
-                        || !a.hasConnector(direction)
-                        || !b.hasConnector(direction.getOpposite()))continue;
-                BlockPos neighboring=p.relative(direction);
-                if(!level.hasChunkAt(neighboring))continue;
-                BlockState other=level.getBlockState(neighboring);
-                if(other.getBlock() instanceof RackBlock
-                        && RackBlock.root(neighboring,other).equals(b.getBlockPos()))
-                    return true;
-            }
-        }
         return false;
     }
 
@@ -131,22 +113,6 @@ public final class RackNetwork {
             for(Direction direction:Direction.Plane.HORIZONTAL){
                 RackBlockEntity bridged=bridged(level,cell,direction);
                 if(bridged!=null&&bridged.getBlockPos().equals(b.getBlockPos()))
-                    return true;
-            }
-        }
-        // Connectors must match the ACTUAL shared face. Checking only whether
-        // the racks have some complementary connector sides could connect
-        // touching racks across a completely different axis by mistake.
-        for(int part=0;part<12;part++){
-            BlockPos from=RackBlock.cell(a.getBlockPos(),a.facing(),part);
-            for(Direction direction:Direction.values()){
-                if(!a.hasConnector(direction)
-                        || !b.hasConnector(direction.getOpposite()))continue;
-                BlockPos target=from.relative(direction);
-                if(!level.hasChunkAt(target))continue;
-                BlockState other=level.getBlockState(target);
-                if(other.getBlock() instanceof RackBlock
-                        && RackBlock.root(target,other).equals(b.getBlockPos()))
                     return true;
             }
         }
