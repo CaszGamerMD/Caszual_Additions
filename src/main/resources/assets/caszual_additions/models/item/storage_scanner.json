@@ -2606,198 +2606,6 @@
           "texture": "#housing"
         }
       }
-    },
-    {
-      "from": [
-        5.4,
-        2.2,
-        10.4
-      ],
-      "to": [
-        10.6,
-        8.2,
-        14.4
-      ],
-      "faces": {
-        "north": {
-          "texture": "#rubber"
-        },
-        "south": {
-          "texture": "#rubber"
-        },
-        "east": {
-          "texture": "#rubber"
-        },
-        "west": {
-          "texture": "#rubber"
-        },
-        "up": {
-          "texture": "#rubber"
-        },
-        "down": {
-          "texture": "#rubber"
-        }
-      }
-    },
-    {
-      "from": [
-        5.9,
-        1.1,
-        11.5
-      ],
-      "to": [
-        10.1,
-        6.4,
-        15.9
-      ],
-      "faces": {
-        "north": {
-          "texture": "#housing"
-        },
-        "south": {
-          "texture": "#housing"
-        },
-        "east": {
-          "texture": "#housing"
-        },
-        "west": {
-          "texture": "#housing"
-        },
-        "up": {
-          "texture": "#housing"
-        },
-        "down": {
-          "texture": "#housing"
-        }
-      }
-    },
-    {
-      "from": [
-        5.7,
-        0.8,
-        12.3
-      ],
-      "to": [
-        10.3,
-        2,
-        16
-      ],
-      "faces": {
-        "north": {
-          "texture": "#rubber"
-        },
-        "south": {
-          "texture": "#rubber"
-        },
-        "east": {
-          "texture": "#rubber"
-        },
-        "west": {
-          "texture": "#rubber"
-        },
-        "up": {
-          "texture": "#rubber"
-        },
-        "down": {
-          "texture": "#rubber"
-        }
-      }
-    },
-    {
-      "from": [
-        5.6,
-        2.25,
-        15.1
-      ],
-      "to": [
-        10.4,
-        2.54,
-        15.7
-      ],
-      "faces": {
-        "north": {
-          "texture": "#steel"
-        },
-        "south": {
-          "texture": "#steel"
-        },
-        "east": {
-          "texture": "#steel"
-        },
-        "west": {
-          "texture": "#steel"
-        },
-        "up": {
-          "texture": "#steel"
-        },
-        "down": {
-          "texture": "#steel"
-        }
-      }
-    },
-    {
-      "from": [
-        5.6,
-        3.35,
-        15.1
-      ],
-      "to": [
-        10.4,
-        3.64,
-        15.7
-      ],
-      "faces": {
-        "north": {
-          "texture": "#steel"
-        },
-        "south": {
-          "texture": "#steel"
-        },
-        "east": {
-          "texture": "#steel"
-        },
-        "west": {
-          "texture": "#steel"
-        },
-        "up": {
-          "texture": "#steel"
-        },
-        "down": {
-          "texture": "#steel"
-        }
-      }
-    },
-    {
-      "from": [
-        5.6,
-        4.45,
-        15.1
-      ],
-      "to": [
-        10.4,
-        4.74,
-        15.7
-      ],
-      "faces": {
-        "north": {
-          "texture": "#steel"
-        },
-        "south": {
-          "texture": "#steel"
-        },
-        "east": {
-          "texture": "#steel"
-        },
-        "west": {
-          "texture": "#steel"
-        },
-        "up": {
-          "texture": "#steel"
-        },
-        "down": {
-          "texture": "#steel"
-        }
-      }
     }
   ],
   "display": {
@@ -2864,9 +2672,9 @@
         0
       ],
       "scale": [
-        0.7,
-        0.7,
-        0.7
+        0.35,
+        0.35,
+        0.35
       ]
     },
     "thirdperson_lefthand": {
@@ -2881,9 +2689,9 @@
         0
       ],
       "scale": [
-        0.7,
-        0.7,
-        0.7
+        0.35,
+        0.35,
+        0.35
       ]
     },
     "firstperson_righthand": {
@@ -2898,9 +2706,9 @@
         0
       ],
       "scale": [
-        0.95,
-        0.95,
-        0.95
+        0.475,
+        0.475,
+        0.475
       ]
     },
     "firstperson_lefthand": {
@@ -2915,9 +2723,9 @@
         0
       ],
       "scale": [
-        0.95,
-        0.95,
-        0.95
+        0.475,
+        0.475,
+        0.475
       ]
     }
   }
