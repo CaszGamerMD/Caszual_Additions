@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions.racks;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.UUID;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -82,6 +83,12 @@ public final class StorageGolem extends PathfinderMob {
     private NonNullList<ItemStack> palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
     private boolean deathDropsReleased;
     private int waitTicks;
+    // Return trips follow SAME-LEVEL, checked walkways and turn corners,
+    // rather than vanilla paths that climb over boxes to reach shelf tops.
+    private final ArrayDeque<BlockPos> flatHomeRoute=new ArrayDeque<>();
+    private int nextHomeReplanTick,lastHomeProgressTick;
+    private double lastHomeWaypointDistance=Double.POSITIVE_INFINITY;
+    private BlockPos lastHomeGoal=BlockPos.ZERO;
     public StorageGolem(EntityType<? extends StorageGolem> type,Level level){
         super(type,level);
         setPersistenceRequired();
@@ -343,15 +350,7 @@ public final class StorageGolem extends PathfinderMob {
     private void tickPlayerHaul(ServerLevel level){
         if(stage==2){
             setCustomNameVisible(false);
-            if(!level.hasChunkAt(home))return;
-            if(!closeTo(home)){
-                if(tickCount%20==0)getNavigation().moveTo(
-                        home.getX()+.5,home.getY()+1,home.getZ()+.5,.88);
-                return;
-            }
-            getNavigation().stop();
-            if(level.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf
-                    &&shelf.add())discard();
+            returnToShelf(level);
             return;
         }
         UUID owner=ownerId();
@@ -459,16 +458,7 @@ public final class StorageGolem extends PathfinderMob {
     private void tickHaul(ServerLevel level){
         if(stage==2){
             setCustomNameVisible(false);
-            BlockPos target=home;
-            if(!level.hasChunkAt(target))return;
-            if(!closeTo(target)){
-                if(tickCount%30==0)getNavigation().moveTo(target.getX()+.5,
-                        target.getY()+1,target.getZ()+.5,.78);
-                return;
-            }
-            getNavigation().stop();
-            if(level.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf
-                    &&shelf.add())discard();
+            returnToShelf(level);
             return;
         }
         if(!level.hasChunkAt(source))return;
@@ -513,6 +503,11 @@ public final class StorageGolem extends PathfinderMob {
                 &&level.getBlockEntity(destination) instanceof PtpBlockEntity ptp?ptp:null;
     }
     private void releaseOutput(ServerLevel level){
+        if(stage==2){
+            releaseOutput(level);
+            returnToShelf(level);
+            return;
+        }
         if(outputJob&&outputTicket!=0){
             PtpBlockEntity ptp=outputPoint(level);
             if(ptp!=null)ptp.releaseOutput(outputTicket);
@@ -579,6 +574,97 @@ public final class StorageGolem extends PathfinderMob {
     }
     private boolean closeTo(BlockPos p){
         return distanceToSqr(p.getX()+.5,p.getY()+.5,p.getZ()+.5)<3.5;
+    }
+    private boolean atShelfEntrance(){
+        BlockPos feet=blockPosition();
+        int dx=Math.abs(feet.getX()-home.getX());
+        int dz=Math.abs(feet.getZ()-home.getZ());
+        return feet.getY()==home.getY()&&dx+dz==1
+                &&distanceToSqr(feet.getX()+.5,feet.getY()+.5,
+                        feet.getZ()+.5)<2.5;
+    }
+    /** Returning to a shelf never targets its top or walks through it.
+     * Four-direction same-floor detours avoid the normal AI temptation to
+     * hop straight over a one-block obstruction. Paths are rechecked when
+     * the warehouse changes; nothing loads chunks out of range. */
+    private void returnToShelf(ServerLevel level){
+        if(!level.hasChunkAt(home)
+                ||!(level.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf))
+            return;
+        if(atShelfEntrance()){
+            getNavigation().stop();
+            flatHomeRoute.clear();
+            if(shelf.add())discard();
+            return;
+        }
+        BlockPos from=blockPosition();
+        if(from.getY()!=home.getY()){
+            // Only legitimate floor-level transitions use vanilla stairs.
+            // Even then, target a free cell BESIDE the shelf, not above it.
+            BlockPos closest=null;
+            double score=Double.POSITIVE_INFINITY;
+            for(Direction dir:Direction.Plane.HORIZONTAL){
+                BlockPos access=home.relative(dir);
+                if(!StorageGolemReturnPath.walkable(level,access))continue;
+                double candidate=access.distSqr(from);
+                if(candidate<score){closest=access;score=candidate;}
+            }
+            if(closest!=null&&tickCount%30==0)
+                getNavigation().moveTo(closest.getX()+.5,
+                        closest.getY(),closest.getZ()+.5,.79);
+            return;
+        }
+        if(!lastHomeGoal.equals(home)){
+            lastHomeGoal=home.immutable();
+            flatHomeRoute.clear();
+            nextHomeReplanTick=0;
+        }
+        while(!flatHomeRoute.isEmpty()){
+            BlockPos waypoint=flatHomeRoute.peekFirst();
+            if(!StorageGolemReturnPath.walkable(level,waypoint)){
+                flatHomeRoute.clear();
+                nextHomeReplanTick=0;
+                break;
+            }
+            if(distanceToSqr(waypoint.getX()+.5,waypoint.getY(),
+                    waypoint.getZ()+.5)<.85){
+                flatHomeRoute.removeFirst();
+                lastHomeWaypointDistance=Double.POSITIVE_INFINITY;
+                lastHomeProgressTick=tickCount;
+            }else break;
+        }
+        if(flatHomeRoute.isEmpty()&&tickCount>=nextHomeReplanTick){
+            var planned=StorageGolemReturnPath.route(from,home,
+                    p->StorageGolemReturnPath.walkable(level,p));
+            nextHomeReplanTick=tickCount+60;
+            if(planned!=null){
+                flatHomeRoute.addAll(planned);
+                lastHomeWaypointDistance=Double.POSITIVE_INFINITY;
+                lastHomeProgressTick=tickCount;
+            }else{
+                // No level path? WAIT and retry after changes. Don't
+                // substitute a jump-over-the-obstacle route.
+                getNavigation().stop();
+                return;
+            }
+        }
+        if(flatHomeRoute.isEmpty())return;
+        BlockPos next=flatHomeRoute.peekFirst();
+        double distance=distanceToSqr(next.getX()+.5,next.getY(),next.getZ()+.5);
+        if(distance+.12<lastHomeWaypointDistance){
+            lastHomeWaypointDistance=distance;
+            lastHomeProgressTick=tickCount;
+        }else if(tickCount-lastHomeProgressTick>90){
+            // Dynamic blockers (e.g. a new rack/pallet) may invalidate a
+            // corridor even when its terminal waypoint is clear.
+            getNavigation().stop();
+            flatHomeRoute.clear();
+            nextHomeReplanTick=0;
+            return;
+        }
+        if(tickCount%20==0)
+            getNavigation().moveTo(next.getX()+.5,next.getY(),
+                    next.getZ()+.5,.80);
     }
     private Container loaded(ServerLevel level,BlockPos pos) {
         return level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof Container c
