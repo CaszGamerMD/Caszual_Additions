@@ -1,0 +1,157 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "steel": "minecraft:block/iron_block",
+    "slate": "minecraft:block/polished_deepslate"
+  },
+  "elements": [
+    {
+      "from": [
+        6,
+        7,
+        1
+      ],
+      "to": [
+        10,
+        9,
+        15
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "axis": "x",
+        "angle": 45,
+        "rescale": true
+      },
+      "faces": {
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "down": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        7,
+        1
+      ],
+      "to": [
+        10,
+        9,
+        15
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "axis": "x",
+        "angle": -45,
+        "rescale": true
+      },
+      "faces": {
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "down": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        2,
+        0
+      ],
+      "to": [
+        10,
+        4,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#slate"
+        },
+        "south": {
+          "texture": "#slate"
+        },
+        "east": {
+          "texture": "#slate"
+        },
+        "west": {
+          "texture": "#slate"
+        },
+        "up": {
+          "texture": "#slate"
+        },
+        "down": {
+          "texture": "#slate"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        12,
+        0
+      ],
+      "to": [
+        10,
+        14,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#slate"
+        },
+        "south": {
+          "texture": "#slate"
+        },
+        "east": {
+          "texture": "#slate"
+        },
+        "west": {
+          "texture": "#slate"
+        },
+        "up": {
+          "texture": "#slate"
+        },
+        "down": {
+          "texture": "#slate"
+        }
+      }
+    }
+  ]
+}
