@@ -32,3 +32,9 @@ Pallet inventories, vending purchases, cosmetics and XP devices have server-side
 - [Source repository](https://github.com/CaszGamerMD/Caszual_Additions)
 - [Issue tracker](https://github.com/CaszGamerMD/Caszual_Additions/issues)
 - [Developer integration notes](https://github.com/CaszGamerMD/Caszual_Additions/blob/main/COMPANION_MOD_INTEGRATION.md)
+
+## Barrel of Caszual Fun and companion item tags
+
+In **creative mode**, the Barrel of Caszual Fun lists one copy of each installed Caszual-family item. Caszual Additions 0.1.1+ recognizes the shared `caszual_additions:caszual_content` item tag, and still recognizes legacy Caszual mod namespaces. The shared Caszual Creative tab also uses this tag.
+
+With **Caszual MTG 0.11.2+** installed, its ten registered blocks/items are tagged automatically, including the three database blocks, Deck Builder, Custom Deckbox, Card Hand, Deckbox Rack, Staff Rack, Counter and Staff. Reopen an existing Fun Barrel to add newly installed items. It won't refill items intentionally taken from that specific barrel.
