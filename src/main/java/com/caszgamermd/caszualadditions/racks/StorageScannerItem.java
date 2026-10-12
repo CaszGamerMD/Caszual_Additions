@@ -67,8 +67,9 @@ public final class StorageScannerItem extends Item {
             user.sendSystemMessage(Component.literal(result));
             return InteractionResult.SUCCESS;
         }
-        if(home==null||!server.hasChunkAt(home)
-                ||!server.getBlockState(home).is(RackContent.RACK_COMPUTER)){
+        // The linked warehouse may be in an unloaded chunk while the
+        // player and their real team carry a pallet to a distant location.
+        if(home==null){
             user.sendSystemMessage(Component.literal(
                     "Link scanner first: right-click your warehouse Rack Computer."));
             return InteractionResult.SUCCESS;
