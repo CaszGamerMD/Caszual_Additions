@@ -165,7 +165,10 @@ public final class StorageScanner {
                                 ||!level.getBlockState(scanner).is(RackContent.STORAGE_SCANNER))
                             continue;
                         Report report=scan(level,scanner);
-                        if(report!=null)return report.summary();
+                        if(report!=null)return point.hauling()
+                                ?"HAUL IN PROGRESS to "+point.haulDestination().toShortString()
+                                        +" | "+report.summary()
+                                :report.summary();
                     }
                 }
             }

@@ -411,6 +411,11 @@ just individual item stacks. This is a manually dispatched, bounded workflow.
 - Killing or recalling any one worker cancels the entire shipment; each
   remaining worker returns to its shelf. Worker death and retrieval
   preserve the existing Storage Golem item.
+- Each Golem chooses a loaded, collision-free approach to the point
+  instead of assuming the south face is always open. The four workers
+  prefer different approach sides so a scanner or module on one edge
+  does not block everyone. The scanner and Rack Computer display an
+  active haul's destination.
 - The assignment, target rack, four-person rally/arrival masks and
   individual worker routes are persisted for world reloads. A five-minute
   lease prevents an abandoned reservation from blocking a PTP indefinitely,

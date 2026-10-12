@@ -44,6 +44,11 @@ public final class StorageScannerBlock extends Block {
             return InteractionResult.SUCCESS;
         }
         player.sendSystemMessage(Component.literal(result.summary()));
+        PtpBlockEntity point=StorageScanner.nearbyPoint(server,pos);
+        if(point!=null&&point.hauling())
+            player.sendSystemMessage(Component.literal("Four-Golem transport underway to "
+                    +point.haulDestination().toShortString()
+                    +". Sneak-right-click this scanner to cancel."));
         if(result.loaded()&&result.racks()==0)
             player.sendSystemMessage(Component.literal(
                     "No reachable Rack Computer network: inspection works, but capacity cannot be predicted."));
