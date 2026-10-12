@@ -25,6 +25,7 @@ public final class RackComputerScreen extends Screen {
     private int totalRacks, totalItems, scroll;
     private String status="Connecting to racks...";
     private String transferPointStatus="";
+    private String scannerStatus="";
     private Button golemButton;
     private int shelfCount,dockedGolems;
     private boolean golemSorting;
@@ -113,6 +114,8 @@ public final class RackComputerScreen extends Screen {
             }
             transferPointStatus=obj.has("ptpSummary")
                     ?obj.get("ptpSummary").getAsString():"";
+            scannerStatus=obj.has("scannerSummary")
+                    ?obj.get("scannerSummary").getAsString():"";
             status=(racks.size())+" matching racks in "+totalRacks+" connected racks";
             scroll=Math.min(scroll,Math.max(0,racks.size()-1));
         }catch(RuntimeException e){status="Unable to read network information.";}
@@ -137,15 +140,18 @@ public final class RackComputerScreen extends Screen {
         if(!transferPointStatus.isBlank())
             graphics.text(font,Component.literal(compact(transferPointStatus,
                     Math.max(16,(width-42)/6))),22,88,0xffa4d5b7,false);
+        if(!scannerStatus.isBlank())
+            graphics.text(font,Component.literal(compact(scannerStatus,
+                    Math.max(16,(width-42)/6))),22,99,0xff83eadd,false);
         int splitter=Math.max(200,width/2);
-        graphics.fill(20,97,splitter-5,height-45,0xff21392e);
-        graphics.fill(splitter,97,width-20,height-45,0xff22382f);
-        graphics.text(font,Component.literal("AISLES / RACKS"),29,104,0xffb3f9c1,false);
-        graphics.text(font,Component.literal("SELECTED RACK • CONTENTS"),splitter+11,104,0xffb3f9c1,false);
-        int rows=Math.max(0,(height-173)/25);
+        graphics.fill(20,111,splitter-5,height-45,0xff21392e);
+        graphics.fill(splitter,111,width-20,height-45,0xff22382f);
+        graphics.text(font,Component.literal("AISLES / RACKS"),29,118,0xffb3f9c1,false);
+        graphics.text(font,Component.literal("SELECTED RACK • CONTENTS"),splitter+11,118,0xffb3f9c1,false);
+        int rows=Math.max(0,(height-187)/25);
         for(int i=scroll;i<racks.size()&&i<scroll+rows;i++){
             JsonObject rack=racks.get(i).getAsJsonObject();
-            int y=120+(i-scroll)*25;
+            int y=134+(i-scroll)*25;
             int x=rack.get("x").getAsInt(),z=rack.get("z").getAsInt(),ry=rack.get("y").getAsInt();
             boolean chosen=x==selectedX&&z==selectedZ&&ry==selectedY;
             graphics.fill(25,y,splitter-11,y+23,
@@ -160,10 +166,10 @@ public final class RackComputerScreen extends Screen {
             graphics.fill(32,y+18,splitter-68,y+21,0xff4c6655);
             graphics.fill(32,y+18,32+(int)((splitter-100)*pct),y+21,0xff64d98a);
         }
-        int remaining=Math.max(0,(height-220)/17);
+        int remaining=Math.max(0,(height-234)/17);
         for(int i=0;i<contents.size()&&i<remaining;i++){
             JsonObject item=contents.get(i).getAsJsonObject();
-            int y=123+i*17;
+            int y=137+i*17;
             if(item.get("id").getAsString().equals(selectedItemId))
                 graphics.fill(splitter+7,y-2,width-27,y+14,0xff43835a);
             else if(i%2==0)graphics.fill(splitter+7,y-2,width-27,y+14,0xff2b4538);
@@ -180,17 +186,17 @@ public final class RackComputerScreen extends Screen {
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {
         int split=Math.max(200,width/2);
         int mx=(int)event.x(),my=(int)event.y();
-        if(mx>=split+7&&mx<width-27 && my>=121 && my<height-95){
-            int index=(my-121)/17;
+        if(mx>=split+7&&mx<width-27 && my>=135 && my<height-95){
+            int index=(my-135)/17;
             if(index>=0&&index<contents.size()){
                 selectedItemId=contents.get(index).getAsJsonObject().get("id").getAsString();
                 status="Selected "+selectedItemId+". Enter quantity and request.";
                 return true;
             }
         }
-        int rows=Math.max(0,(height-173)/25);
-        if(mx>=25&&mx<split-11&&my>=120&&my<120+rows*25) {
-            int index=scroll+(my-120)/25;
+        int rows=Math.max(0,(height-187)/25);
+        if(mx>=25&&mx<split-11&&my>=134&&my<134+rows*25) {
+            int index=scroll+(my-134)/25;
             if(index<racks.size()){
                 JsonObject row=racks.get(index).getAsJsonObject();
                 selectedX=row.get("x").getAsInt();
