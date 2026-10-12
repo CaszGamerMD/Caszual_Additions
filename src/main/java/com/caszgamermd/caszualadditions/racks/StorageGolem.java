@@ -75,10 +75,10 @@ public final class StorageGolem extends PathfinderMob {
         pickupLimit=Math.clamp(quantity,1,64);
     }
     /** A packed worker physically visits its shelf-connected magazine. */
-    public void assignPackedOutput(BlockPos tank){
+    public void assignPackedOutput(BlockPos tank,int amount){
         packedJob=true;magazine=tank.immutable();
         stage=4;
-        pickupLimit=27*64;
+        pickupLimit=Math.clamp(amount,1,27*64);
     }
     private PtpBlockEntity outputPoint(ServerLevel level){
         return level.hasChunkAt(destination)
@@ -228,10 +228,14 @@ public final class StorageGolem extends PathfinderMob {
             if(inserted>0){
                 if(outputJob){
                     PtpBlockEntity ptp=outputPoint(level);
-                    if(ptp!=null)ptp.outputDelivered(outputTicket,inserted);
+                    if(ptp!=null)ptp.outputDelivered(outputTicket,
+                            packedJob?packedItemCount:inserted);
                 }
                 waitTicks=0;
-                if(cargo.isEmpty())stage=2;
+                if(cargo.isEmpty()){
+                    packedItemCount=0;
+                    stage=2;
+                }
             } else if(++waitTicks>80){
                 if(outputJob)stage=3;
                 else {
@@ -245,9 +249,21 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         if(stage==3){
-            // An outbound shipment that cannot be delivered is walked back
-            // to its rack. Any remainder is dropped here for recovery.
-            if(!cargo.isEmpty()){
+            // A rejected packed delivery goes back to the SAME source rack.
+            // Recover the contained item stacks first, then return the one
+            // emptied shulker to the shelf magazine; never clone its contents.
+            if(packedJob&&!cargo.isEmpty()&&packedItemCount>0){
+                ItemStack unpackedEmpty=StorageGolemPacking.emptyVersion(cargo);
+                List<ItemStack> stacks=StorageGolemPacking.unpack(cargo);
+                cargo=ItemStack.EMPTY;
+                packedItemCount=0;
+                for(ItemStack item:stacks){
+                    StorageGolemDispatch.insert(level,source,item);
+                    if(!item.isEmpty())
+                        Containers.dropItemStack(level,getX(),getY(),getZ(),item);
+                }
+                emptyBox=unpackedEmpty;
+            }else if(!cargo.isEmpty()){
                 StorageGolemDispatch.insert(level,source,cargo);
                 if(!cargo.isEmpty()){
                     Containers.dropItemStack(level,getX(),getY(),getZ(),cargo);
@@ -255,9 +271,14 @@ public final class StorageGolem extends PathfinderMob {
                 }
             }
             releaseOutput(level);
-            stage=2;return;
+            stage=emptyBox.isEmpty()?2:5;return;
         }
         releaseOutput(level);
+        if(!emptyBox.isEmpty()){
+            // Worker was interrupted after withdrawal but before packing.
+            Containers.dropItemStack(level,getX(),getY(),getZ(),emptyBox);
+            emptyBox=ItemStack.EMPTY;
+        }
         if(!cargo.isEmpty()){
             // A destroyed/filtered destination is not a deletion path:
             // physically drop the real item for recovery before redocking.
@@ -279,6 +300,10 @@ public final class StorageGolem extends PathfinderMob {
         out.putInt("output_ticket",outputTicket);
         out.putInt("pickup_limit",pickupLimit);
         if(!requestedSample.isEmpty())out.store("requested_sample",ItemStack.CODEC,requestedSample);
+        out.putBoolean("packed_job",packedJob);
+        out.store("magazine",BlockPos.CODEC,magazine);
+        out.putInt("packed_item_count",packedItemCount);
+        if(!emptyBox.isEmpty())out.store("empty_box",ItemStack.CODEC,emptyBox);
     }
     @Override protected void readAdditionalSaveData(ValueInput in){
         super.readAdditionalSaveData(in);
@@ -286,13 +311,17 @@ public final class StorageGolem extends PathfinderMob {
         source=in.read("source",BlockPos.CODEC).orElse(BlockPos.ZERO);
         destination=in.read("destination",BlockPos.CODEC).orElse(BlockPos.ZERO);
         cargo=in.read("cargo",ItemStack.CODEC).orElse(ItemStack.EMPTY);
-        stage=Math.clamp(in.getIntOr("stage",2),0,3);
+        stage=Math.clamp(in.getIntOr("stage",2),0,5);
         itemId=in.getStringOr("item","");
         waitTicks=Math.max(0,in.getIntOr("wait",0));
         outputJob=in.getBooleanOr("output_job",false);
         outputTicket=Math.max(0,in.getIntOr("output_ticket",0));
-        pickupLimit=Math.clamp(in.getIntOr("pickup_limit",64),1,64);
+        pickupLimit=Math.clamp(in.getIntOr("pickup_limit",64),1,27*64);
         requestedSample=in.read("requested_sample",ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        packedJob=in.getBooleanOr("packed_job",false);
+        magazine=in.read("magazine",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        packedItemCount=Math.max(0,in.getIntOr("packed_item_count",0));
+        emptyBox=in.read("empty_box",ItemStack.CODEC).orElse(ItemStack.EMPTY);
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel server &&!deathDropsReleased){
@@ -301,6 +330,10 @@ public final class StorageGolem extends PathfinderMob {
             if(!cargo.isEmpty()){
                 Containers.dropItemStack(server,getX(),getY(),getZ(),cargo);
                 cargo=ItemStack.EMPTY;
+            }
+            if(!emptyBox.isEmpty()){
+                Containers.dropItemStack(server,getX(),getY(),getZ(),emptyBox);
+                emptyBox=ItemStack.EMPTY;
             }
             Containers.dropItemStack(server,getX(),getY(),getZ(),
                     new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
@@ -314,6 +347,10 @@ public final class StorageGolem extends PathfinderMob {
         if(!cargo.isEmpty()){
             player.getInventory().placeItemBackInInventory(cargo.copy());
             cargo=ItemStack.EMPTY;
+        }
+        if(!emptyBox.isEmpty()){
+            player.getInventory().placeItemBackInInventory(emptyBox.copy());
+            emptyBox=ItemStack.EMPTY;
         }
         player.getInventory().placeItemBackInInventory(new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
         discard();
