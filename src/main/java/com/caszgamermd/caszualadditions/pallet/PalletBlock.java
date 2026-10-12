@@ -218,6 +218,17 @@ public final class PalletBlock extends Block implements EntityBlock {
     }
 
     @Override
+    protected InteractionResult useItemOn(
+            ItemStack held,BlockState state,Level level,BlockPos pos,
+            Player player,net.minecraft.world.InteractionHand hand,BlockHitResult hit){
+        if(!held.is(net.minecraft.world.item.Items.SHEARS))
+            return InteractionResult.PASS;
+        PalletBlockEntity pallet=rootEntity(level,pos,state);
+        if(pallet==null||!pallet.glassWrapped())return InteractionResult.PASS;
+        if(!level.isClientSide())pallet.unwrapGlass();
+        return InteractionResult.SUCCESS;
+    }
+    @Override
     protected InteractionResult useWithoutItem(
             BlockState state,
             Level level,

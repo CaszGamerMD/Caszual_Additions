@@ -39,7 +39,7 @@ public final class WarehouseTestKitItem extends Item {
         add(supplies,RackContent.PTP_TRANSFER_ITEM,32);
         add(supplies,RackContent.PTP_WRAP_ITEM,4);
         add(supplies,RackContent.PTP_HOPPER_ITEM,4);
-        add(supplies,RackContent.STORAGE_SCANNER_ITEM,3);
+        add(supplies,RackContent.STORAGE_SCANNER_ITEM,1);
         add(supplies,RackContent.TANK_ITEM,2);
         add(supplies,PalletContent.WOODEN_PALLET_ITEM,8);
         add(supplies,PalletContent.IRON_PALLET_ITEM,2);
@@ -48,8 +48,6 @@ public final class WarehouseTestKitItem extends Item {
         add(supplies,RackContent.AISLE_TAG,4);
         add(supplies,RackContent.CONNECTOR,16);
         add(supplies,RackContent.CONNECTOR,16);
-        add(supplies,RackContent.HUB_ITEM,1);
-        add(supplies,RackContent.ORDER_COLLECTOR,3);
         add(supplies,Items.SHULKER_BOX,8);
         add(supplies,Items.COBBLESTONE,64);
         add(supplies,Items.HOPPER,4);

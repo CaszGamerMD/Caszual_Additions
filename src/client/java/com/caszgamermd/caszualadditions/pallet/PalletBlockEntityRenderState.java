@@ -24,6 +24,8 @@ public final class PalletBlockEntityRenderState extends BlockEntityRenderState {
 
     public final BlockModelRenderState base = new BlockModelRenderState();
     public final BlockModelRenderState carton = new BlockModelRenderState();
+    public final BlockModelRenderState glassPane = new BlockModelRenderState();
+    public boolean glassWrapped;
     public final BlockModelRenderState[] cargoBlocks = new BlockModelRenderState[DISPLAY_CAPACITY];
     public final BlockModelRenderState[] boards = new BlockModelRenderState[4];
     public final boolean[] boxed = new boolean[DISPLAY_CAPACITY];

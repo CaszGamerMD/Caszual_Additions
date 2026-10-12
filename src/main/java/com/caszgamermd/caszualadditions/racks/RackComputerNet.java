@@ -194,27 +194,9 @@ public final class RackComputerNet {
                     +(output.readyForOutput()?" for output.":" — awaiting an unsealed output pallet."));
             return;
         }
-        OrderHubEntity hub=OrderHubEntity.nextToComputer(level,computer);
-        if(hub==null) {
-            for(net.minecraft.core.Direction side:net.minecraft.core.Direction.values()){
-                BlockPos candidate=computer.relative(side);
-                if(!level.hasChunkAt(candidate))continue;
-                PtpBlockEntity point=PtpBlock.controller(level,candidate);
-                if(point!=null){
-                    reply(player,"Set a transfer point to OUTPUT and connect "
-                            +"a Storage Golem Shelf to this computer.");
-                    return;
-                }
-            }
-            reply(player,"Attach a collector hub or a 3x3 Pallet Transfer Point.");
-            return;
-        }
-        if(hub.collectors()==0){reply(player,"Insert up to 3 Order Collectors into the hub.");return;}
-        if(!hub.queue(order.itemId(),order.quantity())){
-            reply(player,"Hub's order queue is full (16 orders max).");return;
-        }
-        reply(player,"Order queued: "+order.quantity()+" × "+new ItemStack(item).getHoverName().getString()
-                +(hub.hasPallet()?"":" — waiting for a pallet on the hub."));
+        reply(player,"No OUTPUT Pallet Transfer Point found. Attach a 3x3 PTP "
+                +"to the Rack Computer or its linked Storage Golem Shelves, "
+                +"set it to OUTPUT, and dock Storage Golems.");
     }
 
     private static void answer(ServerPlayer player,Query query) {
@@ -272,8 +254,6 @@ public final class RackComputerNet {
                         +(ptp.hasAdapter()?" / hopper adapter":""));
             break;
         }
-        String scannerSummary=StorageScanner.reportForComputer(level,computer,shelves);
-        if(!scannerSummary.isBlank())root.addProperty("scannerSummary",scannerSummary);
         int matches=0;
         int totalItems=0;
         RackBlockEntity selected=null;

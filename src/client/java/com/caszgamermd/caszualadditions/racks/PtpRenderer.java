@@ -72,7 +72,8 @@ public final class PtpRenderer implements BlockEntityRenderer<PtpBlockEntity,Rac
             if(plastic)state.boards[i].tintLayers().add(PalletData.plasticColor(item));
         }
         blocks.update(state.carton,PalletContent.CARDBOARD_RENDER_PROXY.defaultBlockState(),DISPLAY);
-        blocks.update(state.nameplate,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
+        // Use transparent glass panels as the full-height sealed envelope.
+        blocks.update(state.nameplate,Blocks.GLASS.defaultBlockState(),DISPLAY);
         for(int slot=0;slot<ptp.getContainerSize() && state.visible<RackRenderState.CARGO;slot++){
             ItemStack stack=ptp.displayItem(slot);
             if(stack.isEmpty())continue;
@@ -128,14 +129,17 @@ public final class PtpRenderer implements BlockEntityRenderer<PtpBlockEntity,Rac
             poses.popPose();
         }
         if(state.sealed){
-            // Raised outer retaining bands make the sealed state visible
-            // without drawing coplanar geometry on item surfaces.
-            for(float height:new float[]{.72f,1.46f}){
-                box(state.nameplate,state,poses,collector,-.03f,height,-.035f,2.06f,.09f,.07f);
-                box(state.nameplate,state,poses,collector,-.03f,height,1.965f,2.06f,.09f,.07f);
-                box(state.nameplate,state,poses,collector,-.035f,height,.035f,.07f,.09f,1.93f);
-                box(state.nameplate,state,poses,collector,1.965f,height,.035f,.07f,.09f,1.93f);
-            }
+            // Four thin GLASS panes, not iron bands or crossed straps.
+            // Panels enclose the displayed cargo and sit just outside its
+            // two-block footprint. Split corners to avoid overlapping faces.
+            float height=Math.max(.8f,(float)(5.0/16.0
+                    +Math.ceil(state.visible/9.0)*RackRenderState.CELL+.08));
+            height=Math.min(5.1f,height);
+            float bottom=.29f,wall=height-bottom;
+            box(state.nameplate,state,poses,collector,-.04f,bottom,-.045f,2.08f,wall,.033f);
+            box(state.nameplate,state,poses,collector,-.04f,bottom,2.012f,2.08f,wall,.033f);
+            box(state.nameplate,state,poses,collector,-.045f,bottom,-.01f,.033f,wall,2.02f);
+            box(state.nameplate,state,poses,collector,2.012f,bottom,-.01f,.033f,wall,2.02f);
         }
         poses.popPose();
     }

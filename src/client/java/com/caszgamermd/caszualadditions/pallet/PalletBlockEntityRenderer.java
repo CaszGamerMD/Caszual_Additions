@@ -48,6 +48,10 @@ public final class PalletBlockEntityRenderer
         BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTicks, cameraPosition, breakProgress);
 
         state.root = blockEntity.isRoot();
+        state.glassWrapped=blockEntity.glassWrapped();
+        if(state.root&&state.glassWrapped)
+            blockModelResolver.update(state.glassPane,
+                    Blocks.GLASS.defaultBlockState(),DISPLAY_CONTEXT);
         state.facing = blockEntity.getBlockState().getValue(PalletBlock.FACING);
         state.legacy = blockEntity.getBlockState().getValue(PalletBlock.LEGACY);
         if (state.root) {
@@ -165,6 +169,7 @@ public final class PalletBlockEntityRenderer
             }
         }
         submitPalletBase(state, poseStack, collector);
+        if(state.glassWrapped)submitGlass(state,poseStack,collector);
         poseStack.popPose();
 
         int layerSize = PalletBlockEntityRenderState.DISPLAY_COLUMNS
@@ -238,6 +243,30 @@ public final class PalletBlockEntityRenderer
             poseStack.popPose();
         }
 
+    }
+
+    private static void glassPanel(PalletBlockEntityRenderState state,
+            PoseStack pose,SubmitNodeCollector collector,float x,float y,float z,
+            float sx,float sy,float sz){
+        pose.pushPose();
+        pose.translate(x,y,z);
+        pose.scale(sx,sy,sz);
+        state.glassPane.submit(pose,collector,state.lightCoords,
+                OverlayTexture.NO_OVERLAY,0);
+        pose.popPose();
+    }
+    private static void submitGlass(PalletBlockEntityRenderState state,
+            PoseStack pose,SubmitNodeCollector collector){
+        float top=Math.max(.85f,
+                PalletBlockEntityRenderState.FIRST_LAYER_Y
+                +(float)Math.ceil(state.visibleCount/9.0)
+                        *PalletBlockEntityRenderState.LAYER_SPACING+.08f);
+        float y=.30f,h=top-y;
+        // Four clear, near-zero-thickness sides, never diagonal iron bands.
+        glassPanel(state,pose,collector,-.035f,y,-.04f,2.07f,h,.03f);
+        glassPanel(state,pose,collector,-.035f,y,2.01f,2.07f,h,.03f);
+        glassPanel(state,pose,collector,-.04f,y,-.005f,.03f,h,2.01f);
+        glassPanel(state,pose,collector,2.01f,y,-.005f,.03f,h,2.01f);
     }
 
     private static void submitPalletBase(

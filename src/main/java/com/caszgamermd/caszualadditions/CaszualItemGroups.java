@@ -37,14 +37,14 @@ public final class CaszualItemGroups {
                                     RackContent.WAREHOUSE_TEST_KIT,
                                     RackContent.RACK_TAG,
                                     RackContent.AISLE_TAG,RackContent.CONNECTOR,
-                                    RackContent.PALLET_FILTER,RackContent.HUB_ITEM,
-                                    RackContent.TANK_ITEM,RackContent.ORDER_COLLECTOR,
+                                    RackContent.PALLET_FILTER,
+                                    RackContent.TANK_ITEM,
                                     RackContent.PTP_TRANSFER_ITEM,RackContent.PTP_HOPPER_ITEM,
                                     RackContent.PTP_WRAP_ITEM,
                                     RackContent.STORAGE_SHELF_ITEM,RackContent.STORAGE_GOLEM_ITEM))
                                 output.accept(new ItemStack(item));
                             BuiltInRegistries.ITEM.forEach(item -> {
-                                if (item == FunBarrelContent.ITEM) return;
+                                if (item == FunBarrelContent.ITEM)return;
                                 ItemStack stack = item.getDefaultInstance();
                                 if (stack.is(CaszualTags.CASZUAL_CONTENT)) output.accept(stack);
                             });

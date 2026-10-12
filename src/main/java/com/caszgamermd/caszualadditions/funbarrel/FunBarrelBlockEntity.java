@@ -66,6 +66,8 @@ public final class FunBarrelBlockEntity extends BlockEntity
         List<Item> registered = new ArrayList<>();
         BuiltInRegistries.ITEM.forEach(item -> {
             Identifier id = BuiltInRegistries.ITEM.getKey(item);
+            // Retired saved-world compatibility items are never included in
+            // a newly created Barrel of Caszual Fun.
             if (item != Items.AIR && id != null && caszualFamily(id)) {
                 registered.add(item);
             }

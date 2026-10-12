@@ -49,6 +49,15 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
 
     public boolean hasPallet() { return !pallet.isEmpty(); }
     public ItemStack palletStack(){return pallet.copy();}
+    public boolean glassWrapped(){
+        return com.caszgamermd.caszualadditions.pallet.GlassPalletWrap.wrapped(pallet);
+    }
+    public void unwrapGlass(){
+        if(glassWrapped()){
+            pallet=com.caszgamermd.caszualadditions.pallet.GlassPalletWrap.withWrap(pallet,false);
+            setChanged();
+        }
+    }
     public void install(ItemStack item) {
         if (hasPallet()) return;
         pallet = item.copyWithCount(1);

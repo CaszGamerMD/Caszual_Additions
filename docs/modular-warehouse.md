@@ -11,7 +11,6 @@ of each system, see [Warehouse integrated test plan](warehouse-test-plan.md).
 | Pallet | 2 × 2 × 3 display; 216 storage slots | Standalone storage (existing) |
 | Pallet Rack | **2 × 2 × 3** | Holds one pallet and the pallet's 216 slots |
 | Rack Computer | 1 × 1 × 1 | Search and order terminal for physically connected racks |
-| Order Collector Hub | **2 × 2 × 1** | Holds one output pallet and **up to 3 collectors** |
 | Shulker Tank | **1 × 1 × 2** | Magazine of **64 EMPTY shulker boxes** |
 
 All rack logic is server-authoritative. It doesn't load distant chunks. Only
@@ -22,12 +21,15 @@ rack controllers.
 
 1. Place a Pallet Rack with a **2 × 2 × 3** empty volume.
 2. Keep one complete block of empty approach space **in front of each rack**,
-   across its two-block width and three-block height. A rack, computer, hub, or
-   shulker tank cannot be placed across an existing reserved corridor.
+   across its two-block width and three-block height. A rack, computer or
+   shulker tank cannot be placed across an existing reserved corridor;
+   physical horizontal connector rods may cross the lane intentionally.
 3. Place adjacent rack bays **side by side** to extend the automatic aisle.
-4. For racks on another level or behind the row, apply **Rack Connectors to
-   the matching physical faces on BOTH touching racks**. These add the racks to
-   the same network; they do not automatically rename the destination aisle.
+4. For separate rack groups, **click a rack's horizontal face with a
+   Rack Connector**. It places two slim rods and automatically spans a clear
+   horizontal gap of up to four blocks to the next rack. Side-to-side spans
+   extend the same aisle tag; face-to-face spans join warehouse networks.
+   Two directly touching back-to-back racks connect automatically.
 5. Place the Rack Computer touching a physical rack cell. If multiple
    independent rack networks contact the computer, the computer can inspect
    both.
@@ -53,7 +55,7 @@ approach and any neighboring rack's access lane.
 The **Pallet Filter** is now a *real upgrade module*, installed in the
 **FILTER** section of the Pallet Storage interface. Use the same storage
 screen on a pallet placed on the ground, on a pallet mounted in a rack,
-and on the output pallet of a legacy Order Collector Hub.
+and on a connected OUTPUT Pallet Transfer Point.
 
 1. Put a Pallet Filter in its small dedicated slot. Only one fits.
    Removing it **disables** filtering without deleting the rule.
@@ -104,9 +106,10 @@ holding an upgrade item continues to use that upgrade.
   block**. Place one to four consecutive sections horizontally between
   rack frame cells to join their networks across an actual gap. Each placed
   section has collision; breaking any section immediately disconnects the
-  bridge. No vertical bridging is required. Existing saved legacy face
-  connector flags remain readable for compatibility, but new connector
-  items place actual blocks.
+  bridge. No vertical bridging is required. One connector placed against
+  a rack automatically spans a clear gap to another rack up to four blocks away.
+  The beam uses two thin horizontal rods, not a large X. Breaking the
+  beam disconnects the rack network.
 - **Back-to-back racks:** Two touching rack frames with opposite front
   facings now connect to the same computer network automatically, without
   connector items. Adjacent side-by-side racks still share aisle tags.
@@ -163,63 +166,23 @@ The computer must touch at least one rack to search. For orders, connect a
 Storage Golem Shelf group and an **OUTPUT** Pallet Transfer Point (touching
 either a shelf in the linked group or the Rack Computer). The terminal queues
 up to 16 pending output orders on that PTP; requests can wait safely for an
-unsealed output pallet or available stock. Legacy Order Collector Hubs
-remain supported if no output PTP is connected. All requests are validated
-on the server.
+unsealed output pallet or available stock. Requests without a connected
+OUTPUT PTP are rejected; all orders are validated on the server.
 
-## Order Collector Hub
+## Warehouse order collection — Storage Golems only
 
-1. Build and place a **2 × 2** hub adjacent to the Rack Computer.
-2. Right-click the hub holding an **Order Collector** item to install it.
-   One hub can hold **three collectors maximum**.
-3. Right-click with a pallet item to install an output pallet. The pallet must
-   have an item filter compatible with the expected output.
-4. Optionally place a **Shulker Tank** touching any hub cell and stock it
-   with empty boxes.
-5. At the computer, inspect connected racks, select an item ID, and submit a
-   quantity. Queued requests remain saved across world reloads.
+The **Order Collector** and **Order Collector Hub** have been deleted.
+They are no longer registered, craftable or available in Creative, and
+saved legacy blocks have no compatibility implementation. Back up or
+remove old warehouse content before installing this build.
 
-Each collector is currently a **server-side virtual worker**, processing
-network transfers every 10 game ticks. A future iteration will render actual
-traveling collectors. The current implementation does not claim real animated
-movement or simulated travel time.
-
-The order queue supports at most 16 pending jobs per hub. When no pallet,
-collectors, or sufficient stock/output room is present, work **pauses rather
-than dropping items**.
-
-### Shulker Tank and packing
-
-- The Shulker Tank is **one block across and two tall**.
-- Right-click with an **empty** shulker box (any color, name) to add one.
-- The tank holds at most **64 individual empty shulkers**; filled or loot-pending
-  boxes are rejected.
-- Sneak-right-click with an empty hand to retrieve one.
-- When packing is possible, an available worker takes a real empty box from
-  the tank, loads up to 27 item stacks, and deposits the filled box on the
-  hub's pallet. Names and colors survive.
-- Without available shulkers, orders deliver **loose items** to the hub's
-  pallet where allowed. A filter can prevent either type from entering.
-- The worker never starts a loose transfer without reserving a compatible
-  output slot; custom-item components are preserved.
-
-### Known limitations and planned polish
-
-- No rendered animated roaming collectors yet; movement is implemented as
-  periodic, safe server-side logistics transfers.
-- Search/highlights, inventories, 2×2×3 rendering and shulker packing all
-  require in-game testing on a real client/server. CI only confirms compilation,
-  unit tests and static model checks.
-- Shulker selection is by **box item type** under pallet filters; the first
-  available box is selected from the magazine.
-- Auto-sorting, cross-dimensional networks, unloaded-chunk operation, and
-  hopper/direct pipe integration are not part of this first implementation.
+Order requests at the Rack Computer go **only** to attached OUTPUT
+Pallet Transfer Points. Real Storage Golems docked in physically linked
+Storage Golem Shelves collect stock from connected racks and walk it to
+an OUTPUT PTP. Shulker Tanks attached to shelves supply empty boxes for
+packed orders. There is no alternate virtual-worker or legacy hub path.
 
 ## New 3×3 Pallet Transfer Point — first implementation (Issue #34)
-
-The original 2×2 **Order Collector Hub** remains as a legacy block. Its stored
-orders, collectors and pallet inventory are not automatically converted or
-deleted. **Do not replace an occupied old hub without emptying it.**
 
 ### Building a basic point
 
@@ -252,7 +215,7 @@ in Survival, and leaves the other eight building blocks to reuse.
   the Minecraft `Container` inventory interface.
 - **PTP Wrap Unit:** Right-click one of the **four side-middle** platform
   cells using a Wrap Unit block item. Click the Wrap Unit **empty-handed**
-  to seal a loaded pallet. Wrapped pallets have external retaining bands,
+  to seal a loaded pallet. Wrapped pallets have transparent glass walls,
   block access to the inventory and prevent hopper transfers.
   **Shears** unwrap the pallet to restore its normal interactions.
 - Neither module can be installed in the center cell. These modules form the
@@ -263,10 +226,10 @@ in Survival, and leaves the other eight building blocks to reuse.
 
 The physical endpoint supports Storage Golem input sorting, output ordering
 and linked Shulker Tank packing; all need a connected shelf and Rack Computer.
-The Storage Scanner and initial coordinated four-golem transport of wrapped
-pallets are now implemented and testable; floating cargo visuals still need
-polish. Legacy hubs retain their own virtual order logic and saved state;
-no automatic migration is performed.
+The handheld Storage Scanner and player-led four-Golem transport are
+implemented for test worlds. A fully synchronized floating cargo mesh
+between four carriers remains visual work; no legacy Hub or Collector is
+registered in this build.
 
 Test module orientation, shulker contents, module cell break/reassembly,
 read/write pipe direction, filter enforcement, sealing, and world persistence
@@ -368,8 +331,7 @@ there is no second hidden inventory copy.
 trip*, not from 27 different racks. It uses real navigation and the same
 saved output-order reservations as loose deliveries. Future work includes
 cross-rack multi-stop packing and return-to-tank visual animations. The
-Storage Scanner and first four-Golem sealed-pallet transport are implemented. The original 2×2 Order
-Collector Hub remains independent.
+Handheld Scanner and four-Golem player-led pallet transport are implemented.
 
 The new worker system needs client-side pathfinding and server reload QA;
 compilation alone cannot verify movement, collision, and recovery.
@@ -379,173 +341,67 @@ around your shelves, golem pathing to the outside of racks and transfer
 points, safe handling of full destinations, death and drops, and reloads
 on a backed-up test world.
 
-## Storage Scanner — read-only pallet inspection
+## Handheld Warehouse Scanner and player-led pallet transport
 
-The **Storage Scanner** is a new craftable steel/cyan block. Place it beside
-**any block of a fully assembled 3×3 Pallet Transfer Point** (including hopper
-or wrap modules), then right-click the scanner to inspect the point's pallet.
-It works on **sealed** pallets without unwrapping, withdrawing or altering
-their real inventory.
+The **Storage Scanner is now a handheld tool**, not a placed block.
+It remembers its linked warehouse and is used to lead a team of four
+real Storage Golems. The previous automatic "nearest empty rack" haul
+and placed-scanner inspection are retired.
 
-The scanner reports the pallet's total item count, distinct item IDs and
-occupied slots. When the point is connected to a Rack Computer (directly or
-through adjacent linked Storage Golem Shelves), it also estimates how many
-items from that pallet would fit across the computer's **loaded, connected**
-rack network, respecting each rack's currently installed pallet, filters,
-existing matching partial stacks, and remaining empty slots.
+1. **Right-click a Rack Computer with the handheld Scanner.** This links
+   the scanner to that warehouse and deploys **four docked Golems** from
+   its physically linked shelves. The four workers follow you.
+2. Load a pallet on a **3×3 PTP equipped with a Wrap Unit** and seal it.
+   Sealing renders **thin, transparent glass pane-style walls** around the
+   actual cargo instead of iron bands.
+3. **Right-click the sealed PTP with the scanner.** The crew walks to
+   the pallet and rallies on its four sides. Only after all four arrive
+   does the lead Golem take the actual pallet and its 216 inventory
+   slots. The empty PTP does **not** retain a duplicate copy.
+4. Lead the four Golems to the destination. They follow the linked player
+   in the same dimension. The pallet's contents are persisted on the
+   lead Golem, not inside the Scanner or the player's inventory.
+5. **Right-click an empty pallet rack** with the Scanner to insert the
+   full pallet and contents, **or right-click the intended ground block**
+   to place it in a clear loaded 2×2 footprint.
+6. Take the now-empty crew **back to the linked Rack Computer** and
+   right-click with the Scanner again to dismiss them. They walk back
+   to the same Storage Golem Shelves they came from.
 
-- The estimate uses a temporary **virtual inventory**: it simulates merging
-  into matching stacks first, then empty slots, across the racks in the
-  computer's network. It never moves items or changes filters.
-- Racks without pallets, racks in unloaded chunks and disconnected racks
-  are excluded. The reported capacity is a **snapshot**, not a reservation:
-  other Golems or players may fill storage before a real pickup.
-- With no connected computer, the scanner still reports the PTP inventory
-  but explicitly says that capacity could not be verified.
-- A connected Rack Computer shows the first discovered scanner's summary
-  underneath its existing PTP status. Its search, order and Golem buttons
-  continue to work as before.
-- The scanner also starts/cancels a manually assigned four-Golem wrapped-
-  pallet haul with a sneak-right-click. Regular right-click inspects contents;
-  right-click **holding PAPER** runs the detailed readiness audit.
+**Diagnostics:** Sneak-right-click the Rack Computer with the Scanner
+for a read-only report of attached PTPs, rack and pallet capacity,
+docked Golems, Shulker Tank supplies and output queues. Right-click
+the Scanner in air for the team and warehouse-link status.
 
-Scanner craft: iron ingots around redstone, one glass pane, and a comparator.
-It is also available from the Caszual Additions creative tab.
+**Failure behavior:** A failed rack or floor placement leaves the
+inventory on the lead Golem. Killing or directly reclaiming the lead
+Golem drops the actual pallet and all of its carried stacks. While
+a crew awaits pickup, the wrapped PTP keeps ownership of its stock;
+a failed rally does not duplicate or delete it. Workers cannot
+follow through unloaded terrain or across dimensions without the
+player; keep the crew near you and avoid changing dimensions during
+transport. Test on a backed-up world.
 
-## Coordinated four-Golem wrapped-pallet hauling (first iteration)
-
-**Four physical Storage Golems** now cooperate on an entire pallet move, not
-just individual item stacks. This is a manually dispatched, bounded workflow.
-
-1. Build a **3×3 Pallet Transfer Point** with a **Wrap Unit**; install a
-   pallet, load its inventory, and seal it by using the wrap module.
-2. Attach a **Storage Scanner** to any cell of the point.
-3. Connect the point to a Rack Computer directly or through a linked
-   Storage Golem Shelf group. Dock **at least four** Storage Golems across
-   those linked shelves.
-4. Leave a **rack completely empty (no installed pallet)** within
-   48 blocks horizontally/3D squared-distance and 12 blocks vertically
-   of the source point. The rack must be connected to that same terminal.
-5. **Sneak-right-click the scanner** to deploy four Golems. It picks
-   the nearest eligible empty rack. All four physically rally at the
-   wrapped pallet and then walk to the chosen rack. Only when all four
-   reach the rack does the original pallet and its **216 original
-   item slots** transfer into the destination rack.
-6. **Sneak-right-click again** during travel to cancel the haul. The
-   source remains wrapped with its original inventory and the walking
-   workers redock. Ordinary scanner right-click still shows item counts
-   and virtual rack capacity.
-
-### Safety and scope
-
-- The **source transfer point retains the one authoritative inventory**
-  for the duration of a haul. The Golems carry a *transport assignment*,
-  not a second copy of 216 stacks. Scanner access is read-only.
-- The transfer destination must still be empty at delivery. If another
-  player installs a pallet there, the workers wait; the source remains
-  intact. Returning workers consume no stock.
-- The sealed source cannot be unwrapped, have its mode changed, or have its
-  pallet removed while a haul reservation exists. Breaking the source
-  cancels the assignment and uses the normal Survival item drop path
-  after unsealing, so its cargo remains recoverable.
-- Killing or recalling any one worker cancels the entire shipment; each
-  remaining worker returns to its shelf. Worker death and retrieval
-  preserve the existing Storage Golem item.
-- Each Golem chooses a loaded, collision-free approach to the point
-  instead of assuming the south face is always open. The four workers
-  prefer different approach sides so a scanner or module on one edge
-  does not block everyone. The scanner and Rack Computer display an
-  active haul's destination.
-- The assignment, target rack, four-person rally/arrival masks and
-  individual worker routes are persisted for world reloads. A five-minute
-  lease prevents an abandoned reservation from blocking a PTP indefinitely,
-  and active workers renew it while the source chunk is loaded.
-- The rack accepts the pallet and inventory together on the server
-  thread, after all four Golems have arrived and all item components
-  are validated against the destination pallet filter.
-
-**Presentation limitation:** The four workers show synchronized numbered
-RALLY/PALLET labels and lift their arms while carrying, and the source PTP
-shows purple status lamps during the job. The pallet itself still remains
-visually at the source while escrowed, then appears in the rack on handoff.
-A fully synchronized floating pallet mesh and physically coordinated
-corner-grip placement remain future polish. This is also
-*not* an unloaded-chunk hauling system and does not reserve the target
-rack against other uses.
+The lead Golem visibly raises its arms while moving the pallet.
+A synchronized floating 2×2 cargo model between all four corners
+remains a follow-up visual feature; the current transport is
+player-directed, not automatic destination selection.
 
 ## Integrated testing tools
 
-Use the **Warehouse Test Kit** item from the Caszual Additions Creative tab,
-then right-click it in the air while in Creative to receive enough actual
-warehouse components for input sorting, output orders, Shulker Tank packing,
-rack labeling, physical connector networks and a four-Golem pallet haul.
-It does not automatically edit the world or destroy inventories.
+The **Warehouse Test Kit** in Creative provides actual racks, shelves,
+Golems, PTP modules, Shulker Tanks, connectors and the handheld Scanner.
+It does not place blocks automatically.
 
-**Right-click the Storage Scanner while holding PAPER** for a read-only
-health audit. It reports the assembled PTP state, stored slot/item totals,
-connected Rack Computer, connected/empty racks, linked shelves, docked
-workers, enabled sorting, empty shulker boxes, queued orders, scanner capacity
-and any active four-worker haul's rally/arrival progress. Audit operations
-never reserve or withdraw items, and do not force chunk loading.
+Use **Scanner + sneak-right-click Rack Computer** for a read-only
+readiness audit. See
+[Warehouse integrated test plan](warehouse-test-plan.md)
+for practical in-game validation.
 
-See [Warehouse integrated test plan](warehouse-test-plan.md) for the
-test-by-test checklist, multiplayer checks and known unimplemented polish.
+## In-game verification
 
-## Suggested in-game regression checks
-
-- Dispatch a wrapped pallet with exactly four Golems split across two
-  adjacent shelves; verify all four physically rally before departing.
-- Fill the destination rack just before arrival: verify the pallet remains
-  safely sealed on its source point and no copy is created.
-- Kill or recall one of four workers: verify the haul cancels, other
-  workers redock, and the original pallet retains every stack.
-- Cancel by sneak-clicking the scanner, then send another haul. Verify
-  no permanent locks or missing worker tokens.
-- Break the source point in Survival mid-haul and verify its real pallet
-  and all 216 slots drop exactly once, while escorts return.
-- Save/reload with two or three workers at destination; verify the
-  persistent arrival bitmask and same source pallet without duplicates.
-- Put a Storage Scanner alongside each of the nine possible PTP cell
-  positions, including a Hopper Adapter and Wrap Unit, and verify that it
-  finds the same central pallet controller.
-- Scan a sealed pallet and verify no items are extracted, no wrapping is
-  removed, and the item totals match the actual pallet inventory.
-- Test multiple rack filters, partially filled matching stacks, and a
-  completely full rack. Scanner capacity should fall as slots are occupied
-  and show only racks in the loaded connected network.
-- Check the Rack Computer scanner status at high GUI scale, then confirm rack
-  row clicking and item selection still align with the displayed rows.
-- Place adjacent racks at north/east/south/west orientations and verify no
-  rack or pallet mesh protrudes outside its 2×2×3 footprint.
-- Stack racks and put racks back-to-back, using paired connectors; verify that
-  the computer scans each group once, and doesn't scan unconnected racks.
-- Apply an anvil-named Aisle Tag A and Rack Tag 12; verify side aisle signs and A-12 front/computer labeling throughout that aisle only.
-- Add another rack to an aisle end: the side sign should move to the new exposed edge without leaving a duplicate between racks.
-- Fill a filtered rack, try to insert disallowed items by hand and quick-move.
-- Search for the same item in two racks; verify both highlight for ten seconds.
-- Queue an order without an output pallet; add one later and verify completion.
-- Request more than one stack through an OUTPUT PTP and confirm exact delivered count.
-- Seal the PTP or fill it mid-trip; verify the golem walks stock back and the
-  order resumes only after the PTP accepts more cargo.
-- Kill or recall a worker mid-output trip; confirm its cargo remains recoverable
-  and the outstanding order/reservation is not lost on a normal loaded-chunk run.
-- Save/reload during an outbound shipment and ensure it neither duplicates stock
-  nor strands the order reservation.
-- With a full or filtered output pallet, verify stock is not removed/lost.
-- Link a Shulker Tank to a shelf (test upper- and lower-half adjacency),
-  then request more than one stack through the OUTPUT PTP. Verify the golem
-  walks to the magazine first, carries a real filled shulker and the order
-  counts individual *contents*, not box count.
-- Mix named/color empty shulkers in the magazine; verify their appearance and
-  custom names survive packing, delivery, and cancellation.
-- Reject shulkers with the output pallet filter, then verify normal loose
-  transport still works where allowed.
-- Fill/seal the PTP after packing; verify items return to the rack and the
-  empty box returns to its tank or drops recoverably if the tank is broken.
-- Kill/reclaim the golem before and after it fills a box. Confirm exactly
-  one box and its original cargo are recoverable, with no phantom stock.
-- Save/reload with an empty box held and with a full box in transit; verify
-  item counts and reservation continuity.
-- Break and re-place a rack and a hub, making sure all storage items, collectors,
-  and the pallet drop in survival.
-- Test persistence by saving/reloading while an order is waiting on stock.
+Follow the [full regression checklist](warehouse-test-plan.md), especially
+connector rod orientation, side-to-side aisle inheritance, face-to-face
+network joins, four-Golem pickup, player following, ground delivery,
+rack insertion, worker dismissal, glass wrap transparency and
+reload/interruption safety.

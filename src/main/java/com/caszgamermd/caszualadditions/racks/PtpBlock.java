@@ -139,6 +139,7 @@ public final class PtpBlock extends Block implements EntityBlock {
     }
     @Override protected InteractionResult useItemOn(ItemStack held,BlockState state,Level level,
             BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit){
+        if(held.is(RackContent.STORAGE_SCANNER_ITEM))return InteractionResult.PASS;
         PtpBlockEntity ptp=controller(level,pos);
         if(ptp==null)return InteractionResult.PASS;
         if(held.getItem() instanceof BlockItem bi && bi.getBlock() instanceof PtpBlock module

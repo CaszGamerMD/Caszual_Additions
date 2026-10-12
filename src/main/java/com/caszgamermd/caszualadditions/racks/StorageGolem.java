@@ -1,6 +1,16 @@
 package com.caszgamermd.caszualadditions.racks;
 
 import java.util.ArrayList;
+import java.util.UUID;
+import net.minecraft.core.NonNullList;
+import net.minecraft.world.ContainerHelper;
+import com.caszgamermd.caszualadditions.pallet.PalletBlock;
+import com.caszgamermd.caszualadditions.pallet.PalletBlockEntity;
+import com.caszgamermd.caszualadditions.pallet.PalletData;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.core.Direction;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -43,6 +53,10 @@ public final class StorageGolem extends PathfinderMob {
     // checkpoints; their sealed pallet remains escrowed on the source PTP.
     private boolean haulJob;
     private int haulTicket,haulIndex;
+    private boolean playerHaul;
+    private String haulOwner="";
+    private ItemStack carryingPallet=ItemStack.EMPTY;
+    private NonNullList<ItemStack> palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
     private boolean deathDropsReleased;
     private int waitTicks;
     public StorageGolem(EntityType<? extends StorageGolem> type,Level level){
@@ -92,6 +106,210 @@ public final class StorageGolem extends PathfinderMob {
         haulJob=true;haulTicket=ticket;haulIndex=index;stage=0;waitTicks=0;
         setCustomName(Component.literal("RALLY "+(index+1)+"/4"));
         setCustomNameVisible(true);
+    }
+    public void assignPlayerCrew(BlockPos shelf,int index,UUID owner){
+        home=shelf.immutable();source=BlockPos.ZERO;destination=BlockPos.ZERO;
+        cargo=ItemStack.EMPTY;emptyBox=ItemStack.EMPTY;
+        outputJob=false;outputTicket=0;packedJob=false;
+        haulJob=true;playerHaul=true;haulOwner=owner.toString();
+        haulTicket=0;haulIndex=index;stage=4;waitTicks=0;
+        setCustomName(Component.literal("CREW "+(index+1)+"/4"));
+        setCustomNameVisible(true);
+    }
+    public boolean ownedBy(UUID owner){
+        return playerHaul&&haulOwner.equals(owner.toString());
+    }
+    public boolean isPlayerCarrier(UUID owner,int ticket){
+        return ownedBy(owner)&&haulIndex==0&&haulTicket==ticket;
+    }
+    public boolean escorting(UUID owner){return ownedBy(owner)&&stage==1;}
+    public boolean pickupPending(UUID owner){return ownedBy(owner)&&stage==0;}
+    public void cancelPendingPickup(ServerLevel level){
+        if(playerHaul&&stage==0){
+            cancelHaul(level);
+            stage=4;
+            setCustomName(Component.literal("CREW "+(haulIndex+1)+"/4"));
+        }
+    }
+    public boolean holdsPallet(){return !carryingPallet.isEmpty();}
+    public int crewIndex(){return haulIndex;}
+    public void beginPlayerPickup(BlockPos ptp,int ticket){
+        if(playerHaul&&stage==4){
+            source=ptp.immutable();destination=ptp.immutable();
+            haulTicket=ticket;stage=0;
+            setCustomName(Component.literal("RALLY "+(haulIndex+1)+"/4"));
+        }
+    }
+    public void startFollowing(){
+        if(playerHaul&&stage==0){
+            stage=1;
+            setCustomName(Component.literal("PALLET "+(haulIndex+1)+"/4"));
+        }
+    }
+    public void clearDelivery(){
+        if(playerHaul&&stage==1){stage=4;haulTicket=0;
+            setCustomName(Component.literal("CREW "+(haulIndex+1)+"/4"));}
+    }
+    public void dismissCrew(){
+        if(playerHaul&&stage==4){stage=2;setCustomNameVisible(false);}
+    }
+    public boolean loadPallet(ItemStack stack,NonNullList<ItemStack> stock){
+        if(!playerHaul||haulIndex!=0||!carryingPallet.isEmpty()
+                ||stack.isEmpty()||stock.size()!=216)return false;
+        carryingPallet=stack.copyWithCount(1);
+        for(int i=0;i<216;i++)palletContents.set(i,stock.get(i).copy());
+        return true;
+    }
+    private boolean allCargoFits(Container dest){
+        for(int i=0;i<216;i++){
+            ItemStack item=palletContents.get(i);
+            if(!item.isEmpty()&&!dest.canPlaceItem(i,item))return false;
+        }
+        return true;
+    }
+    private boolean verifyCargo(Container dest){
+        for(int i=0;i<216;i++){
+            ItemStack old=palletContents.get(i),now=dest.getItem(i);
+            if(old.isEmpty()!=now.isEmpty())return false;
+            if(!old.isEmpty()&&(!ItemStack.isSameItemSameComponents(old,now)
+                    ||old.getCount()!=now.getCount()))return false;
+        }
+        return true;
+    }
+    /** After validation, one server tick installs exactly the one pallet
+     * and all 216 stacks; the carrier is cleared only after verification. */
+    public boolean placeIntoRack(RackBlockEntity rack){
+        if(!playerHaul||stage!=1||carryingPallet.isEmpty()
+                ||rack.hasPallet()||!rack.isEmpty())return false;
+        rack.install(carryingPallet);
+        if(!rack.hasPallet()||!allCargoFits(rack)){
+            rack.dropPallet();return false;
+        }
+        for(int i=0;i<216;i++)if(!palletContents.get(i).isEmpty())
+            rack.setItem(i,palletContents.get(i).copy());
+        if(!verifyCargo(rack)){
+            rack.clearContent();rack.dropPallet();return false;
+        }
+        releaseCarriedPallet();
+        return true;
+    }
+    public boolean placeOnGround(ServerLevel level,BlockPos pos,Direction facing){
+        if(!playerHaul||stage!=1||carryingPallet.isEmpty()
+                ||!(carryingPallet.getItem() instanceof BlockItem bi)
+                ||!(bi.getBlock() instanceof PalletBlock palletBlock))return false;
+        BlockState root=palletBlock.defaultBlockState()
+                .setValue(PalletBlock.PART,0)
+                .setValue(PalletBlock.FACING,facing)
+                .setValue(PalletBlock.LEGACY,false);
+        for(int part=0;part<4;part++){
+            BlockPos where=PalletBlock.partPos(pos,part,root);
+            if(level.isOutsideBuildHeight(where)||!level.getWorldBorder().isWithinBounds(where)
+                    ||!level.hasChunkAt(where)||!level.getBlockState(where).canBeReplaced())
+                return false;
+        }
+        if(!level.setBlock(pos,root,3))return false;
+        boolean complete=true;
+        for(int part=1;part<4;part++){
+            BlockPos where=PalletBlock.partPos(pos,part,root);
+            if(!level.setBlock(where,root.setValue(PalletBlock.PART,part),3)){
+                complete=false;break;
+            }
+        }
+        PalletBlockEntity dest=level.getBlockEntity(pos)
+                instanceof PalletBlockEntity p?p:null;
+        if(dest==null)complete=false;
+        if(complete){
+            dest.initialize(pos,0,carryingPallet);
+            if(!allCargoFits(dest))complete=false;
+        }
+        if(complete){
+            for(int i=0;i<216;i++)if(!palletContents.get(i).isEmpty())
+                dest.setItem(i,palletContents.get(i).copy());
+            complete=verifyCargo(dest);
+        }
+        if(!complete){
+            if(dest!=null)dest.clearContent();
+            for(int part=0;part<4;part++){
+                BlockPos where=PalletBlock.partPos(pos,part,root);
+                BlockState found=level.getBlockState(where);
+                if(found.getBlock()==palletBlock
+                        &&found.getValue(PalletBlock.PART)==part)
+                    level.removeBlock(where,false);
+            }
+            return false;
+        }
+        releaseCarriedPallet();
+        return true;
+    }
+    private void releaseCarriedPallet(){
+        carryingPallet=ItemStack.EMPTY;
+        palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
+    }
+    private void dropCarriedPallet(ServerLevel level){
+        if(carryingPallet.isEmpty())return;
+        Containers.dropItemStack(level,getX(),getY(),getZ(),carryingPallet);
+        for(ItemStack stack:palletContents)
+            if(!stack.isEmpty())Containers.dropItemStack(level,getX(),getY(),getZ(),stack);
+        releaseCarriedPallet();
+    }
+    private UUID ownerId(){
+        try{return UUID.fromString(haulOwner);}catch(IllegalArgumentException ex){return null;}
+    }
+    private void tickPlayerHaul(ServerLevel level){
+        if(stage==2){
+            setCustomNameVisible(false);
+            if(!level.hasChunkAt(home))return;
+            if(!closeTo(home)){
+                if(tickCount%20==0)getNavigation().moveTo(
+                        home.getX()+.5,home.getY()+1,home.getZ()+.5,.88);
+                return;
+            }
+            getNavigation().stop();
+            if(level.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf
+                    &&shelf.add())discard();
+            return;
+        }
+        UUID owner=ownerId();
+        if(owner==null){stage=2;return;}
+        if(stage==0){
+            if(!level.hasChunkAt(source))return;
+            PtpBlockEntity point=haulSource(level);
+            if(point==null||!point.playerHaulValid(haulTicket,owner)){
+                stage=4;return;
+            }
+            point.renewHaul(haulTicket);
+            BlockPos near=approach(level,source);
+            if(!level.hasChunkAt(near))return;
+            if(!closeTo(near)){
+                if(tickCount%20==0)getNavigation().moveTo(
+                        near.getX()+.5,near.getY(),near.getZ()+.5,.85);
+                return;
+            }
+            point.assembleHaul(haulTicket,haulIndex);
+            if(point.haulStage(haulTicket)==1){
+                List<StorageGolem> team=level.getEntitiesOfClass(
+                        StorageGolem.class,new net.minecraft.world.phys.AABB(source).inflate(16),
+                        other->other.playerHaul&&other.haulTicket==haulTicket
+                                &&other.haulOwner.equals(haulOwner));
+                if(team.size()==4){
+                    StorageGolem leader=team.stream().filter(w->w.haulIndex==0)
+                            .findFirst().orElse(null);
+                    if(leader!=null&&point.giveToCarrier(level,leader,haulTicket,owner))
+                        for(StorageGolem worker:team)worker.startFollowing();
+                }
+            }
+            return;
+        }
+        var player=level.getPlayerByUUID(owner);
+        if(player==null||player.isSpectator())return;
+        // Both empty crew and laden team stay with player, not static rack.
+        double radius=haulIndex==0?1.7:2.5;
+        double theta=(Math.PI/2)*haulIndex;
+        double x=player.getX()+Math.cos(theta)*radius;
+        double z=player.getZ()+Math.sin(theta)*radius;
+        if(distanceToSqr(x,player.getY(),z)>5){
+            if(tickCount%15==0)getNavigation().moveTo(x,player.getY(),z,.94);
+        }else getNavigation().stop();
     }
     private PtpBlockEntity haulSource(ServerLevel level){
         return level.hasChunkAt(source)
@@ -219,7 +437,11 @@ public final class StorageGolem extends PathfinderMob {
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel level)||tickCount%10!=0)return;
-        if(haulJob){tickHaul(level);return;}
+        if(haulJob){
+            if(playerHaul)tickPlayerHaul(level);
+            else tickHaul(level);
+            return;
+        }
         if(outputJob&&outputTicket!=0){
             PtpBlockEntity ptp=outputPoint(level);
             if(ptp!=null)ptp.renewOutput(outputTicket);
@@ -417,6 +639,10 @@ public final class StorageGolem extends PathfinderMob {
         out.putBoolean("haul_job",haulJob);
         out.putInt("haul_ticket",haulTicket);
         out.putInt("haul_worker_index",haulIndex);
+        out.putBoolean("player_haul",playerHaul);
+        out.putString("haul_owner",haulOwner);
+        if(!carryingPallet.isEmpty())out.store("carried_pallet",ItemStack.CODEC,carryingPallet);
+        ContainerHelper.saveAllItems(out,palletContents);
     }
     @Override protected void readAdditionalSaveData(ValueInput in){
         super.readAdditionalSaveData(in);
@@ -438,12 +664,18 @@ public final class StorageGolem extends PathfinderMob {
         haulJob=in.getBooleanOr("haul_job",false);
         haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
         haulIndex=Math.clamp(in.getIntOr("haul_worker_index",0),0,3);
+        playerHaul=in.getBooleanOr("player_haul",false);
+        haulOwner=in.getStringOr("haul_owner","");
+        carryingPallet=in.read("carried_pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
+        ContainerHelper.loadAllItems(in,palletContents);
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel server &&!deathDropsReleased){
             deathDropsReleased=true;
             releaseOutput(server);
             cancelHaul(server);
+            dropCarriedPallet(server);
             if(!cargo.isEmpty()){
                 Containers.dropItemStack(server,getX(),getY(),getZ(),cargo);
                 cargo=ItemStack.EMPTY;
@@ -463,6 +695,7 @@ public final class StorageGolem extends PathfinderMob {
         if(level() instanceof ServerLevel server){
             releaseOutput(server);
             cancelHaul(server);
+            dropCarriedPallet(server);
         }
         if(!cargo.isEmpty()){
             player.getInventory().placeItemBackInInventory(cargo.copy());
