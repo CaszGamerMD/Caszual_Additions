@@ -27,7 +27,7 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
 
-/** Four real floor cells with one order-storage controller. */
+/** Retired 2x2 Hub block: readable only to recover legacy saved inventories. */
 public final class OrderHubBlock extends Block implements EntityBlock {
     public static final IntegerProperty PART=IntegerProperty.create("part",0,3);
     private final MapCodec<OrderHubBlock> codec=MapCodec.unit(this);
@@ -69,41 +69,14 @@ public final class OrderHubBlock extends Block implements EntityBlock {
     @Override public @Nullable BlockEntity newBlockEntity(BlockPos pos,BlockState state){
         return state.getValue(PART)==0?new OrderHubEntity(pos,state):null;
     }
+    // Compatibility block only: saved Hub inventories are accessible, but
+    // never tick old virtual collectors or accept new workers/pallets.
     @Override public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(
-            Level level,BlockState state,BlockEntityType<T> type){
-        if(level.isClientSide()||state.getValue(PART)!=0)return null;
-        return (tickLevel,pos,tickState,entity)->{
-            if(entity instanceof OrderHubEntity hub && tickLevel instanceof net.minecraft.server.level.ServerLevel server)
-                OrderHubEntity.serverTick(server,pos,hub);
-        };
-    }
+            Level level,BlockState state,BlockEntityType<T> type){return null;}
+
     @Override protected InteractionResult useItemOn(ItemStack held,BlockState state,Level level,
             BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit) {
-        if(level.isClientSide()){
-            if(held.is(RackContent.ORDER_COLLECTOR)
-                    ||held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem
-                       && blockItem.getBlock() instanceof PalletBlock)return InteractionResult.SUCCESS;
-            return InteractionResult.PASS;
-        }
-        OrderHubEntity hub=controller(level,pos);
-        if(hub==null)return InteractionResult.PASS;
-        if(held.is(RackContent.ORDER_COLLECTOR)){
-            if(hub.addCollector()){
-                if(!player.getAbilities().instabuild)held.shrink(1);
-                player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "Collectors in hub: "+hub.collectors()+"/3"));
-            } else player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                    "Hub is already at the 3-collector limit."));
-            return InteractionResult.SUCCESS;
-        }
-        if(held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem
-                && blockItem.getBlock() instanceof PalletBlock){
-            if(hub.installPallet(held.copyWithCount(1))){
-                if(!player.getAbilities().instabuild)held.shrink(1);
-                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Output pallet installed."));
-            } else player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Hub already has a pallet."));
-            return InteractionResult.SUCCESS;
-        }
+        // No new collector/pallet installation or legacy automation.
         return InteractionResult.PASS;
     }
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,
@@ -116,12 +89,13 @@ public final class OrderHubBlock extends Block implements EntityBlock {
                         server.getInventory().placeItemBackInInventory(hub.removePallet());
                     }else if(!hub.hasPallet() && hub.collectors()>0){
                         hub.removeCollector();
-                        server.getInventory().placeItemBackInInventory(new ItemStack(RackContent.ORDER_COLLECTOR));
+                        server.getInventory().placeItemBackInInventory(new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
                     }else server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
                             "Empty the output pallet before removing it."));
                 }else if(hub.hasPallet())server.openMenu(hub);
                 else server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "Hub: "+hub.collectors()+"/3 collectors, "+hub.orders()+" queued orders. Add an output pallet."));
+                        "Retired Hub: salvage its pallet and "+hub.collectors()
+                                +" saved collectors, or break it in Survival for 9 transfer blocks."));
             }
         }
         return InteractionResult.SUCCESS;
@@ -133,8 +107,10 @@ public final class OrderHubBlock extends Block implements EntityBlock {
             if(hub!=null&&!player.getAbilities().instabuild){
                 Containers.dropContents(level,root,hub);
                 if(hub.hasPallet())Block.popResource(level,root,hub.dropPallet());
-                for(int i=0;i<hub.collectors();i++)Block.popResource(level,root,new ItemStack(RackContent.ORDER_COLLECTOR));
-                Block.popResource(level,root,new ItemStack(this));
+                for(int i=0;i<hub.collectors();i++)
+                    Block.popResource(level,root,new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
+                // Replace the retired 2x2 block with one complete 3x3 PTP.
+                Block.popResource(level,root,new ItemStack(RackContent.PTP_TRANSFER_ITEM,9));
             }
             for(int i=0;i<4;i++){
                 BlockPos at=cell(root,i);
