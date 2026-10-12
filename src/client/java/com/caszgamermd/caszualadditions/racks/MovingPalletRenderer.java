@@ -65,7 +65,7 @@ public final class MovingPalletRenderer extends MobRenderer<
     @Override public void submit(MovingPalletRenderState state,PoseStack pose,
             SubmitNodeCollector collector,CameraRenderState camera){
         super.submit(state,pose,collector,camera);
-        if(state.deck.model()==null)return;
+        if(!state.visible)return;
         pose.pushPose();
         // Origin = geometric middle of the unit. All four Golems have
         // identical corner offsets relative to this one pallet platform.
