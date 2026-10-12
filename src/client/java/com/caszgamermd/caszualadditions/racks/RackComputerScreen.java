@@ -101,6 +101,7 @@ public final class RackComputerScreen extends Screen {
         ClientPlayNetworking.send(new RackComputerNet.PtpControl(computer,
                 new BlockPos(ptp.get("x").getAsInt(),
                         ptp.get("y").getAsInt(),ptp.get("z").getAsInt()),action));
+        sendQuery(); // preserve the current search and selected rack on refresh
     }
     private void updatePtpControls(){
         if(ptpNextButton==null||ptpModeButton==null||ptpWrapButton==null)return;
