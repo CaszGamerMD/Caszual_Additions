@@ -80,6 +80,14 @@ public final class StoragePalletCrew {
         return "Crew lifting sealed pallet. Wait for all four to reach its corners; "
                 +"then they will carry it as they follow you.";
     }
+    private static boolean assembledNear(List<StorageGolem> members,
+            BlockPos destination){
+        for(StorageGolem golem:members)
+            if(golem.distanceToSqr(destination.getX()+.5,
+                    destination.getY()+.5,destination.getZ()+.5)>16*16)
+                return false;
+        return true;
+    }
     private static StorageGolem leader(List<StorageGolem> team,UUID owner){
         if(!completeTeam(team))return null;
         return team.stream().filter(w->w.crewIndex()==0&&w.ownedBy(owner)
@@ -92,6 +100,8 @@ public final class StoragePalletCrew {
         List<StorageGolem> workers=team(level,player);
         StorageGolem lead=leader(workers,player.getUUID());
         if(lead==null)return "Wait until all four Golems finish lifting and follow you.";
+        if(!assembledNear(workers,rack.getBlockPos()))
+            return "Wait for all four Golems to catch up with the destination rack.";
         if(!rack.hasPallet()&&rack.isEmpty()&&lead.placeIntoRack(rack)){
             afterDelivery(workers);
             return "Pallet placed in rack "+RackNetwork.label(level,rack)
@@ -103,6 +113,8 @@ public final class StoragePalletCrew {
         List<StorageGolem> workers=team(level,player);
         StorageGolem lead=leader(workers,player.getUUID());
         if(lead==null)return "Wait for the four Golems to complete pickup before placing.";
+        if(!assembledNear(workers,location))
+            return "Wait for all four Golems to catch up before placing the pallet.";
         if(lead.placeOnGround(level,location,player.getDirection())){
             afterDelivery(workers);
             return "Wrapped shipment delivered to ground at "
@@ -115,11 +127,17 @@ public final class StoragePalletCrew {
                 computer.getZ()+.5)>64)
             return "Return to your linked Rack Computer to dismiss the crew.";
         List<StorageGolem> members=team(level,player);
-        if(!completeTeam(members))return "Not all four Golems are here. Wait for the crew.";
-        if(members.stream().anyMatch(w->w.holdsPallet()||w.escorting(player.getUUID())))
-            return "Deliver the wrapped pallet before dismissing the Golems.";
-        for(StorageGolem golem:members)golem.dismissCrew();
-        return "All four Golems dismissed; they are returning to their original shelves.";
+        if(members.isEmpty())return "No assigned Golems are near the warehouse.";
+        if(members.stream().anyMatch(StorageGolem::holdsPallet))
+            return "Deliver or safely recover the pallet before dismissing its carrier.";
+        // A worker may have died/recalled. Dismiss surviving empty escorts
+        // without leaving them permanently assigned to the player.
+        for(StorageGolem golem:members){
+            golem.clearDelivery();
+            golem.dismissCrew();
+        }
+        return members.size()+" Golems dismissed to original shelves. "
+                +(members.size()<4?"Any lost worker items must be manually recovered.":"");
     }
     public static String status(ServerLevel level,ServerPlayer player){
         List<StorageGolem> workers=team(level,player);
