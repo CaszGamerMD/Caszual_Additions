@@ -161,7 +161,10 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
         double z=Math.min(0,Math.min(right.getStepZ(),
                 Math.min(back.getStepZ(),right.getStepZ()+back.getStepZ())));
         poses.pushPose();
-        poses.translate(x,0,z);
+        // Four Minecraft pixels of total clearance across the 2-block deck:
+        // 2px inset per edge. Scale cargo with its pallet as one assembly.
+        poses.translate(x+.125,.06,z+.125);
+        poses.scale(.875f,.875f,.875f);
         for(int i=0;i<4;i++){
             float offset=.04f+i*.49f;
             board(state,poses,collector,i,offset,.19f,.015f,.43f,.105f,.985f);
