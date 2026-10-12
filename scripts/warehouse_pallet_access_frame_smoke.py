@@ -21,7 +21,13 @@ def front_rails(elements):
 def grill(elements):
     return [e for e in elements
             if e["from"][1]==1 and e["to"][1]==2
-            and e["to"][2]-e["from"][2]==12]
+            and e["to"][2]-e["from"][2]==16
+            and e["to"][0]-e["from"][0]==1]
+def crosses(elements):
+    return [e for e in elements
+            if e["from"][1]==1 and e["to"][1]==2
+            and e["from"][0]==0 and e["to"][0]==16
+            and e["to"][2]-e["from"][2]==1]
 variants=json.loads((ASSETS/"blockstates/pallet_rack.json").read_text())["variants"]
 for facing in ("north","east","south","west"):
     for part in range(12):
@@ -42,8 +48,11 @@ for local in (0,1):
         if tier=="upper":
             assert all(e["from"][1]==15 for e in front_rails(elements))
         assert (len(grill(elements))==3)==(tier=="lower"),(local,tier)
+        assert (len(crosses(elements))==2)==(tier=="lower"),(local,tier)
 for local in (2,3):
-    assert len(grill(model(local,"lower")["elements"]))==3
+    elements=model(local,"lower")["elements"]
+    assert len(grill(elements))==3
+    assert len(crosses(elements))==2
 
 pallet=read("pallet/PalletBlock.java")
 assert "protected InteractionResult useItemOn(" in pallet
@@ -55,10 +64,15 @@ entity=read("pallet/PalletBlockEntity.java")
 assert "for(int part=0;part<4;part++)" in entity
 assert "PalletBlock.partPos(root.getBlockPos(),part,state)" in entity
 rack=read("racks/RackBlock.java")
-assert "boolean front=partIndex%4<2" in rack
-assert "height==0" in rack and "height==2" in rack
-assert "frontRailAlongX=facing.getAxis()==Direction.Axis.Z" in rack
-assert "strip=first+off*5" in rack
-assert "Block.box(strip,1,2,strip+1,2,14)" in rack
-assert "Block.box(2,1,strip,14,2,strip+1)" in rack
-print("PASS: pallet access routes and visible/collidable open-front rack grill")
+assert "RackFrameShapes.cell(state)" in rack
+assert "RackCargoCollision.shape(level,pos,state)" in rack
+assert "getShape(" in rack
+assert "getCollisionShape(" in rack
+assert "for (int i = 1; i < 12; i++)" in rack
+assert "Containers.dropContents(level, root, rack)" in rack
+assert "return List.of();" in rack  # Only the root drops one rack item
+frame=read("racks/RackFrameShapes.java")
+assert "double[][][] ELEMENTS" in frame
+assert "CELLS[orientation][part]=combined.optimize()" in frame
+assert "Block.box(a,y1,b,c,y2,d)" in frame
+print("PASS: single-rack selection; precise 12-part collision; continuous grill + cross beams")
