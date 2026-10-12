@@ -80,7 +80,8 @@ public final class WarehouseNetwork {
                     // Expand actual touching racks and bridged rack beams, then
                     // visit every frame part for attached shelves and IGC.
                     for(RackBlockEntity connected:RackNetwork.network(level,rack)){
-                        racks.putIfAbsent(connected.getBlockPos(),connected);
+                        if(racks.putIfAbsent(connected.getBlockPos(),connected)!=null)continue;
+                        rackExpanded.add(connected.getBlockPos());
                         for(int part=0;part<12;part++)
                             queue.add(RackBlock.cell(connected.getBlockPos(),
                                     connected.facing(),part));
