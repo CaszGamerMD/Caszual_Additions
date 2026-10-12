@@ -36,9 +36,21 @@ public final class PalletFilterNet {
     public static boolean validTarget(int scope,String target){
         if(target.length()>100)return false;
         if(target.isBlank())return true;
-        if(scope==1)return target.matches("[a-z0-9_.-]{2,64}");
         if(scope==3)return false; // EXACT requires a live sample, not typed components
-        Identifier id=Identifier.tryParse(target);
-        return id!=null && target.equals(id.toString());
+        // Up to eight independent OR targets in item/namespace/tag scope.
+        // No recursive expressions or unchecked user-supplied predicates.
+        String[] rules=target.split(",",-1);
+        if(rules.length>8)return false;
+        for(String part:rules){
+            String entry=part.strip();
+            if(entry.isEmpty())return false;
+            if(scope==1){
+                if(!entry.matches("[a-z0-9_.-]{2,64}"))return false;
+            }else{
+                Identifier id=Identifier.tryParse(entry);
+                if(id==null||!entry.equals(id.toString()))return false;
+            }
+        }
+        return true;
     }
 }
