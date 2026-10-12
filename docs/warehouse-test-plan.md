@@ -1,3 +1,31 @@
+## Storage Golem flat-surface return navigation
+
+- [ ] Dispatch a Golem and place one full-height solid block in its
+      direct route home, with open level ground on both sides. After its
+      job it MUST detour around the block; it must not hop over it.
+- [ ] Arrange a zig-zag corridor made of ordinary full blocks or crates
+      between the worker and its shelf. It should follow clear corners
+      with no diagonal clipping through solid block corners.
+- [ ] Verify it approaches the **side of its shelf on the same floor**,
+      rather than trying to climb onto the shelf top.
+- [ ] Repeat for all return flows: sorting, output orders, packed
+      Shulker Tank orders, player-led Golems after the pallet is
+      delivered, and an older automatic four-Golem haul.
+- [ ] Place a solid block halfway through a Golem's return corridor.
+      It should re-plan after detecting it cannot continue, not
+      endlessly jump against the newly blocked route.
+- [ ] Completely seal every side of its shelf: the Golem must wait
+      instead of jumping onto or through the solid obstruction.
+      Reopen the side and confirm it returns automatically.
+- [ ] Test real elevation changes separately: golems may use legal
+      stairs/sloped floors to return to a shelf on another Y level,
+      but they must not target the TOP of their shelf.
+- [ ] Interrupt a worker carrying undelivered stock or an empty Shulker.
+      Once it eventually redocks, all real items must drop for
+      recovery, never vanish as the Golem becomes a shelf token.
+- [ ] Repeat on a dedicated server after saving and reloading;
+      flat path caches should be rebuilt and not force-load chunks.
+
 # Caszual Additions — Warehouse Test Plan (Fabric 26.2)
 
 **Testing status:** Fabric CI validates compilation, unit tests, JSON
