@@ -64,7 +64,7 @@ public final class RackContent {
         ResourceKey<Block> computerKey=ResourceKey.create(Registries.BLOCK,computerId);
         RACK_COMPUTER=Registry.register(BuiltInRegistries.BLOCK,computerKey,
                 new RackComputerBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
-                        .strength(3.5f).setId(computerKey)));
+                        .strength(3.5f).noOcclusion().setId(computerKey)));
         COMPUTER_ITEM=blockItem("rack_computer",RACK_COMPUTER);
         Identifier scannerId=CaszualAdditions.id("storage_scanner");
         ResourceKey<Block> scannerKey=ResourceKey.create(Registries.BLOCK,scannerId);
