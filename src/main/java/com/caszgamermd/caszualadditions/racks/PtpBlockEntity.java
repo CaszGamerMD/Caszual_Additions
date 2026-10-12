@@ -173,6 +173,20 @@ public final class PtpBlockEntity extends BlockEntity
     public void setSealed(boolean v){if(hasPallet()&&!hauling()){sealed=v;setChanged();}}
     public boolean hasPallet(){return !pallet.isEmpty();}
     public boolean readyForOutput(){return !input&&!sealed&&hasPallet();}
+    /** Explicit workstation controls refuse to interrupt live deliveries or
+     * invalidate a wrapped pallet's four-worker escrow. */
+    public boolean changeModeFromComputer(){
+        expireTicket();
+        if(hauling()||activeTicket!=0||pendingOutputOrders()>0)return false;
+        setInput(!input);
+        return true;
+    }
+    public boolean changeWrapFromComputer(){
+        expireTicket();
+        if(!hasWrap()||!hasPallet()||hauling()||activeTicket!=0)return false;
+        setSealed(!sealed);
+        return true;
+    }
     public int pendingOutputOrders(){return outputOrders.size();}
     public int pendingOutputItems(){
         int count=0;
