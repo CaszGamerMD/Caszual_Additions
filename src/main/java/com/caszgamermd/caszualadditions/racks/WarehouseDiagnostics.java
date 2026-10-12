@@ -55,11 +55,10 @@ public final class WarehouseDiagnostics {
                 +empty+" empty for hauling; "+stored+" stored items.");
         OrderHubEntity hub=OrderHubEntity.nextToComputer(level,terminal);
         if(hub!=null)
-            results.add("Legacy Order Collector Hub: "
-                    +hub.collectors()+"/3 collectors, "+hub.orders()
-                    +" queued orders, pallet="+hub.hasPallet()
-                    +", output empty="+hub.isEmpty()+".");
-        else results.add("Legacy Order Collector Hub: not connected (optional).");
+            results.add("[MIGRATION] Retired Hub detected: "
+                    +hub.collectors()+" old workers, pallet="+hub.hasPallet()
+                    +", inventory empty="+hub.isEmpty()
+                    +". Salvage in Survival; workers become Storage Golems.");
         List<StorageGolemShelfEntity> shelves=RackComputerNet.nearbyShelves(level,terminal);
         int docked=shelves.stream().mapToInt(StorageGolemShelfEntity::docked).sum();
         long auto=shelves.stream().filter(StorageGolemShelfEntity::sortingEnabled).count();
@@ -67,8 +66,6 @@ public final class WarehouseDiagnostics {
                 +" docked Golems / "+auto+" enabled shelves.");
         int boxes=StorageGolemDispatch.linkedEmptyShulkers(level,shelves);
         results.add("Shulker Tanks: "+boxes+" empty boxes across linked shelves.");
-        if(hub!=null&&hub.collectors()==0)
-            results.add("[LEGACY] Insert an Order Collector to activate the old hub.");
         if(racks.isEmpty())
             results.add("[BLOCKED] Computer must touch a pallet rack frame.");
         else if(installed==0)
