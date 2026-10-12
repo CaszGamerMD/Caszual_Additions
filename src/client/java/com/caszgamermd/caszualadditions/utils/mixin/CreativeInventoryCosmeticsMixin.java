@@ -1,57 +1,37 @@
 package com.caszgamermd.caszualadditions.utils.mixin;
 
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import com.caszgamermd.caszualadditions.utils.cosmetics.CosmeticSlotContainer;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.inventory.Slot;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+/**
+ * The standard InventoryMenu always has four additional cosmetic slots so
+ * that cosmetics remain synced and usable when changing game modes.
+ *
+ * CreativeModeInventoryScreen copies InventoryMenu slots into its own tab.
+ * Those copies must NOT be embedded in the creative inventory: its layout and
+ * click routing only handle the vanilla inventory slots, and our former code
+ * tried to find them using getContainerSlot() == 46..49. But that index is
+ * LOCAL to the cosmetic container (0..3), not the index within InventoryMenu.
+ *
+ * Leave the server-backed slots untouched; remove only their temporary
+ * creative-screen wrappers. Creative players can still open the dedicated
+ * cosmetics screen via the armor-stand button on the inventory tab.
+ */
 @Mixin(CreativeModeInventoryScreen.class)
 public abstract class CreativeInventoryCosmeticsMixin {
-    private static final int[] CASZ_X = {132, 150, 132, 150};
-    private static final int[] CASZ_Y = {6, 6, 33, 33};
-
     @Inject(method = "selectTab", at = @At("TAIL"))
-    private void caszual_additions$positionCosmeticSlots(CreativeModeTab tab, CallbackInfo ci) {
+    private void caszual_additions$keepCosmeticsOutOfCreativeTabs(
+            CreativeModeTab tab, CallbackInfo ci) {
         if (tab.getType() != CreativeModeTab.Type.INVENTORY) return;
 
-        CreativeModeInventoryScreen screen = (CreativeModeInventoryScreen)(Object)this;
-        int found = 0;
-
-        for (Slot slot : screen.getMenu().slots) {
-            int targetIndex = slot.getContainerSlot();
-            if (targetIndex < 46 || targetIndex > 49) continue;
-
-            int cosmeticIndex = targetIndex - 46;
-            ((SlotAccessor)(Object)slot).caszual_additions$setX(CASZ_X[cosmeticIndex]);
-            ((SlotAccessor)(Object)slot).caszual_additions$setY(CASZ_Y[cosmeticIndex]);
-            found++;
-        }
-    }
-
-    @Inject(method = "extractBackground", at = @At("TAIL"))
-    private void caszual_additions$drawCosmeticSlotBackgrounds(
-            GuiGraphicsExtractor graphics,
-            int mouseX,
-            int mouseY,
-            float partialTick,
-            CallbackInfo ci
-    ) {
-        CreativeModeInventoryScreen screen = (CreativeModeInventoryScreen)(Object)this;
-        if (!screen.isInventoryOpen()) return;
-
-        ContainerScreenAccessor pos = (ContainerScreenAccessor)(Object)screen;
-        int left = pos.caszual_additions$left();
-        int top = pos.caszual_additions$top();
-
-        for (int i = 0; i < 4; i++) {
-            int x = left + CASZ_X[i];
-            int y = top + CASZ_Y[i];
-            graphics.fill(x - 1, y - 1, x + 17, y + 17, 0xff373737);
-            graphics.fill(x, y, x + 16, y + 16, 0xff8b8b8b);
-        }
+        CreativeModeInventoryScreen screen =
+                (CreativeModeInventoryScreen)(Object)this;
+        screen.getMenu().slots.removeIf(slot ->
+                slot.container instanceof CosmeticSlotContainer);
     }
 }
