@@ -25,7 +25,22 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public final class WarehouseNetwork {
     public static final int MAX_CELLS=16384;
+    /** Reuse expensive adjacency walks only within the SAME server tick.
+     * Breaking concrete or rearranging racks is re-evaluated next tick. */
+    private record Cache(long tick,Result result){}
+    private static final Map<ServerLevel,Map<BlockPos,Cache>> CACHE=
+            new java.util.WeakHashMap<>();
     private WarehouseNetwork(){}
+    private static Result cached(ServerLevel level,BlockPos start,List<BlockPos> origins){
+        Map<BlockPos,Cache> map=CACHE.computeIfAbsent(level,l->new LinkedHashMap<>());
+        if(map.size()>256)map.clear();
+        Cache entry=map.get(start);
+        long now=level.getGameTime();
+        if(entry!=null&&entry.tick()==now)return entry.result();
+        Result result=traverse(level,origins);
+        map.put(start,new Cache(now,result));
+        return result;
+    }
 
     public record Result(List<RackBlockEntity> racks,
             List<StorageGolemShelfEntity> shelves,
@@ -48,13 +63,13 @@ public final class WarehouseNetwork {
         if(!level.hasChunkAt(computer)
                 ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER))
             return empty();
-        return traverse(level,List.of(computer));
+        return cached(level,computer,List.of(computer));
     }
     public static Result fromShelfGroup(ServerLevel level,
             List<StorageGolemShelfEntity> shelves){
         List<BlockPos> origins=new ArrayList<>();
         for(StorageGolemShelfEntity shelf:shelves)origins.add(shelf.getBlockPos());
-        return origins.isEmpty()?empty():traverse(level,origins);
+        return origins.isEmpty()?empty():cached(level,origins.getFirst(),origins);
     }
     private static Result empty(){
         return new Result(List.of(),List.of(),List.of(),List.of(),List.of(),0);
