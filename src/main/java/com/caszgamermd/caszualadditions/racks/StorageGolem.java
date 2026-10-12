@@ -182,8 +182,10 @@ public final class StorageGolem extends PathfinderMob {
                 int side=(i+(haulJob?haulIndex:0))%faces.length;
                 BlockPos p=place.relative(faces[side],distance);
                 if(!openWalkway(level,p))continue;
-                double candidate=p.distSqr(home)
-                        +(haulJob && i!=0?i*0.001:0);
+                // The four workers take different available sides in index
+                // order. Ordinary jobs take the closest free side to home.
+                if(haulJob)return p;
+                double candidate=p.distSqr(home);
                 if(candidate<score){score=candidate;best=p;}
             }
             return best==null?place.south(distance):best;
