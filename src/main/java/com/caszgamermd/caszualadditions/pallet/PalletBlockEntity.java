@@ -212,7 +212,21 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
 
     @Override
     public boolean stillValid(Player player) {
-        return Container.stillValidBlockEntity(controller(), player, 6.0F);
+        PalletBlockEntity root=controller();
+        if(root.isRemoved()||root.getLevel()==null||player.level()!=root.getLevel())
+            return false;
+        BlockState state=root.getBlockState();
+        if(!(state.getBlock() instanceof PalletBlock)
+                ||state.getValue(PalletBlock.PART)!=0)return false;
+        // Vanilla's container check uses the controller's one block center.
+        // A free-standing pallet is 2x2, so players opening a FAR corner
+        // should not immediately lose their menu. Check all four cells.
+        for(int part=0;part<4;part++){
+            BlockPos cell=PalletBlock.partPos(root.getBlockPos(),part,state);
+            if(player.distanceToSqr(cell.getX()+.5,cell.getY()+.5,
+                    cell.getZ()+.5)<=64.0D)return true;
+        }
+        return false;
     }
 
     @Override

@@ -286,16 +286,42 @@ public final class RackBlock extends Block implements EntityBlock {
         double z=pos.getZ()==minZ?0:15;
         var post=Block.box(x,0,z,x+1,16,z+1);
         var cargo=RackCargoCollision.shape(level,pos,state);
-        // Each segment's visual model has narrow outer frame rails along the
-        // top and bottom. Give them real collision instead of permitting players
-        // to walk through steel beams. These join posts without solid walls.
-        var railX=Block.box(0,0,z,16,1,z+1);
-        var railXTop=Block.box(0,15,z,16,16,z+1);
-        var railZ=Block.box(x,0,0,x+1,1,16);
-        var railZTop=Block.box(x,15,0,x+1,16,16);
-        if(state.getValue(PART)<4)
+        // Keep a completely clear FRONT face at the two vertical level
+        // boundaries. The sides and rear retain their rack framing.
+        // A ground-level grill is low enough to support pallets and visually
+        // matches the three narrow longitudinal support strips in the model.
+        int partIndex=state.getValue(PART);
+        int height=partIndex/4;
+        boolean front=partIndex%4<2;
+        var empty=net.minecraft.world.phys.shapes.Shapes.empty();
+        // For north/south the front rails run along X; when rotated
+        // east/west the same front rail is the Z-oriented rail.
+        // Do not leave invisible tier dividers after rotating the model.
+        boolean frontRailAlongX=facing.getAxis()==Direction.Axis.Z;
+        boolean showBottomFront=!front||height==0;
+        boolean showTopFront=!front||height==2;
+        var railX=(!frontRailAlongX||showBottomFront)
+                ?Block.box(0,0,z,16,1,z+1):empty;
+        var railXTop=(!frontRailAlongX||showTopFront)
+                ?Block.box(0,15,z,16,16,z+1):empty;
+        var railZ=(frontRailAlongX||showBottomFront)
+                ?Block.box(x,0,0,x+1,1,16):empty;
+        var railZTop=(frontRailAlongX||showTopFront)
+                ?Block.box(x,15,0,x+1,16,16):empty;
+        if(height==0){
+            var grill=net.minecraft.world.phys.shapes.Shapes.empty();
+            int first=(facing==Direction.SOUTH||facing==Direction.WEST)?2:3;
+            for(int off=0;off<3;off++){
+                int strip=first+off*5;
+                var support=frontRailAlongX
+                        ?Block.box(strip,1,2,strip+1,2,14)
+                        :Block.box(2,1,strip,14,2,strip+1);
+                grill=net.minecraft.world.phys.shapes.Shapes.or(grill,support);
+            }
             return net.minecraft.world.phys.shapes.Shapes.or(
-                    Block.box(0,0,0,16,2,16),post,railX,railXTop,railZ,railZTop,cargo);
+                    Block.box(0,0,0,16,1,16),grill,post,
+                    railX,railXTop,railZ,railZTop,cargo);
+        }
         return net.minecraft.world.phys.shapes.Shapes.or(
                 post,railX,railXTop,railZ,railZTop,cargo);
     }

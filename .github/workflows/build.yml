@@ -30,6 +30,8 @@ jobs:
         run: python3 scripts/warehouse_foundations_smoke.py
       - name: Verify Industrial Grade Concrete and Golem console (blocking)
         run: python3 scripts/warehouse_igc_golems_smoke.py
+      - name: Verify free-standing pallet access and rack front grill (blocking)
+        run: python3 scripts/warehouse_pallet_access_frame_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()
