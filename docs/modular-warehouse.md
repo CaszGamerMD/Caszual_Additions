@@ -21,12 +21,15 @@ rack controllers.
 
 1. Place a Pallet Rack with a **2 × 2 × 3** empty volume.
 2. Keep one complete block of empty approach space **in front of each rack**,
-   across its two-block width and three-block height. A rack, computer, hub, or
-   shulker tank cannot be placed across an existing reserved corridor.
+   across its two-block width and three-block height. A rack, computer or
+   shulker tank cannot be placed across an existing reserved corridor;
+   physical horizontal connector rods may cross the lane intentionally.
 3. Place adjacent rack bays **side by side** to extend the automatic aisle.
-4. For racks on another level or behind the row, apply **Rack Connectors to
-   the matching physical faces on BOTH touching racks**. These add the racks to
-   the same network; they do not automatically rename the destination aisle.
+4. For separate rack groups, **click a rack's horizontal face with a
+   Rack Connector**. It places two slim rods and automatically spans a clear
+   horizontal gap of up to four blocks to the next rack. Side-to-side spans
+   extend the same aisle tag; face-to-face spans join warehouse networks.
+   Two directly touching back-to-back racks connect automatically.
 5. Place the Rack Computer touching a physical rack cell. If multiple
    independent rack networks contact the computer, the computer can inspect
    both.
@@ -163,9 +166,8 @@ The computer must touch at least one rack to search. For orders, connect a
 Storage Golem Shelf group and an **OUTPUT** Pallet Transfer Point (touching
 either a shelf in the linked group or the Rack Computer). The terminal queues
 up to 16 pending output orders on that PTP; requests can wait safely for an
-unsealed output pallet or available stock. The Rack Computer never
-remain supported if no output PTP is connected. All requests are validated
-on the server.
+unsealed output pallet or available stock. Requests without a connected
+OUTPUT PTP are rejected; all orders are validated on the server.
 
 ## Warehouse order collection — Storage Golems only
 
@@ -181,10 +183,6 @@ an OUTPUT PTP. Shulker Tanks attached to shelves supply empty boxes for
 packed orders. There is no alternate virtual-worker or legacy hub path.
 
 ## New 3×3 Pallet Transfer Point — first implementation (Issue #34)
-
-The original 2×2 **Order Collector Hub** remains as a legacy block. Its stored
-orders, collectors and pallet inventory are not automatically converted or
-deleted. **Do not replace an occupied old hub without emptying it.**
 
 ### Building a basic point
 
@@ -228,10 +226,10 @@ in Survival, and leaves the other eight building blocks to reuse.
 
 The physical endpoint supports Storage Golem input sorting, output ordering
 and linked Shulker Tank packing; all need a connected shelf and Rack Computer.
-The Storage Scanner and initial coordinated four-golem transport of wrapped
-pallets are now implemented and testable; floating cargo visuals still need
-polish. Legacy hubs retain their own virtual order logic and saved state;
-no automatic migration is performed.
+The handheld Storage Scanner and player-led four-Golem transport are
+implemented for test worlds. A fully synchronized floating cargo mesh
+between four carriers remains visual work; no legacy Hub or Collector is
+registered in this build.
 
 Test module orientation, shulker contents, module cell break/reassembly,
 read/write pipe direction, filter enforcement, sealing, and world persistence
