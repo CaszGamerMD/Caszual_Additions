@@ -222,11 +222,11 @@ in Survival, and leaves the other eight building blocks to reuse.
 
 ### Current limits
 
-The physical endpoint supports Storage Golem input sorting and output order
-fulfillment; both require a connected shelf and Rack Computer. The Storage
-Scanner, four-golem transport of wrapped pallets, and shelf-attached Shulker
-Tank packing are still planned. Existing legacy hubs retain their virtual
-order logic and saved state; no automatic migration is performed.
+The physical endpoint supports Storage Golem input sorting, output ordering
+and linked Shulker Tank packing; all need a connected shelf and Rack Computer.
+The Storage Scanner and coordinated four-golem transport of wrapped pallets
+are still planned. Legacy hubs retain their own virtual order logic and saved
+state; no automatic migration is performed.
 
 Test module orientation, shulker contents, module cell break/reassembly,
 read/write pipe direction, filter enforcement, sealing, and world persistence
@@ -296,10 +296,40 @@ both. Deployed golems can be retrieved separately.
    recovery; cargo is never silently deleted. Breaking or recalling a worker
    also releases a currently loaded output reservation.
 
-Output retrieval currently transports **loose items**. Linked shelf-attached
-Shulker Tanks and golem-packed shipments, the Storage Scanner, and coordinated
-four-golem sealed pallet moving are later phases. The original 2×2
-Order Collector Hub continues to operate independently.
+### Shelf-linked Shulker Tank — physical packed shipments
+
+Attach a two-high **Shulker Tank directly to any shelf in the connected shelf
+group** (either half may touch a shelf), then stock it with up to 64 truly
+empty shulker boxes. Named and colored empty boxes are retained unchanged.
+
+When a Rack Computer output order is pending, a Storage Golem prefers a
+**packed delivery** if a linked magazine has an empty box, the ordered item
+can legally fit inside a container, and the destination pallet filter accepts
+a filled box. The golem visits the magazine, takes one physical empty box,
+walks to one connected source rack, loads **up to 27 matching stacks** (at
+most the remaining requested item quantity), and delivers the filled box
+to the OUTPUT Pallet Transfer Point. The order is credited for the number of
+**items inside** the delivered box, not for the one container item.
+
+If there is no empty box, the PTP rejects filled boxes, or the item cannot
+be nested inside a box, existing **loose-item retrieval** remains active
+where permitted by the pallet's filter. A worker never remotely consumes
+the shelf tank's stock at dispatch time.
+
+If a packed delivery fails before depositing, the worker walks the filled
+box back to the original rack, unpacks its actual cargo into that rack (or
+drops any leftovers for recovery), then returns the now-empty box to its
+original Shulker Tank. If the tank has since been destroyed or filled up,
+the real empty box drops beside the worker instead. Death or player recall
+drops/returns the filled box or empty box the worker physically carries;
+there is no second hidden inventory copy.
+
+**Limit of this phase:** One golem fills a box from *one source rack per
+trip*, not from 27 different racks. It uses real navigation and the same
+saved output-order reservations as loose deliveries. Future work includes
+cross-rack multi-stop packing, return-to-tank visual animations, scanner
+operation and four-golem sealed-pallet transport. The original 2×2 Order
+Collector Hub remains independent.
 
 The new worker system needs client-side pathfinding and server reload QA;
 compilation alone cannot verify movement, collision, and recovery.
@@ -328,8 +358,20 @@ on a backed-up test world.
 - Save/reload during an outbound shipment and ensure it neither duplicates stock
   nor strands the order reservation.
 - With a full or filtered output pallet, verify stock is not removed/lost.
-- Mix named/color empty shulkers in the magazine, then complete a packing order
-  and examine contents and names.
+- Link a Shulker Tank to a shelf (test upper- and lower-half adjacency),
+  then request more than one stack through the OUTPUT PTP. Verify the golem
+  walks to the magazine first, carries a real filled shulker and the order
+  counts individual *contents*, not box count.
+- Mix named/color empty shulkers in the magazine; verify their appearance and
+  custom names survive packing, delivery, and cancellation.
+- Reject shulkers with the output pallet filter, then verify normal loose
+  transport still works where allowed.
+- Fill/seal the PTP after packing; verify items return to the rack and the
+  empty box returns to its tank or drops recoverably if the tank is broken.
+- Kill/reclaim the golem before and after it fills a box. Confirm exactly
+  one box and its original cargo are recoverable, with no phantom stock.
+- Save/reload with an empty box held and with a full box in transit; verify
+  item counts and reservation continuity.
 - Break and re-place a rack and a hub, making sure all storage items, collectors,
   and the pallet drop in survival.
 - Test persistence by saving/reloading while an order is waiting on stock.
