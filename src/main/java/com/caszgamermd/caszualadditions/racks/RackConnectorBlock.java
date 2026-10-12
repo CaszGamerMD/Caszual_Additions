@@ -14,6 +14,12 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.loot.LootParams;
+import java.util.List;
+import java.util.ArrayList;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -87,6 +93,63 @@ public final class RackConnectorBlock extends Block {
                     &&along.getValue(CORNER_POSITIVE)==state.getValue(CORNER_POSITIVE))
                     &&!along.canBeReplaced())return;
         }
+    }
+    /**
+     * A single connector kit places a continuous span. Every physical
+     * segment belongs to that same logical connector; removing any segment
+     * removes the entire directly contiguous beam and drops ONE kit.
+     * Stop at a different corner/axis so unrelated rods are unaffected.
+     */
+    private static boolean sameBeam(BlockState original,BlockState adjacent){
+        return adjacent.getBlock() instanceof RackConnectorBlock
+            &&adjacent.getValue(FACING).getAxis()==original.getValue(FACING).getAxis()
+            &&adjacent.getValue(CORNER_POSITIVE)==original.getValue(CORNER_POSITIVE);
+    }
+    private static List<BlockPos> beamParts(net.minecraft.world.level.Level level,
+            BlockPos center,BlockState original){
+        List<BlockPos> positions=new ArrayList<>();
+        positions.add(center);
+        Direction axis=original.getValue(FACING);
+        for(Direction scan:new Direction[]{axis,axis.getOpposite()}){
+            for(int step=1;step<=RackNetwork.MAX_CONNECTOR_GAP;step++){
+                BlockPos candidate=center.relative(scan,step);
+                if(!level.hasChunkAt(candidate)
+                    ||!sameBeam(original,level.getBlockState(candidate)))break;
+                positions.add(candidate);
+            }
+        }
+        return positions;
+    }
+    // Avoid recursive cleanup while removing the other segments. This
+    // block is a singleton, and all modification happens on the server tick.
+    private boolean removingBeam;
+    private void removeBeam(ServerLevel level,BlockPos pos,BlockState state,
+            boolean drop){
+        if(removingBeam)return;
+        removingBeam=true;
+        try{
+            for(BlockPos other:beamParts(level,pos,state)){
+                if(!other.equals(pos) && sameBeam(state,level.getBlockState(other)))
+                    level.removeBlock(other,false);
+            }
+            if(drop)Block.popResource(level,pos,new ItemStack(this));
+        }finally{
+            removingBeam=false;
+        }
+    }
+    @Override public BlockState playerWillDestroy(net.minecraft.world.level.Level level,
+            BlockPos pos,BlockState state,Player player){
+        if(level instanceof ServerLevel server)
+            removeBeam(server,pos,state,!player.getAbilities().instabuild);
+        return super.playerWillDestroy(level,pos,state,player);
+    }
+    @Override protected void affectNeighborsAfterRemoval(BlockState state,
+            ServerLevel level,BlockPos pos,boolean moved){
+        if(!removingBeam)removeBeam(level,pos,state,false);
+        super.affectNeighborsAfterRemoval(state,level,pos,moved);
+    }
+    @Override protected List<ItemStack> getDrops(BlockState state,LootParams.Builder loot){
+        return List.of(); // one drop from the beam owner, never per segment
     }
     @Override protected VoxelShape getShape(BlockState state,BlockGetter level,BlockPos pos,
             CollisionContext context){
