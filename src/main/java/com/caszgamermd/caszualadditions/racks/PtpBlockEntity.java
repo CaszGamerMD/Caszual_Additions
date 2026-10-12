@@ -114,7 +114,7 @@ public final class PtpBlockEntity extends BlockEntity
     }
     public int beginHaul(BlockPos destination){
         expireHaul();
-        if(level==null||haulTicket!=0||!sealed||!hasPallet()||!hasWrap()
+        if(level==null||haulTicket!=0||!sealed||!hasPallet()
                 ||destination==null||!outputOrders.isEmpty()||activeTicket!=0)
             return 0;
         haulSequence=haulSequence==Integer.MAX_VALUE?1:haulSequence+1;
