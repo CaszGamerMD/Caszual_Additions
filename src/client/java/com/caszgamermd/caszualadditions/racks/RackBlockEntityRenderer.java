@@ -91,28 +91,7 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
                         adjacent==null||!RackNetwork.aisleNeighbors(world,rack,adjacent);
             }
         }
-        blocks.update(state.crossBeam,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
         blocks.update(state.nameplate,Blocks.POLISHED_DEEPSLATE.defaultBlockState(),DISPLAY);
-        for(Direction side:Direction.values()){
-            boolean connected=false;
-            // Only a pair of connectors across an ACTUAL shared rack face
-            // produces a cross brace. A single connector is not a network link.
-            if(rack.hasConnector(side) && rack.getLevel()!=null){
-                for(int i=0;i<12&&!connected;i++){
-                    BlockPos current=RackBlock.cell(rack.getBlockPos(),rack.facing(),i);
-                    BlockPos adjacent=current.relative(side);
-                    if(!rack.getLevel().hasChunkAt(adjacent))continue;
-                    RackBlockEntity other=RackBlock.controller(rack.getLevel(),adjacent);
-                    if(other!=null && !other.getBlockPos().equals(rack.getBlockPos())
-                            && other.hasConnector(side.getOpposite()))
-                        connected=true;
-                }
-            }
-            // Draw the shared brace only on its positive-axis owner to
-            // prevent two touching rack renderers creating coplanar beams.
-            state.linkedFaces[side.get3DDataValue()]=connected
-                    && (side==Direction.EAST || side==Direction.SOUTH || side==Direction.UP);
-        }
         state.pallet=rack.hasPallet();
         state.visible=0;
         if(!state.pallet){
@@ -220,7 +199,7 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
         poses.popPose();
     }
 
-    /** Metal X-braces, front rack ID, and aisle signs on the exposed row ends. */
+    /** Search outline, front rack ID, and aisle signs on row ends. */
     private void submitRackAccessories(RackRenderState state,PoseStack poses,
             SubmitNodeCollector collector) {
         Direction front=state.facing;
@@ -230,35 +209,6 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
                 Math.min(back.getStepX(),right.getStepX()+back.getStepX())));
         float z=(float)Math.min(0,Math.min(right.getStepZ(),
                 Math.min(back.getStepZ(),right.getStepZ()+back.getStepZ())));
-
-        for(Direction side:Direction.values()){
-            if(!state.linkedFaces[side.get3DDataValue()])continue;
-            poses.pushPose();
-            if(side==Direction.UP){
-                // Vertical connectors join the matching upper/lower frame
-                // edges without occupying any pallet cargo cells.
-                poses.translate(x,0,z);
-                for(float dx:new float[]{.10f,1.84f})
-                    for(float dz:new float[]{.10f,1.84f})
-                        board(state.crossBeam,state,poses,collector,dx,2.77f,dz,
-                                .06f,.46f,.06f);
-            }else{
-                boolean alongZ=side==Direction.EAST;
-                double cx=alongZ ? x+2.0 : x+1.0;
-                double cz=alongZ ? z+1.0 : z+2.0;
-                poses.translate(cx,1.48,cz);
-                if(alongZ)poses.mulPose(Axis.YP.rotationDegrees(90));
-                // Two braces in an X on the *actual* shared boundary.
-                for(float degrees:new float[]{-31f,31f}){
-                    poses.pushPose();
-                    poses.mulPose(Axis.ZP.rotationDegrees(degrees));
-                    board(state.crossBeam,state,poses,collector,
-                            -.97f,-.047f,-.038f,1.94f,.094f,.076f);
-                    poses.popPose();
-                }
-            }
-            poses.popPose();
-        }
 
         if(state.outlined){
             // Bright continuous edge outline around the WHOLE 2x2x3 rack,
