@@ -57,10 +57,10 @@ public final class PtpBlockEntity extends BlockEntity
     }
     public boolean hauling(){expireHaul();return haulTicket!=0;}
     public BlockPos haulDestination(){return haulRack;}
-    public int haulWorkersAtSource(){return hauling()?Integer.bitCount(haulSourceMask):0;}
-    public int haulWorkersAtDestination(){return hauling()?Integer.bitCount(haulArrivalMask):0;}
+    public int haulWorkersAtSource(){return hauling()?WarehouseTeamProgress.count(haulSourceMask):0;}
+    public int haulWorkersAtDestination(){return hauling()?WarehouseTeamProgress.count(haulArrivalMask):0;}
     public String haulPhase(){return !hauling()?"IDLE":
-            haulSourceMask==15?"DELIVERING":"ASSEMBLING";}
+            WarehouseTeamProgress.complete(haulSourceMask)?"DELIVERING":"ASSEMBLING";}
     public boolean validHaul(int ticket,BlockPos rack){
         expireHaul();
         return ticket!=0&&ticket==haulTicket&&haulRack.equals(rack)
@@ -86,21 +86,21 @@ public final class PtpBlockEntity extends BlockEntity
     public int haulStage(int ticket){
         expireHaul();
         if(haulTicket==0||haulTicket!=ticket)return -1;
-        return haulSourceMask==15?1:0;
+        return WarehouseTeamProgress.complete(haulSourceMask)?1:0;
     }
     public void assembleHaul(int ticket,int worker){
         if(haulStage(ticket)<0||worker<0||worker>3)return;
         int old=haulSourceMask;
-        haulSourceMask|=1<<worker;
+        haulSourceMask=WarehouseTeamProgress.arrive(haulSourceMask,worker);
         if(old!=haulSourceMask)setChanged();
     }
     /** Idempotent: fourth worker's arrival alone attempts the pallet commit. */
     public boolean arriveHaul(int ticket,int worker,ServerLevel server){
         if(haulStage(ticket)!=1||worker<0||worker>3)return false;
         int old=haulArrivalMask;
-        haulArrivalMask|=1<<worker;
+        haulArrivalMask=WarehouseTeamProgress.arrive(haulArrivalMask,worker);
         if(old!=haulArrivalMask)setChanged();
-        if(haulArrivalMask==15)return completeHaul(server);
+        if(WarehouseTeamProgress.complete(haulArrivalMask))return completeHaul(server);
         return false;
     }
     public void cancelHaul(){
@@ -376,8 +376,8 @@ public final class PtpBlockEntity extends BlockEntity
         }else reservedOutput=Math.min(reservedOutput,outputOrders.peekFirst().remaining());
         haulSequence=Math.max(0,in.getIntOr("haul_sequence",0));
         haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
-        haulSourceMask=in.getIntOr("haul_source_mask",0)&15;
-        haulArrivalMask=in.getIntOr("haul_arrival_mask",0)&15;
+        haulSourceMask=WarehouseTeamProgress.checkedMask(in.getIntOr("haul_source_mask",0));
+        haulArrivalMask=WarehouseTeamProgress.checkedMask(in.getIntOr("haul_arrival_mask",0));
         haulRack=in.read("haul_rack",BlockPos.CODEC).orElse(BlockPos.ZERO);
         haulDeadline=in.getLongOr("haul_deadline",0);
         if(!sealed||!hasPallet()||haulRack.equals(BlockPos.ZERO)){
