@@ -40,7 +40,7 @@ public final class RackConnectorBlock extends Block {
     }
     @Override public void setPlacedBy(net.minecraft.world.level.Level level,
             BlockPos pos,BlockState state,
-            @Nullable net.minecraft.world.entity.LivingEntity placer,
+            net.minecraft.world.entity.LivingEntity placer,
             net.minecraft.world.item.ItemStack stack){
         super.setPlacedBy(level,pos,state,placer,stack);
         if(level.isClientSide())return;
