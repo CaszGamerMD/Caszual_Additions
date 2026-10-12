@@ -110,6 +110,12 @@ public final class StorageScannerItem extends Item {
                     "Link scanner first: right-click your warehouse Rack Computer."));
             return InteractionResult.SUCCESS;
         }
+        if(server.getBlockState(clicked).getBlock()
+                instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock){
+            user.sendSystemMessage(Component.literal(
+                    StoragePalletCrew.pickupGround(server,user,clicked)));
+            return InteractionResult.SUCCESS;
+        }
         PtpBlockEntity point=PtpBlock.controller(server,clicked);
         if(point!=null){
             user.sendSystemMessage(Component.literal(StoragePalletCrew.pickup(server,user,point)));
