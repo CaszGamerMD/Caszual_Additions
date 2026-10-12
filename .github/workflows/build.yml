@@ -36,6 +36,8 @@ jobs:
         run: python3 scripts/warehouse_portable_carry_smoke.py
       - name: Verify metal gear recycling recipe overrides (blocking)
         run: python3 scripts/metal_gear_recycling_smoke.py
+      - name: Verify Fun Barrel shared Caszual tag discovery (blocking)
+        run: python3 scripts/fun_barrel_tag_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()

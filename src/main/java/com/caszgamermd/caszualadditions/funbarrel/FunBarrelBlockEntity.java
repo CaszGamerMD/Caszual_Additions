@@ -1,5 +1,6 @@
 package com.caszgamermd.caszualadditions.funbarrel;
 
+import com.caszgamermd.caszualadditions.CaszualTags;
 import com.mojang.serialization.Codec;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -68,7 +69,11 @@ public final class FunBarrelBlockEntity extends BlockEntity
             Identifier id = BuiltInRegistries.ITEM.getKey(item);
             // Retired saved-world compatibility items are never included in
             // a newly created Barrel of Caszual Fun.
-            if (item != Items.AIR && id != null && caszualFamily(id)) {
+            // A companion mod can explicitly join the Caszual item family by
+            // contributing to caszual_additions:caszual_content in its own datapack.
+            // Keep namespace discovery for older Caszual mods that lack a tag.
+            if (item != Items.AIR && id != null
+                    && (caszualFamily(id) || item.getDefaultInstance().is(CaszualTags.CASZUAL_CONTENT))) {
                 registered.add(item);
             }
         });
