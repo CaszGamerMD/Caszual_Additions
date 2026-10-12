@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
+import com.caszgamermd.caszualadditions.pallet.PalletBlock;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
@@ -35,6 +36,7 @@ public final class WarehouseNetwork {
     private static boolean member(BlockState state){
         return state.getBlock() instanceof IndustrialGradeConcreteBlock
                 ||state.getBlock() instanceof RackBlock
+                ||state.getBlock() instanceof PalletBlock
                 ||state.getBlock() instanceof RackConnectorBlock
                 ||state.getBlock() instanceof PtpBlock
                 ||state.getBlock() instanceof StorageGolemShelfBlock
