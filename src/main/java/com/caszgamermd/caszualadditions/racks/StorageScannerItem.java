@@ -68,9 +68,13 @@ public final class StorageScannerItem extends Item {
         // Keep an existing four-Golem assignment bound to its own
         // warehouse until the crew is dismissed there.
         if(!sameWarehouse&&!current.startsWith("No linked crew")){
-            player.sendSystemMessage(Component.literal(
-                    "You already have an assigned crew. Return to its Rack Computer "
-                    +"and dismiss it before linking another warehouse."));
+            if(StoragePalletCrew.assignedToComputer(level,player,computer)){
+                bind(scanner,level,computer);
+                player.sendSystemMessage(Component.literal(
+                        "Scanner linked to your already-deployed warehouse Golem crew. "
+                        +"Right-click a sealed PTP pallet to start pickup."));
+            }else player.sendSystemMessage(Component.literal(
+                    "This crew belongs to another warehouse. Return and dismiss it first."));
             return;
         }
         // First link the handheld tool to the clicked computer. Enlisting
