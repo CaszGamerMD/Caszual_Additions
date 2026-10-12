@@ -50,7 +50,7 @@ public final class StorageGolemRenderer
                 material=switch(pallet.kind()){
                     case IRON->Blocks.IRON_BLOCK;
                     case COPPER->PalletContent.copperTextureBlock(pallet.copperAge());
-                    case PLASTIC->Blocks.CYAN_CONCRETE;
+                    case PLASTIC->PalletContent.PALLET_RENDER_PROXY;
                     default->Blocks.OAK_PLANKS;
                 };
             }
