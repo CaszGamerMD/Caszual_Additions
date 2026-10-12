@@ -41,7 +41,8 @@ public final class PtpRenderer implements BlockEntityRenderer<PtpBlockEntity,Rac
         state.pallet=ptp.hasPallet();
         state.sealed=ptp.sealed();
         state.inputMode=ptp.input();
-        blocks.update(state.statusLamp,(ptp.input()?Blocks.EMERALD_BLOCK:Blocks.REDSTONE_BLOCK)
+        blocks.update(state.statusLamp,(ptp.hauling()?Blocks.AMETHYST_BLOCK
+                :ptp.input()?Blocks.EMERALD_BLOCK:Blocks.REDSTONE_BLOCK)
                 .defaultBlockState(),DISPLAY);
         state.visible=0;
         if(!state.pallet){
