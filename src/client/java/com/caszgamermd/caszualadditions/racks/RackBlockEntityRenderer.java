@@ -54,6 +54,10 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             float partial,Vec3 camera,ModelFeatureRenderer.@Nullable CrumblingOverlay cracks){
         BlockEntityRenderer.super.extractRenderState(rack,state,partial,camera,cracks);
         state.facing=rack.facing();
+        state.outlined=rack.getLevel()!=null
+                &&RackHighlightClient.highlighted(rack.getLevel(),rack.getBlockPos());
+        if(state.outlined)blocks.update(state.highlightEdge,
+                Blocks.SEA_LANTERN.defaultBlockState(),DISPLAY);
         var world=rack.getLevel();
         String aisle="";
         if(world!=null){
