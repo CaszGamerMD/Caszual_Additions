@@ -36,6 +36,8 @@ jobs:
         run: python3 scripts/warehouse_pallet_access_frame_smoke.py
       - name: Verify portable wrapping and shared four-Golem pallet carry (blocking)
         run: python3 scripts/warehouse_portable_carry_smoke.py
+      - name: Verify one moving pallet with four attached Golems (blocking)
+        run: python3 scripts/warehouse_single_entity_pallet_smoke.py
       - name: Verify metal gear recycling recipe overrides (blocking)
         run: python3 scripts/metal_gear_recycling_smoke.py
       - name: Verify Fun Barrel shared Caszual tag discovery (blocking)
