@@ -2,6 +2,7 @@ package com.caszgamermd.caszualadditions.racks;
 
 import com.caszgamermd.caszualadditions.CaszualAdditions;
 import com.caszgamermd.caszualadditions.pallet.PalletBlock;
+import com.caszgamermd.caszualadditions.pallet.PalletData;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
 import com.caszgamermd.caszualadditions.pallet.PalletKind;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -45,16 +46,22 @@ public final class StorageGolemRenderer
         if(state.showSharedPallet){
             Block material=Blocks.OAK_PLANKS;
             ItemStack carried=golem.displayPallet();
+            boolean plastic=false;
             if(carried.getItem() instanceof BlockItem item
                     &&item.getBlock() instanceof PalletBlock pallet){
                 material=switch(pallet.kind()){
                     case IRON->Blocks.IRON_BLOCK;
                     case COPPER->PalletContent.copperTextureBlock(pallet.copperAge());
                     case PLASTIC->PalletContent.PALLET_RENDER_PROXY;
-                    default->Blocks.OAK_PLANKS;
+                    default->PalletData.wood(carried).getFirst();
                 };
             }
+            plastic=carried.getItem() instanceof BlockItem bi
+                    &&bi.getBlock() instanceof PalletBlock pb
+                    &&pb.kind()==PalletKind.PLASTIC;
             blocks.update(state.palletDeck,material.defaultBlockState(),DISPLAY);
+            state.palletDeck.tintLayers().clear();
+            if(plastic)state.palletDeck.tintLayers().add(PalletData.plasticColor(carried));
             blocks.update(state.palletSupport,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
             blocks.update(state.crate,
                     PalletContent.CARDBOARD_RENDER_PROXY.defaultBlockState(),DISPLAY);
