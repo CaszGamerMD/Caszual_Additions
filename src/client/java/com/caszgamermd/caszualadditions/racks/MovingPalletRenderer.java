@@ -39,6 +39,7 @@ public final class MovingPalletRenderer extends MobRenderer<
             MovingPalletRenderState state,float partialTick){
         super.extractRenderState(entity,state,partialTick);
         ItemStack stack=entity.displayPallet();
+        state.visible=!stack.isEmpty();
         state.cargo=stack.isEmpty()?0:entity.visibleCargo();
         if(stack.isEmpty())return;
         Block material=Blocks.OAK_PLANKS;
