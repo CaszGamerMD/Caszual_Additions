@@ -5,6 +5,50 @@ blockstate/model references, and basic invariants. It does not drive a
 Minecraft GUI, validate real Golem navigation, or establish zero-loss across
 chunk saves. Run these tests on a backed-up world, then on a dedicated server.
 
+## Storage Golems workstation page
+
+- [ ] Open the Rack Computer and select **STORAGE GOLEMS** in the header.
+      Confirm the page reports linked shelves, docked and active Golems.
+- [ ] With sorting paused, press **SORT: PAUSED** to enable AUTO. Place items
+      at INPUT PTP and orders at OUTPUT PTP; select **RUN QUEUE** to request
+      immediate dispatch from available docked workers.
+- [ ] Observe deployed worker entries changing from PICKING to DELIVERING,
+      then RETURNING TO SHELF; verify current cargo and position update.
+- [ ] Select **ENLIST 4**; four docked workers follow the player.
+      Verify workers show FOLLOWING PLAYER / READY.
+- [ ] Use handheld Scanner on a sealed glass-wrapped pallet: inspect
+      LIFTING WRAPPED PALLET then FOLLOWING PLAYER / CARRYING PALLET,
+      and confirm the other three show ESCORT.
+- [ ] Deliver pallet to ground or an empty rack, walk to original Computer
+      and press **DISMISS CREW**; verify tasks change to RETURNING TO SHELF
+      and docked count restores after arrival.
+- [ ] Switch between **RACKS & PTPs** and **STORAGE GOLEMS**; existing
+      search, order and PTP buttons must not overlap or intercept Golem UI.
+- [ ] Inspect two-player server behavior: no cross-control of another
+      player's crew, and only loaded Golems appear in task snapshots.
+- [ ] Reload a world mid-job and confirm task labels and inventories persist.
+
+## Industrial Grade Concrete connectivity
+
+- [ ] Craft each of the 16 colored Industrial Grade Concrete variants
+      using the matching 4 concrete blocks in corners and 5 iron ingots
+      in the remaining crafting squares. Each recipe outputs **4 IGC**.
+- [ ] Place a Rack Computer touching an IGC block (or directly on IGC).
+      Run a continuous IGC floor to a remote rack, Storage Golem Shelf,
+      Shulker Tank and 3×3 PTP. Each connected component must appear in
+      Rack Computer searches and controls, and Golems must dispatch.
+- [ ] Repeat with mixed IGC colors across the same flooring run.
+- [ ] Connect a second warehouse branch using only contiguous warehouse
+      component blocks touching face-to-face (no IGC).
+- [ ] Break a middle IGC block in the only connection path and confirm
+      disconnected components vanish from the network immediately.
+- [ ] Confirm a loose IGC floor with no adjacent connected Computer does
+      NOT spontaneously appear on another Computer's network.
+- [ ] Build a long run across unloaded chunks: unavailable chunks must
+      not be force-loaded or counted as connected until they load.
+- [ ] Confirm IGC floor does not replace the four real Golems' walking
+      requirements, create remote inventory access, or duplicate pallets.
+
 ## Creative staging
 
 1. Take the **Warehouse Test Kit** from the Caszual Creative tab; right-click
