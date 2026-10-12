@@ -33,6 +33,12 @@ Recommended conventions:
 
 The shared tag is intentionally cross-mod: any installed Caszual-family mod may contribute items to it.
 
+## Barrel of Caszual Fun — shared item tag (0.1.1)
+
+The creative-only **Barrel of Caszual Fun** now discovers items from the shared `caszual_additions:caszual_content` item tag **as well as** the legacy Caszual mod namespaces. This allows a separately installed companion such as **Caszual MTG 0.11.2+** to contribute all of its user-facing items without making Caszual Additions a required dependency.
+
+The same tag feeds the shared Caszual Creative tab. The barrel scans the active item registry whenever an existing barrel is opened; new tagged items are appended, while items a player deliberately removed are not recreated. The barrel remains **creative-mode only** and retains its page-based inventory.
+
 ## Planned companion mods
 
 - Pretty Frogs
