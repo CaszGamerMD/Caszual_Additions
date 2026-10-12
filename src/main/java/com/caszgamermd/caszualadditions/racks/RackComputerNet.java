@@ -111,16 +111,7 @@ public final class RackComputerNet {
 
     static List<StorageGolemShelfEntity> nearbyShelves(
             ServerLevel level,BlockPos computer) {
-        List<StorageGolemShelfEntity> found=new ArrayList<>();
-        Set<BlockPos> seen=new HashSet<>();
-        for(net.minecraft.core.Direction side:net.minecraft.core.Direction.values()){
-            BlockPos at=computer.relative(side);
-            if(!level.hasChunkAt(at)
-                    ||!level.getBlockState(at).is(RackContent.STORAGE_SHELF))continue;
-            for(StorageGolemShelfEntity shelf:StorageGolemShelfEntity.linked(level,at))
-                if(seen.add(shelf.getBlockPos()))found.add(shelf);
-        }
-        return found;
+        return WarehouseConnections.shelvesForComputer(level,computer);
     }
     private static void controlPtp(ServerPlayer player,PtpControl control){
         ServerLevel level=player.level();
