@@ -29,11 +29,19 @@ public final class StorageGolemShelfRenderer implements
             ModelFeatureRenderer.@Nullable CrumblingOverlay cracks){
         BlockEntityRenderer.super.extractRenderState(shelf,state,partial,camera,cracks);
         state.docked=shelf.docked();
+        state.facing=shelf.getBlockState().getValue(StorageGolemShelfBlock.FACING);
         blocks.update(state.frame,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
         blocks.update(state.lamp,Blocks.DIAMOND_BLOCK.defaultBlockState(),DISPLAY);
     }
     @Override public void submit(StorageGolemShelfRenderState state,PoseStack poses,
             SubmitNodeCollector collector,CameraRenderState camera){
+        poses.pushPose();
+        poses.translate(.5,0,.5);
+        float degrees=switch(state.facing){
+            case EAST->90f;case SOUTH->180f;case WEST->270f;default->0f;
+        };
+        poses.mulPose(com.mojang.math.Axis.YP.rotationDegrees(degrees));
+        poses.translate(-.5,0,-.5);
         for(int i=0;i<state.docked;i++){
             float cx=i==0?.31f:.69f;
             piece(state.frame,state,poses,collector,cx-.15f,.22f,.29f,.30f,.37f,.35f);
@@ -42,6 +50,7 @@ public final class StorageGolemShelfRenderer implements
             piece(state.frame,state,poses,collector,cx-.11f,.08f,.35f,.08f,.16f,.15f);
             piece(state.frame,state,poses,collector,cx+.03f,.08f,.35f,.08f,.16f,.15f);
         }
+        poses.popPose();
     }
     private static void piece(net.minecraft.client.renderer.block.BlockModelRenderState model,
             StorageGolemShelfRenderState state,PoseStack poses,
