@@ -22,66 +22,30 @@ public final class StorageGolemDispatch {
     }
     private static PtpBlockEntity inputPoint(ServerLevel level,
             List<StorageGolemShelfEntity> group,BlockPos computer){
-        for(StorageGolemShelfEntity shelf:group)
-            for(Direction dir:Direction.values()){
-                BlockPos p=shelf.getBlockPos().relative(dir);
-                if(!level.hasChunkAt(p))continue;
-                PtpBlockEntity ptp=PtpBlock.controller(level,p);
-                if(ptp!=null &&ptp.hasPallet()&&ptp.input()&&!ptp.sealed()&&!ptp.isEmpty())
-                    return ptp;
-            }
-        for(Direction dir:Direction.values()){
-            BlockPos p=computer.relative(dir);
-            if(!level.hasChunkAt(p))continue;
-            PtpBlockEntity ptp=PtpBlock.controller(level,p);
-            if(ptp!=null &&ptp.hasPallet()&&ptp.input()&&!ptp.sealed()&&!ptp.isEmpty())
+        for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,computer).points())
+            if(ptp.hasPallet()&&ptp.input()&&!ptp.sealed()&&!ptp.isEmpty())
                 return ptp;
-        }
         return null;
     }
     static PtpBlockEntity outputPoint(ServerLevel level,
             List<StorageGolemShelfEntity> group,BlockPos computer){
-        for(StorageGolemShelfEntity shelf:group)
-            for(Direction dir:Direction.values()){
-                BlockPos p=shelf.getBlockPos().relative(dir);
-                if(!level.hasChunkAt(p))continue;
-                PtpBlockEntity point=PtpBlock.controller(level,p);
-                if(point!=null&&!point.input())
-                    return point;
-            }
-        for(Direction dir:Direction.values()){
-            BlockPos p=computer.relative(dir);
-            if(!level.hasChunkAt(p))continue;
-            PtpBlockEntity point=PtpBlock.controller(level,p);
-            if(point!=null&&!point.input())
-                return point;
-        }
+        for(PtpBlockEntity point:WarehouseNetwork.fromComputer(level,computer).points())
+            if(!point.input())return point;
         return null;
     }
-    /** Only a directly shelf-attached magazine belongs to this worker group.
-     * Resolving either half of the two-high tank keeps placement flexible. */
+    /** A Shulker Tank can now connect through any warehouse component,
+     * including IGC floors and adjacent racks. */
     private static ShulkerTankEntity tank(ServerLevel level,
             List<StorageGolemShelfEntity> shelves){
-        for(StorageGolemShelfEntity shelf:shelves)
-            for(Direction side:Direction.values()){
-                BlockPos adjacent=shelf.getBlockPos().relative(side);
-                if(!level.hasChunkAt(adjacent))continue;
-                ShulkerTankEntity tank=ShulkerTankBlock.controller(level,adjacent);
-                if(tank!=null&&!tank.isEmpty())return tank;
-            }
+        for(ShulkerTankEntity tank:WarehouseNetwork.fromShelfGroup(level,shelves).tanks())
+            if(!tank.isEmpty())return tank;
         return null;
     }
     public static int linkedEmptyShulkers(ServerLevel level,
             List<StorageGolemShelfEntity> shelves){
-        java.util.Set<BlockPos> visited=new java.util.HashSet<>();
         int count=0;
-        for(StorageGolemShelfEntity shelf:shelves)
-            for(Direction side:Direction.values()){
-                BlockPos p=shelf.getBlockPos().relative(side);
-                if(!level.hasChunkAt(p))continue;
-                ShulkerTankEntity tank=ShulkerTankBlock.controller(level,p);
-                if(tank!=null&&visited.add(tank.getBlockPos()))count+=tank.count();
-            }
+        for(ShulkerTankEntity tank:WarehouseNetwork.fromShelfGroup(level,shelves).tanks())
+            count+=tank.count();
         return count;
     }
     /** Capacity in actual compatible item slots, including partial stacks. */
