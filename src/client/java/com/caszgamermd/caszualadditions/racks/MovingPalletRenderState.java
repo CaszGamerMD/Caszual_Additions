@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 public final class MovingPalletRenderState extends LivingEntityRenderState {
     public int cargo;
     public boolean visible;
+    public float liftProgress;
     public final BlockModelRenderState deck=new BlockModelRenderState();
     public final BlockModelRenderState foot=new BlockModelRenderState();
     public final BlockModelRenderState crate=new BlockModelRenderState();
