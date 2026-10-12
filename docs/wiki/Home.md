@@ -28,6 +28,7 @@ Caszual Additions combines building tools, decorative features, storage, XP util
 | Size snacks | Shrink, grow and reset player scale |
 | Firefly glass | Decorative enclosures with configurable colored particles |
 | Unbreakable utility | Unbreakable anvil and an associated book |
+| Caszual Fun Barrel | Creative-mode, paginated sampler of tagged Caszual items, including Caszual MTG addon items when installed |
 
 **Documentation scope:** This wiki describes items and functionality present in the repository's `main` branch. Features proposed for other Caszual mods are not implicitly included.
 
