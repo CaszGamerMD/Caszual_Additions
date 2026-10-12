@@ -39,7 +39,8 @@ public final class RackConnectorBlock extends Block {
     }
     @Override protected VoxelShape getShape(BlockState state,BlockGetter level,BlockPos pos,
             CollisionContext context){
-        return Block.box(0,1,6,16,15,10);
+        return state.getValue(FACING).getAxis()==Direction.Axis.X
+                ?Block.box(0,1,6,16,15,10):Block.box(6,1,0,10,15,16);
     }
     @Override protected VoxelShape getCollisionShape(BlockState state,BlockGetter level,
             BlockPos pos,CollisionContext context){return getShape(state,level,pos,context);}
