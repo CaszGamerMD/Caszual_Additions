@@ -244,6 +244,27 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             poses.popPose();
         }
 
+        if(state.outlined){
+            // Bright continuous edge outline around the WHOLE 2x2x3 rack,
+            // intentionally offset beyond the metal posts to avoid z-fighting.
+            // Render only for the player who searched, no global particles.
+            poses.pushPose();
+            poses.translate(x,0,z);
+            float inset=-.035f,span=2.07f,top=3.04f,edge=.032f;
+            for(float xx:new float[]{inset,2.035f})
+                for(float zz:new float[]{inset,2.035f})
+                    board(state.highlightEdge,state,poses,collector,
+                            xx,-.02f,zz,edge,top,edge);
+            for(float yy:new float[]{-.025f,2.98f}){
+                for(float xx:new float[]{inset,2.035f})
+                    board(state.highlightEdge,state,poses,collector,
+                            xx,yy,inset,edge,edge,span);
+                for(float zz:new float[]{inset,2.035f})
+                    board(state.highlightEdge,state,poses,collector,
+                            inset,yy,zz,span,edge,edge);
+            }
+            poses.popPose();
+        }
         if(!state.rackLabel.isBlank())
             submitFacingPlate(state,poses,collector,state.rackLabel,
                     front,x,z,2.31f,0xffe4f0f5);
