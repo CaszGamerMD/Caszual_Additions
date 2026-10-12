@@ -42,6 +42,7 @@ public final class WarehouseTestKitItem extends Item {
         add(supplies,RackContent.PTP_WRAP_ITEM,4);
         add(supplies,RackContent.PTP_HOPPER_ITEM,4);
         add(supplies,RackContent.STORAGE_SCANNER_ITEM,1);
+        add(supplies,RackContent.PORTABLE_WRAPPER,1);
         add(supplies,RackContent.TANK_ITEM,2);
         add(supplies,PalletContent.WOODEN_PALLET_ITEM,8);
         add(supplies,PalletContent.IRON_PALLET_ITEM,2);
