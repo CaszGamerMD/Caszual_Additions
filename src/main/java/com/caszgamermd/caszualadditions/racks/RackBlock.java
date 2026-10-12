@@ -268,61 +268,39 @@ public final class RackBlock extends Block implements EntityBlock {
         return super.playerWillDestroy(level,pos,state,player);
     }
     @Override protected List<ItemStack> getDrops(BlockState state, LootParams.Builder b) { return List.of(); }
-    @Override protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(BlockState state,
-            net.minecraft.world.level.BlockGetter level, BlockPos pos,
-            net.minecraft.world.phys.shapes.CollisionContext context) {
-        // The lower deck supports the pallet. All twelve rack parts have
-        // collision on their OUTSIDE corner posts, not a fake floor in every
-        // upper segment. Cargo collision is identical to the 3x3x3 display.
-        BlockPos root=root(pos,state);
-        Direction facing=state.getValue(FACING);
+    /**
+     * Select any of the twelve rack cells as one complete 2x2x3 structure.
+     * This is deliberately one coherent outline; the physical collision
+     * below stays confined to the metal bars and any real pallet cargo.
+     */
+    @Override protected net.minecraft.world.phys.shapes.VoxelShape getShape(
+            BlockState state,net.minecraft.world.level.BlockGetter level,
+            BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){
+        BlockPos rackRoot=root(pos,state);
         int minX=Integer.MAX_VALUE,minZ=Integer.MAX_VALUE;
-        for(int i=0;i<4;i++){
-            BlockPos cell=cell(root,facing,i);
-            minX=Math.min(minX,cell.getX());
-            minZ=Math.min(minZ,cell.getZ());
+        for(int part=0;part<4;part++){
+            BlockPos at=cell(rackRoot,state.getValue(FACING),part);
+            minX=Math.min(minX,at.getX());
+            minZ=Math.min(minZ,at.getZ());
         }
-        double x=pos.getX()==minX?0:15;
-        double z=pos.getZ()==minZ?0:15;
-        var post=Block.box(x,0,z,x+1,16,z+1);
-        var cargo=RackCargoCollision.shape(level,pos,state);
-        // Keep a completely clear FRONT face at the two vertical level
-        // boundaries. The sides and rear retain their rack framing.
-        // A ground-level grill is low enough to support pallets and visually
-        // matches the three narrow longitudinal support strips in the model.
-        int partIndex=state.getValue(PART);
-        int height=partIndex/4;
-        boolean front=partIndex%4<2;
-        var empty=net.minecraft.world.phys.shapes.Shapes.empty();
-        // For north/south the front rails run along X; when rotated
-        // east/west the same front rail is the Z-oriented rail.
-        // Do not leave invisible tier dividers after rotating the model.
-        boolean frontRailAlongX=facing.getAxis()==Direction.Axis.Z;
-        boolean showBottomFront=!front||height==0;
-        boolean showTopFront=!front||height==2;
-        var railX=(!frontRailAlongX||showBottomFront)
-                ?Block.box(0,0,z,16,1,z+1):empty;
-        var railXTop=(!frontRailAlongX||showTopFront)
-                ?Block.box(0,15,z,16,16,z+1):empty;
-        var railZ=(frontRailAlongX||showBottomFront)
-                ?Block.box(x,0,0,x+1,1,16):empty;
-        var railZTop=(frontRailAlongX||showTopFront)
-                ?Block.box(x,15,0,x+1,16,16):empty;
-        if(height==0){
-            var grill=net.minecraft.world.phys.shapes.Shapes.empty();
-            int first=(facing==Direction.SOUTH||facing==Direction.WEST)?2:3;
-            for(int off=0;off<3;off++){
-                int strip=first+off*5;
-                var support=frontRailAlongX
-                        ?Block.box(strip,1,2,strip+1,2,14)
-                        :Block.box(2,1,strip,14,2,strip+1);
-                grill=net.minecraft.world.phys.shapes.Shapes.or(grill,support);
-            }
-            return net.minecraft.world.phys.shapes.Shapes.or(
-                    Block.box(0,0,0,16,1,16),grill,post,
-                    railX,railXTop,railZ,railZTop,cargo);
-        }
+        return Block.box(16.0*(minX-pos.getX()),
+                16.0*(rackRoot.getY()-pos.getY()),
+                16.0*(minZ-pos.getZ()),
+                16.0*(minX+2-pos.getX()),
+                16.0*(rackRoot.getY()+3-pos.getY()),
+                16.0*(minZ+2-pos.getZ()));
+    }
+
+    /**
+     * Actual per-cell collision follows the rendered struts exactly.
+     * Avoid a solid, invisible floor under the grill: players and items
+     * interact with the visible beams rather than a fake 16x16 platform.
+     */
+    @Override protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(
+            BlockState state,net.minecraft.world.level.BlockGetter level,
+            BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){
         return net.minecraft.world.phys.shapes.Shapes.or(
-                post,railX,railXTop,railZ,railZTop,cargo);
+                RackFrameShapes.cell(state),
+                RackCargoCollision.shape(level,pos,state));
     }
 }
