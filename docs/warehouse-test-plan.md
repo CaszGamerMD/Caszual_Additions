@@ -49,6 +49,37 @@ chunk saves. Run these tests on a backed-up world, then on a dedicated server.
 - [ ] Confirm IGC floor does not replace the four real Golems' walking
       requirements, create remote inventory access, or duplicate pallets.
 
+## One moving pallet with four locked, animated Golems
+
+- [ ] Enlist exactly four real Storage Golems and right-click a glass-wrapped
+      ground pallet or a sealed PTP. All four must reach distinct outer
+      loading positions **before** the pallet rises.
+- [ ] As it lifts, verify the four original independent entities disappear
+      and ONE wide moving pallet entity takes over, with four Golem models
+      firmly attached to the pallet's corners.
+- [ ] Rotate, walk, sprint and change elevation. All four attached golems
+      turn and translate with the pallet; their legs animate as a team.
+      **No drifting or golems left behind** during movement.
+- [ ] Observe the raised glass pallet from all four sides. Its cargo models
+      should remain attached to the same root frame without z-fighting.
+- [ ] Walk around corners, doors, narrow aisles and uneven terrain. One
+      collision/pathfinding body should respect obstacles and avoid clipping.
+- [ ] Query the Storage Golems tab while carrying: it should show one
+      four-Golem team task, not four independent moving workers.
+- [ ] Deliver to a completely empty rack; ensure the exact pallet and all
+      216 slots transfer. Four independent EMPTY workers must reappear,
+      resume following, and eventually return to their assigned shelves.
+- [ ] Repeat on clear 2x2 ground; save/reload the world once mid-carry
+      and once after delivery. The pallet inventory must have one owner
+      at every stage.
+- [ ] Destroy the moving pallet in a BACKED-UP Creative test world:
+      exactly one pallet + its real cargo + four Golem recovery tokens
+      should drop, not duplicate models with live inventories.
+- [ ] Test PTP pickup, remote ground pickup and failed destinations. A
+      rejected location must leave cargo on the same moving entity.
+- [ ] Logout during transit and rejoin without forcing chunk loads.
+      Verify the moving pallet pauses safely and resumes when reloaded.
+
 ## Portable wrapping and off-site Golem pallet pickup
 
 - [ ] Craft a **Portable Pallet Wrapper** from 4 glass panes, 4 iron ingots
