@@ -27,12 +27,26 @@ public final class StorageScanner {
     }
     private StorageScanner(){}
 
+    /**
+     * Resolve a PTP without loading its controller chunk if a 3x3 structure
+     * happens to straddle a chunk boundary.
+     */
+    private static PtpBlockEntity loadedPoint(ServerLevel level,BlockPos cell){
+        if(!level.hasChunkAt(cell))return null;
+        var state=level.getBlockState(cell);
+        if(!(state.getBlock() instanceof PtpBlock))return null;
+        int part=state.getValue(PtpBlock.PART);
+        if(part==0)return null;
+        BlockPos center=PtpBlock.root(cell,part).offset(1,0,1);
+        return level.hasChunkAt(center)
+                &&level.getBlockEntity(center) instanceof PtpBlockEntity ptp?ptp:null;
+    }
     /** The scanner can touch any of a PTP's nine platform blocks. */
     public static PtpBlockEntity nearbyPoint(ServerLevel level,BlockPos scanner){
         for(Direction direction:Direction.values()){
             BlockPos adjacent=scanner.relative(direction);
             if(!level.hasChunkAt(adjacent))continue;
-            PtpBlockEntity point=PtpBlock.controller(level,adjacent);
+            PtpBlockEntity point=loadedPoint(level,adjacent);
             if(point!=null)return point;
         }
         return null;
@@ -140,7 +154,7 @@ public final class StorageScanner {
             for(Direction side:Direction.values()){
                 BlockPos neighbor=base.relative(side);
                 if(!level.hasChunkAt(neighbor))continue;
-                PtpBlockEntity point=PtpBlock.controller(level,neighbor);
+                PtpBlockEntity point=loadedPoint(level,neighbor);
                 if(point==null||!seenPoints.add(point.getBlockPos()))continue;
                 BlockPos origin=point.getBlockPos().offset(-1,0,-1);
                 for(int part=1;part<=9;part++){
