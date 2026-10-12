@@ -294,6 +294,26 @@ public final class RackComputerNet {
             job.addProperty("target",worker.workTarget().toShortString());
             workerRows.add(job);
         }
+        // One MovingPallet represents four docked-origin workers while
+        // carrying. Report one rig, not four independently pathing Golems.
+        for(ServerPlayer online:level.players()){
+            for(MovingPallet rig:level.getEntitiesOfClass(MovingPallet.class,
+                    new net.minecraft.world.phys.AABB(online.blockPosition()).inflate(96))){
+                if(!rig.fromWarehouse(shelves))continue;
+                JsonObject task=new JsonObject();
+                task.addProperty("id",rig.getStringUUID());
+                task.addProperty("work",rig.loaded()
+                        ?"4-GOLEM PALLET TEAM / FOLLOWING PLAYER"
+                        :"4-GOLEM TEAM / DETACHING");
+                task.addProperty("cargo",rig.loaded()?"216-SLOT WRAPPED PALLET":"EMPTY");
+                task.addProperty("owner","TEAM");
+                task.addProperty("x",rig.blockPosition().getX());
+                task.addProperty("y",rig.blockPosition().getY());
+                task.addProperty("z",rig.blockPosition().getZ());
+                task.addProperty("target","PLAYER");
+                workerRows.add(task);
+            }
+        }
         root.add("workers",workerRows);
         root.addProperty("activeGolems",workerRows.size());
         // Linked shelves can also reach an output PTP without requiring
