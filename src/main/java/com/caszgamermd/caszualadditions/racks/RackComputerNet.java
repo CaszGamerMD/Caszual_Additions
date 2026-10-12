@@ -104,7 +104,7 @@ public final class RackComputerNet {
         ServerPlayNetworking.send(player,new OrderReply(message));
     }
 
-    private static List<StorageGolemShelfEntity> nearbyShelves(
+    static List<StorageGolemShelfEntity> nearbyShelves(
             ServerLevel level,BlockPos computer) {
         List<StorageGolemShelfEntity> found=new ArrayList<>();
         Set<BlockPos> seen=new HashSet<>();
