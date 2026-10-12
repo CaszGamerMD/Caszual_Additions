@@ -33,7 +33,8 @@ public final class CaszualItemGroups {
                             // surface the sampler in the creative Caszual tab.
                             output.accept(new ItemStack(FunBarrelContent.ITEM));
                             for (var item : java.util.List.of(RackContent.RACK_ITEM,
-                                    RackContent.COMPUTER_ITEM, RackContent.RACK_TAG,
+                                    RackContent.COMPUTER_ITEM, RackContent.STORAGE_SCANNER_ITEM,
+                                    RackContent.RACK_TAG,
                                     RackContent.AISLE_TAG,RackContent.CONNECTOR,
                                     RackContent.PALLET_FILTER,RackContent.HUB_ITEM,
                                     RackContent.TANK_ITEM,RackContent.ORDER_COLLECTOR,
