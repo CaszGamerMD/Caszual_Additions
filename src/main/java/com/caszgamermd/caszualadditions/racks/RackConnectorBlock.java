@@ -32,7 +32,8 @@ public final class RackConnectorBlock extends Block {
         b.add(FACING);
     }
     @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context){
-        if(RackBlock.reservedForAccess(context.getLevel(),context.getClickedPos()))return null;
+        // Connectors intentionally span the rack approach lane, including
+        // face-to-face aisle bridges. Other blocks still respect the lane.
         Direction side=context.getClickedFace();
         if(!side.getAxis().isHorizontal())side=context.getHorizontalDirection();
         return defaultBlockState().setValue(FACING,side);
@@ -40,7 +41,10 @@ public final class RackConnectorBlock extends Block {
     @Override protected VoxelShape getShape(BlockState state,BlockGetter level,BlockPos pos,
             CollisionContext context){
         return state.getValue(FACING).getAxis()==Direction.Axis.X
-                ?Block.box(0,1,6,16,15,10):Block.box(6,1,0,10,15,16);
+                ?net.minecraft.world.phys.shapes.Shapes.or(
+                        Block.box(0,3,7,16,5,9),Block.box(0,11,7,16,13,9))
+                :net.minecraft.world.phys.shapes.Shapes.or(
+                        Block.box(7,3,0,9,5,16),Block.box(7,11,0,9,13,16));
     }
     @Override protected VoxelShape getCollisionShape(BlockState state,BlockGetter level,
             BlockPos pos,CollisionContext context){return getShape(state,level,pos,context);}
