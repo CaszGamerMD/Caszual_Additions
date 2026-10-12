@@ -49,6 +49,32 @@ chunk saves. Run these tests on a backed-up world, then on a dedicated server.
 - [ ] Confirm IGC floor does not replace the four real Golems' walking
       requirements, create remote inventory access, or duplicate pallets.
 
+## Standalone pallet access and rack loading clearance
+
+- [ ] Place wooden, iron, plastic, and each copper-age pallet directly on
+      the ground, outside a rack and outside any PTP.
+- [ ] Right-click every part of the 2×2 pallet with an **empty hand**.
+      The same 216-slot inventory must open from all four parts.
+- [ ] Repeat while holding an ordinary item, including a full item stack.
+      The pallet inventory must open without placing/consuming the held item.
+- [ ] Test the farthest corner of a 2×2 pallet. The menu should stay open
+      when standing by that corner, not close because the controller is
+      diagonally distant.
+- [ ] Add and remove items on both pages, including shift-click transfers;
+      close/reopen and restart the world to confirm stored contents persist.
+- [ ] Shear a glass-wrapped ground pallet; verify the glass comes off while
+      inventory remains. Crouch-right-click while holding building blocks
+      should still allow normal deliberate placement.
+- [ ] Place a pallet inside a rack and confirm rack inventory interaction
+      remains unchanged; move a pallet with four Golems from PTP to ground,
+      then open all four ground cells.
+- [ ] Check the rack's front opening: there are **no horizontal crossbars
+      between levels 1–2 and 2–3** on its front face (all four facings).
+      Outer posts and back/side bracing remain.
+- [ ] Verify the lowest level has narrow support-grill strips under the
+      pallet across the complete 2×2 footprint, and that visual collision
+      matches the open front rather than producing invisible crossbars.
+
 ## Creative staging
 
 1. Take the **Warehouse Test Kit** from the Caszual Creative tab; right-click
