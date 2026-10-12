@@ -46,7 +46,27 @@ for name in ("rack_computer","storage_golem_shelf","rack_connector",
         assert all(a<b for a,b in zip(frm,to)),f"{name}: degenerate cuboid"
 
 assert len(model("rack_computer")["elements"])>=6, "Kiosk has no monitor/console detail"
-assert len(model("rack_connector")["elements"])>=2, "Connector has no crossbeams"
+# Physical rack connectors must be long, narrow rods and MUST NOT
+# accidentally regress into giant rotated diagonal X-braces.
+rods=model("rack_connector")["elements"]
+assert len(rods)==2,"Rack connector must show exactly two thin rods"
+for rod in rods:
+    x0,y0,z0=rod["from"]
+    x1,y1,z1=rod["to"]
+    assert x1-x0<=3 and y1-y0<=3 and z1-z0==16
+    assert "rotation" not in rod,"No diagonal X-brace rotation"
+connector=read("src/main/java/com/caszgamermd/caszualadditions/racks/RackConnectorBlock.java")
+assert "setPlacedBy" in connector and "MAX_CONNECTOR_GAP" in connector
+assert "reservedForAccess" not in connector,"Face-to-face connectors must span rack approach lanes"
+scanner=read("src/main/java/com/caszgamermd/caszualadditions/racks/StorageScannerItem.java")
+assert "extends Item" in scanner and "StoragePalletCrew" in scanner
+assert not (ROOT/"src/main/java/com/caszgamermd/caszualadditions/racks/StorageScannerBlock.java").exists()
+assert not (ROOT/"src/main/java/com/caszgamermd/caszualadditions/racks/OrderHubBlock.java").exists()
+assert not (ROOT/"src/main/java/com/caszgamermd/caszualadditions/racks/OrderHubEntity.java").exists()
+assert "Blocks.GLASS.defaultBlockState()" in read(
+    "src/client/java/com/caszgamermd/caszualadditions/racks/PtpRenderer.java")
+assert "GlassPalletWrap.withWrap" not in scanner # Scanner owns no pallet inventory
+
 assert "poses.scale(.875f,.875f,.875f)" in read(
     "src/client/java/com/caszgamermd/caszualadditions/racks/RackBlockEntityRenderer.java")
 assert "private static final double SCALE=.875" in read(
@@ -58,4 +78,4 @@ assert 'root.add("ptps",transferPoints)' in net
 assert "PtpControl" in net
 assert "ParticleTypes.END_ROD" not in net
 assert "highlights.add(position)" in net
-print("Warehouse static models, orientation, fitted collision, links and control contracts: PASS")
+print("Warehouse thin rods, handheld scanner, removed hubs, glass wrap and network contracts: PASS")
