@@ -159,6 +159,7 @@ public final class RackBlock extends Block implements EntityBlock {
         // Block placement must work identically on client and server, even
         // when a rack already contains a pallet.
         if(held.is(RackContent.CONNECTOR)
+                ||held.is(RackContent.PORTABLE_WRAPPER)
                 ||held.is(RackContent.STORAGE_SCANNER_ITEM))
             return InteractionResult.PASS;
         if(held.is(net.minecraft.world.item.Items.SHEARS)&&rack.glassWrapped()){
