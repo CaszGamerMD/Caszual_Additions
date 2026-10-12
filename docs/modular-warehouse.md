@@ -388,23 +388,35 @@ PTP pallets (even when no Wrap Unit module is installed). Shears remain an
 alternative way to remove glass. The wrapper is available in Creative and
 the Warehouse Test Kit.
 
-## Four-Golem carried pallet model
+## Single-entity pallet carry with four locked Golem corners
 
-A linked crew can lift a **glass-wrapped ground pallet at any loaded
-location**, including outside the warehouse network: use the linked
-Warehouse Scanner on any of the pallet's four ground cells. All four
-workers must rally around the pallet before the lead carrier takes the
-one actual 216-slot inventory and the four ground sections vanish.
-An unwrapped, incomplete, or unloaded pallet is not eligible.
+At pickup, **four actual Golems must still assemble** at a sealed
+2×2 pallet (on ground anywhere, or on a PTP). Only after all four
+unique workers reach it does the server move the ONE real pallet stack
+and all **216 item stacks** to a new `moving_pallet` entity.
 
-During transport the four Golems follow in a square, with raised arms
-under one floating 2×2 pallet shared between them. Only the lead Golem
-renders the elevated pallet, material, glass sides and up to 27 visible
-cargo cartons; **all 216 actual stacks** are owned/saved by the lead entity.
-This visual-only sync is not a second storage copy. A successful rack or
-ground delivery removes the carried pallet model and restores the
-permanent floor/rack model. Test navigation and rendering in a Minecraft
-client; build-time smoke tests are not visual verification.
+During transport, **the PALLET is the only moving/colliding/navigation
+entity**. Four Golem models are fixed to its corners, with raised arms
+and alternating leg swings driven by that one entity's movement. There
+are **no four independently walking Golem entities while carrying**,
+so the workers cannot drift apart, push the pallet out of alignment,
+or wander into different routes. The pallet rises once on pickup.
+Glass panels and up to 27 visual cargo cartons are rendered as one load.
+
+The Scanner still chooses the destination: an empty connected or remote
+rack, or a clear 2×2 patch of ground. Failed placement leaves the
+single moving entity holding the load. After a successful destination
+handoff, the one pallet entity respawns **exactly four empty Golems**
+at its location using their original saved shelf coordinates. The
+crew then follows the player until dismissed at the original
+warehouse Computer. Death of a loaded moving pallet drops its actual
+one pallet, all stored items, and four recoverable Golem tokens.
+
+Pallet movement still uses Minecraft ground navigation, not
+teleportation or forced chunk-loading. A narrow aisle that cannot
+physically admit the wide pallet may stop the group. Validate uneven
+terrain, obstacles, cargo integrity and saving in a backed-up test
+world; passing CI does not prove perfect client animation.
 
 ## Handheld Warehouse Scanner and player-led pallet transport
 
