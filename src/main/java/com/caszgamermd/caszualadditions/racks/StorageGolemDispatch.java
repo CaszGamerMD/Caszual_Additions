@@ -139,7 +139,7 @@ public final class StorageGolemDispatch {
                 if(ticket==0)return false;
                 worker.assignOutput(shelf.getBlockPos(),rack.getBlockPos(),
                         point.getBlockPos(),stack,ticket,amount);
-                if(pack)worker.assignPackedOutput(magazine.getBlockPos());
+                if(pack)worker.assignPackedOutput(magazine.getBlockPos(),amount);
                 worker.setPos(shelf.getBlockPos().getX()+.5,
                         shelf.getBlockPos().getY()+1,shelf.getBlockPos().getZ()+.5);
                 if(!shelf.take()){point.releaseOutput(ticket);return false;}
