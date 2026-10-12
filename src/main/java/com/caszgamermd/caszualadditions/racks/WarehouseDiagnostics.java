@@ -53,12 +53,6 @@ public final class WarehouseDiagnostics {
         results.add("Computer "+terminal.toShortString()+": "+racks.size()
                 +" loaded racks; "+installed+" with pallets, "
                 +empty+" empty for hauling; "+stored+" stored items.");
-        OrderHubEntity hub=OrderHubEntity.nextToComputer(level,terminal);
-        if(hub!=null)
-            results.add("[MIGRATION] Retired Hub detected: "
-                    +hub.collectors()+" old workers, pallet="+hub.hasPallet()
-                    +", inventory empty="+hub.isEmpty()
-                    +". Salvage in Survival; workers become Storage Golems.");
         List<StorageGolemShelfEntity> shelves=RackComputerNet.nearbyShelves(level,terminal);
         int docked=shelves.stream().mapToInt(StorageGolemShelfEntity::docked).sum();
         long auto=shelves.stream().filter(StorageGolemShelfEntity::sortingEnabled).count();
