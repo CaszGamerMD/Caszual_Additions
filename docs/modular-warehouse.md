@@ -100,12 +100,16 @@ holding an upgrade item continues to use that upgrade.
   tagged earlier; rack front labels update without reapplying their tags.
 - **Existing labels:** Older rack names are automatically displayed as
   physical signs after loading the updated mod; they need no re-tagging.
-- **Rack Connector:** Right-click the rack frame face to attach a
-  connector. Two rack frames with **paired opposite connectors on their
-  actual shared face** now display steel **X-shaped cross-braces** bridging
-  the frames. Vertical pairs display short linking brackets.
-  Unpaired connectors do not show a bridge or add an unintended network edge.
-  The cross-brace is rendered only once per pair to avoid z-fighting.
+- **Rack Connector:** This is now a **physical placeable steel X-crossbeam
+  block**. Place one to four consecutive sections horizontally between
+  rack frame cells to join their networks across an actual gap. Each placed
+  section has collision; breaking any section immediately disconnects the
+  bridge. No vertical bridging is required. Existing saved legacy face
+  connector flags remain readable for compatibility, but new connector
+  items place actual blocks.
+- **Back-to-back racks:** Two touching rack frames with opposite front
+  facings now connect to the same computer network automatically, without
+  connector items. Adjacent side-by-side racks still share aisle tags.
 - **Pallet Filter:** Use the real module slot and whitelist/blacklist controls
   in the pallet UI (detailed in the previous section). Rules and module state
   persist when pallets move into or out of a rack.
@@ -116,6 +120,31 @@ cells still reserve space and collision, and breaking any part removes the
 whole pallet. All four pieces share the same 2×2 selection outline. Existing
 saved inventory data remains on the home controller.
 
+
+### Fitted rack pallets, workstation and orientation
+
+A pallet **mounted inside a rack** is drawn four pixels smaller across
+each horizontal dimension (two-pixel inset on all four edges), and its
+cargo uses the same transform and matching server-side collision shapes.
+Freestanding pallets and PTP pallets keep their original size.
+
+The Rack Computer is a **player-facing kiosk**, with a pedestal, angled
+monitor, keyboard and status lamp. It lists **all loaded attached PTPs**
+touching the computer or its linked shelves. Choose **NEXT PTP** to cycle
+locations; **SET INPUT / SET OUTPUT** changes mode, and **WRAP / UNWRAP**
+controls installed wrap units. These operations are server-authorized and
+refuse to interrupt pending output orders, active output reservations or
+four-Golem pallet hauls. Only PTPs with a pallet and Wrap Unit can wrap.
+
+Storage Golem Shelves, their visible docked worker models, and PTP
+Hopper/Wrap modules now face the direction of the placing player. The
+horizontal direction is saved with each block for reloads.
+
+Matching racks use a private, bright twelve-edge outline for 10 seconds
+after a Rack Computer search rather than server-broadcast END_ROD particles.
+The outline is a thin illuminated block-model frame, not the vanilla
+entity glowing effect.
+
 ## Rack Computer
 
 Open the computer with an empty hand. It can:
@@ -125,7 +154,8 @@ Open the computer with an empty hand. It can:
 - See each rack's coordinates, occupied slots out of 216, stored-item count,
   and configured filter.
 - Click a rack to inspect its aggregated contents.
-- Mark matching rack locations for **10 seconds** with visible particles.
+- Mark matching rack locations for **10 seconds** with bright per-player
+  outlines around the entire rack frame; no particle clouds.
 - Click an item in a selected rack, type an order quantity (1–4096), and
   choose **REQUEST ITEMS**.
 
