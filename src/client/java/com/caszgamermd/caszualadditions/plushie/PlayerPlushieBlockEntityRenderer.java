@@ -41,44 +41,48 @@ public final class PlayerPlushieBlockEntityRenderer
     private static final Identifier BOOK_PAGES = Identifier.withDefaultNamespace("textures/block/white_concrete.png");
     private static final Identifier BOOK_SPINE = Identifier.withDefaultNamespace("textures/block/brown_terracotta.png");
     private static final ModelPart OPEN_BOOK = makeOpenBook();
+    private static final Identifier TELESCOPE_COPPER = Identifier.withDefaultNamespace("textures/block/copper_block.png");
+    private static final Identifier TELESCOPE_TRIM = Identifier.withDefaultNamespace("textures/block/gold_block.png");
+    private static final Identifier TELESCOPE_LENS = Identifier.withDefaultNamespace("textures/block/tinted_glass.png");
+    private static final ModelPart SPYGLASS = makeSpyglass();
 
     /**
-     * Small 3D open book: independent angled covers, inset cream pages and a
-     * raised spine. No flat item sprite clipping through the plushie's hands.
-     * Pages are separated from the covers by 0.04 model pixels.
+     * An actual open hardcover book, almost twice the old size. The cream
+     * paper is on the +Z (plushie-facing) side of each cover, not the outer
+     * side that the previous implementation accidentally exposed.
      */
     private static ModelPart makeOpenBook() {
         MeshDefinition mesh = new MeshDefinition();
         var root = mesh.getRoot();
         root.addOrReplaceChild("left_cover",
                 CubeListBuilder.create().texOffs(0, 0)
-                        .addBox(-4.70F, -3.35F, -0.46F, 4.32F, 6.70F, 0.46F),
-                PartPose.offsetAndRotation(-0.30F, 0, 0, 0, 0.22F, 0));
+                        .addBox(-7.65F, -4.15F, -0.66F, 7.20F, 8.30F, 0.60F),
+                PartPose.offsetAndRotation(-0.25F, 0, 0, 0, 0.31F, 0));
         root.addOrReplaceChild("right_cover",
                 CubeListBuilder.create().texOffs(0, 0)
-                        .addBox(0.38F, -3.35F, -0.46F, 4.32F, 6.70F, 0.46F),
-                PartPose.offsetAndRotation(0.30F, 0, 0, 0, -0.22F, 0));
+                        .addBox(0.45F, -4.15F, -0.66F, 7.20F, 8.30F, 0.60F),
+                PartPose.offsetAndRotation(0.25F, 0, 0, 0, -0.31F, 0));
         root.addOrReplaceChild("left_pages",
                 CubeListBuilder.create().texOffs(0, 0)
-                        .addBox(-4.37F, -3.02F, -0.85F, 3.88F, 6.04F, 0.35F),
-                PartPose.offsetAndRotation(-0.30F, 0, 0, 0, 0.22F, 0));
+                        .addBox(-7.22F, -3.75F, -0.01F, 6.55F, 7.46F, 0.42F),
+                PartPose.offsetAndRotation(-0.25F, 0, 0, 0, 0.31F, 0));
         root.addOrReplaceChild("right_pages",
                 CubeListBuilder.create().texOffs(0, 0)
-                        .addBox(0.49F, -3.02F, -0.85F, 3.88F, 6.04F, 0.35F),
-                PartPose.offsetAndRotation(0.30F, 0, 0, 0, -0.22F, 0));
+                        .addBox(0.67F, -3.75F, -0.01F, 6.55F, 7.46F, 0.42F),
+                PartPose.offsetAndRotation(0.25F, 0, 0, 0, -0.31F, 0));
         root.addOrReplaceChild("spine",
                 CubeListBuilder.create().texOffs(0, 0)
-                        .addBox(-0.48F, -3.36F, -0.23F, 0.96F, 6.72F, 0.78F),
+                        .addBox(-0.54F, -4.19F, -0.76F, 1.08F, 8.38F, 1.20F),
                 PartPose.ZERO);
-        return LayerDefinition.create(mesh, 16, 16).bakeRoot();
+        return LayerDefinition.create(mesh, 32, 32).bakeRoot();
     }
 
     private static void drawOpenBook(PoseStack pose, SubmitNodeCollector collector, int light) {
         pose.pushPose();
-        // Both arms are bent toward this shared center; the book is in the
-        // hands rather than stuck to the torso or floating at head level.
-        pose.translate(0, 0.58F, -0.49F);
-        pose.mulPose(Axis.XP.rotationDegrees(15.0F));
+        // Reading hands are bent inward in pose 2; book is propped in front
+        // of the torso and angled toward the plushie's eyes.
+        pose.translate(0, 0.56F, -0.61F);
+        pose.mulPose(Axis.XP.rotationDegrees(-23.0F));
         pose.scale(1.0F / 16, 1.0F / 16, 1.0F / 16);
         for (String name : new String[]{"left_cover", "right_cover"}) {
             collector.order(2).submitModelPart(OPEN_BOOK.getChild(name), pose,
@@ -93,6 +97,109 @@ public final class PlayerPlushieBlockEntityRenderer
         collector.order(4).submitModelPart(OPEN_BOOK.getChild("spine"), pose,
                 RenderTypes.entityCutout(BOOK_SPINE), light,
                 OverlayTexture.NO_OVERLAY, null, -1, null, 0);
+        pose.popPose();
+    }
+
+    /**
+     * Voxel spyglass with a full-length square barrel, stepped inner tube,
+     * raised metal bands and an actual dark objective lens. A flat vanilla
+     * item sprite does not have the depth that this pose needs.
+     */
+    private static ModelPart makeSpyglass() {
+        MeshDefinition mesh = new MeshDefinition();
+        var root = mesh.getRoot();
+        root.addOrReplaceChild("barrel",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(-1.30F, -1.30F, -12.5F, 2.60F, 2.60F, 12.0F),
+                PartPose.ZERO);
+        root.addOrReplaceChild("extension",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(-1.03F, -1.03F, -16.6F, 2.06F, 2.06F, 4.4F),
+                PartPose.ZERO);
+        root.addOrReplaceChild("objective_rim",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(-1.61F, -1.61F, -17.1F, 3.22F, 3.22F, 0.75F),
+                PartPose.ZERO);
+        root.addOrReplaceChild("center_band",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(-1.52F, -1.52F, -9.8F, 3.04F, 3.04F, 0.70F),
+                PartPose.ZERO);
+        root.addOrReplaceChild("eyepiece",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(-1.52F, -1.52F, -0.9F, 3.04F, 3.04F, 1.85F),
+                PartPose.ZERO);
+        root.addOrReplaceChild("lens",
+                CubeListBuilder.create().texOffs(0, 0)
+                        .addBox(-1.04F, -1.04F, -17.18F, 2.08F, 2.08F, 0.12F),
+                PartPose.ZERO);
+        return LayerDefinition.create(mesh, 32, 32).bakeRoot();
+    }
+
+    private static void drawSpyglass(PoseStack pose, SubmitNodeCollector collector, int light) {
+        pose.pushPose();
+        pose.translate(-0.23F, -0.16F, -0.32F);
+        pose.mulPose(Axis.XP.rotationDegrees(-5.0F));
+        pose.scale(1.0F / 16, 1.0F / 16, 1.0F / 16);
+        for (String part : new String[]{"barrel", "extension"}) {
+            collector.order(2).submitModelPart(SPYGLASS.getChild(part), pose,
+                    RenderTypes.entityCutout(TELESCOPE_COPPER), light,
+                    OverlayTexture.NO_OVERLAY, null, -1, null, 0);
+        }
+        for (String part : new String[]{"objective_rim", "center_band", "eyepiece"}) {
+            collector.order(3).submitModelPart(SPYGLASS.getChild(part), pose,
+                    RenderTypes.entityCutout(TELESCOPE_TRIM), light,
+                    OverlayTexture.NO_OVERLAY, null, -1, null, 0);
+        }
+        collector.order(4).submitModelPart(SPYGLASS.getChild("lens"), pose,
+                RenderTypes.entityCutout(TELESCOPE_LENS), light,
+                OverlayTexture.NO_OVERLAY, null, -1, null, 0);
+        pose.popPose();
+    }
+
+    /**
+     * Each tool is an independent action with the grip positioned next to its
+     * own posed hand. The original shared transform held every tool upside
+     * down at the same sword angle.
+     */
+    private static void drawTool(PlayerPlushieRenderState state, PoseStack pose,
+                                 SubmitNodeCollector collector) {
+        pose.pushPose();
+        switch (state.pose) {
+            case 3 -> { // sword: a horizontal mid-strike, blade facing away
+                pose.translate(-0.36F, 0.23F, -0.78F);
+                pose.mulPose(Axis.YP.rotationDegrees(-38));
+                pose.mulPose(Axis.XP.rotationDegrees(-28));
+                pose.mulPose(Axis.ZP.rotationDegrees(72));
+                pose.scale(0.70F, 0.70F, 0.70F);
+            }
+            case 4 -> { // axe: chopping downward from above the shoulder
+                pose.translate(-0.41F, -0.26F, -0.53F);
+                pose.mulPose(Axis.YP.rotationDegrees(-28));
+                pose.mulPose(Axis.XP.rotationDegrees(-43));
+                pose.mulPose(Axis.ZP.rotationDegrees(142));
+                pose.scale(0.75F, 0.75F, 0.75F);
+            }
+            case 5 -> { // pickaxe: angled mining swing toward the ground
+                pose.translate(-0.43F, -0.10F, -0.70F);
+                pose.mulPose(Axis.YP.rotationDegrees(-38));
+                pose.mulPose(Axis.XP.rotationDegrees(-48));
+                pose.mulPose(Axis.ZP.rotationDegrees(118));
+                pose.scale(0.74F, 0.74F, 0.74F);
+            }
+            case 6 -> { // hoe: working down and outward in front of the feet
+                pose.translate(-0.41F, 0.60F, -0.70F);
+                pose.mulPose(Axis.YP.rotationDegrees(-26));
+                pose.mulPose(Axis.XP.rotationDegrees(-38));
+                pose.mulPose(Axis.ZP.rotationDegrees(152));
+                pose.scale(0.74F, 0.74F, 0.74F);
+            }
+            default -> {
+                pose.popPose();
+                return;
+            }
+        }
+        state.prop.submit(pose, collector, state.lightCoords,
+                OverlayTexture.NO_OVERLAY, 0);
         pose.popPose();
     }
 
@@ -148,7 +255,6 @@ public final class PlayerPlushieBlockEntityRenderer
             case 4 -> new ItemStack(Items.IRON_AXE);
             case 5 -> new ItemStack(Items.IRON_PICKAXE);
             case 6 -> new ItemStack(Items.IRON_HOE);
-            case 7 -> new ItemStack(Items.SPYGLASS);
             default -> ItemStack.EMPTY;
         };
         state.prop.clear();
@@ -221,27 +327,9 @@ public final class PlayerPlushieBlockEntityRenderer
         if (state.pose == 2) {
             drawOpenBook(poseStack, collector, state.lightCoords);
         } else if (state.pose >= 3 && state.pose <= 6) {
-            // Tool origin follows the raised right hand. A half-turn around
-            // Z fixes the inverted blade/head from the old FIXED transform;
-            // pitch makes the weapon/tool project forward as if being used.
-            poseStack.pushPose();
-            poseStack.translate(-0.31F, 0.23F, -0.66F);
-            poseStack.mulPose(Axis.YP.rotationDegrees(-22));
-            poseStack.mulPose(Axis.XP.rotationDegrees(-55));
-            poseStack.mulPose(Axis.ZP.rotationDegrees(180));
-            poseStack.scale(0.48F, 0.48F, 0.48F);
-            state.prop.submit(poseStack, collector, state.lightCoords,
-                    OverlayTexture.NO_OVERLAY, 0);
-            poseStack.popPose();
+            drawTool(state, poseStack, collector);
         } else if (state.pose == 7) {
-            // Spyglass remains by the eye instead of inheriting a mining pose.
-            poseStack.pushPose();
-            poseStack.translate(-0.31F, -0.01F, -0.39F);
-            poseStack.mulPose(Axis.XP.rotationDegrees(-76));
-            poseStack.scale(0.34F, 0.34F, 0.34F);
-            state.prop.submit(poseStack, collector, state.lightCoords,
-                    OverlayTexture.NO_OVERLAY, 0);
-            poseStack.popPose();
+            drawSpyglass(poseStack, collector, state.lightCoords);
         }
         poseStack.popPose();
     }
@@ -298,24 +386,63 @@ public final class PlayerPlushieBlockEntityRenderer
                 left.zRot = -0.19F;
                 body.xRot = 0.06F;
             }
-            case 3, 4, 5, 6 -> {
-                // Active swing: tool-hand driven forward, other arm for balance.
-                head.xRot = 0.18F;
-                head.yRot = -0.10F;
-                body.xRot = 0.10F;
-                right.xRot = -1.43F;
-                right.yRot = -0.08F;
+            case 3 -> { // sword: lunging through the middle of a slash
+                head.xRot = 0.11F;
+                head.yRot = -0.22F;
+                body.yRot = -0.17F;
+                right.xRot = -1.38F;
+                right.yRot = -0.32F;
                 right.zRot = 0.14F;
-                left.xRot = -0.66F;
-                left.yRot = 0.14F;
-                left.zRot = -0.24F;
-                rightLeg.xRot = -0.34F;
-                leftLeg.xRot = 0.17F;
+                left.xRot = -0.46F;
+                left.yRot = 0.20F;
+                left.zRot = -0.30F;
+                rightLeg.xRot = -0.51F;
+                leftLeg.xRot = 0.23F;
             }
-            case 7 -> {
-                head.xRot = -0.10F;
-                right.xRot = -1.72F;
-                right.yRot = -0.34F;
+            case 4 -> { // axe: heavy overhead woodcutting stroke
+                head.xRot = 0.37F;
+                body.xRot = 0.19F;
+                body.yRot = -0.09F;
+                right.xRot = -2.37F;
+                right.yRot = -0.28F;
+                right.zRot = 0.32F;
+                left.xRot = -1.12F;
+                left.yRot = 0.28F;
+                left.zRot = -0.20F;
+                rightLeg.xRot = 0.24F;
+                leftLeg.xRot = -0.32F;
+            }
+            case 5 -> { // pickaxe: raised arm mining into a block
+                head.xRot = 0.42F;
+                body.xRot = 0.23F;
+                right.xRot = -1.94F;
+                right.yRot = -0.53F;
+                right.zRot = 0.14F;
+                left.xRot = -0.98F;
+                left.yRot = 0.25F;
+                left.zRot = -0.32F;
+                rightLeg.xRot = -0.18F;
+                leftLeg.xRot = 0.25F;
+            }
+            case 6 -> { // hoe: hunched down and tilling the soil
+                head.xRot = 0.58F;
+                body.xRot = 0.34F;
+                right.xRot = -0.87F;
+                right.yRot = -0.28F;
+                right.zRot = 0.21F;
+                left.xRot = -0.62F;
+                left.yRot = 0.13F;
+                left.zRot = -0.24F;
+                rightLeg.xRot = -0.28F;
+                leftLeg.xRot = 0.33F;
+            }
+            case 7 -> { // searching through a proper 3D telescope
+                head.xRot = -0.08F;
+                head.yRot = -0.07F;
+                right.xRot = -1.65F;
+                right.yRot = -0.38F;
+                right.zRot = 0.12F;
+                left.xRot = 0.04F;
             }
             case 8 -> {
                 right.xRot = -1.05F;
@@ -331,10 +458,12 @@ public final class PlayerPlushieBlockEntityRenderer
                 left.zRot = -0.16F;
                 rightLeg.xRot = leftLeg.xRot = 0.02F;
             }
-            case 10 -> {
-                right.xRot = -2.55F;
-                right.zRot = 0.40F;
-                head.yRot = 0.18F;
+            case 10 -> { // elbow high, hand OUTSIDE the face
+                right.xRot = -2.10F;
+                right.yRot = -0.13F;
+                right.zRot = 1.04F;
+                left.xRot = -0.17F;
+                head.yRot = 0.12F;
             }
             case 11 -> {
                 head.xRot = 0.68F;
