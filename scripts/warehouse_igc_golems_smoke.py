@@ -25,7 +25,15 @@ for color in COLORS:
     assert state["variants"][""]["model"]=="caszual_additions:block/"+name
     item=json.loads((ASSETS/"items"/(name+".json")).read_text())
     assert item["model"]["model"]=="caszual_additions:block/"+name
+    loot=json.loads((ROOT/"src/main/resources/data/caszual_additions/loot_table/blocks"/
+                     (name+".json")).read_text())
+    assert loot["pools"][0]["entries"][0]["name"]=="caszual_additions:"+name
 
+harvest=json.loads((ROOT/"src/main/resources/data/minecraft/tags/block/mineable/pickaxe.json").read_text())
+stone=json.loads((ROOT/"src/main/resources/data/minecraft/tags/block/needs_stone_tool.json").read_text())
+for color in COLORS:
+    name="caszual_additions:"+color+"_industrial_grade_concrete"
+    assert name in harvest["values"] and name in stone["values"]
 def source(name):
     return (ROOT/"src"/name).read_text()
 network=source("main/java/com/caszgamermd/caszualadditions/racks/WarehouseNetwork.java")
