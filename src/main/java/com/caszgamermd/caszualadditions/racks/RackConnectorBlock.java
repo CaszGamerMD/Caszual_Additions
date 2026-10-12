@@ -38,6 +38,46 @@ public final class RackConnectorBlock extends Block {
         if(!side.getAxis().isHorizontal())side=context.getHorizontalDirection();
         return defaultBlockState().setValue(FACING,side);
     }
+    @Override public void setPlacedBy(net.minecraft.world.level.Level level,
+            BlockPos pos,BlockState state,
+            @Nullable net.minecraft.world.entity.LivingEntity placer,
+            net.minecraft.world.item.ItemStack stack){
+        super.setPlacedBy(level,pos,state,placer,stack);
+        if(level.isClientSide())return;
+        Direction outward=state.getValue(FACING);
+        RackBlockEntity source=RackBlock.controller(level,
+                pos.relative(outward.getOpposite()));
+        if(source==null)return;
+        // Clicking a rack face places the first rod. If an opposite rack is
+        // at most four clear sections away, fill the gap automatically.
+        // One connector item is intentionally a complete bridging kit.
+        for(int n=1;n<=RackNetwork.MAX_CONNECTOR_GAP;n++){
+            BlockPos cell=pos.relative(outward,n);
+            if(!level.hasChunkAt(cell))return;
+            RackBlockEntity target=RackBlock.controller(level,cell);
+            if(target!=null){
+                if(target.getBlockPos().equals(source.getBlockPos()))return;
+                for(int step=1;step<n;step++){
+                    BlockPos mid=pos.relative(outward,step);
+                    BlockState existing=level.getBlockState(mid);
+                    if(existing.getBlock() instanceof RackConnectorBlock
+                            &&existing.getValue(FACING).getAxis()==outward.getAxis())
+                        continue;
+                    if(!existing.canBeReplaced())return;
+                }
+                for(int step=1;step<n;step++){
+                    BlockPos mid=pos.relative(outward,step);
+                    if(level.getBlockState(mid).canBeReplaced())
+                        level.setBlock(mid,state,3);
+                }
+                return;
+            }
+            BlockState along=level.getBlockState(cell);
+            if(!(along.getBlock() instanceof RackConnectorBlock
+                    &&along.getValue(FACING).getAxis()==outward.getAxis())
+                    &&!along.canBeReplaced())return;
+        }
+    }
     @Override protected VoxelShape getShape(BlockState state,BlockGetter level,BlockPos pos,
             CollisionContext context){
         return state.getValue(FACING).getAxis()==Direction.Axis.X
