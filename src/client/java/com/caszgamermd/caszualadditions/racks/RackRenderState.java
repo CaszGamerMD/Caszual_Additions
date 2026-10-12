@@ -10,6 +10,7 @@ public final class RackRenderState extends BlockEntityRenderState {
     public static final float CELL=2.0f/3.0f;
     public final BlockModelRenderState[] boards=new BlockModelRenderState[4];
     public final BlockModelRenderState carton=new BlockModelRenderState();
+    public final BlockModelRenderState glassPane=new BlockModelRenderState();
     public final BlockModelRenderState crossBeam=new BlockModelRenderState();
     public final BlockModelRenderState highlightEdge=new BlockModelRenderState();
     public boolean outlined;
