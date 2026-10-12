@@ -339,8 +339,51 @@ around your shelves, golem pathing to the outside of racks and transfer
 points, safe handling of full destinations, death and drops, and reloads
 on a backed-up test world.
 
+## Storage Scanner — read-only pallet inspection
+
+The **Storage Scanner** is a new craftable steel/cyan block. Place it beside
+**any block of a fully assembled 3×3 Pallet Transfer Point** (including hopper
+or wrap modules), then right-click the scanner to inspect the point's pallet.
+It works on **sealed** pallets without unwrapping, withdrawing or altering
+their real inventory.
+
+The scanner reports the pallet's total item count, distinct item IDs and
+occupied slots. When the point is connected to a Rack Computer (directly or
+through adjacent linked Storage Golem Shelves), it also estimates how many
+items from that pallet would fit across the computer's **loaded, connected**
+rack network, respecting each rack's currently installed pallet, filters,
+existing matching partial stacks, and remaining empty slots.
+
+- The estimate uses a temporary **virtual inventory**: it simulates merging
+  into matching stacks first, then empty slots, across the racks in the
+  computer's network. It never moves items or changes filters.
+- Racks without pallets, racks in unloaded chunks and disconnected racks
+  are excluded. The reported capacity is a **snapshot**, not a reservation:
+  other Golems or players may fill storage before a real pickup.
+- With no connected computer, the scanner still reports the PTP inventory
+  but explicitly says that capacity could not be verified.
+- A connected Rack Computer shows the first discovered scanner's summary
+  underneath its existing PTP status. Its search, order and Golem buttons
+  continue to work as before.
+- The scanner is designed as the inspection stage for future physical
+  four-Golem transport of sealed pallets. **This change does not move
+  full pallets or issue transport jobs.**
+
+Scanner craft: iron ingots around redstone, one glass pane, and a comparator.
+It is also available from the Caszual Additions creative tab.
+
 ## Suggested in-game regression checks
 
+- Put a Storage Scanner alongside each of the nine possible PTP cell
+  positions, including a Hopper Adapter and Wrap Unit, and verify that it
+  finds the same central pallet controller.
+- Scan a sealed pallet and verify no items are extracted, no wrapping is
+  removed, and the item totals match the actual pallet inventory.
+- Test multiple rack filters, partially filled matching stacks, and a
+  completely full rack. Scanner capacity should fall as slots are occupied
+  and show only racks in the loaded connected network.
+- Check the Rack Computer scanner status at high GUI scale, then confirm rack
+  row clicking and item selection still align with the displayed rows.
 - Place adjacent racks at north/east/south/west orientations and verify no
   rack or pallet mesh protrudes outside its 2×2×3 footprint.
 - Stack racks and put racks back-to-back, using paired connectors; verify that
