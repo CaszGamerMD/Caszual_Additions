@@ -10,8 +10,9 @@ any world with valuable inventories before testing.
 1. In Creative, take **Warehouse Test Kit** from the Caszual Additions tab.
    Right-click in the air to unpack it. This supplies **32 PTP transfer
    blocks, 8 racks, 8 Storage Golems, 4 shelves, 4 Wrap Units, 4 Hopper
-   Adapters, 3 scanners, 2 Shulker Tanks, 16 empty shulker boxes**, pallets,
-   filters, tags, connectors, building materials and a legacy collector hub.
+   Adapters, 3 scanners, 2 Shulker Tanks, 8 empty shulker boxes**, pallets,
+   filters, tags, connectors, hoppers, shears, an anvil, building materials
+   and a legacy collector hub.
    Overflowing stacks may drop by your feet if your inventory is full.
 2. Build a 2-wide × 2-deep × 3-high rack, and leave its one-block-deep
    **front approach lane completely unobstructed**.
