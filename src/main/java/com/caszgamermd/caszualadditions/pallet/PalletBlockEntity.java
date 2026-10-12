@@ -93,6 +93,14 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         return plasticColor;
     }
     public boolean glassWrapped(){return controller().glassWrapped;}
+    public void setGlassWrapped(boolean wrapped){
+        PalletBlockEntity root=controller();
+        if(!root.isRoot())return;
+        if(root.glassWrapped!=wrapped){
+            root.glassWrapped=wrapped;
+            root.sync();
+        }
+    }
     public void unwrapGlass(){
         PalletBlockEntity root=controller();
         if(root.glassWrapped){root.glassWrapped=false;root.sync();}
