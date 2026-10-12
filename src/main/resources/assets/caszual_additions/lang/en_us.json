@@ -93,15 +93,13 @@
   "item.caszual_additions.rack_connector": "Rack Connector",
   "block.caszual_additions.rack_connector": "Rack Connector",
   "item.caszual_additions.pallet_filter": "Pallet Filter",
-  "block.caszual_additions.order_collector_hub": "Order Collector Hub",
   "block.caszual_additions.shulker_tank": "Shulker Tank",
-  "item.caszual_additions.order_collector": "Order Collector",
   "block.caszual_additions.pallet_transfer_block": "Pallet Transfer Block",
   "block.caszual_additions.ptp_hopper_adapter": "PTP Hopper Adapter",
   "block.caszual_additions.ptp_wrap_unit": "PTP Wrap Unit",
   "block.caszual_additions.storage_golem_shelf": "Storage Golem Shelf",
   "item.caszual_additions.storage_golem": "Storage Golem",
   "entity.caszual_additions.storage_golem": "Storage Golem",
-  "block.caszual_additions.storage_scanner": "Storage Scanner",
-  "item.caszual_additions.warehouse_test_kit": "Warehouse Test Kit"
+  "item.caszual_additions.warehouse_test_kit": "Warehouse Test Kit",
+  "item.caszual_additions.storage_scanner": "Warehouse Scanner"
 }
