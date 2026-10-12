@@ -1,20 +1,28 @@
 {
   "variants": {
-    "facing=north": {
-      "model": "caszual_additions:block/rack_connector",
-      "y": 0
+    "facing=north,corner_positive=false": {
+      "model": "caszual_additions:block/rack_connector"
     },
-    "facing=south": {
-      "model": "caszual_additions:block/rack_connector",
-      "y": 180
+    "facing=north,corner_positive=true": {
+      "model": "caszual_additions:block/rack_connector_east_corner"
     },
-    "facing=east": {
-      "model": "caszual_additions:block/rack_connector",
-      "y": 90
+    "facing=south,corner_positive=false": {
+      "model": "caszual_additions:block/rack_connector"
     },
-    "facing=west": {
-      "model": "caszual_additions:block/rack_connector",
-      "y": 270
+    "facing=south,corner_positive=true": {
+      "model": "caszual_additions:block/rack_connector_east_corner"
+    },
+    "facing=east,corner_positive=false": {
+      "model": "caszual_additions:block/rack_connector_x"
+    },
+    "facing=east,corner_positive=true": {
+      "model": "caszual_additions:block/rack_connector_x_east_corner"
+    },
+    "facing=west,corner_positive=false": {
+      "model": "caszual_additions:block/rack_connector_x"
+    },
+    "facing=west,corner_positive=true": {
+      "model": "caszual_additions:block/rack_connector_x_east_corner"
     }
   }
 }

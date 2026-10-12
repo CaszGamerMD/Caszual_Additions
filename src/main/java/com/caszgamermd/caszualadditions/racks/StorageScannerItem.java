@@ -1,5 +1,6 @@
 package com.caszgamermd.caszualadditions.racks;
 
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.component.DataComponents;
@@ -43,6 +44,47 @@ public final class StorageScannerItem extends Item {
         scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
     }
 
+    /** Called from BOTH the computer block interaction and item useOn.
+     * Linking a scanner must never depend on already having four workers. */
+    public static void onComputerClick(ServerLevel level,ServerPlayer player,
+            ItemStack scanner,BlockPos computer,boolean audit){
+        if(player.distanceToSqr(computer.getX()+.5,computer.getY()+.5,
+                computer.getZ()+.5)>64
+                ||!level.hasChunkAt(computer)
+                ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER))return;
+        if(audit){
+            for(String row:WarehouseDiagnostics.audit(level,computer))
+                player.sendSystemMessage(Component.literal(row));
+            return;
+        }
+        BlockPos home=linkedComputer(scanner,level);
+        boolean sameWarehouse=computer.equals(home);
+        String current=StoragePalletCrew.status(level,player);
+        if(sameWarehouse&&!current.startsWith("No linked crew")){
+            player.sendSystemMessage(Component.literal(
+                    StoragePalletCrew.dismiss(level,player,computer)));
+            return;
+        }
+        // Keep an existing four-Golem assignment bound to its own
+        // warehouse until the crew is dismissed there.
+        if(!sameWarehouse&&!current.startsWith("No linked crew")){
+            player.sendSystemMessage(Component.literal(
+                    "You already have an assigned crew. Return to its Rack Computer "
+                    +"and dismiss it before linking another warehouse."));
+            return;
+        }
+        // First link the handheld tool to the clicked computer. Enlisting
+        // four workers is a separate operation with its own requirements.
+        bind(scanner,level,computer);
+        List<StorageGolemShelfEntity> shelves=RackComputerNet.nearbyShelves(level,computer);
+        int docked=shelves.stream().mapToInt(StorageGolemShelfEntity::docked).sum();
+        player.sendSystemMessage(Component.literal("Scanner linked to warehouse at "
+                +computer.toShortString()+". Linked shelves: "+shelves.size()
+                +", docked Storage Golems: "+docked+"/4 required."));
+        String result=StoragePalletCrew.enlist(level,player,computer);
+        player.sendSystemMessage(Component.literal(result));
+    }
+
     @Override public InteractionResult useOn(UseOnContext context){
         Player player=context.getPlayer();
         if(player==null)return InteractionResult.PASS;
@@ -54,22 +96,7 @@ public final class StorageScannerItem extends Item {
         BlockPos home=linkedComputer(scanner,server);
 
         if(level.getBlockState(clicked).is(RackContent.RACK_COMPUTER)){
-            if(player.isShiftKeyDown()){
-                for(String row:WarehouseDiagnostics.audit(server,clicked))
-                    user.sendSystemMessage(Component.literal(row));
-                return InteractionResult.SUCCESS;
-            }
-            String result;
-            if(home!=null&&home.equals(clicked)){
-                String status=StoragePalletCrew.status(server,user);
-                result=status.startsWith("No linked crew")
-                        ?StoragePalletCrew.enlist(server,user,clicked)
-                        :StoragePalletCrew.dismiss(server,user,clicked);
-            }else{
-                result=StoragePalletCrew.enlist(server,user,clicked);
-            }
-            if(result.startsWith("Warehouse linked:"))bind(scanner,server,clicked);
-            user.sendSystemMessage(Component.literal(result));
+            onComputerClick(server,user,scanner,clicked,player.isShiftKeyDown());
             return InteractionResult.SUCCESS;
         }
         // The linked warehouse may be in an unloaded chunk while the

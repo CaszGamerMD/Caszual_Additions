@@ -43,6 +43,20 @@ public final class RackComputerBlock extends Block {
                 ?null:defaultBlockState().setValue(FACING,
                         context.getHorizontalDirection().getOpposite());
     }
+    @Override protected InteractionResult useItemOn(
+            net.minecraft.world.item.ItemStack held,BlockState state,Level level,
+            BlockPos pos,Player player,net.minecraft.world.InteractionHand hand,
+            BlockHitResult hit){
+        // A non-empty hand normally bypasses useWithoutItem. Explicitly
+        // route the Scanner here so Computer UI handling cannot consume the
+        // click before the handheld tool creates its warehouse link.
+        if(!held.is(RackContent.STORAGE_SCANNER_ITEM))
+            return InteractionResult.PASS;
+        if(level instanceof net.minecraft.server.level.ServerLevel server
+                &&player instanceof ServerPlayer user)
+            StorageScannerItem.onComputerClick(server,user,held,pos,player.isShiftKeyDown());
+        return InteractionResult.SUCCESS;
+    }
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,
             BlockPos pos,Player player,BlockHitResult hit){
         if(!level.isClientSide() && player instanceof ServerPlayer server){

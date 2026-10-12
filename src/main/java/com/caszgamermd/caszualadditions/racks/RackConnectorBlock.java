@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.level.BlockGetter;
@@ -16,27 +17,34 @@ import net.minecraft.core.BlockPos;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Physical 1-block section of an aisle crossbrace. Runs horizontally along
+ * Physical 1-block section of an upper rack-frame corner rod. Runs horizontally along
  * its FACING axis; consecutive sections bridge up to four empty cells.
  * Each section has real collision, not just a rack-side render attachment.
  */
 public final class RackConnectorBlock extends Block {
     public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
+    /** Which of the rack's two top corners is used along this beam axis. */
+    public static final BooleanProperty CORNER_POSITIVE=BooleanProperty.create("corner_positive");
     private final MapCodec<RackConnectorBlock> codec=MapCodec.unit(this);
     public RackConnectorBlock(BlockBehaviour.Properties props){
         super(props);
-        registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));
+        registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH)
+                .setValue(CORNER_POSITIVE,false));
     }
     @Override protected MapCodec<? extends Block> codec(){return codec;}
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> b){
-        b.add(FACING);
+        b.add(FACING,CORNER_POSITIVE);
     }
     @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context){
         // Connectors intentionally span the rack approach lane, including
         // face-to-face aisle bridges. Other blocks still respect the lane.
         Direction side=context.getClickedFace();
         if(!side.getAxis().isHorizontal())side=context.getHorizontalDirection();
-        return defaultBlockState().setValue(FACING,side);
+        double offset=side.getAxis()==Direction.Axis.X
+                ?context.getClickLocation().z()-context.getClickedPos().getZ()
+                :context.getClickLocation().x()-context.getClickedPos().getX();
+        return defaultBlockState().setValue(FACING,side)
+                .setValue(CORNER_POSITIVE,offset>=.5);
     }
     @Override public void setPlacedBy(net.minecraft.world.level.Level level,
             BlockPos pos,BlockState state,
@@ -61,7 +69,8 @@ public final class RackConnectorBlock extends Block {
                     BlockPos mid=pos.relative(outward,step);
                     BlockState existing=level.getBlockState(mid);
                     if(existing.getBlock() instanceof RackConnectorBlock
-                            &&existing.getValue(FACING).getAxis()==outward.getAxis())
+                            &&existing.getValue(FACING).getAxis()==outward.getAxis()
+                            &&existing.getValue(CORNER_POSITIVE)==state.getValue(CORNER_POSITIVE))
                         continue;
                     if(!existing.canBeReplaced())return;
                 }
@@ -74,17 +83,20 @@ public final class RackConnectorBlock extends Block {
             }
             BlockState along=level.getBlockState(cell);
             if(!(along.getBlock() instanceof RackConnectorBlock
-                    &&along.getValue(FACING).getAxis()==outward.getAxis())
+                    &&along.getValue(FACING).getAxis()==outward.getAxis()
+                    &&along.getValue(CORNER_POSITIVE)==state.getValue(CORNER_POSITIVE))
                     &&!along.canBeReplaced())return;
         }
     }
     @Override protected VoxelShape getShape(BlockState state,BlockGetter level,BlockPos pos,
             CollisionContext context){
+        // Single top-corner frame rod, not two center-mounted rods.
+        // Collision is the same 2px cross-section as the rendered model.
+        boolean positive=state.getValue(CORNER_POSITIVE);
+        double start=positive?13.5:.5,end=positive?15.5:2.5;
         return state.getValue(FACING).getAxis()==Direction.Axis.X
-                ?net.minecraft.world.phys.shapes.Shapes.or(
-                        Block.box(0,3,7,16,5,9),Block.box(0,11,7,16,13,9))
-                :net.minecraft.world.phys.shapes.Shapes.or(
-                        Block.box(7,3,0,9,5,16),Block.box(7,11,0,9,13,16));
+                ?Block.box(0,14,start,16,16,end)
+                :Block.box(start,14,0,end,16,16);
     }
     @Override protected VoxelShape getCollisionShape(BlockState state,BlockGetter level,
             BlockPos pos,CollisionContext context){return getShape(state,level,pos,context);}

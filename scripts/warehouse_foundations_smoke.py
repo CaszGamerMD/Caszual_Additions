@@ -33,8 +33,21 @@ def assert_oriented(name, parts=None):
 
 for name in ("ptp_wrap_unit","ptp_hopper_adapter","pallet_transfer_block"):
     assert_oriented(name,parts=9)
-for name in ("rack_computer","storage_golem_shelf","rack_connector"):
+for name in ("rack_computer","storage_golem_shelf"):
     assert_oriented(name)
+connector_variants=blockstate("rack_connector")["variants"]
+connector_models={
+    "rack_connector",
+    "rack_connector_east_corner",
+    "rack_connector_x",
+    "rack_connector_x_east_corner"
+}
+for facing in ("north","south","east","west"):
+    for positive in ("false","true"):
+        key=f"facing={facing},corner_positive={positive}"
+        assert key in connector_variants,f"missing connector corner variant {key}"
+        assert connector_variants[key]["model"].split(":block/")[1] in connector_models
+assert len(connector_variants)==8
 
 for name in ("rack_computer","storage_golem_shelf","rack_connector",
              "ptp_wrap_unit","ptp_hopper_adapter"):
@@ -46,18 +59,27 @@ for name in ("rack_computer","storage_golem_shelf","rack_connector",
         assert all(a<b for a,b in zip(frm,to)),f"{name}: degenerate cuboid"
 
 assert len(model("rack_computer")["elements"])>=6, "Kiosk has no monitor/console detail"
-# Physical rack connectors must be long, narrow rods and MUST NOT
-# accidentally regress into giant rotated diagonal X-braces.
-rods=model("rack_connector")["elements"]
-assert len(rods)==2,"Rack connector must show exactly two thin rods"
-for rod in rods:
-    x0,y0,z0=rod["from"]
-    x1,y1,z1=rod["to"]
-    assert x1-x0<=3 and y1-y0<=3 and z1-z0==16
+# Each connector is ONE 2px upper corner rod, never a giant X or two
+# middle rods; axis/corner models must match the BlockState variants.
+for name in connector_models:
+    rods=model(name)["elements"]
+    assert len(rods)==1,f"{name}: expected a single rod"
+    rod=rods[0]
+    dimensions=[b-a for a,b in zip(rod["from"],rod["to"])]
+    assert sorted(dimensions)==[2,2,16],f"{name}: not a 2x2x16 rod"
+    assert rod["from"][1]==14 and rod["to"][1]==16,"Rod should align with rack top"
     assert "rotation" not in rod,"No diagonal X-brace rotation"
 connector=read("src/main/java/com/caszgamermd/caszualadditions/racks/RackConnectorBlock.java")
-assert "setPlacedBy" in connector and "MAX_CONNECTOR_GAP" in connector
+connector_item=read("src/main/java/com/caszgamermd/caszualadditions/racks/RackConnectorItem.java")
+assert "CORNER_POSITIVE" in connector and "MAX_CONNECTOR_GAP" in connector
+assert "getClickLocation()" in connector_item and "root.getY()+2" in connector_item
 assert "reservedForAccess" not in connector,"Face-to-face connectors must span rack approach lanes"
+connections=read("src/main/java/com/caszgamermd/caszualadditions/racks/WarehouseConnections.java")
+assert "RackNetwork.fromComputer" in connections and "RackNetwork.network" in connections
+computer_block=read("src/main/java/com/caszgamermd/caszualadditions/racks/RackComputerBlock.java")
+assert "StorageScannerItem.onComputerClick" in computer_block
+scanner=read("src/main/java/com/caszgamermd/caszualadditions/racks/StorageScannerItem.java")
+assert scanner.index("bind(scanner,level,computer);") < scanner.index("StoragePalletCrew.enlist(level,player,computer)")
 scanner=read("src/main/java/com/caszgamermd/caszualadditions/racks/StorageScannerItem.java")
 assert "extends Item" in scanner and "StoragePalletCrew" in scanner
 assert not (ROOT/"src/main/java/com/caszgamermd/caszualadditions/racks/StorageScannerBlock.java").exists()
