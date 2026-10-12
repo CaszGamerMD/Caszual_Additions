@@ -214,40 +214,53 @@ public final class PalletBlock extends Block implements EntityBlock {
 
     private static @Nullable PalletBlockEntity rootEntity(Level level, BlockPos pos, BlockState state) {
         BlockPos root = rootPos(pos, state);
-        return level.getBlockEntity(root) instanceof PalletBlockEntity be ? be : null;
+        if(!level.hasChunkAt(root))return null;
+        BlockState home=level.getBlockState(root);
+        if(!(home.getBlock() instanceof PalletBlock)
+                ||home.getValue(PART)!=0
+                ||home.getValue(FACING)!=state.getValue(FACING)
+                ||home.getValue(LEGACY)!=state.getValue(LEGACY))return null;
+        return level.getBlockEntity(root) instanceof PalletBlockEntity be &&be.isRoot()
+                ?be:null;
+    }
+
+    /** All four pallet blocks open the same 216-slot controller.
+     * The menu must also open with ordinary items in hand, like rack pallets.
+     * Keep crouch+item available for deliberate block/item placement. */
+    private static InteractionResult openPallet(Level level,BlockPos pos,
+            BlockState state,Player player){
+        if(level.isClientSide())return InteractionResult.SUCCESS;
+        PalletBlockEntity controller=rootEntity(level,pos,state);
+        if(controller==null)return InteractionResult.PASS;
+        if(player instanceof ServerPlayer serverPlayer){
+            // Rebuild collision extenders on first interaction with older
+            // saves without affecting the stored items or wrapped state.
+            if(level instanceof ServerLevel server)
+                PalletCargoCollisionBlock.refresh(server,controller.getBlockPos());
+            serverPlayer.openMenu(controller);
+        }
+        return InteractionResult.SUCCESS;
     }
 
     @Override
-    protected InteractionResult useItemOn(
-            ItemStack held,BlockState state,Level level,BlockPos pos,
-            Player player,net.minecraft.world.InteractionHand hand,BlockHitResult hit){
-        if(!held.is(net.minecraft.world.item.Items.SHEARS))
-            return InteractionResult.PASS;
-        PalletBlockEntity pallet=rootEntity(level,pos,state);
-        if(pallet==null||!pallet.glassWrapped())return InteractionResult.PASS;
-        if(!level.isClientSide())pallet.unwrapGlass();
-        return InteractionResult.SUCCESS;
-    }
-    @Override
-    protected InteractionResult useWithoutItem(
-            BlockState state,
-            Level level,
-            BlockPos pos,
-            Player player,
-            BlockHitResult hit
-    ) {
-        if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer) {
-            PalletBlockEntity root = rootEntity(level, pos, state);
-            if (root != null) {
-                // Rebuild collision extenders for pallets already present in
-                // worlds saved before cargo collision support was introduced.
-                if (level instanceof ServerLevel server) {
-                    PalletCargoCollisionBlock.refresh(server, root.getBlockPos());
-                }
-                serverPlayer.openMenu(root);
+    protected InteractionResult useItemOn(ItemStack held,BlockState state,Level level,
+            BlockPos pos,Player player,net.minecraft.world.InteractionHand hand,
+            BlockHitResult hit){
+        if(held.is(net.minecraft.world.item.Items.SHEARS)){
+            PalletBlockEntity pallet=rootEntity(level,pos,state);
+            if(pallet!=null&&pallet.glassWrapped()){
+                if(!level.isClientSide())pallet.unwrapGlass();
+                return InteractionResult.SUCCESS;
             }
         }
-        return InteractionResult.SUCCESS;
+        if(player.isShiftKeyDown())return InteractionResult.PASS;
+        return openPallet(level,pos,state,player);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state,Level level,
+            BlockPos pos,Player player,BlockHitResult hit){
+        return openPallet(level,pos,state,player);
     }
 
     @Override
