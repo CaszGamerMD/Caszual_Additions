@@ -1,5 +1,6 @@
 package com.caszgamermd.caszualadditions.racks;
 
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.component.DataComponents;
@@ -62,6 +63,14 @@ public final class StorageScannerItem extends Item {
         if(sameWarehouse&&!current.startsWith("No linked crew")){
             player.sendSystemMessage(Component.literal(
                     StoragePalletCrew.dismiss(level,player,computer)));
+            return;
+        }
+        // Keep an existing four-Golem assignment bound to its own
+        // warehouse until the crew is dismissed there.
+        if(!sameWarehouse&&!current.startsWith("No linked crew")){
+            player.sendSystemMessage(Component.literal(
+                    "You already have an assigned crew. Return to its Rack Computer "
+                    +"and dismiss it before linking another warehouse."));
             return;
         }
         // First link the handheld tool to the clicked computer. Enlisting
