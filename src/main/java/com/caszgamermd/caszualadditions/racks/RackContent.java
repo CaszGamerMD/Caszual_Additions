@@ -27,16 +27,19 @@ public final class RackContent {
     public static Block RACK_COMPUTER;
     public static StorageScannerBlock STORAGE_SCANNER;
     public static Item STORAGE_SCANNER_ITEM;
-    public static OrderHubBlock ORDER_HUB;
+    /** Compatibility-only: registered so old Hub inventories can be recovered. */
+    @Deprecated public static OrderHubBlock ORDER_HUB;
     public static ShulkerTankBlock SHULKER_TANK;
     public static PtpBlock PTP_TRANSFER,PTP_HOPPER,PTP_WRAP;
     public static Item PTP_TRANSFER_ITEM,PTP_HOPPER_ITEM,PTP_WRAP_ITEM;
     public static BlockEntityType<PtpBlockEntity> PTP_ENTITY;
     public static BlockEntityType<PtpHopperPort> PTP_PORT_ENTITY;
-    public static Item RACK_ITEM, COMPUTER_ITEM, HUB_ITEM, TANK_ITEM, ORDER_COLLECTOR;
+    public static Item RACK_ITEM, COMPUTER_ITEM, TANK_ITEM;
+    /** Unobtainable legacy IDs exchangeable for PTP parts and Storage Golems. */
+    @Deprecated public static Item HUB_ITEM, ORDER_COLLECTOR;
     public static Item RACK_TAG, AISLE_TAG, CONNECTOR, PALLET_FILTER, WAREHOUSE_TEST_KIT;
     public static BlockEntityType<RackBlockEntity> RACK_ENTITY;
-    public static BlockEntityType<OrderHubEntity> HUB_ENTITY;
+    @Deprecated public static BlockEntityType<OrderHubEntity> HUB_ENTITY;
     public static BlockEntityType<ShulkerTankEntity> SHULKER_TANK_ENTITY;
 
     private RackContent() {}
@@ -97,7 +100,10 @@ public final class RackContent {
         ORDER_HUB=Registry.register(BuiltInRegistries.BLOCK,hubKey,
                 new OrderHubBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
                         .strength(4.0f).setId(hubKey)));
-        HUB_ITEM=blockItem("order_collector_hub",ORDER_HUB);
+        ResourceKey<Item> retiredHubKey=ResourceKey.create(Registries.ITEM,hubId);
+        HUB_ITEM=Registry.register(BuiltInRegistries.ITEM,retiredHubKey,
+                new RetiredWarehouseItem(new Item.Properties()
+                        .setId(retiredHubKey).stacksTo(16),true));
         HUB_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
                 CaszualAdditions.id("order_collector_hub"),
                 FabricBlockEntityTypeBuilder.create(OrderHubEntity::new,ORDER_HUB).build());
@@ -111,11 +117,14 @@ public final class RackContent {
         SHULKER_TANK_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
                 CaszualAdditions.id("shulker_tank"),
                 FabricBlockEntityTypeBuilder.create(ShulkerTankEntity::new,SHULKER_TANK).build());
-        ORDER_COLLECTOR=item("order_collector");
+        ResourceKey<Item> retiredCollectorKey=ResourceKey.create(Registries.ITEM,
+                CaszualAdditions.id("order_collector"));
+        ORDER_COLLECTOR=Registry.register(BuiltInRegistries.ITEM,retiredCollectorKey,
+                new RetiredWarehouseItem(new Item.Properties()
+                        .setId(retiredCollectorKey).stacksTo(64),false));
 
-        // New modular nine-cell Pallet Transfer Points are added alongside
-        // legacy two-by-two Order Collector Hubs; old contents aren't migrated
-        // or silently destroyed by a registry rename.
+        // Active warehouse logistics use PTPs and Storage Golems exclusively.
+        // Legacy Hub IDs remain registered only for saved-world recovery.
         Identifier ptpId=CaszualAdditions.id("pallet_transfer_block");
         ResourceKey<Block> ptpKey=ResourceKey.create(Registries.BLOCK,ptpId);
         PTP_TRANSFER=Registry.register(BuiltInRegistries.BLOCK,ptpKey,
