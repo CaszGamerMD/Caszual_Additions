@@ -202,6 +202,9 @@ public final class PtpBlock extends Block implements EntityBlock {
         BlockPos origin=root(broken,part),center=cell(origin,5);
         PtpBlockEntity ptp=level.getBlockEntity(center) instanceof PtpBlockEntity t?t:null;
         if(ptp!=null){
+            // Breaking the source cancels escrow before the normal survival
+            // drop path unseals it; no worker holds a duplicate copy.
+            ptp.cancelHaul();
             if(!player.getAbilities().instabuild){
                 ptp.setSealed(false);
                 Containers.dropContents(level,center,ptp);

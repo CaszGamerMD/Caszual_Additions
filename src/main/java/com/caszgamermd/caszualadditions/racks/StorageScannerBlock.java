@@ -33,6 +33,10 @@ public final class StorageScannerBlock extends Block {
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,
             BlockPos pos,Player player,BlockHitResult hit){
         if(!(level instanceof ServerLevel server))return InteractionResult.SUCCESS;
+        if(player.isShiftKeyDown()){
+            player.sendSystemMessage(Component.literal(StoragePalletHaul.request(server,pos)));
+            return InteractionResult.SUCCESS;
+        }
         StorageScanner.Report result=StorageScanner.scan(server,pos);
         if(result==null){
             player.sendSystemMessage(Component.literal(

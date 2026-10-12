@@ -372,8 +372,74 @@ existing matching partial stacks, and remaining empty slots.
 Scanner craft: iron ingots around redstone, one glass pane, and a comparator.
 It is also available from the Caszual Additions creative tab.
 
+## Coordinated four-Golem wrapped-pallet hauling (first iteration)
+
+**Four physical Storage Golems** now cooperate on an entire pallet move, not
+just individual item stacks. This is a manually dispatched, bounded workflow.
+
+1. Build a **3×3 Pallet Transfer Point** with a **Wrap Unit**; install a
+   pallet, load its inventory, and seal it by using the wrap module.
+2. Attach a **Storage Scanner** to any cell of the point.
+3. Connect the point to a Rack Computer directly or through a linked
+   Storage Golem Shelf group. Dock **at least four** Storage Golems across
+   those linked shelves.
+4. Leave a **rack completely empty (no installed pallet)** within
+   48 blocks horizontally/3D squared-distance and 12 blocks vertically
+   of the source point. The rack must be connected to that same terminal.
+5. **Sneak-right-click the scanner** to deploy four Golems. It picks
+   the nearest eligible empty rack. All four physically rally at the
+   wrapped pallet and then walk to the chosen rack. Only when all four
+   reach the rack does the original pallet and its **216 original
+   item slots** transfer into the destination rack.
+6. **Sneak-right-click again** during travel to cancel the haul. The
+   source remains wrapped with its original inventory and the walking
+   workers redock. Ordinary scanner right-click still shows item counts
+   and virtual rack capacity.
+
+### Safety and scope
+
+- The **source transfer point retains the one authoritative inventory**
+  for the duration of a haul. The Golems carry a *transport assignment*,
+  not a second copy of 216 stacks. Scanner access is read-only.
+- The transfer destination must still be empty at delivery. If another
+  player installs a pallet there, the workers wait; the source remains
+  intact. Returning workers consume no stock.
+- The sealed source cannot be unwrapped, have its mode changed, or have its
+  pallet removed while a haul reservation exists. Breaking the source
+  cancels the assignment and uses the normal Survival item drop path
+  after unsealing, so its cargo remains recoverable.
+- Killing or recalling any one worker cancels the entire shipment; each
+  remaining worker returns to its shelf. Worker death and retrieval
+  preserve the existing Storage Golem item.
+- The assignment, target rack, four-person rally/arrival masks and
+  individual worker routes are persisted for world reloads. A five-minute
+  lease prevents an abandoned reservation from blocking a PTP indefinitely,
+  and active workers renew it while the source chunk is loaded.
+- The rack accepts the pallet and inventory together on the server
+  thread, after all four Golems have arrived and all item components
+  are validated against the destination pallet filter.
+
+**Presentation limitation:** The four workers walk the entire route, but
+the pallet currently stays visually at the source while escrowed and
+appears in the rack on successful handoff. A synchronized floating
+pallet model and corner-grip animation are future polish. This is also
+*not* an unloaded-chunk hauling system and does not reserve the target
+rack against other uses.
+
 ## Suggested in-game regression checks
 
+- Dispatch a wrapped pallet with exactly four Golems split across two
+  adjacent shelves; verify all four physically rally before departing.
+- Fill the destination rack just before arrival: verify the pallet remains
+  safely sealed on its source point and no copy is created.
+- Kill or recall one of four workers: verify the haul cancels, other
+  workers redock, and the original pallet retains every stack.
+- Cancel by sneak-clicking the scanner, then send another haul. Verify
+  no permanent locks or missing worker tokens.
+- Break the source point in Survival mid-haul and verify its real pallet
+  and all 216 slots drop exactly once, while escorts return.
+- Save/reload with two or three workers at destination; verify the
+  persistent arrival bitmask and same source pallet without duplicates.
 - Put a Storage Scanner alongside each of the nine possible PTP cell
   positions, including a Hopper Adapter and Wrap Unit, and verify that it
   finds the same central pallet controller.

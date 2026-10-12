@@ -51,7 +51,7 @@ public final class StorageScanner {
         }
         return null;
     }
-    private static BlockPos connectedComputer(ServerLevel level,
+    static BlockPos connectedComputer(ServerLevel level,
             BlockPos scanner,PtpBlockEntity point) {
         if(point==null)return null;
         List<BlockPos> contacts=new ArrayList<>(12);
