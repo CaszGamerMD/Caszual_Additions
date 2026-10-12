@@ -132,6 +132,45 @@ public final class StorageGolem extends PathfinderMob {
         }
     }
     public boolean holdsPallet(){return !carryingPallet.isEmpty();}
+    /** Read-only server diagnostics for Rack Computer Golem task dashboard. */
+    public BlockPos shelfHome(){return home;}
+    public BlockPos workSource(){return source;}
+    public BlockPos workTarget(){return destination;}
+    public String assignedOwner(){return playerHaul?haulOwner:"";}
+    public String currentWork(){
+        if(playerHaul)return switch(stage){
+            case 0->"LIFTING WRAPPED PALLET";
+            case 1->"FOLLOWING PLAYER / "+(holdsPallet()?"CARRYING PALLET":"ESCORT");
+            case 2->"RETURNING TO SHELF";
+            default->"FOLLOWING PLAYER / READY";
+        };
+        if(haulJob)return switch(stage){
+            case 0->"ASSEMBLING HAUL";case 1->"MOVING PALLET";
+            default->"RETURNING TO SHELF";
+        };
+        if(packedJob)return switch(stage){
+            case 4->"COLLECTING EMPTY SHULKER";
+            case 5->"RETURNING EMPTY SHULKER";
+            case 0->"PACKING ORDER";case 1->"DELIVERING PACKED ORDER";
+            case 3->"RETURNING REJECTED ORDER";
+            default->"RETURNING TO SHELF";
+        };
+        if(outputJob)return switch(stage){
+            case 0->"PICKING OUTPUT ORDER";case 1->"DELIVERING OUTPUT ORDER";
+            case 3->"RETURNING REJECTED ORDER";
+            default->"RETURNING TO SHELF";
+        };
+        return switch(stage){
+            case 0->"PICKING INPUT STOCK";case 1->"SORTING TO RACK";
+            default->"RETURNING TO SHELF";
+        };
+    }
+    public String carriedDescription(){
+        if(holdsPallet())return "WRAPPED PALLET";
+        if(!cargo.isEmpty())return cargo.getHoverName().getString()
+                +" x"+cargo.getCount();
+        return emptyBox.isEmpty()?"EMPTY":"EMPTY SHULKER";
+    }
     public int crewIndex(){return haulIndex;}
     public void beginPlayerPickup(BlockPos ptp,int ticket){
         if(playerHaul&&stage==4){
