@@ -21,7 +21,7 @@ public final class WarehouseConnections {
 
     private static void collectShelf(ServerLevel level,BlockPos at,
             Map<BlockPos,StorageGolemShelfEntity> result){
-        if(!level.hasChunkAt(at)
+        if(!level.hasChunkAt(at)||result.containsKey(at)
                 ||!level.getBlockState(at).is(RackContent.STORAGE_SHELF))return;
         for(StorageGolemShelfEntity shelf:StorageGolemShelfEntity.linked(level,at))
             result.putIfAbsent(shelf.getBlockPos(),shelf);
