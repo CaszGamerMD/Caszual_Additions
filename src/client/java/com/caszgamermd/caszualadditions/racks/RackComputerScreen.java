@@ -20,7 +20,9 @@ public final class RackComputerScreen extends Screen {
     private final BlockPos computer;
     private EditBox search, orderQuantity;
     private String selectedItemId = "";
-    private JsonArray racks=new JsonArray(), contents=new JsonArray();
+    private JsonArray racks=new JsonArray(), contents=new JsonArray(), ptps=new JsonArray();
+    private int selectedPtpIndex;
+    private Button ptpNextButton,ptpModeButton,ptpWrapButton;
     private int selectedX=Integer.MIN_VALUE, selectedY,selectedZ;
     private int totalRacks, totalItems, scroll;
     private String status="Connecting to racks...";
@@ -48,6 +50,15 @@ public final class RackComputerScreen extends Screen {
                 b->sendQuery()).bounds(width-225,y,90,23).build());
         addRenderableWidget(Button.builder(Component.literal("Refresh"),
                 b->sendQuery()).bounds(width-128,y,90,23).build());
+        ptpNextButton=addRenderableWidget(Button.builder(Component.literal("NEXT PTP"),
+                b->{if(!ptps.isEmpty()){selectedPtpIndex=(selectedPtpIndex+1)%ptps.size();
+                    updatePtpControls();}})
+                .bounds(22,130,92,22).build());
+        ptpModeButton=addRenderableWidget(Button.builder(Component.literal("MODE"),
+                b->sendPtpControl(0)).bounds(120,130,90,22).build());
+        ptpWrapButton=addRenderableWidget(Button.builder(Component.literal("WRAP"),
+                b->sendPtpControl(1)).bounds(216,130,100,22).build());
+        updatePtpControls();
         int orderInputX=Math.max(22,width-230);
         golemButton=addRenderableWidget(Button.builder(
                 Component.literal("GOLEMS: AUTO"),btn->{
@@ -84,6 +95,36 @@ public final class RackComputerScreen extends Screen {
                         :new BlockPos(selectedX,selectedY,selectedZ)));
     }
 
+    private void sendPtpControl(int action){
+        if(ptps.isEmpty()||selectedPtpIndex>=ptps.size())return;
+        JsonObject ptp=ptps.get(selectedPtpIndex).getAsJsonObject();
+        ClientPlayNetworking.send(new RackComputerNet.PtpControl(computer,
+                new BlockPos(ptp.get("x").getAsInt(),
+                        ptp.get("y").getAsInt(),ptp.get("z").getAsInt()),action));
+    }
+    private void updatePtpControls(){
+        if(ptpNextButton==null||ptpModeButton==null||ptpWrapButton==null)return;
+        boolean present=!ptps.isEmpty();
+        ptpNextButton.active=present&&ptps.size()>1;
+        if(!present){
+            ptpModeButton.active=false;ptpWrapButton.active=false;
+            ptpModeButton.setMessage(Component.literal("NO PTP"));
+            ptpWrapButton.setMessage(Component.literal("NO WRAP"));
+            return;
+        }
+        selectedPtpIndex=Math.clamp(selectedPtpIndex,0,ptps.size()-1);
+        JsonObject point=ptps.get(selectedPtpIndex).getAsJsonObject();
+        boolean busy=point.get("hauling").getAsBoolean()
+                ||point.get("orders").getAsInt()>0;
+        ptpModeButton.active=!busy;
+        ptpModeButton.setMessage(Component.literal(point.get("input").getAsBoolean()
+                ?"SET OUTPUT":"SET INPUT"));
+        ptpWrapButton.active=point.get("wrap").getAsBoolean()
+                &&point.get("pallet").getAsBoolean()&&!busy;
+        ptpWrapButton.setMessage(Component.literal(point.get("sealed").getAsBoolean()
+                ?"UNWRAP":"WRAP"));
+    }
+
     private void requestItem() {
         if(selectedItemId.isBlank()){status="Click an item in the inspected rack first.";return;}
         int count;
@@ -100,6 +141,8 @@ public final class RackComputerScreen extends Screen {
         try {
             JsonObject obj=JsonParser.parseString(raw).getAsJsonObject();
             racks=obj.getAsJsonArray("racks");
+            ptps=obj.has("ptps")?obj.getAsJsonArray("ptps"):new JsonArray();
+            updatePtpControls();
             contents=obj.has("contents")?obj.getAsJsonArray("contents"):new JsonArray();
             totalRacks=obj.get("networkSize").getAsInt();
             totalItems=obj.get("totalItems").getAsInt();
@@ -143,15 +186,26 @@ public final class RackComputerScreen extends Screen {
         if(!scannerStatus.isBlank())
             graphics.text(font,Component.literal(compact(scannerStatus,
                     Math.max(16,(width-42)/6))),22,99,0xff83eadd,false);
+        if(!ptps.isEmpty()){
+            JsonObject ptp=ptps.get(selectedPtpIndex).getAsJsonObject();
+            String summary="PTP "+(selectedPtpIndex+1)+"/"+ptps.size()+" @ "
+                    +ptp.get("x").getAsInt()+","+ptp.get("y").getAsInt()
+                    +","+ptp.get("z").getAsInt()
+                    +(ptp.get("hopper").getAsBoolean()?" +HOPPER":"")
+                    +(ptp.get("hauling").getAsBoolean()?" • HAULING":"");
+            graphics.text(font,Component.literal(compact(summary,Math.max(16,(width-42)/6))),
+                    22,116,0xff83eadd,false);
+        }else graphics.text(font,Component.literal("No attached PTP detected"),
+                    22,116,0xffa4d5b7,false);
         int splitter=Math.max(200,width/2);
-        graphics.fill(20,111,splitter-5,height-45,0xff21392e);
-        graphics.fill(splitter,111,width-20,height-45,0xff22382f);
-        graphics.text(font,Component.literal("AISLES / RACKS"),29,118,0xffb3f9c1,false);
-        graphics.text(font,Component.literal("SELECTED RACK • CONTENTS"),splitter+11,118,0xffb3f9c1,false);
-        int rows=Math.max(0,(height-187)/25);
+        graphics.fill(20,160,splitter-5,height-45,0xff21392e);
+        graphics.fill(splitter,160,width-20,height-45,0xff22382f);
+        graphics.text(font,Component.literal("AISLES / RACKS"),29,167,0xffb3f9c1,false);
+        graphics.text(font,Component.literal("SELECTED RACK • CONTENTS"),splitter+11,167,0xffb3f9c1,false);
+        int rows=Math.max(0,(height-236)/25);
         for(int i=scroll;i<racks.size()&&i<scroll+rows;i++){
             JsonObject rack=racks.get(i).getAsJsonObject();
-            int y=134+(i-scroll)*25;
+            int y=183+(i-scroll)*25;
             int x=rack.get("x").getAsInt(),z=rack.get("z").getAsInt(),ry=rack.get("y").getAsInt();
             boolean chosen=x==selectedX&&z==selectedZ&&ry==selectedY;
             graphics.fill(25,y,splitter-11,y+23,
@@ -166,10 +220,10 @@ public final class RackComputerScreen extends Screen {
             graphics.fill(32,y+18,splitter-68,y+21,0xff4c6655);
             graphics.fill(32,y+18,32+(int)((splitter-100)*pct),y+21,0xff64d98a);
         }
-        int remaining=Math.max(0,(height-234)/17);
+        int remaining=Math.max(0,(height-283)/17);
         for(int i=0;i<contents.size()&&i<remaining;i++){
             JsonObject item=contents.get(i).getAsJsonObject();
-            int y=137+i*17;
+            int y=186+i*17;
             if(item.get("id").getAsString().equals(selectedItemId))
                 graphics.fill(splitter+7,y-2,width-27,y+14,0xff43835a);
             else if(i%2==0)graphics.fill(splitter+7,y-2,width-27,y+14,0xff2b4538);
@@ -179,24 +233,24 @@ public final class RackComputerScreen extends Screen {
             String count="x"+item.get("count").getAsInt();
             graphics.text(font,Component.literal(count),width-74,y,0xffa8e4c5,false);
         }
-        graphics.text(font,Component.literal("Click rack to inspect  •  Search flashes matching racks for 10 seconds"),
+        graphics.text(font,Component.literal("Click rack to inspect  •  Search outlines matching racks for 10 seconds"),
                 99,height-27,0xff91c3a1,false);
     }
 
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {
         int split=Math.max(200,width/2);
         int mx=(int)event.x(),my=(int)event.y();
-        if(mx>=split+7&&mx<width-27 && my>=135 && my<height-95){
-            int index=(my-135)/17;
+        if(mx>=split+7&&mx<width-27 && my>=184 && my<height-95){
+            int index=(my-184)/17;
             if(index>=0&&index<contents.size()){
                 selectedItemId=contents.get(index).getAsJsonObject().get("id").getAsString();
                 status="Selected "+selectedItemId+". Enter quantity and request.";
                 return true;
             }
         }
-        int rows=Math.max(0,(height-187)/25);
-        if(mx>=25&&mx<split-11&&my>=134&&my<134+rows*25) {
-            int index=scroll+(my-134)/25;
+        int rows=Math.max(0,(height-236)/25);
+        if(mx>=25&&mx<split-11&&my>=183&&my<183+rows*25) {
+            int index=scroll+(my-183)/25;
             if(index<racks.size()){
                 JsonObject row=racks.get(index).getAsJsonObject();
                 selectedX=row.get("x").getAsInt();
