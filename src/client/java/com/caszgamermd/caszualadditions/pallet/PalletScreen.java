@@ -66,7 +66,7 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
         targetField=addRenderableWidget(new EditBox(font,leftPos+251,topPos+195,
                 104,20,Component.literal("Filter target")));
         targetField.setMaxLength(96);
-        targetField.setHint(Component.literal("namespace:id / tag"));
+        targetField.setHint(Component.literal("IDs separated by commas"));
         targetField.setValue(menu.filterTarget());
         lastRule=menu.filterTarget();
         applyButton=addRenderableWidget(Button.builder(Component.literal("Apply Target"),

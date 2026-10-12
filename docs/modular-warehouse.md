@@ -1,7 +1,8 @@
 # Caszual Additions — Modular Pallet Warehouse (development)
 
 Target: Minecraft Java **26.2 Fabric**. This document covers the current
-implementation in the modular pallet warehouse branch.
+implementation on the main branch. For a step-by-step end-to-end regression
+of each system, see [Warehouse integrated test plan](warehouse-test-plan.md).
 
 ## Blocks and dimensions
 
@@ -64,6 +65,14 @@ and on the output pallet of a legacy Order Collector Hub.
 5. For item or block tags, type the registry ID (e.g.,
    `minecraft:logs`) and select **Apply Target**. For custom mods,
    type the mod namespace (e.g., `create`).
+
+For **Item**, **Whole Mod**, and **Item Tag** scopes, the target field now
+accepts up to **eight comma-separated entries**, e.g.
+`minecraft:stone,minecraft:cobblestone`. Whitelist accepts items matching
+**any** entry; blacklist rejects items matching **any** entry. The field is
+limited to 96 characters. **Exact Data** remains one sampled item with
+components rather than typed rules. Visual autocomplete and nested rule
+groups are still future enhancements.
 
 Exact Data compares a sample item's item ID and its data components. This
 first pass uses a component signature and should be regression-tested across
@@ -224,9 +233,10 @@ in Survival, and leaves the other eight building blocks to reuse.
 
 The physical endpoint supports Storage Golem input sorting, output ordering
 and linked Shulker Tank packing; all need a connected shelf and Rack Computer.
-The Storage Scanner and coordinated four-golem transport of wrapped pallets
-are still planned. Legacy hubs retain their own virtual order logic and saved
-state; no automatic migration is performed.
+The Storage Scanner and initial coordinated four-golem transport of wrapped
+pallets are now implemented and testable; floating cargo visuals still need
+polish. Legacy hubs retain their own virtual order logic and saved state;
+no automatic migration is performed.
 
 Test module orientation, shulker contents, module cell break/reassembly,
 read/write pipe direction, filter enforcement, sealing, and world persistence
@@ -327,8 +337,8 @@ there is no second hidden inventory copy.
 **Limit of this phase:** One golem fills a box from *one source rack per
 trip*, not from 27 different racks. It uses real navigation and the same
 saved output-order reservations as loose deliveries. Future work includes
-cross-rack multi-stop packing, return-to-tank visual animations, scanner
-operation and four-golem sealed-pallet transport. The original 2×2 Order
+cross-rack multi-stop packing and return-to-tank visual animations. The
+Storage Scanner and first four-Golem sealed-pallet transport are implemented. The original 2×2 Order
 Collector Hub remains independent.
 
 The new worker system needs client-side pathfinding and server reload QA;
@@ -365,9 +375,9 @@ existing matching partial stacks, and remaining empty slots.
 - A connected Rack Computer shows the first discovered scanner's summary
   underneath its existing PTP status. Its search, order and Golem buttons
   continue to work as before.
-- The scanner is designed as the inspection stage for future physical
-  four-Golem transport of sealed pallets. **This change does not move
-  full pallets or issue transport jobs.**
+- The scanner also starts/cancels a manually assigned four-Golem wrapped-
+  pallet haul with a sneak-right-click. Regular right-click inspects contents;
+  right-click **holding PAPER** runs the detailed readiness audit.
 
 Scanner craft: iron ingots around redstone, one glass pane, and a comparator.
 It is also available from the Caszual Additions creative tab.
@@ -424,12 +434,32 @@ just individual item stacks. This is a manually dispatched, bounded workflow.
   thread, after all four Golems have arrived and all item components
   are validated against the destination pallet filter.
 
-**Presentation limitation:** The four workers walk the entire route, but
-the pallet currently stays visually at the source while escrowed and
-appears in the rack on successful handoff. A synchronized floating
-pallet model and corner-grip animation are future polish. This is also
+**Presentation limitation:** The four workers show synchronized numbered
+RALLY/PALLET labels and lift their arms while carrying, and the source PTP
+shows purple status lamps during the job. The pallet itself still remains
+visually at the source while escrowed, then appears in the rack on handoff.
+A fully synchronized floating pallet mesh and physically coordinated
+corner-grip placement remain future polish. This is also
 *not* an unloaded-chunk hauling system and does not reserve the target
 rack against other uses.
+
+## Integrated testing tools
+
+Use the **Warehouse Test Kit** item from the Caszual Additions Creative tab,
+then right-click it in the air while in Creative to receive enough actual
+warehouse components for input sorting, output orders, Shulker Tank packing,
+rack labeling, physical connector networks and a four-Golem pallet haul.
+It does not automatically edit the world or destroy inventories.
+
+**Right-click the Storage Scanner while holding PAPER** for a read-only
+health audit. It reports the assembled PTP state, stored slot/item totals,
+connected Rack Computer, connected/empty racks, linked shelves, docked
+workers, enabled sorting, empty shulker boxes, queued orders, scanner capacity
+and any active four-worker haul's rally/arrival progress. Audit operations
+never reserve or withdraw items, and do not force chunk loading.
+
+See [Warehouse integrated test plan](warehouse-test-plan.md) for the
+test-by-test checklist, multiplayer checks and known unimplemented polish.
 
 ## Suggested in-game regression checks
 

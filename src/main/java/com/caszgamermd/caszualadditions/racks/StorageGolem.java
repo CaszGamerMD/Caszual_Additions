@@ -90,6 +90,8 @@ public final class StorageGolem extends PathfinderMob {
         cargo=ItemStack.EMPTY;emptyBox=ItemStack.EMPTY;requestedSample=ItemStack.EMPTY;
         outputJob=false;outputTicket=0;packedJob=false;packedItemCount=0;
         haulJob=true;haulTicket=ticket;haulIndex=index;stage=0;waitTicks=0;
+        setCustomName(Component.literal("RALLY "+(index+1)+"/4"));
+        setCustomNameVisible(true);
     }
     private PtpBlockEntity haulSource(ServerLevel level){
         return level.hasChunkAt(source)
@@ -101,6 +103,7 @@ public final class StorageGolem extends PathfinderMob {
             if(sourcePoint!=null&&sourcePoint.validHaul(haulTicket,destination))
                 sourcePoint.cancelHaul();
             haulTicket=0;
+            setCustomNameVisible(false);
         }
     }
     /**
@@ -110,6 +113,7 @@ public final class StorageGolem extends PathfinderMob {
      */
     private void tickHaul(ServerLevel level){
         if(stage==2){
+            setCustomNameVisible(false);
             BlockPos target=home;
             if(!level.hasChunkAt(target))return;
             if(!closeTo(target)){
@@ -125,10 +129,15 @@ public final class StorageGolem extends PathfinderMob {
         if(!level.hasChunkAt(source))return;
         PtpBlockEntity ptp=haulSource(level);
         if(ptp==null||!ptp.validHaul(haulTicket,destination)){
-            stage=2;return;
+            stage=2;
+            setCustomNameVisible(false);
+            return;
         }
         ptp.renewHaul(haulTicket);
-        if(stage==0&&ptp.haulStage(haulTicket)==1)stage=1;
+        if(stage==0&&ptp.haulStage(haulTicket)==1){
+            stage=1;
+            setCustomName(Component.literal("PALLET "+(haulIndex+1)+"/4"));
+        }
         BlockPos target=stage==0?source:destination;
         if(!level.hasChunkAt(target))return;
         BlockPos walkway=approach(level,target);
@@ -141,11 +150,17 @@ public final class StorageGolem extends PathfinderMob {
         getNavigation().stop();
         if(stage==0){
             ptp.assembleHaul(haulTicket,haulIndex);
-            if(ptp.haulStage(haulTicket)==1)stage=1;
+            if(ptp.haulStage(haulTicket)==1){
+                stage=1;
+                setCustomName(Component.literal("PALLET "+(haulIndex+1)+"/4"));
+            }
         }else if(stage==1){
             // It is safe to call this repeatedly while waiting for the other
             // three. Bitmasks prevent duplicate arrival/commit operations.
-            if(ptp.arriveHaul(haulTicket,haulIndex,level))stage=2;
+            if(ptp.arriveHaul(haulTicket,haulIndex,level)){
+                stage=2;
+                setCustomNameVisible(false);
+            }
         }
     }
     private PtpBlockEntity outputPoint(ServerLevel level){

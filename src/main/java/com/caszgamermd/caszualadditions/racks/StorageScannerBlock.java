@@ -30,6 +30,16 @@ public final class StorageScannerBlock extends Block {
         return RackBlock.reservedForAccess(context.getLevel(),context.getClickedPos())
                 ?null:super.getStateForPlacement(context);
     }
+    @Override protected InteractionResult useItemOn(
+            net.minecraft.world.item.ItemStack held,BlockState state,Level level,
+            BlockPos pos,Player player,net.minecraft.world.InteractionHand hand,
+            BlockHitResult hit){
+        if(!held.is(net.minecraft.world.item.Items.PAPER))return InteractionResult.PASS;
+        if(level instanceof ServerLevel server)
+            for(String message:WarehouseDiagnostics.audit(server,pos))
+                player.sendSystemMessage(Component.literal(message));
+        return InteractionResult.SUCCESS;
+    }
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,
             BlockPos pos,Player player,BlockHitResult hit){
         if(!(level instanceof ServerLevel server))return InteractionResult.SUCCESS;

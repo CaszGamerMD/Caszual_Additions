@@ -33,7 +33,7 @@ public final class RackContent {
     public static BlockEntityType<PtpBlockEntity> PTP_ENTITY;
     public static BlockEntityType<PtpHopperPort> PTP_PORT_ENTITY;
     public static Item RACK_ITEM, COMPUTER_ITEM, HUB_ITEM, TANK_ITEM, ORDER_COLLECTOR;
-    public static Item RACK_TAG, AISLE_TAG, CONNECTOR, PALLET_FILTER;
+    public static Item RACK_TAG, AISLE_TAG, CONNECTOR, PALLET_FILTER, WAREHOUSE_TEST_KIT;
     public static BlockEntityType<RackBlockEntity> RACK_ENTITY;
     public static BlockEntityType<OrderHubEntity> HUB_ENTITY;
     public static BlockEntityType<ShulkerTankEntity> SHULKER_TANK_ENTITY;
@@ -74,6 +74,10 @@ public final class RackContent {
         RACK_TAG=item("rack_tag");
         AISLE_TAG=item("aisle_tag");
         CONNECTOR=item("rack_connector");
+        ResourceKey<Item> kitKey=ResourceKey.create(Registries.ITEM,
+                CaszualAdditions.id("warehouse_test_kit"));
+        WAREHOUSE_TEST_KIT=Registry.register(BuiltInRegistries.ITEM,kitKey,
+                new WarehouseTestKitItem(new Item.Properties().stacksTo(1).setId(kitKey)));
         PALLET_FILTER=Registry.register(BuiltInRegistries.ITEM,
                 ResourceKey.create(Registries.ITEM,CaszualAdditions.id("pallet_filter")),
                 new PalletFilterItem(new Item.Properties().stacksTo(16)

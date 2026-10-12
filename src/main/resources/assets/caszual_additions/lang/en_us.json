@@ -101,5 +101,6 @@
   "block.caszual_additions.storage_golem_shelf": "Storage Golem Shelf",
   "item.caszual_additions.storage_golem": "Storage Golem",
   "entity.caszual_additions.storage_golem": "Storage Golem",
-  "block.caszual_additions.storage_scanner": "Storage Scanner"
+  "block.caszual_additions.storage_scanner": "Storage Scanner",
+  "item.caszual_additions.warehouse_test_kit": "Warehouse Test Kit"
 }

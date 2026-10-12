@@ -13,6 +13,16 @@ public final class StorageGolemRenderer extends MobRenderer<StorageGolem,Storage
     public StorageGolemRenderer(EntityRendererProvider.Context ctx){
         super(ctx,new StorageGolemModel(ctx.bakeLayer(LAYER)),.35f);
     }
+    @Override public void extractRenderState(StorageGolem golem,
+            StorageGolemRenderState state,float partialTick){
+        super.extractRenderState(golem,state,partialTick);
+        // The current transport assignment is broadcast as a synced custom
+        // name; clients do not need a second inventory or custom network
+        // packet just to animate the four carriers.
+        var name=golem.getCustomName();
+        state.carryingPallet=name!=null
+                &&name.getString().startsWith("PALLET ");
+    }
     @Override public StorageGolemRenderState createRenderState(){
         return new StorageGolemRenderState();
     }
