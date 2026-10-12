@@ -15,7 +15,8 @@ public final class StoragePtpNetwork {
     private StoragePtpNetwork(){}
     public static List<PtpBlockEntity> attached(ServerLevel level,BlockPos computer,
             List<StorageGolemShelfEntity> shelves){
-        List<BlockPos> contacts=new ArrayList<>();
+        return WarehouseNetwork.fromComputer(level,computer).points();
+        /* Original adjacency traversal replaced by the shared network:
         contacts.add(computer);
         for(StorageGolemShelfEntity shelf:shelves)contacts.add(shelf.getBlockPos());
         Set<BlockPos> seen=new HashSet<>();
@@ -34,5 +35,6 @@ public final class StoragePtpNetwork {
         }
         result.sort(Comparator.comparingLong(p->p.getBlockPos().asLong()));
         return result;
+        */
     }
 }
