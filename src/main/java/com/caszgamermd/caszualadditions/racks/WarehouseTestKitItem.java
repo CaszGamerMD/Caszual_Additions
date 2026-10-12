@@ -49,9 +49,11 @@ public final class WarehouseTestKitItem extends Item {
         add(supplies,RackContent.CONNECTOR,32);
         add(supplies,RackContent.HUB_ITEM,1);
         add(supplies,RackContent.ORDER_COLLECTOR,3);
-        add(supplies,Items.SHULKER_BOX,16);
+        add(supplies,Items.SHULKER_BOX,8);
         add(supplies,Items.COBBLESTONE,64);
-        add(supplies,Items.GLASS,64);
+        add(supplies,Items.HOPPER,4);
+        add(supplies,Items.SHEARS,1);
+        add(supplies,Items.ANVIL,1);
         add(supplies,Items.PAPER,16);
         for(ItemStack stack:supplies)
             player.getInventory().placeItemBackInInventory(stack);
