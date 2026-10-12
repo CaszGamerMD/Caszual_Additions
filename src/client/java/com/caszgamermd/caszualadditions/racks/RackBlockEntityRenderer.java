@@ -54,6 +54,9 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             float partial,Vec3 camera,ModelFeatureRenderer.@Nullable CrumblingOverlay cracks){
         BlockEntityRenderer.super.extractRenderState(rack,state,partial,camera,cracks);
         state.facing=rack.facing();
+        state.sealed=rack.glassWrapped();
+        if(state.sealed)blocks.update(state.glassPane,
+                Blocks.GLASS.defaultBlockState(),DISPLAY);
         state.outlined=rack.getLevel()!=null
                 &&RackHighlightClient.highlighted(rack.getLevel(),rack.getBlockPos());
         if(state.outlined)blocks.update(state.highlightEdge,
@@ -200,6 +203,19 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
                 state.items[i].submit(poses,collector,state.lightCoords,OverlayTexture.NO_OVERLAY,0);
             }
             poses.popPose();
+        }
+        if(state.sealed){
+            float top=Math.max(.85f,(float)(5.0/16.0
+                    +Math.ceil(state.visible/9.0)*RackRenderState.CELL+.08));
+            float y=.30f,height=top-y;
+            board(state.glassPane,state,poses,collector,
+                    -.035f,y,-.04f,2.07f,height,.03f);
+            board(state.glassPane,state,poses,collector,
+                    -.035f,y,2.01f,2.07f,height,.03f);
+            board(state.glassPane,state,poses,collector,
+                    -.04f,y,-.005f,.03f,height,2.01f);
+            board(state.glassPane,state,poses,collector,
+                    2.01f,y,-.005f,.03f,height,2.01f);
         }
         poses.popPose();
     }
