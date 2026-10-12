@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "caszual_additions:block/rack_connector"
+    "model": "caszual_additions:item/rack_connector"
   }
 }
