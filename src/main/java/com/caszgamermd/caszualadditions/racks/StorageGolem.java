@@ -160,10 +160,34 @@ public final class StorageGolem extends PathfinderMob {
         }
     }
     public BlockPos home(){return home;}
+    private boolean openWalkway(ServerLevel level,BlockPos p){
+        return level.hasChunkAt(p)&&level.hasChunkAt(p.above())
+                &&level.getBlockState(p).getCollisionShape(level,p).isEmpty()
+                &&level.getBlockState(p.above()).getCollisionShape(level,p.above()).isEmpty();
+    }
     private BlockPos approach(ServerLevel level,BlockPos place) {
         BlockEntity be=level.hasChunkAt(place)?level.getBlockEntity(place):null;
-        if(be instanceof PtpBlockEntity)return place.south(2);
-        if(be instanceof ShulkerTankEntity)return place.south();
+        if(be instanceof PtpBlockEntity || be instanceof ShulkerTankEntity){
+            // A scanner, linked shelf or Hopper Adapter can occupy the old
+            // hard-coded SOUTH entrance. Find a clear outer approach without
+            // loading chunks; spread a four-Golem team across four sides.
+            int distance=be instanceof PtpBlockEntity?2:1;
+            net.minecraft.core.Direction[] faces={
+                    net.minecraft.core.Direction.NORTH,net.minecraft.core.Direction.EAST,
+                    net.minecraft.core.Direction.SOUTH,net.minecraft.core.Direction.WEST
+            };
+            BlockPos best=null;
+            double score=Double.POSITIVE_INFINITY;
+            for(int i=0;i<faces.length;i++){
+                int side=(i+(haulJob?haulIndex:0))%faces.length;
+                BlockPos p=place.relative(faces[side],distance);
+                if(!openWalkway(level,p))continue;
+                double candidate=p.distSqr(home)
+                        +(haulJob && i!=0?i*0.001:0);
+                if(candidate<score){score=candidate;best=p;}
+            }
+            return best==null?place.south(distance):best;
+        }
         if(be instanceof RackBlockEntity rack)
             return RackBlock.cell(place,rack.facing(),0).relative(rack.facing());
         return place;
