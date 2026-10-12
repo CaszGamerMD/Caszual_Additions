@@ -156,6 +156,9 @@ public final class RackBlock extends Block implements EntityBlock {
                         Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         RackBlockEntity rack = controller(level, pos);
         if (rack == null) return InteractionResult.PASS;
+        // Block placement must work identically on client and server, even
+        // when a rack already contains a pallet.
+        if(held.is(RackContent.CONNECTOR))return InteractionResult.PASS;
         if (!level.isClientSide() && player instanceof ServerPlayer server) {
             if (held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem
                     && blockItem.getBlock() instanceof PalletBlock) {
