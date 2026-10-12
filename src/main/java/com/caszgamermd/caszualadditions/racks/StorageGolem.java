@@ -123,6 +123,14 @@ public final class StorageGolem extends PathfinderMob {
         return ownedBy(owner)&&haulIndex==0&&haulTicket==ticket;
     }
     public boolean escorting(UUID owner){return ownedBy(owner)&&stage==1;}
+    public boolean pickupPending(UUID owner){return ownedBy(owner)&&stage==0;}
+    public void cancelPendingPickup(ServerLevel level){
+        if(playerHaul&&stage==0){
+            cancelHaul(level);
+            stage=4;
+            setCustomName(Component.literal("CREW "+(haulIndex+1)+"/4"));
+        }
+    }
     public boolean holdsPallet(){return !carryingPallet.isEmpty();}
     public int crewIndex(){return haulIndex;}
     public void beginPlayerPickup(BlockPos ptp,int ticket){
