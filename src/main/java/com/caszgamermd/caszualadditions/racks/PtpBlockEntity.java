@@ -177,7 +177,7 @@ public final class PtpBlockEntity extends BlockEntity
     }
     public OutputOrder nextOutputOrder(){return outputOrders.peekFirst();}
     public boolean queueOutput(String itemId,int quantity){
-        if(input||itemId==null||itemId.isBlank()||quantity<1||quantity>4096
+        if(input||hauling()||itemId==null||itemId.isBlank()||quantity<1||quantity>4096
                 ||outputOrders.size()>=MAX_OUTPUT_ORDERS)return false;
         outputOrders.addLast(new OutputOrder(itemId,quantity));
         setChanged();return true;
