@@ -1,34 +1,164 @@
 {
   "variants": {
-    "part=0": {
-      "model": "caszual_additions:block/ptp_hopper_adapter"
+    "part=0,facing=north": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 0
     },
-    "part=1": {
-      "model": "caszual_additions:block/ptp_hopper_adapter"
+    "part=0,facing=east": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 90
     },
-    "part=2": {
-      "model": "caszual_additions:block/ptp_hopper_adapter"
+    "part=0,facing=south": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 180
     },
-    "part=3": {
-      "model": "caszual_additions:block/ptp_hopper_adapter"
+    "part=0,facing=west": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 270
     },
-    "part=4": {
-      "model": "caszual_additions:block/ptp_hopper_adapter"
+    "part=1,facing=north": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 0
     },
-    "part=5": {
-      "model": "caszual_additions:block/ptp_hopper_adapter"
+    "part=1,facing=east": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 90
     },
-    "part=6": {
-      "model": "caszual_additions:block/ptp_hopper_adapter"
+    "part=1,facing=south": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 180
     },
-    "part=7": {
-      "model": "caszual_additions:block/ptp_hopper_adapter"
+    "part=1,facing=west": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 270
     },
-    "part=8": {
-      "model": "caszual_additions:block/ptp_hopper_adapter"
+    "part=2,facing=north": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 0
     },
-    "part=9": {
-      "model": "caszual_additions:block/ptp_hopper_adapter"
+    "part=2,facing=east": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 90
+    },
+    "part=2,facing=south": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 180
+    },
+    "part=2,facing=west": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 270
+    },
+    "part=3,facing=north": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 0
+    },
+    "part=3,facing=east": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 90
+    },
+    "part=3,facing=south": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 180
+    },
+    "part=3,facing=west": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 270
+    },
+    "part=4,facing=north": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 0
+    },
+    "part=4,facing=east": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 90
+    },
+    "part=4,facing=south": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 180
+    },
+    "part=4,facing=west": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 270
+    },
+    "part=5,facing=north": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 0
+    },
+    "part=5,facing=east": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 90
+    },
+    "part=5,facing=south": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 180
+    },
+    "part=5,facing=west": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 270
+    },
+    "part=6,facing=north": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 0
+    },
+    "part=6,facing=east": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 90
+    },
+    "part=6,facing=south": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 180
+    },
+    "part=6,facing=west": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 270
+    },
+    "part=7,facing=north": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 0
+    },
+    "part=7,facing=east": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 90
+    },
+    "part=7,facing=south": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 180
+    },
+    "part=7,facing=west": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 270
+    },
+    "part=8,facing=north": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 0
+    },
+    "part=8,facing=east": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 90
+    },
+    "part=8,facing=south": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 180
+    },
+    "part=8,facing=west": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 270
+    },
+    "part=9,facing=north": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 0
+    },
+    "part=9,facing=east": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 90
+    },
+    "part=9,facing=south": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 180
+    },
+    "part=9,facing=west": {
+      "model": "caszual_additions:block/ptp_hopper_adapter",
+      "y": 270
     }
   }
 }
