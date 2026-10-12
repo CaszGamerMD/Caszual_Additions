@@ -166,6 +166,15 @@ public final class StorageGolem extends PathfinderMob {
         }
     }
     public boolean holdsPallet(){return !carryingPallet.isEmpty();}
+    /** Handoff is copied into the moving pallet before the crew is
+     * despawned. If entity spawning fails, the old lead keeps its cargo. */
+    public ItemStack palletForTransfer(){return carryingPallet.copy();}
+    public NonNullList<ItemStack> palletContentsForTransfer(){
+        NonNullList<ItemStack> copy=NonNullList.withSize(216,ItemStack.EMPTY);
+        for(int i=0;i<216;i++)copy.set(i,palletContents.get(i).copy());
+        return copy;
+    }
+    public void relinquishPalletToRig(){releaseCarriedPallet();}
     /** Read-only server diagnostics for Rack Computer Golem task dashboard. */
     public BlockPos shelfHome(){return home;}
     public BlockPos workSource(){return source;}
@@ -380,7 +389,8 @@ public final class StorageGolem extends PathfinderMob {
                     }
                     if(ready&&WarehouseTeamProgress.complete(mask)
                             &&StorageGroundPalletTransfer.lift(level,source,this)){
-                        for(StorageGolem worker:crew)worker.startFollowing();
+                        if(!StoragePalletCrew.formMovingPallet(level,crew,ownerId))
+                            for(StorageGolem worker:crew)worker.startFollowing();
                     }
                 }
                 return;
@@ -406,8 +416,10 @@ public final class StorageGolem extends PathfinderMob {
                 if(team.size()==4){
                     StorageGolem leader=team.stream().filter(w->w.haulIndex==0)
                             .findFirst().orElse(null);
-                    if(leader!=null&&point.giveToCarrier(level,leader,haulTicket,owner))
-                        for(StorageGolem worker:team)worker.startFollowing();
+                    if(leader!=null&&point.giveToCarrier(level,leader,haulTicket,owner)){
+                        if(!StoragePalletCrew.formMovingPallet(level,team,owner))
+                            for(StorageGolem worker:team)worker.startFollowing();
+                    }
                 }
             }
             return;

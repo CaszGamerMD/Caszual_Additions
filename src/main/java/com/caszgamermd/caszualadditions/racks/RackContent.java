@@ -25,6 +25,7 @@ public final class RackContent {
     public static BlockEntityType<StorageGolemShelfEntity> STORAGE_SHELF_ENTITY;
     public static Item STORAGE_SHELF_ITEM,STORAGE_GOLEM_ITEM;
     public static EntityType<StorageGolem> STORAGE_GOLEM_TYPE;
+    public static EntityType<MovingPallet> MOVING_PALLET_TYPE;
     public static Block RACK_COMPUTER;
     public static Item STORAGE_SCANNER_ITEM,PORTABLE_WRAPPER;
     public static ShulkerTankBlock SHULKER_TANK;
@@ -168,6 +169,12 @@ public final class RackContent {
                 EntityType.Builder.<StorageGolem>of(StorageGolem::new,MobCategory.MISC)
                         .sized(0.70f,1.45f).build(golemKey));
         FabricDefaultAttributeRegistry.register(STORAGE_GOLEM_TYPE,StorageGolem.attributes());
+        ResourceKey<EntityType<?>> movingKey=ResourceKey.create(Registries.ENTITY_TYPE,
+                CaszualAdditions.id("moving_pallet"));
+        MOVING_PALLET_TYPE=Registry.register(BuiltInRegistries.ENTITY_TYPE,movingKey,
+                EntityType.Builder.<MovingPallet>of(MovingPallet::new,MobCategory.MISC)
+                        .sized(1.85f,2.50f).build(movingKey));
+        FabricDefaultAttributeRegistry.register(MOVING_PALLET_TYPE,MovingPallet.attributes());
 
         RackComputerNet.initialize();
     }

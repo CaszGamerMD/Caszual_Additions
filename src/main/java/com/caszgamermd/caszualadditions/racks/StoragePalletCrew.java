@@ -22,6 +22,41 @@ public final class StoragePalletCrew {
                 new AABB(player.blockPosition()).inflate(64),
                 golem->golem.ownedBy(owner));
     }
+    private static MovingPallet moving(ServerLevel level,ServerPlayer player){
+        List<MovingPallet> carriers=level.getEntitiesOfClass(MovingPallet.class,
+                new AABB(player.blockPosition()).inflate(96),
+                rig->rig.owns(player.getUUID()));
+        return carriers.isEmpty()?null:carriers.getFirst();
+    }
+    /** Converts four physically assembled workers into one navigable body.
+     * Rollback: if spawning is rejected, the lead golem still owns cargo. */
+    public static boolean formMovingPallet(ServerLevel level,
+            List<StorageGolem> crew,UUID owner){
+        if(crew.size()!=4||owner==null)return false;
+        StorageGolem leader=null;
+        int mask=0;
+        for(StorageGolem worker:crew){
+            if(!worker.ownedBy(owner))return false;
+            mask=WarehouseTeamProgress.arrive(mask,worker.crewIndex());
+            if(worker.crewIndex()==0)leader=worker;
+        }
+        if(!WarehouseTeamProgress.complete(mask)
+                ||leader==null||!leader.holdsPallet())return false;
+        MovingPallet carrier=RackContent.MOVING_PALLET_TYPE.create(
+                level,EntitySpawnReason.EVENT);
+        if(carrier==null||!carrier.prepare(owner,crew,leader.palletForTransfer(),
+                leader.palletContentsForTransfer()))return false;
+        double x=0,y=0,z=0;
+        for(StorageGolem member:crew){x+=member.getX();y+=member.getY();z+=member.getZ();}
+        carrier.setPos(x/4,y/4,z/4);
+        if(!level.addFreshEntity(carrier))return false;
+        // The single entity has accepted the full saved inventory; all
+        // physical workers are now model parts and no longer tick separately.
+        leader.relinquishPalletToRig();
+        for(StorageGolem member:crew)member.discard();
+        return true;
+    }
+
     private static boolean completeTeam(List<StorageGolem> team){
         if(team.size()!=4)return false;
         int mask=0;
@@ -33,6 +68,9 @@ public final class StoragePalletCrew {
      * workers from a different warehouse or dismissing them. */
     public static boolean assignedToComputer(ServerLevel level,ServerPlayer player,
             BlockPos computer){
+        MovingPallet rig=moving(level,player);
+        if(rig!=null)return rig.fromWarehouse(
+                WarehouseConnections.shelvesForComputer(level,computer));
         List<StorageGolem> assigned=team(level,player);
         if(assigned.isEmpty())return false;
         java.util.Set<BlockPos> shelves=new java.util.HashSet<>();
@@ -44,8 +82,8 @@ public final class StoragePalletCrew {
     }
 
     public static String enlist(ServerLevel level,ServerPlayer player,BlockPos computer){
-        if(!team(level,player).isEmpty())
-            return "Your four-Golem team is already assigned. Return it before linking another warehouse.";
+        if(moving(level,player)!=null||!team(level,player).isEmpty())
+            return "Four Golems already assigned. Deliver the carried pallet, then dismiss at the warehouse.";
         if(!level.hasChunkAt(computer)
                 ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER))
             return "No Rack Computer at that location.";
@@ -83,6 +121,7 @@ public final class StoragePalletCrew {
         for(StorageGolemShelfEntity shelf:shelves)shelf.add();
     }
     public static String pickup(ServerLevel level,ServerPlayer player,PtpBlockEntity source){
+        if(moving(level,player)!=null)return "Your four Golems are already carrying a pallet.";
         List<StorageGolem> workers=team(level,player);
         if(!completeTeam(workers))return "All four assigned Golems must be nearby to pick up a pallet.";
         if(workers.stream().anyMatch(w->w.holdsPallet()
@@ -99,6 +138,7 @@ public final class StoragePalletCrew {
     /** The warehouse Scanner can dispatch its FOUR real workers to any
      * wrapped 2x2 pallet on the ground, regardless of warehouse membership. */
     public static String pickupGround(ServerLevel level,ServerPlayer player,BlockPos clicked){
+        if(moving(level,player)!=null)return "Your four Golems are already carrying a pallet.";
         List<StorageGolem> workers=team(level,player);
         if(!completeTeam(workers))
             return "Four assigned Golems must be nearby. Link a warehouse Scanner first.";
@@ -132,6 +172,15 @@ public final class StoragePalletCrew {
         for(StorageGolem member:members)member.clearDelivery();
     }
     public static String deliverRack(ServerLevel level,ServerPlayer player,RackBlockEntity rack){
+        MovingPallet rig=moving(level,player);
+        if(rig!=null){
+            if(rig.distanceToSqr(rack.getBlockPos().getX()+.5,
+                    rack.getBlockPos().getY()+.5,rack.getBlockPos().getZ()+.5)>20*20)
+                return "Wait for the pallet team to arrive at the destination rack.";
+            return rig.deliverToRack(rack)
+                    ?"Pallet delivered. The four Golems are separating and will follow you home."
+                    :"Rack must be completely empty; the moving pallet retains its contents.";
+        }
         List<StorageGolem> workers=team(level,player);
         StorageGolem lead=leader(workers,player.getUUID());
         if(lead==null)return "Wait until all four Golems finish lifting and follow you.";
@@ -145,6 +194,15 @@ public final class StoragePalletCrew {
         return "Rack must be empty and have no installed pallet; carried cargo is unchanged.";
     }
     public static String deliverGround(ServerLevel level,ServerPlayer player,BlockPos location){
+        MovingPallet rig=moving(level,player);
+        if(rig!=null){
+            if(rig.distanceToSqr(location.getX()+.5,location.getY()+.5,
+                    location.getZ()+.5)>20*20)
+                return "Wait for the moving pallet team to catch up before placing it.";
+            return rig.deliverToGround(level,location,player.getDirection())
+                    ?"Pallet delivered. The Golems are separating and will follow you home."
+                    :"Need a clear loaded 2x2 floor. The moving pallet keeps its inventory.";
+        }
         List<StorageGolem> workers=team(level,player);
         StorageGolem lead=leader(workers,player.getUUID());
         if(lead==null)return "Wait for the four Golems to complete pickup before placing.";
@@ -161,6 +219,8 @@ public final class StoragePalletCrew {
         if(player.distanceToSqr(computer.getX()+.5,computer.getY()+.5,
                 computer.getZ()+.5)>64)
             return "Return to your linked Rack Computer to dismiss the crew.";
+        if(moving(level,player)!=null)
+            return "Deliver the raised pallet first; the four Golems cannot detach in transit.";
         List<StorageGolem> members=team(level,player);
         if(members.isEmpty())return "No assigned Golems are near the warehouse.";
         if(members.stream().anyMatch(StorageGolem::holdsPallet))
@@ -176,6 +236,10 @@ public final class StoragePalletCrew {
                 +(members.size()<4?"Any lost worker items must be manually recovered.":"");
     }
     public static String status(ServerLevel level,ServerPlayer player){
+        MovingPallet rig=moving(level,player);
+        if(rig!=null)return "Four Golems locked to one raised pallet entity; "
+                +"following you, "+(rig.loaded()?"carrying 216-slot pallet":"unloading pallet")
+                +". Deliver the pallet before dismissing your team.";
         List<StorageGolem> workers=team(level,player);
         if(workers.isEmpty())return "No linked crew nearby. Right-click a Rack Computer to enlist four.";
         int cargo=0;
