@@ -57,5 +57,8 @@ assert "PalletBlock.partPos(root.getBlockPos(),part,state)" in entity
 rack=read("racks/RackBlock.java")
 assert "boolean front=partIndex%4<2" in rack
 assert "height==0" in rack and "height==2" in rack
-assert "Block.box(3,1,2,4,2,14)" in rack
+assert "frontRailAlongX=facing.getAxis()==Direction.Axis.Z" in rack
+assert "strip=first+off*5" in rack
+assert "Block.box(strip,1,2,strip+1,2,14)" in rack
+assert "Block.box(2,1,strip,14,2,strip+1)" in rack
 print("PASS: pallet access routes and visible/collidable open-front rack grill")
