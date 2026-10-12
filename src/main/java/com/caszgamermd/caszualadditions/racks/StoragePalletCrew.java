@@ -70,8 +70,9 @@ public final class StoragePalletCrew {
     public static String pickup(ServerLevel level,ServerPlayer player,PtpBlockEntity source){
         List<StorageGolem> workers=team(level,player);
         if(!completeTeam(workers))return "All four assigned Golems must be nearby to pick up a pallet.";
-        if(workers.stream().anyMatch(w->w.holdsPallet()||w.escorting(player.getUUID())))
-            return "This crew is already transporting a pallet.";
+        if(workers.stream().anyMatch(w->w.holdsPallet()
+                ||w.escorting(player.getUUID())||w.pickupPending(player.getUUID())))
+            return "This crew already has an active pallet pickup or delivery.";
         if(!source.hasPallet()||!source.sealed()||!source.hasWrap())
             return "Pallet must be sealed with a Wrap Unit before lifting.";
         int ticket=source.beginPlayerHaul(player.getUUID());
@@ -133,6 +134,7 @@ public final class StoragePalletCrew {
         // A worker may have died/recalled. Dismiss surviving empty escorts
         // without leaving them permanently assigned to the player.
         for(StorageGolem golem:members){
+            golem.cancelPendingPickup(level);
             golem.clearDelivery();
             golem.dismissCrew();
         }
