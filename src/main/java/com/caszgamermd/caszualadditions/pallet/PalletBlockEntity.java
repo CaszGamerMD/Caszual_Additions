@@ -39,6 +39,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
             Blocks.OAK_PLANKS
     };
     private int plasticColor = PalletData.DEFAULT_PLASTIC_COLOR;
+    private boolean glassWrapped;
     private String filterItem = "";
     private ItemStack filterUpgrade = ItemStack.EMPTY;
     private int filterMode, filterScope;
@@ -91,6 +92,11 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
     public int plasticColor() {
         return plasticColor;
     }
+    public boolean glassWrapped(){return controller().glassWrapped;}
+    public void unwrapGlass(){
+        PalletBlockEntity root=controller();
+        if(root.glassWrapped){root.glassWrapped=false;root.sync();}
+    }
 
     public Block woodForBoard(int board) {
         return wood[Math.max(0, Math.min(3, board))];
@@ -104,6 +110,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         this.rootPos = root.immutable();
         this.part = part;
         this.filterItem=PalletData.filter(stack);
+        if(isRoot())glassWrapped=GlassPalletWrap.wrapped(stack);
         if(isRoot()){
             filterScope=PalletData.filterScope(stack);
             filterMode=PalletData.filterMode(stack);
@@ -136,7 +143,8 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
                 stack = PalletData.applyPlasticColor(stack, plasticColor);
             }
         }
-        return PalletData.applyFilterSettings(stack,controller());
+        return GlassPalletWrap.withWrap(
+                PalletData.applyFilterSettings(stack,controller()),glassWrapped());
     }
 
     private PalletBlockEntity controller() {
@@ -236,6 +244,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         output.store("root", BlockPos.CODEC, rootPos);
         output.putInt("part", part);
         output.putInt("plastic_color", plasticColor);
+        output.putBoolean("glass_wrapped",glassWrapped);
         output.putString("filter_item",filterItem);
         output.putInt("filter_mode",filterMode);
         output.putInt("filter_scope",filterScope);
@@ -265,6 +274,7 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
                         : 0
         );
         plasticColor = input.getIntOr("plastic_color", PalletData.DEFAULT_PLASTIC_COLOR);
+        glassWrapped=input.getBooleanOr("glass_wrapped",false);
         filterItem=input.getStringOr("filter_item","");
         filterMode=Math.clamp(input.getIntOr("filter_mode",0),0,1);
         filterScope=Math.clamp(input.getIntOr("filter_scope",0),0,3);
