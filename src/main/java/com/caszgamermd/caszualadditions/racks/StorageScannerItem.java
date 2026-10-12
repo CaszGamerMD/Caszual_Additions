@@ -54,6 +54,11 @@ public final class StorageScannerItem extends Item {
         BlockPos home=linkedComputer(scanner,server);
 
         if(level.getBlockState(clicked).is(RackContent.RACK_COMPUTER)){
+            if(player.isShiftKeyDown()){
+                for(String row:WarehouseDiagnostics.audit(server,clicked))
+                    user.sendSystemMessage(Component.literal(row));
+                return InteractionResult.SUCCESS;
+            }
             String result;
             if(home!=null&&home.equals(clicked)){
                 String status=StoragePalletCrew.status(server,user);
