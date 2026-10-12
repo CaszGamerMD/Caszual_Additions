@@ -10,6 +10,8 @@ import com.caszgamermd.caszualadditions.racks.RackComputerClient;
 import com.caszgamermd.caszualadditions.racks.StorageGolemRenderer;
 import com.caszgamermd.caszualadditions.racks.StorageGolemShelfRenderer;
 import com.caszgamermd.caszualadditions.racks.StorageGolemModel;
+import com.caszgamermd.caszualadditions.racks.MovingPalletRenderer;
+import com.caszgamermd.caszualadditions.racks.MovingPalletModel;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
 import com.caszgamermd.caszualadditions.pallet.PalletScreen;
