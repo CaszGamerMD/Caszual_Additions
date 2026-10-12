@@ -48,6 +48,8 @@ public final class PtpBlockEntity extends BlockEntity
     // The four walking Golems are an escort, NEVER a second inventory owner.
     private int haulSequence,haulTicket,haulSourceMask,haulArrivalMask;
     private BlockPos haulRack=BlockPos.ZERO;
+    private String haulPlayer="";
+    private boolean playerHaul,haulCargoMoved;
     private long haulDeadline;
     private static final long HAUL_LEASE_TICKS=6000; // five minutes
 
@@ -59,6 +61,7 @@ public final class PtpBlockEntity extends BlockEntity
     public BlockPos haulDestination(){return haulRack;}
     public int haulWorkersAtSource(){return hauling()?WarehouseTeamProgress.count(haulSourceMask):0;}
     public int haulWorkersAtDestination(){return hauling()?WarehouseTeamProgress.count(haulArrivalMask):0;}
+    public boolean playerHaul(){return hauling()&&playerHaul;}
     public String haulPhase(){return !hauling()?"IDLE":
             WarehouseTeamProgress.complete(haulSourceMask)?"DELIVERING":"ASSEMBLING";}
     public boolean validHaul(int ticket,BlockPos rack){
@@ -71,6 +74,43 @@ public final class PtpBlockEntity extends BlockEntity
             haulDeadline=level.getGameTime()+HAUL_LEASE_TICKS;
     }
     /** Only dispatch on an assembled wrapped pallet, never an OUTPUT order. */
+    public int beginPlayerHaul(java.util.UUID owner){
+        int ticket=beginHaul(worldPosition);
+        if(ticket!=0){
+            haulPlayer=owner.toString();
+            playerHaul=true;
+            haulCargoMoved=false;
+            setChanged();
+        }
+        return ticket;
+    }
+    public boolean playerHaulValid(int ticket,java.util.UUID owner){
+        expireHaul();
+        return ticket!=0&&ticket==haulTicket&&playerHaul
+                &&haulPlayer.equals(owner.toString())&&!haulCargoMoved
+                &&sealed&&hasPallet();
+    }
+    public boolean lifted(int ticket){return playerHaul&&haulCargoMoved&&haulTicket==ticket;}
+    /** The leader becomes the ONLY inventory owner when the entire team
+     * reaches the wrapped pallet. The original PTP empties in this tick. */
+    public boolean giveToCarrier(ServerLevel server,StorageGolem leader,int ticket,
+            java.util.UUID owner){
+        if(!playerHaulValid(ticket,owner)||haulStage(ticket)!=1
+                ||leader==null||!leader.isPlayerCarrier(owner,ticket))return false;
+        ItemStack deck=PalletData.applyFilterSettings(pallet,this);
+        if(deck.isEmpty()||!leader.loadPallet(deck,contents))return false;
+        contents=NonNullList.withSize(SLOTS,ItemStack.EMPTY);
+        pallet=ItemStack.EMPTY;
+        filterUpgrade=ItemStack.EMPTY;
+        filterTarget="";filterSignature="";filterMode=0;filterScope=0;
+        sealed=false;
+        haulCargoMoved=true;
+        // No hard lock on the empty PTP; surviving team state is persisted
+        // on its four real walking Golems, including the one cargo owner.
+        cancelHaul();
+        setChanged();
+        return true;
+    }
     public int beginHaul(BlockPos destination){
         expireHaul();
         if(level==null||haulTicket!=0||!sealed||!hasPallet()||!hasWrap()
@@ -107,6 +147,7 @@ public final class PtpBlockEntity extends BlockEntity
         if(haulTicket==0)return;
         haulTicket=0;haulRack=BlockPos.ZERO;
         haulSourceMask=0;haulArrivalMask=0;haulDeadline=0;
+        playerHaul=false;haulPlayer="";haulCargoMoved=false;
         setChanged();
     }
     /**
@@ -360,6 +401,9 @@ public final class PtpBlockEntity extends BlockEntity
         out.putInt("haul_arrival_mask",haulArrivalMask);
         out.store("haul_rack",BlockPos.CODEC,haulRack);
         out.putLong("haul_deadline",haulDeadline);
+        out.putBoolean("player_haul",playerHaul);
+        out.putString("haul_player",haulPlayer);
+        out.putBoolean("haul_cargo_moved",haulCargoMoved);
     }
     @Override protected void loadAdditional(ValueInput in){
         super.loadAdditional(in);
@@ -394,6 +438,9 @@ public final class PtpBlockEntity extends BlockEntity
         haulArrivalMask=WarehouseTeamProgress.checkedMask(in.getIntOr("haul_arrival_mask",0));
         haulRack=in.read("haul_rack",BlockPos.CODEC).orElse(BlockPos.ZERO);
         haulDeadline=in.getLongOr("haul_deadline",0);
+        playerHaul=in.getBooleanOr("player_haul",false);
+        haulPlayer=in.getStringOr("haul_player","");
+        haulCargoMoved=in.getBooleanOr("haul_cargo_moved",false);
         if(!sealed||!hasPallet()||haulRack.equals(BlockPos.ZERO)){
             haulTicket=0;haulSourceMask=0;haulArrivalMask=0;haulDeadline=0;
         }
