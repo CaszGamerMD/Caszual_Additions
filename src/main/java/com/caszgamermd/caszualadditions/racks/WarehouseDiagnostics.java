@@ -5,94 +5,60 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 
-/**
- * Read-only preflight diagnostics for real in-game warehouse testing.
- * Never forces chunk loads, changes inventories, reserves orders, or spawns
- * any worker. All counts reflect loaded, connected warehouse components.
- */
+/** Loaded-only, read-only audit invoked by sneak-using the handheld scanner
+ * on the Rack Computer. Never moves stock or forces chunk loading. */
 public final class WarehouseDiagnostics {
-    private WarehouseDiagnostics() {}
+    private WarehouseDiagnostics(){}
 
-    public static List<String> audit(ServerLevel level,BlockPos scanner) {
+    public static List<String> audit(ServerLevel level,BlockPos computer){
         List<String> results=new ArrayList<>();
-        PtpBlockEntity point=StorageScanner.nearbyPoint(level,scanner);
-        results.add("=== WAREHOUSE TEST AUDIT ===");
-        if(point==null){
-            results.add("[BLOCKED] Scanner is not touching an assembled 3x3 PTP.");
-            results.add("Place nine transfer blocks, then put the scanner beside any cell.");
+        results.add("=== WAREHOUSE DIAGNOSTICS ===");
+        if(!level.hasChunkAt(computer)
+                ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER)){
+            results.add("[BLOCKED] Target a Rack Computer with the handheld scanner.");
             return results;
         }
-        StorageScanner.Report scan=StorageScanner.scan(level,scanner);
-        results.add("PTP "+point.getBlockPos().toShortString()
-                +": "+(point.input()?"INPUT":"OUTPUT")
-                +" | pallet="+point.hasPallet()+" | sealed="+point.sealed()
-                +" | wrap="+point.hasWrap()+" | hopper="+point.hasAdapter());
-        if(scan!=null)results.add("Inventory: "+scan.items()+" items in "
-                +scan.occupiedSlots()+" slots, "+scan.itemTypes()+" item types.");
-        results.add("Output orders: "+point.pendingOutputOrders()+" queued, "
-                +point.pendingOutputItems()+" items pending.");
-        if(point.hauling())
-            results.add("HAUL: "+point.haulPhase()+" / "
-                    +point.haulWorkersAtSource()+"/4 rallied, "
-                    +point.haulWorkersAtDestination()+"/4 arrived; to "
-                    +point.haulDestination().toShortString());
-        BlockPos terminal=StorageScanner.connectedComputer(level,scanner,point);
-        if(terminal==null){
-            results.add("[BLOCKED] No Rack Computer touching this PTP/scanner or linked shelves.");
-            results.add("Connect shelves physically to a Rack Computer and the PTP.");
-            return results;
-        }
-        List<RackBlockEntity> racks=RackNetwork.fromComputer(level,terminal);
-        long stored=0;
-        int empty=0,installed=0;
+        List<RackBlockEntity> racks=RackNetwork.fromComputer(level,computer);
+        int readyRacks=0,emptyRacks=0;
+        long items=0;
         for(RackBlockEntity rack:racks){
-            if(rack.hasPallet())installed++;
-            else if(rack.isEmpty())empty++;
-            stored+=rack.totalItems();
+            if(rack.hasPallet())readyRacks++;
+            if(!rack.hasPallet()&&rack.isEmpty())emptyRacks++;
+            items+=rack.totalItems();
         }
-        results.add("Computer "+terminal.toShortString()+": "+racks.size()
-                +" loaded racks; "+installed+" with pallets, "
-                +empty+" empty for hauling; "+stored+" stored items.");
-        List<StorageGolemShelfEntity> shelves=RackComputerNet.nearbyShelves(level,terminal);
+        results.add("Racks: "+racks.size()+" linked / "+readyRacks
+                +" with pallets / "+emptyRacks+" empty / "+items+" stored items.");
+        List<StorageGolemShelfEntity> shelves=RackComputerNet.nearbyShelves(level,computer);
         int docked=shelves.stream().mapToInt(StorageGolemShelfEntity::docked).sum();
-        long auto=shelves.stream().filter(StorageGolemShelfEntity::sortingEnabled).count();
         results.add("Shelves: "+shelves.size()+" linked / "+docked
-                +" docked Golems / "+auto+" enabled shelves.");
+                +" docked real Golems. Four are required for a carrying crew.");
         int boxes=StorageGolemDispatch.linkedEmptyShulkers(level,shelves);
-        results.add("Shulker Tanks: "+boxes+" empty boxes across linked shelves.");
-        if(racks.isEmpty())
-            results.add("[BLOCKED] Computer must touch a pallet rack frame.");
-        else if(installed==0)
-            results.add("[SETUP] Install a pallet in a rack to test input/output jobs.");
-        if(shelves.isEmpty())
-            results.add("[BLOCKED] No linked Storage Golem Shelves at computer.");
-        else if(auto==0)
-            results.add("[PAUSED] Enable GOLEMS: AUTO in Rack Computer for sorting/orders.");
-        if(docked==0)
-            results.add("[BLOCKED] No docked Storage Golems; insert worker items into shelves.");
-        if(!point.hasPallet())
-            results.add("[BLOCKED] PTP needs an installed pallet for sorting/orders/hauling.");
-        else if(point.sealed()&&!point.hasWrap())
-            results.add("[BLOCKED] Sealed pallet has no Wrap Unit; cannot dispatch a haul.");
-        else if(point.sealed()){
-            if(docked<4)
-                results.add("[HAUL] Four docked Golems required for a new haul (have "+docked+").");
-            if(empty==0)
-                results.add("[HAUL] Leave a connected rack without a pallet for delivery.");
-            if(point.hauling())
-                results.add("[HAUL] Sneak-click scanner to cancel the active four-worker job.");
-            else if(point.hasWrap()&&docked>=4&&empty>0)
-                results.add("[READY] Wrapped-pallet transport prerequisites present.");
-        } else if(point.input()){
-            results.add("[INPUT] Put stock on PTP, leave rack capacity and GOLEMS: AUTO on.");
-        } else {
-            results.add("[OUTPUT] Request an item from Rack Computer; output pallet stays unsealed.");
-            if(boxes==0)results.add("[PACKING] Add empty shulkers to a tank touching linked shelves.");
+        results.add("Shelf Shulker Tanks: "+boxes+" empty boxes.");
+        List<PtpBlockEntity> points=StoragePtpNetwork.attached(level,computer,shelves);
+        results.add("Transfer Points: "+points.size()+" attached.");
+        for(PtpBlockEntity ptp:points){
+            int stacks=0,itemsOnPoint=0;
+            for(int i=0;i<ptp.getContainerSize();i++){
+                var item=ptp.displayItem(i);
+                if(!item.isEmpty()){stacks++;itemsOnPoint+=item.getCount();}
+            }
+            results.add("PTP "+ptp.getBlockPos().toShortString()
+                    +": "+(ptp.input()?"IN":"OUT")
+                    +" pallet="+ptp.hasPallet()
+                    +" sealed="+ptp.sealed()
+                    +" glass wrap="+ptp.hasWrap()
+                    +" items="+itemsOnPoint+" in "+stacks+" slots"
+                    +" orders="+ptp.pendingOutputOrders());
+            if(ptp.hauling())
+                results.add("  Four-Golem pickup: "+ptp.haulWorkersAtSource()
+                        +"/4 at source.");
         }
-        if(scan!=null&&scan.loaded())
-            results.add("Scanner estimate: "+scan.storable()+" fit / "
-                    +scan.overflow()+" without room (snapshot, not reservation).");
-        results.add("Use a backed-up world to test breaks, reloads, filters and cancellations.");
+        if(racks.isEmpty())results.add("[BLOCKED] Attach computer to a rack.");
+        if(shelves.isEmpty())results.add("[BLOCKED] Attach Storage Golem Shelves.");
+        if(docked<4)results.add("[CREW] Need 4 free docked Golems to enlist.");
+        if(points.isEmpty())results.add("[ORDER] Attach an OUTPUT PTP to computer or shelves.");
+        results.add("Right-click computer to enlist/return crew; right-click sealed "
+                +"PTP pallet to lift; rack or ground to deliver.");
         return results;
     }
 }
