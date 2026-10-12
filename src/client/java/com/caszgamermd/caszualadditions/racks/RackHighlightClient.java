@@ -24,6 +24,7 @@ public final class RackHighlightClient {
         if(!root.has("query")||root.get("query").getAsString().isBlank()
                 ||!root.has("highlights"))return;
         Map<BlockPos,Long> map=ACTIVE.computeIfAbsent(level,l->new HashMap<>());
+        map.clear(); // a new search replaces the previous highlight selection
         long until=level.getGameTime()+200;
         for(var value:root.getAsJsonArray("highlights")){
             JsonObject p=value.getAsJsonObject();
