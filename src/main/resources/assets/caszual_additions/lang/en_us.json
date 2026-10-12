@@ -100,5 +100,6 @@
   "block.caszual_additions.ptp_wrap_unit": "PTP Wrap Unit",
   "block.caszual_additions.storage_golem_shelf": "Storage Golem Shelf",
   "item.caszual_additions.storage_golem": "Storage Golem",
-  "entity.caszual_additions.storage_golem": "Storage Golem"
+  "entity.caszual_additions.storage_golem": "Storage Golem",
+  "block.caszual_additions.storage_scanner": "Storage Scanner"
 }
