@@ -3,6 +3,9 @@ package com.caszgamermd.caszualadditions.racks;
 import java.util.ArrayList;
 import java.util.UUID;
 import net.minecraft.core.NonNullList;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.ContainerHelper;
 import com.caszgamermd.caszualadditions.pallet.PalletBlock;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntity;
@@ -36,6 +39,25 @@ import net.minecraft.world.level.storage.ValueOutput;
  * duplicates its shelf token on spawn, unload, death or redock.
  */
 public final class StorageGolem extends PathfinderMob {
+    // Client-only representation; real contents remain in palletContents.
+    // This synchronizes just one material/item sample and visible crate count.
+    private static final EntityDataAccessor<ItemStack> DISPLAY_PALLET=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Integer> DISPLAY_CARGO=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.INT);
+    @Override protected void defineSynchedData(SynchedEntityData.Builder builder){
+        super.defineSynchedData(builder);
+        builder.define(DISPLAY_PALLET,ItemStack.EMPTY);
+        builder.define(DISPLAY_CARGO,0);
+    }
+    public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
+    public int visibleCargoCount(){return entityData.get(DISPLAY_CARGO);}
+    private void syncPalletVisual(){
+        entityData.set(DISPLAY_PALLET,carryingPallet.copy());
+        int filled=0;
+        for(ItemStack item:palletContents)if(!item.isEmpty())filled++;
+        entityData.set(DISPLAY_CARGO,Math.min(27,filled));
+    }
     private BlockPos home=BlockPos.ZERO, source=BlockPos.ZERO,destination=BlockPos.ZERO;
     private ItemStack cargo=ItemStack.EMPTY;
     private String itemId="";
@@ -54,6 +76,7 @@ public final class StorageGolem extends PathfinderMob {
     private boolean haulJob;
     private int haulTicket,haulIndex;
     private boolean playerHaul;
+    private boolean groundPickup;
     private String haulOwner="";
     private ItemStack carryingPallet=ItemStack.EMPTY;
     private NonNullList<ItemStack> palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
@@ -124,9 +147,20 @@ public final class StorageGolem extends PathfinderMob {
     }
     public boolean escorting(UUID owner){return ownedBy(owner)&&stage==1;}
     public boolean pickupPending(UUID owner){return ownedBy(owner)&&stage==0;}
+    public void beginGroundPickup(BlockPos groundRoot){
+        if(playerHaul&&stage==4&&!holdsPallet()){
+            source=groundRoot.immutable();
+            destination=groundRoot.immutable();
+            groundPickup=true;
+            haulTicket=0;
+            stage=0;
+            setCustomName(Component.literal("RALLY "+(haulIndex+1)+"/4"));
+        }
+    }
     public void cancelPendingPickup(ServerLevel level){
         if(playerHaul&&stage==0){
             cancelHaul(level);
+            groundPickup=false;
             stage=4;
             setCustomName(Component.literal("CREW "+(haulIndex+1)+"/4"));
         }
@@ -175,13 +209,14 @@ public final class StorageGolem extends PathfinderMob {
     public void beginPlayerPickup(BlockPos ptp,int ticket){
         if(playerHaul&&stage==4){
             source=ptp.immutable();destination=ptp.immutable();
-            haulTicket=ticket;stage=0;
+            haulTicket=ticket;groundPickup=false;stage=0;
             setCustomName(Component.literal("RALLY "+(haulIndex+1)+"/4"));
         }
     }
     public void startFollowing(){
         if(playerHaul&&stage==0){
             stage=1;
+            groundPickup=false;
             setCustomName(Component.literal("PALLET "+(haulIndex+1)+"/4"));
         }
     }
@@ -197,6 +232,7 @@ public final class StorageGolem extends PathfinderMob {
                 ||stack.isEmpty()||stock.size()!=216)return false;
         carryingPallet=stack.copyWithCount(1);
         for(int i=0;i<216;i++)palletContents.set(i,stock.get(i).copy());
+        syncPalletVisual();
         return true;
     }
     private boolean allCargoFits(Container dest){
@@ -283,6 +319,7 @@ public final class StorageGolem extends PathfinderMob {
     private void releaseCarriedPallet(){
         carryingPallet=ItemStack.EMPTY;
         palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
+        syncPalletVisual();
     }
     private void dropCarriedPallet(ServerLevel level){
         if(carryingPallet.isEmpty())return;
@@ -312,6 +349,42 @@ public final class StorageGolem extends PathfinderMob {
         if(owner==null){stage=2;return;}
         if(stage==0){
             if(!level.hasChunkAt(source))return;
+            if(groundPickup){
+                UUID ownerId=ownerId();
+                if(StorageGroundPalletTransfer.wrappedController(level,source)==null){
+                    groundPickup=false;
+                    stage=4;
+                    setCustomName(Component.literal("CREW "+(haulIndex+1)+"/4"));
+                    return;
+                }
+                BlockPos near=approach(level,source);
+                if(!level.hasChunkAt(near))return;
+                if(!closeTo(near)){
+                    if(tickCount%20==0)getNavigation().moveTo(
+                            near.getX()+.5,near.getY(),near.getZ()+.5,.86);
+                    return;
+                }
+                if(haulIndex==0){
+                    List<StorageGolem> crew=level.getEntitiesOfClass(
+                            StorageGolem.class,
+                            new net.minecraft.world.phys.AABB(source).inflate(12),
+                            other->other.playerHaul&&other.groundPickup
+                                    &&other.stage==0&&other.source.equals(source)
+                                    &&other.haulOwner.equals(haulOwner));
+                    boolean ready=crew.size()==4;
+                    int mask=0;
+                    for(StorageGolem member:crew){
+                        mask=WarehouseTeamProgress.arrive(mask,member.haulIndex);
+                        BlockPos dock=member.approach(level,source);
+                        if(!member.closeTo(dock))ready=false;
+                    }
+                    if(ready&&WarehouseTeamProgress.complete(mask)
+                            &&StorageGroundPalletTransfer.lift(level,source,this)){
+                        for(StorageGolem worker:crew)worker.startFollowing();
+                    }
+                }
+                return;
+            }
             PtpBlockEntity point=haulSource(level);
             if(point==null||!point.playerHaulValid(haulTicket,owner)){
                 stage=4;return;
@@ -342,10 +415,13 @@ public final class StorageGolem extends PathfinderMob {
         var player=level.getPlayerByUUID(owner);
         if(player==null||player.isSpectator())return;
         // Both empty crew and laden team stay with player, not static rack.
-        double radius=haulIndex==0?1.7:2.5;
-        double theta=(Math.PI/2)*haulIndex;
-        double x=player.getX()+Math.cos(theta)*radius;
-        double z=player.getZ()+Math.sin(theta)*radius;
+        // A stable four-corner formation. The shared 2x2 pallet is drawn
+        // only by the lead carrier between all four raised-arm Golems.
+        // The squad walks a few blocks BEHIND the player and stays together.
+        double behindX=-player.getDirection().getStepX()*2.8;
+        double behindZ=-player.getDirection().getStepZ()*2.8;
+        double x=player.getX()+behindX+(haulIndex%2==0?-.90:.90);
+        double z=player.getZ()+behindZ+(haulIndex<2?-.90:.90);
         if(distanceToSqr(x,player.getY(),z)>5){
             if(tickCount%15==0)getNavigation().moveTo(x,player.getY(),z,.94);
         }else getNavigation().stop();
@@ -438,6 +514,29 @@ public final class StorageGolem extends PathfinderMob {
                 &&level.getBlockState(p.above()).getCollisionShape(level,p.above()).isEmpty();
     }
     private BlockPos approach(ServerLevel level,BlockPos place) {
+        if(groundPickup&&level.hasChunkAt(place)){
+            BlockState base=level.getBlockState(place);
+            if(base.getBlock() instanceof PalletBlock){
+                int minX=Integer.MAX_VALUE,maxX=Integer.MIN_VALUE;
+                int minZ=Integer.MAX_VALUE,maxZ=Integer.MIN_VALUE;
+                for(int part=0;part<4;part++){
+                    BlockPos at=PalletBlock.partPos(place,part,base);
+                    minX=Math.min(minX,at.getX());maxX=Math.max(maxX,at.getX());
+                    minZ=Math.min(minZ,at.getZ());maxZ=Math.max(maxZ,at.getZ());
+                }
+                BlockPos[] sides={
+                    new BlockPos(minX,place.getY(),minZ-1),
+                    new BlockPos(maxX+1,place.getY(),minZ),
+                    new BlockPos(maxX,place.getY(),maxZ+1),
+                    new BlockPos(minX-1,place.getY(),maxZ)
+                };
+                for(int attempt=0;attempt<4;attempt++){
+                    BlockPos candidate=sides[(haulIndex+attempt)%4];
+                    if(openWalkway(level,candidate))return candidate;
+                }
+                return sides[haulIndex];
+            }
+        }
         BlockEntity be=level.hasChunkAt(place)?level.getBlockEntity(place):null;
         if(be instanceof PtpBlockEntity || be instanceof ShulkerTankEntity){
             // A scanner, linked shelf or Hopper Adapter can occupy the old
@@ -679,6 +778,7 @@ public final class StorageGolem extends PathfinderMob {
         out.putInt("haul_ticket",haulTicket);
         out.putInt("haul_worker_index",haulIndex);
         out.putBoolean("player_haul",playerHaul);
+        out.putBoolean("ground_pickup",groundPickup);
         out.putString("haul_owner",haulOwner);
         if(!carryingPallet.isEmpty())out.store("carried_pallet",ItemStack.CODEC,carryingPallet);
         ContainerHelper.saveAllItems(out,palletContents);
@@ -704,10 +804,12 @@ public final class StorageGolem extends PathfinderMob {
         haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
         haulIndex=Math.clamp(in.getIntOr("haul_worker_index",0),0,3);
         playerHaul=in.getBooleanOr("player_haul",false);
+        groundPickup=in.getBooleanOr("ground_pickup",false);
         haulOwner=in.getStringOr("haul_owner","");
         carryingPallet=in.read("carried_pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
         palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
         ContainerHelper.loadAllItems(in,palletContents);
+        syncPalletVisual();
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel server &&!deathDropsReleased){

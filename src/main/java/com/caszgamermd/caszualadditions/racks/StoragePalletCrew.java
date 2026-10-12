@@ -88,14 +88,33 @@ public final class StoragePalletCrew {
         if(workers.stream().anyMatch(w->w.holdsPallet()
                 ||w.escorting(player.getUUID())||w.pickupPending(player.getUUID())))
             return "This crew already has an active pallet pickup or delivery.";
-        if(!source.hasPallet()||!source.sealed()||!source.hasWrap())
-            return "Pallet must be sealed with a Wrap Unit before lifting.";
+        if(!source.hasPallet()||!source.sealed())
+            return "Pallet must be glass-wrapped before lifting (portable wrapper or Wrap Unit).";
         int ticket=source.beginPlayerHaul(player.getUUID());
         if(ticket==0)return "PTP cannot reserve pallet; check pending orders or an existing haul.";
         for(StorageGolem worker:workers)worker.beginPlayerPickup(source.getBlockPos(),ticket);
         return "Crew lifting sealed pallet. Wait for all four to reach its corners; "
                 +"then they will carry it as they follow you.";
     }
+    /** The warehouse Scanner can dispatch its FOUR real workers to any
+     * wrapped 2x2 pallet on the ground, regardless of warehouse membership. */
+    public static String pickupGround(ServerLevel level,ServerPlayer player,BlockPos clicked){
+        List<StorageGolem> workers=team(level,player);
+        if(!completeTeam(workers))
+            return "Four assigned Golems must be nearby. Link a warehouse Scanner first.";
+        if(workers.stream().anyMatch(w->w.holdsPallet()
+                ||w.escorting(player.getUUID())||w.pickupPending(player.getUUID())))
+            return "Finish or cancel the crew's current pallet job first.";
+        var pallet=StorageGroundPalletTransfer.wrappedController(level,clicked);
+        if(pallet==null)return "Pallet must be intact and glass-wrapped before Golems can lift it.";
+        BlockPos root=pallet.getBlockPos();
+        if(!assembledNear(workers,root))
+            return "Wait for all four Golems to catch up before requesting pickup.";
+        for(StorageGolem golem:workers)golem.beginGroundPickup(root);
+        return "Crew moving to the four sides of the wrapped ground pallet. "
+                +"They will lift its 216-slot inventory together and follow you.";
+    }
+
     private static boolean assembledNear(List<StorageGolem> members,
             BlockPos destination){
         for(StorageGolem golem:members)

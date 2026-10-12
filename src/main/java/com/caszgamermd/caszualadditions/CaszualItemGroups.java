@@ -43,6 +43,7 @@ public final class CaszualItemGroups {
                                     RackContent.PTP_WRAP_ITEM,
                                     RackContent.STORAGE_SHELF_ITEM,RackContent.STORAGE_GOLEM_ITEM))
                                 output.accept(new ItemStack(item));
+                            output.accept(new ItemStack(RackContent.PORTABLE_WRAPPER));
                             for(var blockItem:RackContent.INDUSTRIAL_CONCRETE_ITEMS.values())
                                 output.accept(new ItemStack(blockItem));
                             BuiltInRegistries.ITEM.forEach(item -> {

@@ -49,6 +49,42 @@ chunk saves. Run these tests on a backed-up world, then on a dedicated server.
 - [ ] Confirm IGC floor does not replace the four real Golems' walking
       requirements, create remote inventory access, or duplicate pallets.
 
+## Portable wrapping and off-site Golem pallet pickup
+
+- [ ] Craft a **Portable Pallet Wrapper** from 4 glass panes, 4 iron ingots
+      and 1 copper ingot (glass at four corners, iron on sides, copper center).
+      The same reusable tool should remain after wrapping.
+- [ ] Place a free-standing wooden, iron, copper or plastic pallet anywhere
+      (including outside the connected warehouse network). Fill several
+      inventory slots. Right-click with the portable wrapper: four clear
+      glass sides should enclose the cargo. Right-click again to unwrap.
+- [ ] Wrap a pallet in a rack or an assembled PTP with the same tool;
+      existing PTP Wrap Units and shears should remain functional.
+- [ ] Link the Scanner at a Rack Computer and enlist 4 docked Golems.
+      Lead them to a remote, wrapped **ground pallet**.
+- [ ] Right-click ANY of its four ground blocks with the Scanner. Workers
+      rally at reachable outer edges first; all four must arrive before
+      the pallet disappears from the floor.
+- [ ] Confirm the Golems form a square around **ONE raised 2x2 pallet**
+      while following the player, all four using elevated carrying-arm poses.
+      The lead renderer alone draws the pallet, wrapped glass and up to 27
+      visible cargo crates; no four-fold duplicate meshes.
+- [ ] Test after 1, 9, 18, 27 and 216 filled slots. Visual representation
+      caps at 27 while the server saves all 216 item stacks exactly.
+- [ ] Lead crew to a distant empty rack, then a clear 2x2 ground destination
+      on a second trip. Check exact item counts, filters, wraps and material.
+- [ ] Try clicking an unwrapped ground pallet with the Scanner; it must
+      reject the job without moving the source or stealing any items.
+- [ ] Break the ground pallet while Golems are walking to it. The crew must
+      stop the job without stealing/duplicating stock.
+- [ ] Repeated right-clicks while a pickup is active must not create two
+      pallet owners or let a second crew lift the same source.
+- [ ] Save/reload during pickup, while following, and after delivery; verify
+      the 216-slot owner stays singular and visible cargo is restored.
+- [ ] Test Golem death or shift-recall while carrying; items/pallet recover
+      exactly once and the floating pallet visually disappears.
+- [ ] Return empty crew to warehouse and dismiss from original Computer.
+
 ## Standalone pallet access and rack loading clearance
 
 - [ ] Place wooden, iron, plastic, and each copper-age pallet directly on

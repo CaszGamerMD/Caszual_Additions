@@ -246,6 +246,9 @@ public final class PalletBlock extends Block implements EntityBlock {
     protected InteractionResult useItemOn(ItemStack held,BlockState state,Level level,
             BlockPos pos,Player player,net.minecraft.world.InteractionHand hand,
             BlockHitResult hit){
+        if(held.is(com.caszgamermd.caszualadditions.racks.RackContent.PORTABLE_WRAPPER)
+                ||held.is(com.caszgamermd.caszualadditions.racks.RackContent.STORAGE_SCANNER_ITEM))
+            return InteractionResult.PASS;
         if(held.is(net.minecraft.world.item.Items.SHEARS)){
             PalletBlockEntity pallet=rootEntity(level,pos,state);
             if(pallet!=null&&pallet.glassWrapped()){
