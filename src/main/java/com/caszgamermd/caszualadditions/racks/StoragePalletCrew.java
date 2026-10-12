@@ -88,8 +88,8 @@ public final class StoragePalletCrew {
         if(workers.stream().anyMatch(w->w.holdsPallet()
                 ||w.escorting(player.getUUID())||w.pickupPending(player.getUUID())))
             return "This crew already has an active pallet pickup or delivery.";
-        if(!source.hasPallet()||!source.sealed()||!source.hasWrap())
-            return "Pallet must be sealed with a Wrap Unit before lifting.";
+        if(!source.hasPallet()||!source.sealed())
+            return "Pallet must be glass-wrapped before lifting (portable wrapper or Wrap Unit).";
         int ticket=source.beginPlayerHaul(player.getUUID());
         if(ticket==0)return "PTP cannot reserve pallet; check pending orders or an existing haul.";
         for(StorageGolem worker:workers)worker.beginPlayerPickup(source.getBlockPos(),ticket);
