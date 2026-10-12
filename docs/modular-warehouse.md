@@ -26,7 +26,7 @@ rack controllers.
    physical horizontal connector rods may cross the lane intentionally.
 3. Place adjacent rack bays **side by side** to extend the automatic aisle.
 4. For separate rack groups, **click a rack's horizontal face with a
-   Rack Connector**. It places two slim rods and automatically spans a clear
+   Rack Connector** near a side corner. It places one slim rod at that top corner and automatically spans a clear
    horizontal gap of up to four blocks to the next rack. Side-to-side spans
    extend the same aisle tag; face-to-face spans join warehouse networks.
    Two directly touching back-to-back racks connect automatically.
@@ -102,13 +102,13 @@ holding an upgrade item continues to use that upgrade.
   tagged earlier; rack front labels update without reapplying their tags.
 - **Existing labels:** Older rack names are automatically displayed as
   physical signs after loading the updated mod; they need no re-tagging.
-- **Rack Connector:** This is now a **physical placeable steel X-crossbeam
-  block**. Place one to four consecutive sections horizontally between
+- **Rack Connector:** This is now a **physical placeable steel top-corner
+  rod block**. Place one to four consecutive sections horizontally between
   rack frame cells to join their networks across an actual gap. Each placed
   section has collision; breaking any section immediately disconnects the
   bridge. No vertical bridging is required. One connector placed against
   a rack automatically spans a clear gap to another rack up to four blocks away.
-  The beam uses two thin horizontal rods, not a large X. Breaking the
+  The beam uses **one thin horizontal rod at the clicked top corner**, never a large X. Clicking a lower rack segment still anchors it at rack-top height. Breaking the
   beam disconnects the rack network.
 - **Back-to-back racks:** Two touching rack frames with opposite front
   facings now connect to the same computer network automatically, without
@@ -243,8 +243,7 @@ than teleporting items between containers.
 
 ### Shelf and input sorting setup
 
-1. Craft a **Storage Golem Shelf** and place it next to a **Rack Computer**
-   that physically connects to your loaded rack network.
+1. Craft a **Storage Golem Shelf** and place it adjacent to **any rack frame segment in the Rack Computer's network** (or adjacent to the Computer itself).
 2. Adjacent shelves connect into one bounded shelf group. Each block holds
    **up to two docked Storage Golems**. Right-click a shelf with a crafted
    Storage Golem item to insert it. The shelf renders the number currently
@@ -348,8 +347,7 @@ It remembers its linked warehouse and is used to lead a team of four
 real Storage Golems. The previous automatic "nearest empty rack" haul
 and placed-scanner inspection are retired.
 
-1. **Right-click a Rack Computer with the handheld Scanner.** This links
-   the scanner to that warehouse and deploys **four docked Golems** from
+1. **Right-click a Rack Computer while holding the Scanner** (no GUI button is needed). This saves the warehouse link immediately, then attempts to deploy **four docked Golems** from
    its physically linked shelves. The four workers follow you.
 2. Load a pallet on a **3×3 PTP equipped with a Wrap Unit** and seal it.
    Sealing renders **thin, transparent glass pane-style walls** around the
