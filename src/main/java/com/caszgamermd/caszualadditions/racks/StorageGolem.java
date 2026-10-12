@@ -490,6 +490,29 @@ public final class StorageGolem extends PathfinderMob {
                 &&level.getBlockState(p.above()).getCollisionShape(level,p.above()).isEmpty();
     }
     private BlockPos approach(ServerLevel level,BlockPos place) {
+        if(groundPickup&&level.hasChunkAt(place)){
+            BlockState base=level.getBlockState(place);
+            if(base.getBlock() instanceof PalletBlock){
+                int minX=Integer.MAX_VALUE,maxX=Integer.MIN_VALUE;
+                int minZ=Integer.MAX_VALUE,maxZ=Integer.MIN_VALUE;
+                for(int part=0;part<4;part++){
+                    BlockPos at=PalletBlock.partPos(place,part,base);
+                    minX=Math.min(minX,at.getX());maxX=Math.max(maxX,at.getX());
+                    minZ=Math.min(minZ,at.getZ());maxZ=Math.max(maxZ,at.getZ());
+                }
+                BlockPos[] sides={
+                    new BlockPos(minX,place.getY(),minZ-1),
+                    new BlockPos(maxX+1,place.getY(),minZ),
+                    new BlockPos(maxX,place.getY(),maxZ+1),
+                    new BlockPos(minX-1,place.getY(),maxZ)
+                };
+                for(int attempt=0;attempt<4;attempt++){
+                    BlockPos candidate=sides[(haulIndex+attempt)%4];
+                    if(openWalkway(level,candidate))return candidate;
+                }
+                return sides[haulIndex];
+            }
+        }
         BlockEntity be=level.hasChunkAt(place)?level.getBlockEntity(place):null;
         if(be instanceof PtpBlockEntity || be instanceof ShulkerTankEntity){
             // A scanner, linked shelf or Hopper Adapter can occupy the old
