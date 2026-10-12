@@ -22,6 +22,7 @@ public final class RackNetwork {
     /** Follow a solid row of physical connectors, never through empty air. */
     private static RackBlockEntity bridged(Level level,BlockPos edge,Direction side){
         if(!side.getAxis().isHorizontal())return null;
+        Boolean corner=null;
         for(int n=1;n<=MAX_CONNECTOR_GAP;n++){
             BlockPos cell=edge.relative(side,n);
             if(!level.hasChunkAt(cell))return null;
@@ -29,6 +30,9 @@ public final class RackNetwork {
             if(!(state.getBlock() instanceof RackConnectorBlock)
                     ||state.getValue(RackConnectorBlock.FACING).getAxis()!=side.getAxis())
                 return null;
+            boolean currentCorner=state.getValue(RackConnectorBlock.CORNER_POSITIVE);
+            if(corner!=null&&corner!=currentCorner)return null;
+            corner=currentCorner;
             BlockPos next=cell.relative(side);
             if(!level.hasChunkAt(next))return null;
             RackBlockEntity target=RackBlock.controller(level,next);
