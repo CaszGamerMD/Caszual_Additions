@@ -156,6 +156,9 @@ public final class RackBlock extends Block implements EntityBlock {
                         Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         RackBlockEntity rack = controller(level, pos);
         if (rack == null) return InteractionResult.PASS;
+        // Block placement must work identically on client and server, even
+        // when a rack already contains a pallet.
+        if(held.is(RackContent.CONNECTOR))return InteractionResult.PASS;
         if (!level.isClientSide() && player instanceof ServerPlayer server) {
             if (held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem
                     && blockItem.getBlock() instanceof PalletBlock) {
@@ -178,18 +181,10 @@ public final class RackBlock extends Block implements EntityBlock {
                 return InteractionResult.SUCCESS;
             }
             if (held.is(RackContent.CONNECTOR)) {
-                Direction side = hit.getDirection();
-                boolean removing = rack.hasConnector(side);
-                rack.toggleConnector(side);
-                if (!player.getAbilities().instabuild) {
-                    if (removing) player.getInventory().placeItemBackInInventory(
-                            new ItemStack(RackContent.CONNECTOR));
-                    else held.shrink(1);
-                }
-                server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "Rack connector " + (removing ? "removed" : "enabled")
-                        + " on " + side.getName()));
-                return InteractionResult.SUCCESS;
+                // A Rack Connector is now a real block placed beyond the
+                // clicked rack face. Leave normal BlockItem placement active.
+                // Existing saved legacy connector bits remain readable.
+                return InteractionResult.PASS;
             }
             if (held.is(RackContent.PALLET_FILTER)) {
                 ItemStack sample = player.getOffhandItem();

@@ -17,6 +17,38 @@ public final class RackNetwork {
     private RackNetwork() {}
 
     public record Link(RackBlockEntity rack, boolean aisle) {}
+    public static final int MAX_CONNECTOR_GAP=4;
+
+    /** Follow a solid row of physical connectors, never through empty air. */
+    private static RackBlockEntity bridged(Level level,BlockPos edge,Direction side){
+        if(!side.getAxis().isHorizontal())return null;
+        for(int n=1;n<=MAX_CONNECTOR_GAP;n++){
+            BlockPos cell=edge.relative(side,n);
+            if(!level.hasChunkAt(cell))return null;
+            BlockState state=level.getBlockState(cell);
+            if(!(state.getBlock() instanceof RackConnectorBlock)
+                    ||state.getValue(RackConnectorBlock.FACING).getAxis()!=side.getAxis())
+                return null;
+            BlockPos next=cell.relative(side);
+            if(!level.hasChunkAt(next))return null;
+            RackBlockEntity target=RackBlock.controller(level,next);
+            if(target!=null)return target;
+        }
+        return null;
+    }
+    private static boolean backToBack(Level level,RackBlockEntity a,RackBlockEntity b){
+        if(a.facing()!=b.facing().getOpposite())return false;
+        for(int part=0;part<12;part++){
+            BlockPos cell=RackBlock.cell(a.getBlockPos(),a.facing(),part);
+            BlockPos touching=cell.relative(a.facing().getOpposite());
+            if(!level.hasChunkAt(touching))continue;
+            BlockState state=level.getBlockState(touching);
+            if(state.getBlock() instanceof RackBlock
+                    &&RackBlock.root(touching,state).equals(b.getBlockPos()))
+                return true;
+        }
+        return false;
+    }
 
     public static List<RackBlockEntity> touching(Level level,BlockPos root) {
         List<RackBlockEntity> neighbors=new ArrayList<>();
@@ -27,6 +59,11 @@ public final class RackNetwork {
         for(int i=0;i<12;i++){
             BlockPos p=RackBlock.cell(root,facing,i);
             for(Direction side:Direction.values()){
+                if(side.getAxis().isHorizontal()){
+                    RackBlockEntity bridged=bridged(level,p,side);
+                    if(bridged!=null&&!bridged.getBlockPos().equals(root)
+                            &&seen.add(bridged.getBlockPos()))neighbors.add(bridged);
+                }
                 BlockPos adjacent=p.relative(side);
                 if(!level.hasChunkAt(adjacent))continue;
                 BlockState other=level.getBlockState(adjacent);
@@ -72,7 +109,17 @@ public final class RackNetwork {
     }
 
     public static boolean connected(ServerLevel level,RackBlockEntity a,RackBlockEntity b) {
-        if(aisleNeighbors(level,a,b))return true;
+        if(aisleNeighbors(level,a,b)||backToBack(level,a,b))return true;
+        // A continuous line of 1-4 horizontal connector blocks is both
+        // a physical beam and a network edge. It works across gaps.
+        for(int part=0;part<12;part++){
+            BlockPos cell=RackBlock.cell(a.getBlockPos(),a.facing(),part);
+            for(Direction direction:Direction.Plane.HORIZONTAL){
+                RackBlockEntity bridged=bridged(level,cell,direction);
+                if(bridged!=null&&bridged.getBlockPos().equals(b.getBlockPos()))
+                    return true;
+            }
+        }
         // Connectors must match the ACTUAL shared face. Checking only whether
         // the racks have some complementary connector sides could connect
         // touching racks across a completely different axis by mistake.

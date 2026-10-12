@@ -72,7 +72,18 @@ public final class RackComputerNet {
                         ByteBufCodecs.BOOL,GolemControl::enabled,GolemControl::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
-    private static final Map<ServerLevel,Map<BlockPos,Long>> HIGHLIGHTS=new WeakHashMap<>();
+    public record PtpControl(BlockPos computer,BlockPos point,int action)
+            implements CustomPacketPayload {
+        public static final Type<PtpControl> TYPE=new Type<>(
+                CaszualAdditions.id("rack_ptp_control"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,PtpControl> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,PtpControl::computer,
+                        BlockPos.STREAM_CODEC,PtpControl::point,
+                        ByteBufCodecs.INT,PtpControl::action,PtpControl::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
+    // Highlight roots are returned to the requesting client in Snapshot,
+    // rather than sending particles to every player on the server.
     private RackComputerNet() {}
 
     public static void initialize() {
@@ -82,22 +93,16 @@ public final class RackComputerNet {
         PayloadTypeRegistry.serverboundPlay().register(OrderRequest.TYPE,OrderRequest.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(OrderReply.TYPE,OrderReply.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GolemControl.TYPE,GolemControl.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(PtpControl.TYPE,PtpControl.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(Query.TYPE,(payload,context)->
                 context.server().execute(()->answer(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(OrderRequest.TYPE,(payload,context)->
                 context.server().execute(()->acceptOrder(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(GolemControl.TYPE,(payload,context)->
                 context.server().execute(()->setGolemSorting(context.player(),payload)));
-        ServerTickEvents.END_LEVEL_TICK.register(level->{
-            Map<BlockPos,Long> map=HIGHLIGHTS.get(level);
-            if(map==null||level.getGameTime()%10!=0)return;
-            map.entrySet().removeIf(e->e.getValue()<=level.getGameTime());
-            for(BlockPos p:map.keySet()){
-                if(!level.hasChunkAt(p))continue;
-                double x=p.getX()+.5,y=p.getY()+1.4,z=p.getZ()+.5;
-                level.sendParticles(ParticleTypes.END_ROD,x,y,z,5,.85,1.0,.85,.01);
-            }
-        });
+        ServerPlayNetworking.registerGlobalReceiver(PtpControl.TYPE,(payload,context)->
+                context.server().execute(()->controlPtp(context.player(),payload)));
+
     }
 
     private static void reply(ServerPlayer player,String message) {
@@ -117,6 +122,28 @@ public final class RackComputerNet {
         }
         return found;
     }
+    private static void controlPtp(ServerPlayer player,PtpControl control){
+        ServerLevel level=player.level();
+        BlockPos computer=control.computer();
+        if(player.distanceToSqr(computer.getX()+.5,computer.getY()+.5,
+                computer.getZ()+.5)>100||!level.hasChunkAt(computer)
+                ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER))return;
+        List<PtpBlockEntity> linked=StoragePtpNetwork.attached(
+                level,computer,nearbyShelves(level,computer));
+        PtpBlockEntity target=null;
+        for(PtpBlockEntity ptp:linked)
+            if(ptp.getBlockPos().equals(control.point())){target=ptp;break;}
+        if(target==null){reply(player,"PTP no longer connected to this workstation.");return;}
+        boolean success=switch(control.action()){
+            case 0->target.changeModeFromComputer();
+            case 1->target.changeWrapFromComputer();
+            default->false;
+        };
+        reply(player,success
+                ?"PTP updated at "+target.getBlockPos().toShortString()
+                :"PTP operation blocked: check pallet, Wrap Unit, pending orders or active haul.");
+    }
+
     private static void setGolemSorting(ServerPlayer player,GolemControl control){
         ServerLevel level=player.level();
         BlockPos at=control.computer();
@@ -199,10 +226,27 @@ public final class RackComputerNet {
         String term=query.query().strip().toLowerCase(java.util.Locale.ROOT);
         JsonObject root=new JsonObject();
         JsonArray list=new JsonArray();
+        JsonArray highlights=new JsonArray();
         root.addProperty("query",term);
         root.addProperty("networkSize",racks.size());
         List<StorageGolemShelfEntity> shelves=nearbyShelves(level,computer);
         root.addProperty("shelfCount",shelves.size());
+        JsonArray transferPoints=new JsonArray();
+        for(PtpBlockEntity point:StoragePtpNetwork.attached(level,computer,shelves)){
+            JsonObject cell=new JsonObject();
+            cell.addProperty("x",point.getBlockPos().getX());
+            cell.addProperty("y",point.getBlockPos().getY());
+            cell.addProperty("z",point.getBlockPos().getZ());
+            cell.addProperty("input",point.input());
+            cell.addProperty("pallet",point.hasPallet());
+            cell.addProperty("sealed",point.sealed());
+            cell.addProperty("wrap",point.hasWrap());
+            cell.addProperty("hopper",point.hasAdapter());
+            cell.addProperty("orders",point.pendingOutputOrders());
+            cell.addProperty("hauling",point.hauling());
+            transferPoints.add(cell);
+        }
+        root.add("ptps",transferPoints);
         root.addProperty("dockedGolems",shelves.stream()
                 .mapToInt(StorageGolemShelfEntity::docked).sum());
         root.addProperty("golemSortingEnabled",
@@ -263,11 +307,16 @@ public final class RackComputerNet {
             row.addProperty("pallet",rack.hasPallet());
             row.addProperty("filter",rack.filter());
             list.add(row);
-            if(!term.isEmpty() && matches<=RackNetwork.LIMIT)
-                HIGHLIGHTS.computeIfAbsent(level,l->new HashMap<>())
-                        .put(rack.getBlockPos(),level.getGameTime()+200);
+            if(!term.isEmpty()&&matches<=RackNetwork.LIMIT){
+                JsonObject position=new JsonObject();
+                position.addProperty("x",rack.getBlockPos().getX());
+                position.addProperty("y",rack.getBlockPos().getY());
+                position.addProperty("z",rack.getBlockPos().getZ());
+                highlights.add(position);
+            }
         }
         root.add("racks",list);
+        root.add("highlights",highlights);
         root.addProperty("matches",matches);
         root.addProperty("totalItems",totalItems);
         if(selected!=null){

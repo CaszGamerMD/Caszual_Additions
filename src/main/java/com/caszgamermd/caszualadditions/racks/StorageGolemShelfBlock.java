@@ -3,6 +3,11 @@ package com.caszgamermd.caszualadditions.racks;
 import com.mojang.serialization.MapCodec;
 import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -22,8 +27,19 @@ import org.jspecify.annotations.Nullable;
 
 /** One rack-adjacent shelf stores two Storage Golems, links to neighbors. */
 public final class StorageGolemShelfBlock extends Block implements EntityBlock {
+    public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
     private final MapCodec<StorageGolemShelfBlock> codec=MapCodec.unit(this);
-    public StorageGolemShelfBlock(BlockBehaviour.Properties props){super(props);}
+    public StorageGolemShelfBlock(BlockBehaviour.Properties props){
+        super(props);
+        registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));
+    }
+    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder){
+        builder.add(FACING);
+    }
+    @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context){
+        return defaultBlockState().setValue(FACING,
+                context.getHorizontalDirection().getOpposite());
+    }
     @Override protected MapCodec<? extends Block> codec(){return codec;}
     @Override public @Nullable BlockEntity newBlockEntity(BlockPos pos,BlockState state){
         return new StorageGolemShelfEntity(pos,state);

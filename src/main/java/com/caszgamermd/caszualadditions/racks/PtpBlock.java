@@ -4,6 +4,9 @@ import com.caszgamermd.caszualadditions.pallet.PalletBlock;
 import com.mojang.serialization.MapCodec;
 import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -39,17 +42,19 @@ import org.jspecify.annotations.Nullable;
 public final class PtpBlock extends Block implements EntityBlock {
     public enum Kind { TRANSFER, HOPPER, WRAP }
     public static final IntegerProperty PART=IntegerProperty.create("part",0,9);
+    public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
     private final Kind kind;
     private final MapCodec<PtpBlock> codec=MapCodec.unit(this);
 
     public PtpBlock(Kind kind,BlockBehaviour.Properties props){
         super(props);this.kind=kind;
-        registerDefaultState(stateDefinition.any().setValue(PART,0));
+        registerDefaultState(stateDefinition.any().setValue(PART,0)
+                .setValue(FACING,Direction.NORTH));
     }
     public Kind kind(){return kind;}
     @Override protected MapCodec<? extends Block> codec(){return codec;}
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder){
-        builder.add(PART);
+        builder.add(PART,FACING);
     }
     public static BlockPos cell(BlockPos root,int part){
         return root.offset((part-1)%3,0,(part-1)/3);
@@ -104,7 +109,8 @@ public final class PtpBlock extends Block implements EntityBlock {
         // The full front approach of a rack stays available for physical
         // aisle tags, connector upgrades and pallet access.
         return RackBlock.reservedForAccess(context.getLevel(),context.getClickedPos())
-                ?null:super.getStateForPlacement(context);
+                ?null:defaultBlockState().setValue(FACING,
+                        context.getHorizontalDirection().getOpposite());
     }
     @Override public void setPlacedBy(Level level,BlockPos pos,BlockState state,
             @Nullable LivingEntity player,ItemStack stack){
@@ -124,7 +130,8 @@ public final class PtpBlock extends Block implements EntityBlock {
         if(part==0||!allowed(replacement.kind(),part))return;
         if(replacement==this)return;
         if(controller(level,pos)==null)return;
-        level.setBlock(pos,replacement.defaultBlockState().setValue(PART,part),3);
+        level.setBlock(pos,replacement.defaultBlockState().setValue(PART,part)
+                .setValue(FACING,player.getDirection().getOpposite()),3);
         if(!player.getAbilities().instabuild){
             held.shrink(1);
             player.getInventory().placeItemBackInInventory(new ItemStack(this));

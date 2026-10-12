@@ -1,7 +1,20 @@
 {
   "variants": {
-    "": {
-      "model": "caszual_additions:block/rack_computer"
+    "facing=north": {
+      "model": "caszual_additions:block/rack_computer",
+      "y": 0
+    },
+    "facing=east": {
+      "model": "caszual_additions:block/rack_computer",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "caszual_additions:block/rack_computer",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "caszual_additions:block/rack_computer",
+      "y": 270
     }
   }
 }

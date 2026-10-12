@@ -54,6 +54,10 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             float partial,Vec3 camera,ModelFeatureRenderer.@Nullable CrumblingOverlay cracks){
         BlockEntityRenderer.super.extractRenderState(rack,state,partial,camera,cracks);
         state.facing=rack.facing();
+        state.outlined=rack.getLevel()!=null
+                &&RackHighlightClient.highlighted(rack.getLevel(),rack.getBlockPos());
+        if(state.outlined)blocks.update(state.highlightEdge,
+                Blocks.SEA_LANTERN.defaultBlockState(),DISPLAY);
         var world=rack.getLevel();
         String aisle="";
         if(world!=null){
@@ -161,7 +165,10 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
         double z=Math.min(0,Math.min(right.getStepZ(),
                 Math.min(back.getStepZ(),right.getStepZ()+back.getStepZ())));
         poses.pushPose();
-        poses.translate(x,0,z);
+        // Four Minecraft pixels of total clearance across the 2-block deck:
+        // 2px inset per edge. Scale cargo with its pallet as one assembly.
+        poses.translate(x+.125,.06,z+.125);
+        poses.scale(.875f,.875f,.875f);
         for(int i=0;i<4;i++){
             float offset=.04f+i*.49f;
             board(state,poses,collector,i,offset,.19f,.015f,.43f,.105f,.985f);
@@ -237,6 +244,27 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             poses.popPose();
         }
 
+        if(state.outlined){
+            // Bright continuous edge outline around the WHOLE 2x2x3 rack,
+            // intentionally offset beyond the metal posts to avoid z-fighting.
+            // Render only for the player who searched, no global particles.
+            poses.pushPose();
+            poses.translate(x,0,z);
+            float inset=-.035f,span=2.07f,top=3.04f,edge=.032f;
+            for(float xx:new float[]{inset,2.035f})
+                for(float zz:new float[]{inset,2.035f})
+                    board(state.highlightEdge,state,poses,collector,
+                            xx,-.02f,zz,edge,top,edge);
+            for(float yy:new float[]{-.025f,2.98f}){
+                for(float xx:new float[]{inset,2.035f})
+                    board(state.highlightEdge,state,poses,collector,
+                            xx,yy,inset,edge,edge,span);
+                for(float zz:new float[]{inset,2.035f})
+                    board(state.highlightEdge,state,poses,collector,
+                            inset,yy,zz,span,edge,edge);
+            }
+            poses.popPose();
+        }
         if(!state.rackLabel.isBlank())
             submitFacingPlate(state,poses,collector,state.rackLabel,
                     front,x,z,2.31f,0xffe4f0f5);

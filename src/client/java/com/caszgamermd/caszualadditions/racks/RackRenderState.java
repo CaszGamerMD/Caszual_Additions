@@ -11,6 +11,8 @@ public final class RackRenderState extends BlockEntityRenderState {
     public final BlockModelRenderState[] boards=new BlockModelRenderState[4];
     public final BlockModelRenderState carton=new BlockModelRenderState();
     public final BlockModelRenderState crossBeam=new BlockModelRenderState();
+    public final BlockModelRenderState highlightEdge=new BlockModelRenderState();
+    public boolean outlined;
     public final BlockModelRenderState nameplate=new BlockModelRenderState();
     public final boolean[] linkedFaces=new boolean[6];
     public String rackLabel="",aisleLabel="";

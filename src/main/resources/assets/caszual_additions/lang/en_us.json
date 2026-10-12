@@ -91,6 +91,7 @@
   "item.caszual_additions.rack_tag": "Rack Tag",
   "item.caszual_additions.aisle_tag": "Aisle Tag",
   "item.caszual_additions.rack_connector": "Rack Connector",
+  "block.caszual_additions.rack_connector": "Rack Connector",
   "item.caszual_additions.pallet_filter": "Pallet Filter",
   "block.caszual_additions.order_collector_hub": "Order Collector Hub",
   "block.caszual_additions.shulker_tank": "Shulker Tank",

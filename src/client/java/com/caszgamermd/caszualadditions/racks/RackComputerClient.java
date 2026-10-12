@@ -16,6 +16,7 @@ public final class RackComputerClient {
                 }));
         ClientPlayNetworking.registerGlobalReceiver(RackComputerNet.Snapshot.TYPE,
                 (payload,context)->context.client().execute(()->{
+                    RackHighlightClient.accept(payload.json());
                     if(Minecraft.getInstance().gui.screen() instanceof RackComputerScreen screen)
                         screen.accept(payload.computer(),payload.json());
                 }));

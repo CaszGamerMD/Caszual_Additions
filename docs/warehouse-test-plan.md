@@ -137,7 +137,42 @@ any world with valuable inventories before testing.
 - [ ] Break/re-place hub in Survival; verify stored output, workers and
       pallet drop exactly once; saved worlds with legacy hubs still open.
 
-## 9. Dedicated-server and reload verification
+## 9. Physical connector, workstation, rotation and outline regression
+
+- [ ] Build two racks aligned side by side. Place physical **Rack Connector**
+      blocks in a straight horizontal line across a **1–4 block gap**
+      from any actual rack-frame cell to another rack's frame. Verify
+      continuous steel X-beams, real collision and shared Rack Computer search.
+- [ ] Break a middle connector. The racks must immediately disconnect from
+      the search network. Place it back to reconnect.
+- [ ] Try a five-block gap or an unaligned/vertical connector: the racks
+      must remain disconnected. Verify no unintended connection through empty air.
+- [ ] Put racks directly **back-to-back with opposite front facings**, no
+      connectors: verify both groups appear in computer searches.
+- [ ] Verify existing world's old face-connector flags remain readable; new
+      items place real connector blocks instead of editing invisible flags.
+- [ ] Install wood, plastic, copper and iron pallets in N/E/S/W racks.
+      Verify the deck and 3x3x3 cargo are inset **two pixels per edge**
+      from the rack frame; collision matches their reduced bounds.
+- [ ] Apply search term at a computer. All matching racks should display a
+      **ten-second bright full-frame outline**; no END_ROD particles.
+      A second player should not see another player's private search outline.
+- [ ] Place a Golem Shelf facing north/east/south/west and confirm both
+      shelf frame and docked silhouettes turn toward the placing player.
+- [ ] Place a Hopper Adapter and Wrap Unit in eligible PTP cells while facing
+      all four directions, including replacement modules on assembled PTPs.
+      Verify their ports and fins face the correct way.
+- [ ] Place Rack Computer facing each direction and confirm the kiosk's
+      angled screen, keyboard and pedestal match the facing (no missing faces).
+- [ ] Link two independent PTPs to a computer (one directly, one via shelves).
+      Cycle **NEXT PTP**, check both coordinates and statuses, toggle INPUT /
+      OUTPUT, and wrap/unseal from the computer.
+- [ ] Try wrapping with no Wrap Unit or pallet, changing mode with pending
+      orders, and changing either during a four-Golem haul. Server must refuse.
+- [ ] Save/reload the world. Shelf, PTP module and kiosk facings must persist,
+      as must physical connector topology and pallet inventories.
+
+## 10. Dedicated-server and reload verification
 
 - [ ] Repeat loading, saving, breaking and reconnecting on a Fabric
       dedicated server with two simultaneous players.
