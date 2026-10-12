@@ -24,6 +24,8 @@ public final class RackContent {
     public static Item STORAGE_SHELF_ITEM,STORAGE_GOLEM_ITEM;
     public static EntityType<StorageGolem> STORAGE_GOLEM_TYPE;
     public static Block RACK_COMPUTER;
+    public static StorageScannerBlock STORAGE_SCANNER;
+    public static Item STORAGE_SCANNER_ITEM;
     public static OrderHubBlock ORDER_HUB;
     public static ShulkerTankBlock SHULKER_TANK;
     public static PtpBlock PTP_TRANSFER,PTP_HOPPER,PTP_WRAP;
@@ -63,6 +65,12 @@ public final class RackContent {
                 new RackComputerBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
                         .strength(3.5f).setId(computerKey)));
         COMPUTER_ITEM=blockItem("rack_computer",RACK_COMPUTER);
+        Identifier scannerId=CaszualAdditions.id("storage_scanner");
+        ResourceKey<Block> scannerKey=ResourceKey.create(Registries.BLOCK,scannerId);
+        STORAGE_SCANNER=Registry.register(BuiltInRegistries.BLOCK,scannerKey,
+                new StorageScannerBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
+                        .strength(3.5f).noOcclusion().setId(scannerKey)));
+        STORAGE_SCANNER_ITEM=blockItem("storage_scanner",STORAGE_SCANNER);
         RACK_TAG=item("rack_tag");
         AISLE_TAG=item("aisle_tag");
         CONNECTOR=item("rack_connector");
