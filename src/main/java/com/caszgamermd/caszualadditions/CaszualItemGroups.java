@@ -34,6 +34,7 @@ public final class CaszualItemGroups {
                             output.accept(new ItemStack(FunBarrelContent.ITEM));
                             for (var item : java.util.List.of(RackContent.RACK_ITEM,
                                     RackContent.COMPUTER_ITEM, RackContent.STORAGE_SCANNER_ITEM,
+                                    RackContent.WAREHOUSE_TEST_KIT,
                                     RackContent.RACK_TAG,
                                     RackContent.AISLE_TAG,RackContent.CONNECTOR,
                                     RackContent.PALLET_FILTER,RackContent.HUB_ITEM,
