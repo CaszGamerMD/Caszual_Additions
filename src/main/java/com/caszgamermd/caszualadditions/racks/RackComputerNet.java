@@ -228,6 +228,8 @@ public final class RackComputerNet {
                         +(ptp.hasAdapter()?" / hopper adapter":""));
             break;
         }
+        String scannerSummary=StorageScanner.reportForComputer(level,computer,shelves);
+        if(!scannerSummary.isBlank())root.addProperty("scannerSummary",scannerSummary);
         int matches=0;
         int totalItems=0;
         RackBlockEntity selected=null;
