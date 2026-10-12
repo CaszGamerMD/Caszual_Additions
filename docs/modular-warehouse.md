@@ -434,10 +434,12 @@ just individual item stacks. This is a manually dispatched, bounded workflow.
   thread, after all four Golems have arrived and all item components
   are validated against the destination pallet filter.
 
-**Presentation limitation:** The four workers walk the entire route, but
-the pallet currently stays visually at the source while escrowed and
-appears in the rack on successful handoff. A synchronized floating
-pallet model and corner-grip animation are future polish. This is also
+**Presentation limitation:** The four workers show synchronized numbered
+RALLY/PALLET labels and lift their arms while carrying, and the source PTP
+shows purple status lamps during the job. The pallet itself still remains
+visually at the source while escrowed, then appears in the rack on handoff.
+A fully synchronized floating pallet mesh and physically coordinated
+corner-grip placement remain future polish. This is also
 *not* an unloaded-chunk hauling system and does not reserve the target
 rack against other uses.
 
