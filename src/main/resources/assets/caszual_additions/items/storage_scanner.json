@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "minecraft:item/spyglass"
+    "model": "caszual_additions:item/storage_scanner"
   }
 }
