@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 import net.minecraft.core.BlockPos;
-import com.caszgamermd.caszualadditions.racks.RackContent;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -69,8 +68,7 @@ public final class FunBarrelBlockEntity extends BlockEntity
             Identifier id = BuiltInRegistries.ITEM.getKey(item);
             // Retired saved-world compatibility items are never included in
             // a newly created Barrel of Caszual Fun.
-            if (item != Items.AIR && id != null && caszualFamily(id)
-                    &&item!=RackContent.ORDER_COLLECTOR&&item!=RackContent.HUB_ITEM) {
+            if (item != Items.AIR && id != null && caszualFamily(id)) {
                 registered.add(item);
             }
         });
