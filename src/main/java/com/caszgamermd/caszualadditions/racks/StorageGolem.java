@@ -39,6 +39,10 @@ public final class StorageGolem extends PathfinderMob {
     private BlockPos magazine=BlockPos.ZERO;
     private ItemStack emptyBox=ItemStack.EMPTY;
     private int packedItemCount;
+    // Four workers are independently saved and physically navigate both
+    // checkpoints; their sealed pallet remains escrowed on the source PTP.
+    private boolean haulJob;
+    private int haulTicket,haulIndex;
     private boolean deathDropsReleased;
     private int waitTicks;
     public StorageGolem(EntityType<? extends StorageGolem> type,Level level){
@@ -80,6 +84,70 @@ public final class StorageGolem extends PathfinderMob {
         stage=4;
         pickupLimit=Math.clamp(amount,1,27*64);
     }
+    public void assignHaul(BlockPos shelf,BlockPos transfer,BlockPos rack,
+            int ticket,int index){
+        home=shelf.immutable();source=transfer.immutable();destination=rack.immutable();
+        cargo=ItemStack.EMPTY;emptyBox=ItemStack.EMPTY;requestedSample=ItemStack.EMPTY;
+        outputJob=false;outputTicket=0;packedJob=false;packedItemCount=0;
+        haulJob=true;haulTicket=ticket;haulIndex=index;stage=0;waitTicks=0;
+    }
+    private PtpBlockEntity haulSource(ServerLevel level){
+        return level.hasChunkAt(source)
+                &&level.getBlockEntity(source) instanceof PtpBlockEntity point?point:null;
+    }
+    private void cancelHaul(ServerLevel level){
+        if(haulJob&&haulTicket!=0){
+            PtpBlockEntity sourcePoint=haulSource(level);
+            if(sourcePoint!=null&&sourcePoint.validHaul(haulTicket,destination))
+                sourcePoint.cancelHaul();
+            haulTicket=0;
+        }
+    }
+    /**
+     * Unlike ordinary item jobs, the workers never withdraw cargo. The
+     * wrapped source pallet stays sealed and locked until all four stand at
+     * the destination, where the PTP commits one validated rack handoff.
+     */
+    private void tickHaul(ServerLevel level){
+        if(stage==2){
+            BlockPos target=home;
+            if(!level.hasChunkAt(target))return;
+            if(!closeTo(target)){
+                if(tickCount%30==0)getNavigation().moveTo(target.getX()+.5,
+                        target.getY()+1,target.getZ()+.5,.78);
+                return;
+            }
+            getNavigation().stop();
+            if(level.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf
+                    &&shelf.add())discard();
+            return;
+        }
+        if(!level.hasChunkAt(source))return;
+        PtpBlockEntity ptp=haulSource(level);
+        if(ptp==null||!ptp.validHaul(haulTicket,destination)){
+            stage=2;return;
+        }
+        ptp.renewHaul(haulTicket);
+        if(stage==0&&ptp.haulStage(haulTicket)==1)stage=1;
+        BlockPos target=stage==0?source:destination;
+        if(!level.hasChunkAt(target))return;
+        BlockPos walkway=approach(level,target);
+        if(!level.hasChunkAt(walkway))return;
+        if(!closeTo(walkway)){
+            if(tickCount%30==0)getNavigation().moveTo(walkway.getX()+.5,
+                    walkway.getY(),walkway.getZ()+.5,.78);
+            return;
+        }
+        getNavigation().stop();
+        if(stage==0){
+            ptp.assembleHaul(haulTicket,haulIndex);
+            if(ptp.haulStage(haulTicket)==1)stage=1;
+        }else if(stage==1){
+            // It is safe to call this repeatedly while waiting for the other
+            // three. Bitmasks prevent duplicate arrival/commit operations.
+            if(ptp.arriveHaul(haulTicket,haulIndex,level))stage=2;
+        }
+    }
     private PtpBlockEntity outputPoint(ServerLevel level){
         return level.hasChunkAt(destination)
                 &&level.getBlockEntity(destination) instanceof PtpBlockEntity ptp?ptp:null;
@@ -110,6 +178,7 @@ public final class StorageGolem extends PathfinderMob {
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel level)||tickCount%10!=0)return;
+        if(haulJob){tickHaul(level);return;}
         if(outputJob&&outputTicket!=0){
             PtpBlockEntity ptp=outputPoint(level);
             if(ptp!=null)ptp.renewOutput(outputTicket);
@@ -304,6 +373,9 @@ public final class StorageGolem extends PathfinderMob {
         out.store("magazine",BlockPos.CODEC,magazine);
         out.putInt("packed_item_count",packedItemCount);
         if(!emptyBox.isEmpty())out.store("empty_box",ItemStack.CODEC,emptyBox);
+        out.putBoolean("haul_job",haulJob);
+        out.putInt("haul_ticket",haulTicket);
+        out.putInt("haul_worker_index",haulIndex);
     }
     @Override protected void readAdditionalSaveData(ValueInput in){
         super.readAdditionalSaveData(in);
@@ -322,11 +394,15 @@ public final class StorageGolem extends PathfinderMob {
         magazine=in.read("magazine",BlockPos.CODEC).orElse(BlockPos.ZERO);
         packedItemCount=Math.max(0,in.getIntOr("packed_item_count",0));
         emptyBox=in.read("empty_box",ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        haulJob=in.getBooleanOr("haul_job",false);
+        haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
+        haulIndex=Math.clamp(in.getIntOr("haul_worker_index",0),0,3);
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel server &&!deathDropsReleased){
             deathDropsReleased=true;
             releaseOutput(server);
+            cancelHaul(server);
             if(!cargo.isEmpty()){
                 Containers.dropItemStack(server,getX(),getY(),getZ(),cargo);
                 cargo=ItemStack.EMPTY;
@@ -343,7 +419,10 @@ public final class StorageGolem extends PathfinderMob {
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(level().isClientSide())return InteractionResult.SUCCESS;
         if(!player.isShiftKeyDown())return InteractionResult.PASS;
-        if(level() instanceof ServerLevel server)releaseOutput(server);
+        if(level() instanceof ServerLevel server){
+            releaseOutput(server);
+            cancelHaul(server);
+        }
         if(!cargo.isEmpty()){
             player.getInventory().placeItemBackInInventory(cargo.copy());
             cargo=ItemStack.EMPTY;
