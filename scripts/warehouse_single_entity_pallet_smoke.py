@@ -24,7 +24,11 @@ assert entity.index("if(!verify(rack))") < entity.index("clearCargo();"),"No ear
 assert entity.index("complete=verify(dest);") < entity.index("clearCargo();",entity.index("deliverToGround"))
 assert "layer()" in model and "PartPose.offset(x,0,z)" in model
 assert "state.walkAnimationPos" in model and "leftLeg[i].xRot" in model
-assert "leftArm[i].xRot=-1.40f" in model
+assert "leftArm[i].xRot=-1.40f*state.liftProgress" in model
+assert "if(liftTicks<12)" in entity
+assert "entityData.set(LIFT_TICKS,liftTicks)" in entity
+assert 'out.putInt("lift_ticks",liftTicks)' in entity
+assert "state.liftProgress=entity.liftProgress()" in renderer
 assert "only" not in crew.lower() or "formMovingPallet(" in crew
 assert "if(!level.addFreshEntity(carrier))return false;" in crew
 assert crew.index("if(!level.addFreshEntity(carrier))return false;") < crew.index("leader.relinquishPalletToRig();")
