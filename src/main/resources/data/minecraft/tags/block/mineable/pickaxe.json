@@ -2,6 +2,22 @@
   "replace": false,
   "values": [
     "caszual_additions:unbreakable_anvil",
-    "caszual_additions:player_head_vending_machine"
+    "caszual_additions:player_head_vending_machine",
+    "caszual_additions:white_industrial_grade_concrete",
+    "caszual_additions:orange_industrial_grade_concrete",
+    "caszual_additions:magenta_industrial_grade_concrete",
+    "caszual_additions:light_blue_industrial_grade_concrete",
+    "caszual_additions:yellow_industrial_grade_concrete",
+    "caszual_additions:lime_industrial_grade_concrete",
+    "caszual_additions:pink_industrial_grade_concrete",
+    "caszual_additions:gray_industrial_grade_concrete",
+    "caszual_additions:light_gray_industrial_grade_concrete",
+    "caszual_additions:cyan_industrial_grade_concrete",
+    "caszual_additions:purple_industrial_grade_concrete",
+    "caszual_additions:blue_industrial_grade_concrete",
+    "caszual_additions:brown_industrial_grade_concrete",
+    "caszual_additions:green_industrial_grade_concrete",
+    "caszual_additions:red_industrial_grade_concrete",
+    "caszual_additions:black_industrial_grade_concrete"
   ]
 }
