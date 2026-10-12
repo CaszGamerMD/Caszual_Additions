@@ -3,6 +3,9 @@ package com.caszgamermd.caszualadditions.racks;
 import java.util.ArrayList;
 import java.util.UUID;
 import net.minecraft.core.NonNullList;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.ContainerHelper;
 import com.caszgamermd.caszualadditions.pallet.PalletBlock;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntity;
@@ -36,6 +39,25 @@ import net.minecraft.world.level.storage.ValueOutput;
  * duplicates its shelf token on spawn, unload, death or redock.
  */
 public final class StorageGolem extends PathfinderMob {
+    // Client-only representation; real contents remain in palletContents.
+    // This synchronizes just one material/item sample and visible crate count.
+    private static final EntityDataAccessor<ItemStack> DISPLAY_PALLET=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Integer> DISPLAY_CARGO=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.INT);
+    @Override protected void defineSynchedData(SynchedEntityData.Builder builder){
+        super.defineSynchedData(builder);
+        builder.define(DISPLAY_PALLET,ItemStack.EMPTY);
+        builder.define(DISPLAY_CARGO,0);
+    }
+    public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
+    public int visibleCargoCount(){return entityData.get(DISPLAY_CARGO);}
+    private void syncPalletVisual(){
+        entityData.set(DISPLAY_PALLET,carryingPallet.copy());
+        int filled=0;
+        for(ItemStack item:palletContents)if(!item.isEmpty())filled++;
+        entityData.set(DISPLAY_CARGO,Math.min(27,filled));
+    }
     private BlockPos home=BlockPos.ZERO, source=BlockPos.ZERO,destination=BlockPos.ZERO;
     private ItemStack cargo=ItemStack.EMPTY;
     private String itemId="";
@@ -210,6 +232,7 @@ public final class StorageGolem extends PathfinderMob {
                 ||stack.isEmpty()||stock.size()!=216)return false;
         carryingPallet=stack.copyWithCount(1);
         for(int i=0;i<216;i++)palletContents.set(i,stock.get(i).copy());
+        syncPalletVisual();
         return true;
     }
     private boolean allCargoFits(Container dest){
@@ -296,6 +319,7 @@ public final class StorageGolem extends PathfinderMob {
     private void releaseCarriedPallet(){
         carryingPallet=ItemStack.EMPTY;
         palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
+        syncPalletVisual();
     }
     private void dropCarriedPallet(ServerLevel level){
         if(carryingPallet.isEmpty())return;
@@ -785,6 +809,7 @@ public final class StorageGolem extends PathfinderMob {
         carryingPallet=in.read("carried_pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
         palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
         ContainerHelper.loadAllItems(in,palletContents);
+        syncPalletVisual();
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel server &&!deathDropsReleased){
