@@ -23,16 +23,18 @@ chunk saves. Run these tests on a backed-up world, then on a dedicated server.
 ## Rack connectors — slim rods, horizontal only
 
 - [ ] Facing NORTH, EAST, SOUTH and WEST, right-click a rack frame with a
-      Rack Connector item. Confirm it renders **two thin, long rack-frame
-      rods**, NOT a giant diagonal X.
+      Rack Connector item. Confirm it renders **one thin, top-corner frame
+      rod**, not two middle rods or a giant diagonal X.
 - [ ] Put another rack 1–4 clear horizontal cells away on the clicked face;
-      confirm one connector click extends thin rods across the gap.
+      confirm one connector click extends the single top-corner rod across the gap.
 - [ ] Try **side-to-side** spans to join two parallel racks in one aisle.
       Anvil-name an Aisle Tag A; verify tag inheritance and Rack Tag A-12.
 - [ ] Try **face-to-face** spans. The Rack Computer must discover both
       groups, even if they retain separate aisle tags.
 - [ ] Destroy a middle section; verify connection and search results break.
       Restore the piece and confirm it reconnects without restart.
+- [ ] Click a lower rack section near each opposite side corner: the rod
+      must snap to the rack's top at the corner chosen by the click.
 - [ ] A five-block gap, a diagonal turn and vertical connector placement
       must NOT silently join rack networks.
 - [ ] Two racks placed directly back-to-back connect without rod items.
@@ -58,10 +60,13 @@ chunk saves. Run these tests on a backed-up world, then on a dedicated server.
 
 ## Handheld Scanner — link, lift, follow, deliver, return
 
-- [ ] Right-click the Rack Computer holding the **Storage Scanner tool**:
-      it links to the warehouse and dispatches exactly four docked Golems.
-- [ ] With only three docked Golems, scanner refuses dispatch. The three
-      stay on shelves and aren't consumed by a partially failed dispatch.
+- [ ] Dock Golems on shelves touching a rack several blocks away from the
+      Computer; verify Rack Computer and automated sorting detect them.
+- [ ] Right-click the Rack Computer while HOLDING the **Storage Scanner tool**:
+      it saves the warehouse link immediately, then attempts to deploy four Golems.
+- [ ] With only three docked Golems, Scanner should still LINK to the
+      Computer and clearly report that four are required. No worker items
+      are consumed by failed dispatch.
 - [ ] All four real Golems follow player before they pick up a pallet.
 - [ ] Right-click a **sealed pallet on an equipped PTP** with scanner.
       The four move to the pallet first; they assemble on its sides.
