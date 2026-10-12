@@ -40,6 +40,7 @@ public final class MovingPalletRenderer extends MobRenderer<
         super.extractRenderState(entity,state,partialTick);
         ItemStack stack=entity.displayPallet();
         state.visible=!stack.isEmpty();
+        state.liftProgress=entity.liftProgress();
         state.cargo=stack.isEmpty()?0:entity.visibleCargo();
         if(stack.isEmpty())return;
         Block material=Blocks.OAK_PLANKS;
@@ -69,7 +70,7 @@ public final class MovingPalletRenderer extends MobRenderer<
         pose.pushPose();
         // Origin = geometric middle of the unit. All four Golems have
         // identical corner offsets relative to this one pallet platform.
-        pose.translate(-.9f,1.48f,-.9f);
+        pose.translate(-.9f,.50f+.98f*state.liftProgress,-.9f);
         for(float z:new float[]{.08f,1.48f})
             piece(state.deck,state,pose,collector,.02f,0,z,1.76f,.10f,.24f);
         for(float x:new float[]{.10f,.73f,1.36f})
