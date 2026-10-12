@@ -594,7 +594,23 @@ public final class StorageGolem extends PathfinderMob {
         if(atShelfEntrance()){
             getNavigation().stop();
             flatHomeRoute.clear();
-            if(shelf.add())discard();
+            if(shelf.add()){
+                // A recalled/aborted worker can still own unsorted items,
+                // an empty shulker or even a loaded pallet. The previous
+                // return branch dropped these before redocking; keep that
+                // no-item-loss guarantee when routing is changed.
+                releaseOutput(level);
+                if(!emptyBox.isEmpty()){
+                    Containers.dropItemStack(level,getX(),getY(),getZ(),emptyBox);
+                    emptyBox=ItemStack.EMPTY;
+                }
+                if(!cargo.isEmpty()){
+                    Containers.dropItemStack(level,getX(),getY(),getZ(),cargo);
+                    cargo=ItemStack.EMPTY;
+                }
+                dropCarriedPallet(level);
+                discard();
+            }
             return;
         }
         BlockPos from=blockPosition();
