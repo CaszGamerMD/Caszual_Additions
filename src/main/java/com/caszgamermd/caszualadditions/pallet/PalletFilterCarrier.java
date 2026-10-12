@@ -27,21 +27,31 @@ public interface PalletFilterCarrier {
         String target=filterTarget();
         if(target.isBlank()) return true; // installed but not configured
         Identifier item=BuiltInRegistries.ITEM.getKey(candidate.getItem());
-        boolean matched=switch(filterScope()) {
-            case 1 -> item.getNamespace().equals(target);
-            case 2 -> {
-                Identifier tag=Identifier.tryParse(target);
-                if(tag==null)yield false;
-                boolean itemTag=candidate.is(TagKey.create(Registries.ITEM,tag));
-                boolean blockTag=candidate.getItem() instanceof BlockItem blockItem
-                        && blockItem.getBlock().defaultBlockState().is(
-                                TagKey.create(Registries.BLOCK,tag));
-                yield itemTag||blockTag;
-            }
-            case 3 -> item.toString().equals(target) &&
-                    candidate.getComponents().toString().equals(filterComponentSignature());
-            default -> item.toString().equals(target);
-        };
+        // All typed rules are ORed: whitelist admits any match, blacklist
+        // rejects any match. EXACT keeps one full component signature from
+        // the sampled offhand stack and is intentionally never split.
+        boolean matched=false;
+        if(filterScope()==3) {
+            matched=item.toString().equals(target)
+                    &&candidate.getComponents().toString().equals(filterComponentSignature());
+        }else for(String entry:target.split(",")){
+            String rule=entry.strip();
+            if(rule.isBlank())continue;
+            boolean found=switch(filterScope()) {
+                case 1 -> item.getNamespace().equals(rule);
+                case 2 -> {
+                    Identifier tag=Identifier.tryParse(rule);
+                    if(tag==null)yield false;
+                    boolean itemTag=candidate.is(TagKey.create(Registries.ITEM,tag));
+                    boolean blockTag=candidate.getItem() instanceof BlockItem blockItem
+                            && blockItem.getBlock().defaultBlockState().is(
+                                    TagKey.create(Registries.BLOCK,tag));
+                    yield itemTag||blockTag;
+                }
+                default -> item.toString().equals(rule);
+            };
+            if(found){matched=true;break;}
+        }
         return filterMode()==1 ? !matched : matched;
     }
 }
