@@ -18,15 +18,7 @@ public final class StorageGolemDispatch {
     // Only loaded shelf groups and their physically adjacent computer/point
     // are discovered; workers never force-load remote chunks.
     private static BlockPos computer(ServerLevel level,List<StorageGolemShelfEntity> group){
-        for(StorageGolemShelfEntity shelf:group){
-            for(Direction side:Direction.values()){
-                BlockPos adjacent=shelf.getBlockPos().relative(side);
-                if(level.hasChunkAt(adjacent)
-                        &&level.getBlockState(adjacent).is(RackContent.RACK_COMPUTER))
-                    return adjacent;
-            }
-        }
-        return null;
+        return WarehouseConnections.computerForShelves(level,group);
     }
     private static PtpBlockEntity inputPoint(ServerLevel level,
             List<StorageGolemShelfEntity> group,BlockPos computer){
