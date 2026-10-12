@@ -33,6 +33,8 @@ public final class WarehouseTestKitItem extends Item {
         }
         List<ItemStack> supplies=new ArrayList<>();
         add(supplies,RackContent.RACK_ITEM,8);
+        add(supplies,RackContent.INDUSTRIAL_CONCRETE_ITEMS.get("gray"),64);
+        add(supplies,RackContent.INDUSTRIAL_CONCRETE_ITEMS.get("gray"),64);
         add(supplies,RackContent.COMPUTER_ITEM,2);
         add(supplies,RackContent.STORAGE_SHELF_ITEM,4);
         add(supplies,RackContent.STORAGE_GOLEM_ITEM,8);

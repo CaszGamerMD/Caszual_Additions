@@ -72,6 +72,14 @@ public final class RackComputerNet {
                         ByteBufCodecs.BOOL,GolemControl::enabled,GolemControl::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
+    public record GolemWork(BlockPos computer,int action) implements CustomPacketPayload {
+        public static final Type<GolemWork> TYPE=new Type<>(
+                CaszualAdditions.id("rack_golem_work"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,GolemWork> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,GolemWork::computer,
+                        ByteBufCodecs.INT,GolemWork::action,GolemWork::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
     public record PtpControl(BlockPos computer,BlockPos point,int action)
             implements CustomPacketPayload {
         public static final Type<PtpControl> TYPE=new Type<>(
@@ -94,6 +102,7 @@ public final class RackComputerNet {
         PayloadTypeRegistry.clientboundPlay().register(OrderReply.TYPE,OrderReply.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GolemControl.TYPE,GolemControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(PtpControl.TYPE,PtpControl.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(GolemWork.TYPE,GolemWork.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(Query.TYPE,(payload,context)->
                 context.server().execute(()->answer(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(OrderRequest.TYPE,(payload,context)->
@@ -102,6 +111,8 @@ public final class RackComputerNet {
                 context.server().execute(()->setGolemSorting(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(PtpControl.TYPE,(payload,context)->
                 context.server().execute(()->controlPtp(context.player(),payload)));
+        ServerPlayNetworking.registerGlobalReceiver(GolemWork.TYPE,(payload,context)->
+                context.server().execute(()->requestGolemWork(context.player(),payload)));
 
     }
 
@@ -133,6 +144,34 @@ public final class RackComputerNet {
         reply(player,success
                 ?"PTP updated at "+target.getBlockPos().toShortString()
                 :"PTP operation blocked: check pallet, Wrap Unit, pending orders or active haul.");
+    }
+
+    private static void requestGolemWork(ServerPlayer player,GolemWork request){
+        ServerLevel level=player.level();
+        BlockPos computer=request.computer();
+        if(!level.hasChunkAt(computer)
+                ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER)
+                ||player.distanceToSqr(computer.getX()+.5,computer.getY()+.5,
+                        computer.getZ()+.5)>100)return;
+        String result;
+        switch(request.action()){
+            case 0 -> result=StoragePalletCrew.enlist(level,player,computer);
+            case 1 -> result=StoragePalletCrew.dismiss(level,player,computer);
+            case 2 -> {
+                int deployed=0;
+                for(StorageGolemShelfEntity shelf:nearbyShelves(level,computer)){
+                    if(!shelf.sortingEnabled()||shelf.docked()==0)continue;
+                    int before=shelf.docked();
+                    StorageGolemDispatch.tryDispatch(level,shelf);
+                    deployed+=before-shelf.docked();
+                }
+                result=deployed>0?"Dispatched "+deployed+" Storage Golem task(s)."
+                        :"No eligible queued input/output tasks found. Check AUTO, stock and PTPs.";
+            }
+            default -> result="Unknown Golem command.";
+        }
+        reply(player,result);
+        answer(player,new Query(computer,"",BlockPos.ZERO));
     }
 
     private static void setGolemSorting(ServerPlayer player,GolemControl control){
@@ -224,6 +263,39 @@ public final class RackComputerNet {
                 .mapToInt(StorageGolemShelfEntity::docked).sum());
         root.addProperty("golemSortingEnabled",
                 !shelves.isEmpty()&&shelves.stream().anyMatch(StorageGolemShelfEntity::sortingEnabled));
+        root.addProperty("industrialConcrete",
+                WarehouseNetwork.fromComputer(level,computer).concreteBlocks());
+        // Track shelf-assigned workers both locally and around online players.
+        // A player carrying a pallet may be far from the computer.
+        Set<BlockPos> homes=new HashSet<>();
+        for(StorageGolemShelfEntity shelf:shelves)homes.add(shelf.getBlockPos());
+        Map<java.util.UUID,StorageGolem> active=new LinkedHashMap<>();
+        java.util.function.Consumer<StorageGolem> include=worker->{
+            if(homes.contains(worker.shelfHome())&&active.size()<96)
+                active.putIfAbsent(worker.getUUID(),worker);
+        };
+        for(StorageGolem worker:level.getEntitiesOfClass(StorageGolem.class,
+                new net.minecraft.world.phys.AABB(computer).inflate(96)))
+            include.accept(worker);
+        for(ServerPlayer online:level.players())
+            for(StorageGolem worker:level.getEntitiesOfClass(StorageGolem.class,
+                    new net.minecraft.world.phys.AABB(online.blockPosition()).inflate(48)))
+                include.accept(worker);
+        JsonArray workerRows=new JsonArray();
+        for(StorageGolem worker:active.values()){
+            JsonObject job=new JsonObject();
+            job.addProperty("id",worker.getStringUUID());
+            job.addProperty("work",worker.currentWork());
+            job.addProperty("cargo",worker.carriedDescription());
+            job.addProperty("owner",worker.assignedOwner());
+            job.addProperty("x",worker.blockPosition().getX());
+            job.addProperty("y",worker.blockPosition().getY());
+            job.addProperty("z",worker.blockPosition().getZ());
+            job.addProperty("target",worker.workTarget().toShortString());
+            workerRows.add(job);
+        }
+        root.add("workers",workerRows);
+        root.addProperty("activeGolems",workerRows.size());
         // Linked shelves can also reach an output PTP without requiring
         // its controller to sit immediately against the computer.
         PtpBlockEntity outbound=StorageGolemDispatch.outputPoint(level,shelves,computer);

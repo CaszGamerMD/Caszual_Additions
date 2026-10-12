@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "CIC",
+    "III",
+    "CIC"
+  ],
+  "key": {
+    "C": "minecraft:orange_concrete",
+    "I": "minecraft:iron_ingot"
+  },
+  "result": {
+    "id": "caszual_additions:orange_industrial_grade_concrete",
+    "count": 4
+  }
+}

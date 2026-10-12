@@ -75,7 +75,8 @@ assert "CORNER_POSITIVE" in connector and "MAX_CONNECTOR_GAP" in connector
 assert "getClickLocation()" in connector_item and "root.getY()+2" in connector_item
 assert "reservedForAccess" not in connector,"Face-to-face connectors must span rack approach lanes"
 connections=read("src/main/java/com/caszgamermd/caszualadditions/racks/WarehouseConnections.java")
-assert "RackNetwork.fromComputer" in connections and "RackNetwork.network" in connections
+assert "WarehouseNetwork.fromComputer" in connections
+assert "WarehouseNetwork.fromShelfGroup" in connections
 computer_block=read("src/main/java/com/caszgamermd/caszualadditions/racks/RackComputerBlock.java")
 assert "StorageScannerItem.onComputerClick" in computer_block
 scanner=read("src/main/java/com/caszgamermd/caszualadditions/racks/StorageScannerItem.java")

@@ -28,6 +28,8 @@ jobs:
         run: python3 scripts/model_zfight_audit.py
       - name: Verify warehouse visual and network foundations (blocking)
         run: python3 scripts/warehouse_foundations_smoke.py
+      - name: Verify Industrial Grade Concrete and Golem console (blocking)
+        run: python3 scripts/warehouse_igc_golems_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()

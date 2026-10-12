@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.Block;
 
 public final class RackContent {
     public static RackBlock RACK;
+    public static final java.util.Map<String,Item> INDUSTRIAL_CONCRETE_ITEMS=new java.util.LinkedHashMap<>();
     public static RackConnectorBlock CONNECTOR_BLOCK;
     public static StorageGolemShelfBlock STORAGE_SHELF;
     public static BlockEntityType<StorageGolemShelfEntity> STORAGE_SHELF_ENTITY;
@@ -50,6 +51,18 @@ public final class RackContent {
                 new BlockItem(block,new Item.Properties().stacksTo(16).setId(key).useBlockDescriptionPrefix()));
     }
     public static void initialize() {
+        for(String color:java.util.List.of("white","orange","magenta","light_blue",
+                "yellow","lime","pink","gray","light_gray","cyan","purple",
+                "blue","brown","green","red","black")){
+            Identifier industrialId=CaszualAdditions.id(color+"_industrial_grade_concrete");
+            ResourceKey<Block> industrialKey=ResourceKey.create(Registries.BLOCK,industrialId);
+            Block concrete=Registry.register(BuiltInRegistries.BLOCK,industrialKey,
+                    new IndustrialGradeConcreteBlock(BlockBehaviour.Properties
+                            .ofFullCopy(Blocks.IRON_BLOCK).strength(5.0f,8.0f)
+                            .setId(industrialKey)));
+            INDUSTRIAL_CONCRETE_ITEMS.put(color,
+                    blockItem(color+"_industrial_grade_concrete",concrete));
+        }
         Identifier id=CaszualAdditions.id("pallet_rack");
         ResourceKey<Block> key=ResourceKey.create(Registries.BLOCK,id);
         RACK=Registry.register(BuiltInRegistries.BLOCK,key,

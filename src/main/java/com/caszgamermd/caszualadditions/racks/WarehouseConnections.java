@@ -31,18 +31,7 @@ public final class WarehouseConnections {
      * rack network or touching the computer itself. */
     public static List<StorageGolemShelfEntity> shelvesForComputer(
             ServerLevel level,BlockPos computer){
-        Map<BlockPos,StorageGolemShelfEntity> found=new LinkedHashMap<>();
-        for(Direction side:Direction.values())
-            collectShelf(level,computer.relative(side),found);
-        for(RackBlockEntity rack:RackNetwork.fromComputer(level,computer)){
-            for(int part=0;part<12;part++){
-                BlockPos segment=RackBlock.cell(rack.getBlockPos(),rack.facing(),part);
-                if(!level.hasChunkAt(segment))continue;
-                for(Direction side:Direction.values())
-                    collectShelf(level,segment.relative(side),found);
-            }
-        }
-        return new ArrayList<>(found.values());
+        return WarehouseNetwork.fromComputer(level,computer).shelves();
     }
 
     /** Resolve a connected computer from any shelf group touching racks.
@@ -50,35 +39,7 @@ public final class WarehouseConnections {
      * computer can touch any of a rack's twelve physical frame segments. */
     public static BlockPos computerForShelves(ServerLevel level,
             List<StorageGolemShelfEntity> group){
-        for(StorageGolemShelfEntity shelf:group){
-            for(Direction side:Direction.values()){
-                BlockPos p=shelf.getBlockPos().relative(side);
-                if(level.hasChunkAt(p)
-                        &&level.getBlockState(p).is(RackContent.RACK_COMPUTER))
-                    return p;
-            }
-        }
-        Map<BlockPos,RackBlockEntity> starting=new LinkedHashMap<>();
-        for(StorageGolemShelfEntity shelf:group)
-            for(Direction side:Direction.values()){
-                BlockPos adjacent=shelf.getBlockPos().relative(side);
-                if(!level.hasChunkAt(adjacent))continue;
-                RackBlockEntity rack=RackBlock.controller(level,adjacent);
-                if(rack!=null)starting.putIfAbsent(rack.getBlockPos(),rack);
-            }
-        if(starting.isEmpty())return null;
-        for(RackBlockEntity rack:RackNetwork.network(level,new ArrayList<>(starting.values()))){
-            for(int part=0;part<12;part++){
-                BlockPos segment=RackBlock.cell(rack.getBlockPos(),rack.facing(),part);
-                if(!level.hasChunkAt(segment))continue;
-                for(Direction side:Direction.values()){
-                    BlockPos p=segment.relative(side);
-                    if(level.hasChunkAt(p)
-                            &&level.getBlockState(p).is(RackContent.RACK_COMPUTER))
-                        return p;
-                }
-            }
-        }
-        return null;
+        List<BlockPos> computers=WarehouseNetwork.fromShelfGroup(level,group).computers();
+        return computers.isEmpty()?null:computers.getFirst();
     }
 }

@@ -101,5 +101,21 @@
   "item.caszual_additions.storage_golem": "Storage Golem",
   "entity.caszual_additions.storage_golem": "Storage Golem",
   "item.caszual_additions.warehouse_test_kit": "Warehouse Test Kit",
-  "item.caszual_additions.storage_scanner": "Warehouse Scanner"
+  "item.caszual_additions.storage_scanner": "Warehouse Scanner",
+  "block.caszual_additions.white_industrial_grade_concrete": "White Industrial Grade Concrete",
+  "block.caszual_additions.orange_industrial_grade_concrete": "Orange Industrial Grade Concrete",
+  "block.caszual_additions.magenta_industrial_grade_concrete": "Magenta Industrial Grade Concrete",
+  "block.caszual_additions.light_blue_industrial_grade_concrete": "Light Blue Industrial Grade Concrete",
+  "block.caszual_additions.yellow_industrial_grade_concrete": "Yellow Industrial Grade Concrete",
+  "block.caszual_additions.lime_industrial_grade_concrete": "Lime Industrial Grade Concrete",
+  "block.caszual_additions.pink_industrial_grade_concrete": "Pink Industrial Grade Concrete",
+  "block.caszual_additions.gray_industrial_grade_concrete": "Gray Industrial Grade Concrete",
+  "block.caszual_additions.light_gray_industrial_grade_concrete": "Light Gray Industrial Grade Concrete",
+  "block.caszual_additions.cyan_industrial_grade_concrete": "Cyan Industrial Grade Concrete",
+  "block.caszual_additions.purple_industrial_grade_concrete": "Purple Industrial Grade Concrete",
+  "block.caszual_additions.blue_industrial_grade_concrete": "Blue Industrial Grade Concrete",
+  "block.caszual_additions.brown_industrial_grade_concrete": "Brown Industrial Grade Concrete",
+  "block.caszual_additions.green_industrial_grade_concrete": "Green Industrial Grade Concrete",
+  "block.caszual_additions.red_industrial_grade_concrete": "Red Industrial Grade Concrete",
+  "block.caszual_additions.black_industrial_grade_concrete": "Black Industrial Grade Concrete"
 }

@@ -148,6 +148,43 @@ after a Rack Computer search rather than server-broadcast END_ROD particles.
 The outline is a thin illuminated block-model frame, not the vanilla
 entity glowing effect.
 
+## Unified warehouse wiring and Industrial Grade Concrete
+
+**All warehouse blocks are network conductors**, including complete rack
+frames, physical Rack Connector rods, Storage Golem Shelves, Shulker Tanks,
+Pallet Transfer Points and Rack Computers. Touching block faces connect
+these parts into one loaded-only warehouse network; existing rack bridging
+still works.
+
+**Industrial Grade Concrete (IGC)** is available in all sixteen Minecraft
+concrete colors. Each matching-color shaped recipe yields **four IGC**:
+
+```
+C I C
+I I I     C = concrete of the selected color
+C I C     I = iron ingot
+```
+
+Build a continuous IGC surface physically touching a Rack Computer (including
+directly underneath it). Every warehouse block touching that surface,
+including one placed **on top**, joins the same network. Mixed IGC colors
+connect. Removing a bridging concrete cell splits the network if no other
+warehouse path connects it. Traversal is limited to loaded chunks and
+16,384 inspected positions; it does not chunk-load distant equipment.
+
+## Storage Golems workstation page
+
+Use the new **STORAGE GOLEMS** tab at the top of the Rack Computer.
+It displays shelf and docked counts, deployed Golem positions, each worker's
+task and cargo, and following-player/pallet-carrying state.
+
+Controls include **SORT: AUTO / PAUSED**, **RUN QUEUE** to request immediate
+sorting/output dispatch, **ENLIST 4** to send four docked workers to follow
+the player, and **DISMISS CREW** to send empty workers back to their shelves.
+The page refreshes live while open. Worker commands are validated server-side,
+require proximity to the workstation, and don't override carrying safety.
+The **RACKS & PTPs** tab retains rack search, orders and wrapper settings.
+
 ## Rack Computer
 
 Open the computer with an empty hand. It can:

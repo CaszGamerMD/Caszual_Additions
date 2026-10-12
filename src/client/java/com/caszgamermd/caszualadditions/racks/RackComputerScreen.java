@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -19,6 +20,26 @@ import net.minecraft.network.chat.Component;
 public final class RackComputerScreen extends Screen {
     private final BlockPos computer;
     private EditBox search, orderQuantity;
+    private final java.util.List<AbstractWidget> rackWidgets=new java.util.ArrayList<>();
+    private final java.util.List<AbstractWidget> workerWidgets=new java.util.ArrayList<>();
+    private JsonArray workers=new JsonArray();
+    private int page,workerScroll,activeGolems,igcCount,refreshTicks;
+    private String workerStatus="Choose a work request or inspect active tasks.";
+    private Button workersToggleButton;
+    private <T extends AbstractWidget> T addRack(T widget){
+        rackWidgets.add(widget);
+        return addRenderableWidget(widget);
+    }
+    private <T extends AbstractWidget> T addWorkers(T widget){
+        workerWidgets.add(widget);
+        return addRenderableWidget(widget);
+    }
+    private void showPage(int target){
+        page=target;
+        for(AbstractWidget widget:rackWidgets)widget.visible=page==0;
+        for(AbstractWidget widget:workerWidgets)widget.visible=page==1;
+        sendQuery();
+    }
     private String selectedItemId = "";
     private JsonArray racks=new JsonArray(), contents=new JsonArray(), ptps=new JsonArray();
     private int selectedPtpIndex;
@@ -40,50 +61,76 @@ public final class RackComputerScreen extends Screen {
 
     @Override protected void init() {
         String typed=search==null?"":search.getValue();
+        rackWidgets.clear();
+        workerWidgets.clear();
+        int tabLeft=Math.max(210,width-246);
+        addRenderableWidget(Button.builder(Component.literal("RACKS & PTPs"),
+                b->showPage(0)).bounds(tabLeft,13,108,20).build());
+        addRenderableWidget(Button.builder(Component.literal("STORAGE GOLEMS"),
+                b->showPage(1)).bounds(tabLeft+113,13,126,20).build());
         int left=22, y=45;
-        search=addRenderableWidget(new EditBox(font,left,y,
+        search=addRack(new EditBox(font,left,y,
                 Math.max(90,width-270),23,Component.literal("Search rack network")));
         search.setMaxLength(60);
         search.setHint(Component.literal("Item name, item ID, rack, or aisle"));
         search.setValue(typed);
-        addRenderableWidget(Button.builder(Component.literal("Search"),
+        addRack(Button.builder(Component.literal("Search"),
                 b->sendQuery()).bounds(width-225,y,90,23).build());
-        addRenderableWidget(Button.builder(Component.literal("Refresh"),
+        addRack(Button.builder(Component.literal("Refresh"),
                 b->sendQuery()).bounds(width-128,y,90,23).build());
-        ptpNextButton=addRenderableWidget(Button.builder(Component.literal("NEXT PTP"),
+        ptpNextButton=addRack(Button.builder(Component.literal("NEXT PTP"),
                 b->{if(!ptps.isEmpty()){selectedPtpIndex=(selectedPtpIndex+1)%ptps.size();
                     updatePtpControls();}})
                 .bounds(22,130,92,22).build());
-        ptpModeButton=addRenderableWidget(Button.builder(Component.literal("MODE"),
+        ptpModeButton=addRack(Button.builder(Component.literal("MODE"),
                 b->sendPtpControl(0)).bounds(120,130,90,22).build());
-        ptpWrapButton=addRenderableWidget(Button.builder(Component.literal("WRAP"),
+        ptpWrapButton=addRack(Button.builder(Component.literal("WRAP"),
                 b->sendPtpControl(1)).bounds(216,130,100,22).build());
         updatePtpControls();
         int orderInputX=Math.max(22,width-230);
-        golemButton=addRenderableWidget(Button.builder(
+        golemButton=addRack(Button.builder(
                 Component.literal("GOLEMS: AUTO"),btn->{
                     ClientPlayNetworking.send(new RackComputerNet.GolemControl(
                             computer,!golemSorting));
                 }).bounds(22,height-63,Math.max(40,orderInputX-30),22).build());
         // Put the order controls in their own full-width footer so they
         // remain clickable at high Minecraft GUI Scale settings.
-        orderQuantity=addRenderableWidget(new EditBox(font,orderInputX,height-63,
+        orderQuantity=addRack(new EditBox(font,orderInputX,height-63,
                 56,22,Component.literal("Order quantity")));
         orderQuantity.setMaxLength(4);
         orderQuantity.setValue("64");
         int orderButtonX=orderInputX+64;
-        addRenderableWidget(Button.builder(Component.literal("REQUEST ITEMS"),
+        addRack(Button.builder(Component.literal("REQUEST ITEMS"),
                 b->requestItem()).bounds(orderButtonX,height-63,
                         Math.max(60,width-orderButtonX-20),22).build());
-        addRenderableWidget(Button.builder(Component.literal("Close"),
+        addRack(Button.builder(Component.literal("Close"),
                 b->onClose()).bounds(width-99,height-34,80,22).build());
-        addRenderableWidget(Button.builder(Component.literal("▲"),
+        addRack(Button.builder(Component.literal("▲"),
                 b->{scroll=Math.max(0,scroll-1);})
                 .bounds(22,height-34,26,22).build());
-        addRenderableWidget(Button.builder(Component.literal("▼"),
+        addRack(Button.builder(Component.literal("▼"),
                 b->{scroll=Math.min(Math.max(0,racks.size()-1),scroll+1);})
                 .bounds(51,height-34,26,22).build());
-        sendQuery();
+        int column=Math.max(80,(width-54)/4);
+        workersToggleButton=addWorkers(Button.builder(Component.literal("SORT: AUTO"),
+                b->ClientPlayNetworking.send(new RackComputerNet.GolemControl(
+                        computer,!golemSorting)))
+                .bounds(22,72,column,23).build());
+        addWorkers(Button.builder(Component.literal("RUN QUEUE"),
+                b->requestGolem(2)).bounds(26+column,72,column,23).build());
+        addWorkers(Button.builder(Component.literal("ENLIST 4"),
+                b->requestGolem(0)).bounds(30+2*column,72,column,23).build());
+        addWorkers(Button.builder(Component.literal("DISMISS CREW"),
+                b->requestGolem(1)).bounds(34+3*column,72,column,23).build());
+        addWorkers(Button.builder(Component.literal("REFRESH TASKS"),
+                b->sendQuery()).bounds(22,103,122,22).build());
+        addWorkers(Button.builder(Component.literal("▲"),
+                b->workerScroll=Math.max(0,workerScroll-1))
+                .bounds(width-80,height-34,25,22).build());
+        addWorkers(Button.builder(Component.literal("▼"),
+                b->workerScroll=Math.min(Math.max(0,workers.size()-1),workerScroll+1))
+                .bounds(width-51,height-34,25,22).build());
+        showPage(page);
     }
 
     private void sendQuery() {
@@ -93,6 +140,11 @@ public final class RackComputerScreen extends Screen {
                 search.getValue().strip(),
                 selectedX==Integer.MIN_VALUE?BlockPos.ZERO
                         :new BlockPos(selectedX,selectedY,selectedZ)));
+    }
+
+    private void requestGolem(int action){
+        ClientPlayNetworking.send(new RackComputerNet.GolemWork(computer,action));
+        workerStatus="Work request sent. Awaiting server confirmation...";
     }
 
     private void sendPtpControl(int action){
@@ -135,7 +187,7 @@ public final class RackComputerScreen extends Screen {
         ClientPlayNetworking.send(new RackComputerNet.OrderRequest(computer,selectedItemId,count));
     }
 
-    public void acceptOrderReply(String message){status=message;}
+    public void acceptOrderReply(String message){status=message;workerStatus=message;}
 
     public void accept(BlockPos pos,String raw) {
         if(!computer.equals(pos))return;
@@ -143,6 +195,10 @@ public final class RackComputerScreen extends Screen {
             JsonObject obj=JsonParser.parseString(raw).getAsJsonObject();
             racks=obj.getAsJsonArray("racks");
             ptps=obj.has("ptps")?obj.getAsJsonArray("ptps"):new JsonArray();
+            workers=obj.has("workers")?obj.getAsJsonArray("workers"):new JsonArray();
+            activeGolems=obj.has("activeGolems")?obj.get("activeGolems").getAsInt():0;
+            igcCount=obj.has("industrialConcrete")
+                    ?obj.get("industrialConcrete").getAsInt():0;
             updatePtpControls();
             contents=obj.has("contents")?obj.getAsJsonArray("contents"):new JsonArray();
             totalRacks=obj.get("networkSize").getAsInt();
@@ -151,6 +207,11 @@ public final class RackComputerScreen extends Screen {
             dockedGolems=obj.has("dockedGolems")?obj.get("dockedGolems").getAsInt():0;
             golemSorting=obj.has("golemSortingEnabled")
                     &&obj.get("golemSortingEnabled").getAsBoolean();
+            if(workersToggleButton!=null){
+                workersToggleButton.active=shelfCount>0;
+                workersToggleButton.setMessage(Component.literal(golemSorting
+                        ?"SORT: AUTO":"SORT: PAUSED"));
+            }
             if(golemButton!=null){
                 golemButton.active=shelfCount>0;
                 golemButton.setMessage(Component.literal("GOLEMS: "
@@ -178,6 +239,10 @@ public final class RackComputerScreen extends Screen {
         graphics.fill(10,10,width-10,35,0xff1c5839);
         graphics.text(font,Component.literal("RACK COMPUTER  •  WAREHOUSE NETWORK"),
                 22,19,0xffc5ffd0,false);
+        if(page==1){
+            drawWorkers(graphics);
+            return;
+        }
         graphics.text(font,Component.literal(status),22,77,0xff9fedaf,false);
         graphics.text(font,Component.literal("Total stored: "+totalItems+" items"),
                 width-197,77,0xffa4d5b7,false);
@@ -238,7 +303,47 @@ public final class RackComputerScreen extends Screen {
                 99,height-27,0xff91c3a1,false);
     }
 
+    private void drawWorkers(GuiGraphicsExtractor graphics){
+        graphics.text(font,Component.literal("Network: "+shelfCount+" shelves / "
+                +dockedGolems+" docked / "+activeGolems+" active / "
+                +igcCount+" IGC blocks"),22,51,0xffaee9c2,false);
+        graphics.text(font,Component.literal(compact(workerStatus,
+                Math.max(18,(width-45)/6))),22,135,0xff9fedaf,false);
+        graphics.fill(20,151,width-20,height-45,0xff21392e);
+        graphics.text(font,Component.literal("DEPLOYED WORKERS • LIVE TASK TRACKER"),
+                29,159,0xffb3f9c1,false);
+        int rows=Math.max(0,(height-238)/31);
+        if(workers.isEmpty())
+            graphics.text(font,Component.literal(
+                    "No active workers loaded. Docked Golems remain on shelves."),
+                    32,185,0xffb2d4bf,false);
+        for(int i=workerScroll;i<workers.size()&&i<workerScroll+rows;i++){
+            JsonObject worker=workers.get(i).getAsJsonObject();
+            int y=181+(i-workerScroll)*31;
+            graphics.fill(27,y,width-28,y+29,i%2==0?0xff2e4a3b:0xff294236);
+            String coordinates=worker.get("x").getAsInt()+","
+                    +worker.get("y").getAsInt()+","+worker.get("z").getAsInt();
+            String heading=(i+1)+". "+worker.get("work").getAsString();
+            graphics.text(font,Component.literal(compact(heading,
+                    Math.max(14,(width-58)/6))),32,y+3,0xffd2f5dc,false);
+            String owner=worker.get("owner").getAsString();
+            String line="Cargo: "+worker.get("cargo").getAsString()+" | "+coordinates
+                    +(owner.isBlank()?"":" | Player "+owner.substring(0,Math.min(8,owner.length())));
+            graphics.text(font,Component.literal(compact(line,
+                    Math.max(14,(width-58)/6))),32,y+16,0xff99cbb2,false);
+        }
+        graphics.text(font,Component.literal(
+                "ENLIST: 4 to follow you  •  RUN QUEUE: dispatch sorting/orders  •  DISMISS: return empty crew"),
+                22,height-42,0xffa3d1ae,false);
+    }
+
+    @Override public void tick(){
+        super.tick();
+        if(page==1&&++refreshTicks%60==0)sendQuery();
+    }
+
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {
+        if(page==1)return super.mouseClicked(event,doubleClick);
         int split=Math.max(200,width/2);
         int mx=(int)event.x(),my=(int)event.y();
         if(mx>=split+7&&mx<width-27 && my>=184 && my<height-95){
