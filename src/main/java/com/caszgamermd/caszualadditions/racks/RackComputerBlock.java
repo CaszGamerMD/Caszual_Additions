@@ -50,11 +50,14 @@ public final class RackComputerBlock extends Block {
         // A non-empty hand normally bypasses useWithoutItem. Explicitly
         // route the Scanner here so Computer UI handling cannot consume the
         // click before the handheld tool creates its warehouse link.
-        if(!held.is(RackContent.STORAGE_SCANNER_ITEM))
-            return InteractionResult.PASS;
         if(level instanceof net.minecraft.server.level.ServerLevel server
-                &&player instanceof ServerPlayer user)
-            StorageScannerItem.onComputerClick(server,user,held,pos,player.isShiftKeyDown());
+                &&player instanceof ServerPlayer user){
+            if(held.is(RackContent.STORAGE_SCANNER_ITEM))
+                StorageScannerItem.onComputerClick(server,user,held,pos,player.isShiftKeyDown());
+            else ServerPlayNetworking.send(user,new RackComputerNet.Open(pos));
+        }
+        // Both occupied and empty hands activate this terminal. The Scanner
+        // retains its special link/unlink action instead of opening the GUI.
         return InteractionResult.SUCCESS;
     }
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,
