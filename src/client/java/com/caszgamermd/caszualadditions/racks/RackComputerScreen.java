@@ -67,7 +67,7 @@ public final class RackComputerScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("RACKS & PTPs"),
                 b->showPage(0)).bounds(tabLeft,13,108,20).build());
         addRenderableWidget(Button.builder(Component.literal("STORAGE GOLEMS"),
-                b->showPage(1)).bounds(tabLeft+113,13,126,20).build();
+                b->showPage(1)).bounds(tabLeft+113,13,126,20).build());
         int left=22, y=45;
         search=addRack(new EditBox(font,left,y,
                 Math.max(90,width-270),23,Component.literal("Search rack network")));
