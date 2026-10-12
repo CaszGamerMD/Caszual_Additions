@@ -10,6 +10,7 @@
     "BlockCosmeticArmorMixin",
     "CosmeticSkullScaleMixin",
     "RecipeBookCosmeticClickMixin",
+    "CreativeInventoryCosmeticsMixin",
     "EndRodAvatarRendererMixin",
     "ArmorStandCosmeticsMixin",
     "ArmorStandModelCosmeticsMixin",
