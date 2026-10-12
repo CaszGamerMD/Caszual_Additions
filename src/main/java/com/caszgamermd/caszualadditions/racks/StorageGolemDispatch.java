@@ -66,6 +66,32 @@ public final class StorageGolemDispatch {
         }
         return null;
     }
+    /** Only a directly shelf-attached magazine belongs to this worker group.
+     * Resolving either half of the two-high tank keeps placement flexible. */
+    private static ShulkerTankEntity tank(ServerLevel level,
+            List<StorageGolemShelfEntity> shelves){
+        for(StorageGolemShelfEntity shelf:shelves)
+            for(Direction side:Direction.values()){
+                BlockPos adjacent=shelf.getBlockPos().relative(side);
+                if(!level.hasChunkAt(adjacent))continue;
+                ShulkerTankEntity tank=ShulkerTankBlock.controller(level,adjacent);
+                if(tank!=null&&!tank.isEmpty())return tank;
+            }
+        return null;
+    }
+    public static int linkedEmptyShulkers(ServerLevel level,
+            List<StorageGolemShelfEntity> shelves){
+        java.util.Set<BlockPos> visited=new java.util.HashSet<>();
+        int count=0;
+        for(StorageGolemShelfEntity shelf:shelves)
+            for(Direction side:Direction.values()){
+                BlockPos p=shelf.getBlockPos().relative(side);
+                if(!level.hasChunkAt(p))continue;
+                ShulkerTankEntity tank=ShulkerTankBlock.controller(level,p);
+                if(tank!=null&&visited.add(tank.getBlockPos()))count+=tank.count();
+            }
+        return count;
+    }
     /** Capacity in actual compatible item slots, including partial stacks. */
     private static int freeRoom(PtpBlockEntity point,ItemStack item){
         if(!point.readyForOutput()||item.isEmpty())return 0;
@@ -86,14 +112,25 @@ public final class StorageGolemDispatch {
         if(point==null||!point.readyForOutput())return false;
         PtpBlockEntity.OutputOrder order=point.nextOutputOrder();
         if(order==null)return false;
+        ShulkerTankEntity magazine=tank(level,group);
+        ItemStack emptyBox=magazine==null?ItemStack.EMPTY:magazine.peek();
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
             if(!rack.hasPallet()||rack.isEmpty())continue;
             for(int i=0;i<rack.getContainerSize();i++){
                 ItemStack stack=rack.getItem(i);
                 if(stack.isEmpty() || !BuiltInRegistries.ITEM.getKey(stack.getItem())
                         .toString().equals(order.itemId()))continue;
-                int amount=Math.min(order.remaining(),
-                        Math.min(stack.getCount(),freeRoom(point,stack)));
+                // A packed trip can carry 27 original stacks. The preview
+                // checks the actual filled-box components against the PTP
+                // filter before reserving any inventory or taking a box.
+                ItemStack preview=emptyBox.isEmpty()||!stack.getItem().canFitInsideContainerItems()
+                        ?ItemStack.EMPTY:StorageGolemPacking.fill(emptyBox,
+                            List.of(stack.copyWithCount(Math.min(
+                                    stack.getCount(),order.remaining()))));
+                boolean pack=!preview.isEmpty() && freeRoom(point,preview)>0;
+                int amount=pack?Math.min(order.remaining(),27*64)
+                        :Math.min(order.remaining(),
+                                Math.min(stack.getCount(),freeRoom(point,stack)));
                 if(amount<=0)continue;
                 StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(level,
                         net.minecraft.world.entity.EntitySpawnReason.EVENT);
@@ -102,6 +139,7 @@ public final class StorageGolemDispatch {
                 if(ticket==0)return false;
                 worker.assignOutput(shelf.getBlockPos(),rack.getBlockPos(),
                         point.getBlockPos(),stack,ticket,amount);
+                if(pack)worker.assignPackedOutput(magazine.getBlockPos());
                 worker.setPos(shelf.getBlockPos().getX()+.5,
                         shelf.getBlockPos().getY()+1,shelf.getBlockPos().getZ()+.5);
                 if(!shelf.take()){point.releaseOutput(ticket);return false;}
