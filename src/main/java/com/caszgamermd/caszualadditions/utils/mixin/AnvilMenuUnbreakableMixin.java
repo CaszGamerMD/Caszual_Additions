@@ -17,7 +17,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class AnvilMenuUnbreakableMixin {
     @Shadow @Final private DataSlot cost;
 
-    @Inject(method = "createResult", at = @At("TAIL"))
+    // Vanilla returns early for custom books because they are not enchanted books.
+    // RETURN (every return opcode), not TAIL (only the final opcode), makes
+    // the custom result appear even when vanilla has no valid combination.
+    @Inject(method = "createResult", at = @At("RETURN"))
     private void caszualAdditions$applyUnbreakableBook(CallbackInfo ci) {
         AnvilMenu menu = (AnvilMenu)(Object)this;
         ItemStack base = menu.getSlot(AnvilMenu.INPUT_SLOT).getItem();
@@ -25,7 +28,8 @@ public abstract class AnvilMenuUnbreakableMixin {
 
         if (base.isEmpty()
                 || !base.isDamageableItem()
-                || !book.is(UnbreakableContent.UNBREAKABLE_BOOK)) {
+                || !book.is(UnbreakableContent.UNBREAKABLE_BOOK)
+                || base.has(DataComponents.UNBREAKABLE)) {
             return;
         }
 
