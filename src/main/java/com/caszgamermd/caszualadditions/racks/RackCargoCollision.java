@@ -14,8 +14,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * world block cell. No extra invisible block proxies or chunk loads needed.
  */
 public final class RackCargoCollision {
-    private static final double CELL=2.0/3.0;
-    private static final double DECK_TOP=5.0/16.0;
+    private static final double SCALE=.875;
+    private static final double INSET=.125;
+    private static final double CELL=(2.0/3.0)*SCALE;
+    private static final double DECK_TOP=.06+(5.0/16.0)*SCALE;
 
     private RackCargoCollision(){}
 
@@ -41,9 +43,9 @@ public final class RackCargoCollision {
         VoxelShape combined=Shapes.empty();
         for(int i=0;i<visible;i++){
             int col=i%3,row=(i/3)%3,layer=i/9;
-            double x0=minX+col*CELL,x1=x0+CELL;
+            double x0=minX+INSET+col*CELL,x1=x0+CELL;
             double y0=root.getY()+DECK_TOP+layer*CELL,y1=y0+CELL;
-            double z0=minZ+row*CELL,z1=z0+CELL;
+            double z0=minZ+INSET+row*CELL,z1=z0+CELL;
             double left=Math.max(pos.getX(),x0),right=Math.min(pos.getX()+1,x1);
             double bottom=Math.max(pos.getY(),y0),top=Math.min(pos.getY()+1,y1);
             double front=Math.max(pos.getZ(),z0),back=Math.min(pos.getZ()+1,z1);
