@@ -67,7 +67,7 @@ public final class PtpBlockEntity extends BlockEntity
     public boolean validHaul(int ticket,BlockPos rack){
         expireHaul();
         return ticket!=0&&ticket==haulTicket&&haulRack.equals(rack)
-                &&sealed&&hasPallet()&&hasWrap();
+                &&sealed&&hasPallet();
     }
     public void renewHaul(int ticket){
         if(haulTicket!=0&&ticket==haulTicket&&level!=null)
