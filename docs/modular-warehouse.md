@@ -66,6 +66,14 @@ and on the output pallet of a legacy Order Collector Hub.
    `minecraft:logs`) and select **Apply Target**. For custom mods,
    type the mod namespace (e.g., `create`).
 
+For **Item**, **Whole Mod**, and **Item Tag** scopes, the target field now
+accepts up to **eight comma-separated entries**, e.g.
+`minecraft:stone,minecraft:cobblestone`. Whitelist accepts items matching
+**any** entry; blacklist rejects items matching **any** entry. The field is
+limited to 96 characters. **Exact Data** remains one sampled item with
+components rather than typed rules. Visual autocomplete and nested rule
+groups are still future enhancements.
+
 Exact Data compares a sample item's item ID and its data components. This
 first pass uses a component signature and should be regression-tested across
 save/reload and across servers with different mod configurations. Advanced
