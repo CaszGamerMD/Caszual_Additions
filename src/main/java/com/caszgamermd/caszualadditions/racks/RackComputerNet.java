@@ -72,7 +72,8 @@ public final class RackComputerNet {
                         ByteBufCodecs.BOOL,GolemControl::enabled,GolemControl::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
-    private static final Map<ServerLevel,Map<BlockPos,Long>> HIGHLIGHTS=new WeakHashMap<>();
+    // Highlight roots are returned to the requesting client in Snapshot,
+    // rather than sending particles to every player on the server.
     private RackComputerNet() {}
 
     public static void initialize() {
@@ -88,16 +89,7 @@ public final class RackComputerNet {
                 context.server().execute(()->acceptOrder(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(GolemControl.TYPE,(payload,context)->
                 context.server().execute(()->setGolemSorting(context.player(),payload)));
-        ServerTickEvents.END_LEVEL_TICK.register(level->{
-            Map<BlockPos,Long> map=HIGHLIGHTS.get(level);
-            if(map==null||level.getGameTime()%10!=0)return;
-            map.entrySet().removeIf(e->e.getValue()<=level.getGameTime());
-            for(BlockPos p:map.keySet()){
-                if(!level.hasChunkAt(p))continue;
-                double x=p.getX()+.5,y=p.getY()+1.4,z=p.getZ()+.5;
-                level.sendParticles(ParticleTypes.END_ROD,x,y,z,5,.85,1.0,.85,.01);
-            }
-        });
+
     }
 
     private static void reply(ServerPlayer player,String message) {
@@ -199,6 +191,7 @@ public final class RackComputerNet {
         String term=query.query().strip().toLowerCase(java.util.Locale.ROOT);
         JsonObject root=new JsonObject();
         JsonArray list=new JsonArray();
+        JsonArray highlights=new JsonArray();
         root.addProperty("query",term);
         root.addProperty("networkSize",racks.size());
         List<StorageGolemShelfEntity> shelves=nearbyShelves(level,computer);
@@ -263,11 +256,16 @@ public final class RackComputerNet {
             row.addProperty("pallet",rack.hasPallet());
             row.addProperty("filter",rack.filter());
             list.add(row);
-            if(!term.isEmpty() && matches<=RackNetwork.LIMIT)
-                HIGHLIGHTS.computeIfAbsent(level,l->new HashMap<>())
-                        .put(rack.getBlockPos(),level.getGameTime()+200);
+            if(!term.isEmpty()&&matches<=RackNetwork.LIMIT){
+                JsonObject position=new JsonObject();
+                position.addProperty("x",rack.getBlockPos().getX());
+                position.addProperty("y",rack.getBlockPos().getY());
+                position.addProperty("z",rack.getBlockPos().getZ());
+                highlights.add(position);
+            }
         }
         root.add("racks",list);
+        root.add("highlights",highlights);
         root.addProperty("matches",matches);
         root.addProperty("totalItems",totalItems);
         if(selected!=null){
