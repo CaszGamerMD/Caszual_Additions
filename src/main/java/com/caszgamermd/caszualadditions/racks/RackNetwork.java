@@ -167,16 +167,9 @@ public final class RackNetwork {
         return rack.displayName();
     }
 
-    /** A computer can bridge ALL rack groups physically touching its faces. */
+    /** Every adjacent warehouse block and IGC-supported run can lead to
+     * racks, not only one touching the Computer's side. */
     public static List<RackBlockEntity> fromComputer(ServerLevel level,BlockPos computer) {
-        List<RackBlockEntity> attached=new ArrayList<>();
-        Set<BlockPos> seen=new HashSet<>();
-        for(Direction side:Direction.values()){
-            BlockPos p=computer.relative(side);
-            if(!level.hasChunkAt(p))continue;
-            RackBlockEntity root=RackBlock.controller(level,p);
-            if(root!=null && seen.add(root.getBlockPos()))attached.add(root);
-        }
-        return attached.isEmpty()?List.of():network(level,attached);
+        return WarehouseNetwork.fromComputer(level,computer).racks();
     }
 }
