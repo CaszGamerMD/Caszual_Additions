@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.Block;
 
 public final class RackContent {
     public static RackBlock RACK;
+    public static RackConnectorBlock CONNECTOR_BLOCK;
     public static StorageGolemShelfBlock STORAGE_SHELF;
     public static BlockEntityType<StorageGolemShelfEntity> STORAGE_SHELF_ENTITY;
     public static Item STORAGE_SHELF_ITEM,STORAGE_GOLEM_ITEM;
@@ -73,7 +74,12 @@ public final class RackContent {
         STORAGE_SCANNER_ITEM=blockItem("storage_scanner",STORAGE_SCANNER);
         RACK_TAG=item("rack_tag");
         AISLE_TAG=item("aisle_tag");
-        CONNECTOR=item("rack_connector");
+        Identifier connectorId=CaszualAdditions.id("rack_connector");
+        ResourceKey<Block> connectorKey=ResourceKey.create(Registries.BLOCK,connectorId);
+        CONNECTOR_BLOCK=Registry.register(BuiltInRegistries.BLOCK,connectorKey,
+                new RackConnectorBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
+                        .strength(3.5f).noOcclusion().setId(connectorKey)));
+        CONNECTOR=blockItem("rack_connector",CONNECTOR_BLOCK);
         ResourceKey<Item> kitKey=ResourceKey.create(Registries.ITEM,
                 CaszualAdditions.id("warehouse_test_kit"));
         WAREHOUSE_TEST_KIT=Registry.register(BuiltInRegistries.ITEM,kitKey,
