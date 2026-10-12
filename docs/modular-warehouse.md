@@ -377,6 +377,35 @@ around your shelves, golem pathing to the outside of racks and transfer
 points, safe handling of full destinations, death and drops, and reloads
 on a backed-up test world.
 
+## Portable Pallet Wrapper
+
+The new **Portable Pallet Wrapper** is a reusable handheld tool (4 glass
+panes, 4 iron ingots and 1 copper ingot in the crafting pattern
+`GIG / ICI / GIG`). Right-click an intact, free-standing 2×2 pallet to
+toggle four transparent glass sides **without removing or replacing any
+items**. The same tool can wrap/unseal rack-mounted pallets and installed
+PTP pallets (even when no Wrap Unit module is installed). Shears remain an
+alternative way to remove glass. The wrapper is available in Creative and
+the Warehouse Test Kit.
+
+## Four-Golem carried pallet model
+
+A linked crew can lift a **glass-wrapped ground pallet at any loaded
+location**, including outside the warehouse network: use the linked
+Warehouse Scanner on any of the pallet's four ground cells. All four
+workers must rally around the pallet before the lead carrier takes the
+one actual 216-slot inventory and the four ground sections vanish.
+An unwrapped, incomplete, or unloaded pallet is not eligible.
+
+During transport the four Golems follow in a square, with raised arms
+under one floating 2×2 pallet shared between them. Only the lead Golem
+renders the elevated pallet, material, glass sides and up to 27 visible
+cargo cartons; **all 216 actual stacks** are owned/saved by the lead entity.
+This visual-only sync is not a second storage copy. A successful rack or
+ground delivery removes the carried pallet model and restores the
+permanent floor/rack model. Test navigation and rendering in a Minecraft
+client; build-time smoke tests are not visual verification.
+
 ## Handheld Warehouse Scanner and player-led pallet transport
 
 The **Storage Scanner is now a handheld tool**, not a placed block.
