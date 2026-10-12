@@ -37,11 +37,14 @@ public final class MovingPallet extends PathfinderMob {
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Integer> DISPLAY_CARGO=
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> LIFT_TICKS=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
     private String owner="";
     private final BlockPos[] shelves={BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO};
     private ItemStack pallet=ItemStack.EMPTY;
     private NonNullList<ItemStack> contents=NonNullList.withSize(216,ItemStack.EMPTY);
     private boolean delivered,deathDropsReleased;
+    private int liftTicks;
 
     public MovingPallet(EntityType<? extends MovingPallet> type,Level level){
         super(type,level);
@@ -58,9 +61,11 @@ public final class MovingPallet extends PathfinderMob {
         super.defineSynchedData(builder);
         builder.define(DISPLAY_PALLET,ItemStack.EMPTY);
         builder.define(DISPLAY_CARGO,0);
+        builder.define(LIFT_TICKS,0);
     }
     public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
     public int visibleCargo(){return entityData.get(DISPLAY_CARGO);}
+    public float liftProgress(){return entityData.get(LIFT_TICKS)/12.0f;}
     public boolean owns(UUID player){return owner.equals(player.toString());}
     public boolean loaded(){return !pallet.isEmpty();}
     public boolean fromWarehouse(List<StorageGolemShelfEntity> group){
@@ -206,6 +211,14 @@ public final class MovingPallet extends PathfinderMob {
             if(tickCount%20==0)restoreWorkers(server);
             return;
         }
+        // The first 12 ticks are a real lift animation; the one entity
+        // does not begin pathfinding until all four corners rise together.
+        if(liftTicks<12){
+            liftTicks++;
+            entityData.set(LIFT_TICKS,liftTicks);
+            getNavigation().stop();
+            return;
+        }
         UUID id;
         try{id=UUID.fromString(owner);}catch(IllegalArgumentException ex){return;}
         var player=server.getPlayerByUUID(id);
@@ -240,6 +253,7 @@ public final class MovingPallet extends PathfinderMob {
         super.addAdditionalSaveData(out);
         out.putString("owner",owner);
         out.putBoolean("delivered",delivered);
+        out.putInt("lift_ticks",liftTicks);
         for(int i=0;i<4;i++)out.store("shelf_"+i,BlockPos.CODEC,shelves[i]);
         if(!pallet.isEmpty())out.store("pallet",ItemStack.CODEC,pallet);
         ContainerHelper.saveAllItems(out,contents);
@@ -248,6 +262,8 @@ public final class MovingPallet extends PathfinderMob {
         super.readAdditionalSaveData(in);
         owner=in.getStringOr("owner","");
         delivered=in.getBooleanOr("delivered",false);
+        liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
+        entityData.set(LIFT_TICKS,liftTicks);
         for(int i=0;i<4;i++)
             shelves[i]=in.read("shelf_"+i,BlockPos.CODEC).orElse(BlockPos.ZERO);
         pallet=in.read("pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
