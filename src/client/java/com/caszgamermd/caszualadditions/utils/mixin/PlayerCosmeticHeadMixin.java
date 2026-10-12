@@ -19,6 +19,24 @@ public abstract class PlayerCosmeticHeadMixin {
             model.leftLeg.visible=model.rightLeg.visible=model.leftPants.visible=model.rightPants.visible=false;
             return;
         }
+        // PlayerModel instances are reused between players and between frames.
+        // ModelPart.resetPose() only resets transforms; it does NOT restore the
+        // visible flags that special cosmetics switched off. Always establish
+        // normal visibility before applying this player's own costume.
+        // Otherwise wearing an End Rod, bone or aquarium can leave everybody's
+        // arms/body/legs invisible after the outfit is taken off.
+        boolean spectator = state.isSpectator;
+        model.body.visible = !spectator;
+        model.leftArm.visible = !spectator;
+        model.rightArm.visible = !spectator;
+        model.leftLeg.visible = !spectator;
+        model.rightLeg.visible = !spectator;
+        model.jacket.visible = !spectator && state.showJacket;
+        model.leftSleeve.visible = !spectator && state.showLeftSleeve;
+        model.rightSleeve.visible = !spectator && state.showRightSleeve;
+        model.leftPants.visible = !spectator && state.showLeftPants;
+        model.rightPants.visible = !spectator && state.showRightPants;
+
         boolean block=SpecialCosmetics.hasBlockHead(state.headEquipment);
         // Vanilla skulls live in wornHeadType, while cosmetic skulls also occupy headEquipment.
         // Both must fully replace the player's head and outer hat/skin layer.
