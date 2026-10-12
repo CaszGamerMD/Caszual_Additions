@@ -142,7 +142,6 @@ public final class RackComputerNet {
         reply(player,success
                 ?"PTP updated at "+target.getBlockPos().toShortString()
                 :"PTP operation blocked: check pallet, Wrap Unit, pending orders or active haul.");
-        answer(player,new Query(computer,"",BlockPos.ZERO));
     }
 
     private static void setGolemSorting(ServerPlayer player,GolemControl control){
