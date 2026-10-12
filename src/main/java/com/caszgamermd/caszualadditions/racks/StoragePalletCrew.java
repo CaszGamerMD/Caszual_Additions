@@ -28,6 +28,21 @@ public final class StoragePalletCrew {
         for(StorageGolem member:team)mask=WarehouseTeamProgress.arrive(mask,member.crewIndex());
         return WarehouseTeamProgress.complete(mask);
     }
+    /** Permit a freshly acquired handheld scanner to bind an existing
+     * crew dispatched from the Golem workstation page, without stealing
+     * workers from a different warehouse or dismissing them. */
+    public static boolean assignedToComputer(ServerLevel level,ServerPlayer player,
+            BlockPos computer){
+        List<StorageGolem> assigned=team(level,player);
+        if(assigned.isEmpty())return false;
+        java.util.Set<BlockPos> shelves=new java.util.HashSet<>();
+        for(StorageGolemShelfEntity shelf:WarehouseConnections.shelvesForComputer(level,computer))
+            shelves.add(shelf.getBlockPos());
+        for(StorageGolem worker:assigned)
+            if(!shelves.contains(worker.shelfHome()))return false;
+        return true;
+    }
+
     public static String enlist(ServerLevel level,ServerPlayer player,BlockPos computer){
         if(!team(level,player).isEmpty())
             return "Your four-Golem team is already assigned. Return it before linking another warehouse.";
