@@ -31,12 +31,15 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Server-authoritative order queue. Does not withdraw items unless the hub has
- * a pallet and destination capacity. At most three workers are active.
+ * Saved-world compatibility shell for the retired 2x2 Order Collector Hub.
+ *
+ * Keeps the old 216-slot inventory, pallet/filter settings and collector count
+ * readable. It intentionally exposes NO order queue, no virtual workers, no
+ * dispatch, no new installation and no new inventory insertion. Existing
+ * payload can be salvaged through the GUI or by breaking the old block.
  */
 public final class OrderHubEntity extends BlockEntity implements Container,ExtendedMenuProvider<BlockPos>, com.caszgamermd.caszualadditions.pallet.PalletFilterCarrier {
     public static final int SLOTS=216;
-    public static final int MAX_ORDERS=16;
     private NonNullList<ItemStack> output=NonNullList.withSize(SLOTS,ItemStack.EMPTY);
     private ItemStack pallet=ItemStack.EMPTY;
     private String palletFilter="";
@@ -44,22 +47,9 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
     private int filterMode,filterScope;
     private String filterSignature="";
     private int collectors;
-    private final ArrayDeque<Order> queue=new ArrayDeque<>();
-    private record Order(String id,int remaining) {}
     public OrderHubEntity(BlockPos pos,BlockState state){super(RackContent.HUB_ENTITY,pos,state);}
 
     public boolean hasPallet(){return !pallet.isEmpty();}
-    public boolean installPallet(ItemStack stack){
-        if(hasPallet())return false;
-        pallet=stack.copyWithCount(1);
-        palletFilter=com.caszgamermd.caszualadditions.pallet.PalletData.filter(stack);
-        filterMode=com.caszgamermd.caszualadditions.pallet.PalletData.filterMode(stack);
-        filterScope=com.caszgamermd.caszualadditions.pallet.PalletData.filterScope(stack);
-        filterSignature=com.caszgamermd.caszualadditions.pallet.PalletData.filterSignature(stack);
-        filterUpgrade=com.caszgamermd.caszualadditions.pallet.PalletData.filterInstalled(stack)
-                ?new ItemStack(RackContent.PALLET_FILTER):ItemStack.EMPTY;
-        setChanged();return true;
-    }
     public ItemStack removePallet() {
         if(!isEmpty())return ItemStack.EMPTY;
         return dropPallet();
@@ -72,17 +62,8 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         pallet=ItemStack.EMPTY;palletFilter="";filterUpgrade=ItemStack.EMPTY;
         filterSignature="";setChanged();return old;
     }
-    public boolean addCollector(){
-        if(collectors>=3)return false;
-        collectors++;setChanged();return true;
-    }
     public void removeCollector(){if(collectors>0){collectors--;setChanged();}}
     public int collectors(){return collectors;}
-    public int orders(){return queue.size();}
-    public boolean queue(String itemId,int amount){
-        if(queue.size()>=MAX_ORDERS||amount<1||amount>4096)return false;
-        queue.addLast(new Order(itemId,amount));setChanged();return true;
-    }
     public static @Nullable OrderHubEntity nextToComputer(ServerLevel level,BlockPos computer){
         for(Direction side:Direction.values()){
             BlockPos at=computer.relative(side);
@@ -92,30 +73,6 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         }
         return null;
     }
-    private @Nullable ShulkerTankEntity tank(ServerLevel level) {
-        for(int i=0;i<4;i++){
-            BlockPos part=OrderHubBlock.cell(worldPosition,i);
-            for(Direction side:Direction.values()){
-                BlockPos p=part.relative(side);
-                if(!level.hasChunkAt(p))continue;
-                ShulkerTankEntity tank=ShulkerTankBlock.controller(level,p);
-                if(tank!=null)return tank;
-            }
-        }
-        return null;
-    }
-    private @Nullable BlockPos adjacentComputer(ServerLevel level){
-        for(int i=0;i<4;i++){
-            BlockPos part=OrderHubBlock.cell(worldPosition,i);
-            for(Direction side:Direction.values()){
-                BlockPos p=part.relative(side);
-                if(level.hasChunkAt(p)&&level.getBlockState(p).is(RackContent.RACK_COMPUTER))
-                    return p;
-            }
-        }
-        return null;
-    }
-    private boolean accepts(ItemStack sample) {return hasPallet() && allows(sample);}
     @Override public ItemStack filterUpgrade(){return filterUpgrade.copy();}
     @Override public void setFilterUpgrade(ItemStack item){
         filterUpgrade=item.is(com.caszgamermd.caszualadditions.racks.RackContent.PALLET_FILTER)
@@ -131,115 +88,13 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
     @Override public String filterComponentSignature(){return filterSignature;}
     @Override public void setFilterComponentSignature(String signature){filterSignature=signature;setChanged();}
 
-    private int freeSlot(ItemStack sample) {
-        if(!accepts(sample))return -1;
-        // Reuse matching partial stacks before consuming new pallet slots.
-        for(int i=0;i<SLOTS;i++){
-            ItemStack stack=output.get(i);
-            if(!stack.isEmpty() && ItemStack.isSameItemSameComponents(stack,sample)
-                    && stack.getCount()<stack.getMaxStackSize())return i;
-        }
-        for(int i=0;i<SLOTS;i++)if(output.get(i).isEmpty())return i;
-        return -1;
-    }
-    /** Consume only from the connected rack network and only matching IDs. */
-    private static ItemStack take(ServerLevel level,List<RackBlockEntity> racks,Item target,int max) {
-        for(RackBlockEntity rack:racks){
-            if(!rack.hasPallet())continue;
-            for(int i=0;i<rack.getContainerSize();i++){
-                ItemStack stack=rack.getItem(i);
-                if(stack.isEmpty()||stack.getItem()!=target)continue;
-                return rack.removeItem(i,Math.min(max,stack.getCount()));
-            }
-        }
-        return ItemStack.EMPTY;
-    }
-    /** Server-level inventory transfers, never force chunk loads. */
-    public static void serverTick(ServerLevel level,BlockPos pos,OrderHubEntity hub){
-        if(level.getGameTime()%10!=0||!hub.hasPallet()||hub.collectors==0||hub.queue.isEmpty())return;
-        BlockPos computer=hub.adjacentComputer(level);
-        if(computer==null)return;
-        List<RackBlockEntity> racks=RackNetwork.fromComputer(level,computer);
-        if(racks.isEmpty())return;
-
-        for(int worker=0;worker<hub.collectors && !hub.queue.isEmpty();worker++){
-            Order order=hub.queue.peekFirst();
-            Identifier id=Identifier.tryParse(order.id());
-            if(id==null){hub.queue.removeFirst();hub.setChanged();continue;}
-            Item target=BuiltInRegistries.ITEM.getValue(id);
-            if(target==null||target==Items.AIR){
-                hub.queue.removeFirst();hub.setChanged();continue;
-            }
-            ShulkerTankEntity tank=hub.tank(level);
-            // Any empty named/color shulker can carry up to 27 regular item
-            // stacks, retaining every original stack's custom components.
-            ItemStack emptyPreview=tank==null?ItemStack.EMPTY:tank.peek();
-            boolean pack=!emptyPreview.isEmpty() && target.canFitInsideContainerItems()
-                    && hub.freeSlot(emptyPreview)>=0;
-            if(pack){
-                int slot=hub.freeSlot(emptyPreview);
-                if(slot<0 || !hub.output.get(slot).isEmpty())continue;
-                ItemStack empty=tank.take();
-                if(empty.isEmpty())continue;
-                List<ItemStack> cargo=new ArrayList<>(27);
-                int withdrawn=0;
-                while(withdrawn<order.remaining() && cargo.size()<27){
-                    ItemStack stack=take(level,racks,target,
-                            Math.min(64,order.remaining()-withdrawn));
-                    if(stack.isEmpty())break;
-                    withdrawn+=stack.getCount();
-                    cargo.add(stack);
-                }
-                if(withdrawn<=0){
-                    tank.add(empty);continue;
-                }
-                empty.set(DataComponents.CONTAINER,ItemContainerContents.fromItems(cargo));
-                hub.output.set(slot,empty);
-                hub.setChanged();
-                int rest=order.remaining()-withdrawn;
-                hub.queue.removeFirst();
-                if(rest>0)hub.queue.addFirst(new Order(order.id(),rest));
-            } else {
-                // FIRST identify the exact source stack, including components.
-                // Then reserve a compatible destination slot. Only afterwards
-                // remove items; a full pallet can never destroy items in transit.
-                RackBlockEntity source=null;
-                int sourceSlot=-1;
-                ItemStack sample=ItemStack.EMPTY;
-                outer: for(RackBlockEntity rack:racks){
-                    if(!rack.hasPallet())continue;
-                    for(int i=0;i<rack.getContainerSize();i++){
-                        ItemStack candidate=rack.getItem(i);
-                        if(!candidate.isEmpty()&&candidate.getItem()==target){
-                            source=rack;sourceSlot=i;sample=candidate;
-                            break outer;
-                        }
-                    }
-                }
-                if(source==null)continue;
-                int slot=hub.freeSlot(sample);
-                if(slot<0)continue;
-                ItemStack current=hub.output.get(slot);
-                int available=current.isEmpty()?sample.getMaxStackSize()
-                        :current.getMaxStackSize()-current.getCount();
-                if(available<=0)continue;
-                ItemStack received=source.removeItem(sourceSlot,
-                        Math.min(available,order.remaining()));
-                if(received.isEmpty())continue;
-                if(current.isEmpty())hub.output.set(slot,received);
-                else current.grow(received.getCount());
-                hub.setChanged();
-                int rest=order.remaining()-received.getCount();
-                hub.queue.removeFirst();
-                if(rest>0)hub.queue.addFirst(new Order(order.id(),rest));
-            }
-        }
-    }
-
     @Override public int getContainerSize(){return SLOTS;}
     @Override public boolean isEmpty(){for(ItemStack i:output)if(!i.isEmpty())return false;return true;}
     @Override public ItemStack getItem(int slot){return slot>=0&&slot<SLOTS?output.get(slot):ItemStack.EMPTY;}
-    @Override public boolean canPlaceItem(int slot,ItemStack stack){return accepts(stack);}
+    @Override public boolean canPlaceItem(int slot,ItemStack stack){
+        // Saved Hubs can be emptied, but no longer accept deliveries.
+        return false;
+    }
     @Override public ItemStack removeItem(int slot,int count){
         ItemStack r=ContainerHelper.removeItem(output,slot,count);
         if(!r.isEmpty())setChanged();return r;
@@ -249,7 +104,13 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         if(!r.isEmpty())setChanged();return r;
     }
     @Override public void setItem(int slot,ItemStack stack){
-        if(slot<0||slot>=SLOTS||(!stack.isEmpty()&&!accepts(stack)))return;
+        if(slot<0||slot>=SLOTS)return;
+        // Permit extracting items through the old PalletMenu, but not adding
+        // new material to a retired machine.
+        ItemStack previous=output.get(slot);
+        if(!stack.isEmpty()&&(previous.isEmpty()
+                ||!ItemStack.isSameItemSameComponents(previous,stack)
+                ||stack.getCount()>previous.getCount()))return;
         output.set(slot,stack);setChanged();
     }
     @Override public void clearContent(){output=NonNullList.withSize(SLOTS,ItemStack.EMPTY);setChanged();}
@@ -264,13 +125,7 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         output.putInt("filter_scope",filterScope);
         output.putString("filter_signature",filterSignature);
         if(!filterUpgrade.isEmpty())output.store("filter_upgrade",ItemStack.CODEC,filterUpgrade);
-        output.putInt("order_count",queue.size());
-        int i=0;
-        for(Order order:queue){
-            output.putString("order_id_"+i,order.id());
-            output.putInt("order_qty_"+i,order.remaining());
-            i++;
-        }
+
     }
     @Override protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
@@ -285,15 +140,11 @@ public final class OrderHubEntity extends BlockEntity implements Container,Exten
         filterUpgrade=input.read("filter_upgrade",ItemStack.CODEC).orElse(ItemStack.EMPTY);
         if(filterUpgrade.isEmpty()&&!palletFilter.isBlank())
             filterUpgrade=new ItemStack(RackContent.PALLET_FILTER);
-        queue.clear();
-        int count=Math.clamp(input.getIntOr("order_count",0),0,MAX_ORDERS);
-        for(int i=0;i<count;i++){
-            String id=input.getStringOr("order_id_"+i,"");
-            int qty=input.getIntOr("order_qty_"+i,0);
-            if(!id.isBlank()&&qty>0&&qty<=4096)queue.add(new Order(id,qty));
-        }
+
     }
-    @Override public Component getDisplayName(){return Component.literal("Order Collector Hub");}
+    @Override public Component getDisplayName(){
+        return Component.literal("Retired Warehouse Hub (salvage only)");
+    }
     @Override public @Nullable AbstractContainerMenu createMenu(int id,Inventory inventory,Player player){
         return new PalletMenu(id,inventory,this);
     }
