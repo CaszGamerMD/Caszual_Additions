@@ -503,11 +503,6 @@ public final class StorageGolem extends PathfinderMob {
                 &&level.getBlockEntity(destination) instanceof PtpBlockEntity ptp?ptp:null;
     }
     private void releaseOutput(ServerLevel level){
-        if(stage==2){
-            releaseOutput(level);
-            returnToShelf(level);
-            return;
-        }
         if(outputJob&&outputTicket!=0){
             PtpBlockEntity ptp=outputPoint(level);
             if(ptp!=null)ptp.releaseOutput(outputTicket);
@@ -689,6 +684,13 @@ public final class StorageGolem extends PathfinderMob {
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel level)||tickCount%10!=0)return;
+        // Return-home jobs MUST use the flat same-Y grid router, never the
+        // generic approach() navigation that can select a jump over a block.
+        if(stage==2){
+            releaseOutput(level);
+            returnToShelf(level);
+            return;
+        }
         if(haulJob){
             if(playerHaul)tickPlayerHaul(level);
             else tickHaul(level);
