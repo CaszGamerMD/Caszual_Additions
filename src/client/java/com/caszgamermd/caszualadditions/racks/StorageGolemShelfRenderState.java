@@ -1,11 +1,11 @@
 package com.caszgamermd.caszualadditions.racks;
 
-import net.minecraft.client.renderer.block.BlockModelRenderState;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.core.Direction;
 
+/** Only the real number of docked workers and shelf orientation are needed.
+ * All six textured parts are rendered from the shared Storage Golem mesh. */
 public final class StorageGolemShelfRenderState extends BlockEntityRenderState {
     public int docked;
-    public net.minecraft.core.Direction facing=net.minecraft.core.Direction.NORTH;
-    public final BlockModelRenderState frame=new BlockModelRenderState();
-    public final BlockModelRenderState lamp=new BlockModelRenderState();
+    public Direction facing=Direction.NORTH;
 }
