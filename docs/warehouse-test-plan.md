@@ -77,6 +77,22 @@ chunk saves. Run these tests on a backed-up world, then on a dedicated server.
 - [ ] Confirm IGC floor does not replace the four real Golems' walking
       requirements, create remote inventory access, or duplicate pallets.
 
+## Storage Golem robot texture and head model
+
+- [ ] Examine an ordinary Golem in first and third person: its head must
+      **touch the torso**, without a one-pixel air gap or obvious z-fighting.
+- [ ] Inspect all four Golem models locked to the moving pallet while idle,
+      lifting, turning, and walking. Heads should stay seated on their torsos.
+- [ ] Inspect the slate robot skin on all four sides: dark mechanical visor
+      with twin cyan optical sensors, front chest access panel, seams,
+      metallic rivets, and visibly separate shoulder/knee joints.
+- [ ] Verify hands look oily and work-worn, and feet have brown-black
+      grime concentrated on boots/soles; no skin transparency or UV bleed.
+- [ ] Compare a shelf worker and attached pallet worker side by side:
+      both should use exactly the same 64x64 worn slate robot texture.
+- [ ] Load another resource pack and reload resources; the Golem must
+      still render cleanly with no missing-purple/pink textures.
+
 ## One moving pallet with four locked, animated Golems
 
 - [ ] Enlist exactly four real Storage Golems and right-click a glass-wrapped
