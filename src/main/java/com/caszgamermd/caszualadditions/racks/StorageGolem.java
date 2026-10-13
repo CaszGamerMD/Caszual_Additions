@@ -635,13 +635,18 @@ public final class StorageGolem extends PathfinderMob {
     private boolean closeTo(BlockPos p){
         return distanceToSqr(p.getX()+.5,p.getY()+.5,p.getZ()+.5)<3.5;
     }
-    private boolean atShelfEntrance(){
+    /**
+     * Dock at the same floor the Golem is actually walking on. Shelves
+     * occupy a full solid block, so their Y coordinate can differ by one
+     * from the Golem's foot position. A floor-level or raised-front shelf
+     * must not make a returning Golem wait forever outside its home.
+     */
+    private boolean atShelfEntrance(ServerLevel level){
         BlockPos feet=blockPosition();
-        int dx=Math.abs(feet.getX()-home.getX());
-        int dz=Math.abs(feet.getZ()-home.getZ());
-        return feet.getY()==home.getY()&&dx+dz==1
-                &&distanceToSqr(feet.getX()+.5,feet.getY()+.5,
-                        feet.getZ()+.5)<2.5;
+        if(Math.abs(feet.getY()-home.getY())>1)return false;
+        BlockPos shelfPlane=new BlockPos(home.getX(),feet.getY(),home.getZ());
+        return StorageGolemReturnPath.canDock(feet,shelfPlane,
+                p->StorageGolemReturnPath.walkable(level,p));
     }
     /** Returning to a shelf never targets its top or walks through it.
      * Four-direction same-floor detours avoid the normal AI temptation to
@@ -651,10 +656,11 @@ public final class StorageGolem extends PathfinderMob {
         if(!level.hasChunkAt(home)
                 ||!(level.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf))
             return;
-        if(atShelfEntrance()){
+        if(atShelfEntrance(level)){
             getNavigation().stop();
             flatHomeRoute.clear();
             if(shelf.add()){
+                setCustomNameVisible(false);
                 // A recalled/aborted worker can still own unsorted items,
                 // an empty shulker or even a loaded pallet. The previous
                 // return branch dropped these before redocking; keep that
@@ -670,28 +676,40 @@ public final class StorageGolem extends PathfinderMob {
                 }
                 dropCarriedPallet(level);
                 discard();
+            }else{
+                // No phantom docking: keep the real worker until a slot opens.
+                // Give a visible reason instead of silently freezing nearby.
+                setCustomName(Component.literal("SHELF FULL"));
+                setCustomNameVisible(true);
             }
             return;
         }
         BlockPos from=blockPosition();
-        if(from.getY()!=home.getY()){
-            // Only legitimate floor-level transitions use vanilla stairs.
-            // Even then, target a free cell BESIDE the shelf, not above it.
+        if(Math.abs(from.getY()-home.getY())>1){
+            // An actual stair/ramp may be necessary when a worker is on a
+            // DIFFERENT floor. Only use vanilla elevation navigation here.
+            // Never instruct it to climb onto the shelf itself.
             BlockPos closest=null;
             double score=Double.POSITIVE_INFINITY;
-            for(Direction dir:Direction.Plane.HORIZONTAL){
-                BlockPos access=home.relative(dir);
-                if(!StorageGolemReturnPath.walkable(level,access))continue;
-                double candidate=access.distSqr(from);
-                if(candidate<score){closest=access;score=candidate;}
-            }
+            for(int floorY=home.getY();floorY<=home.getY()+1;floorY++)
+                for(Direction dir:Direction.Plane.HORIZONTAL){
+                    BlockPos access=new BlockPos(home.getX(),floorY,home.getZ())
+                            .relative(dir);
+                    if(!StorageGolemReturnPath.walkable(level,access))continue;
+                    double candidate=access.distSqr(from);
+                    if(candidate<score){closest=access;score=candidate;}
+                }
             if(closest!=null&&tickCount%30==0)
                 getNavigation().moveTo(closest.getX()+.5,
                         closest.getY(),closest.getZ()+.5,.79);
             return;
         }
-        if(!lastHomeGoal.equals(home)){
-            lastHomeGoal=home.immutable();
+        // Plan around the shelf's X/Z on the GOLEM'S current floor, not the
+        // shelf block Y. This fixes a deadlock when the shelf is at ground
+        // block height and the Golem walks beside it one block higher.
+        BlockPos shelfPlane=new BlockPos(home.getX(),from.getY(),home.getZ());
+        if(!lastHomeGoal.equals(shelfPlane)){
+            lastHomeGoal=shelfPlane.immutable();
             flatHomeRoute.clear();
             nextHomeReplanTick=0;
         }
@@ -710,7 +728,7 @@ public final class StorageGolem extends PathfinderMob {
             }else break;
         }
         if(flatHomeRoute.isEmpty()&&tickCount>=nextHomeReplanTick){
-            var planned=StorageGolemReturnPath.route(from,home,
+            var planned=StorageGolemReturnPath.route(from,shelfPlane,
                     p->StorageGolemReturnPath.walkable(level,p));
             nextHomeReplanTick=tickCount+60;
             if(planned!=null){
