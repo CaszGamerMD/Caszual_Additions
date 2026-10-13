@@ -67,8 +67,10 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
         if(state.carryingPallet){
             // Both hands remain elevated during the loaded walk.
             // The actual pallet remains escrowed on the source PTP.
-            leftArm.xRot=-1.45f;
-            rightArm.xRot=-1.45f;
+            leftArm.xRot=-3.02f;
+            rightArm.xRot=-3.02f;
+            leftArm.zRot=-.12f;
+            rightArm.zRot=.12f;
         }
     }
 }
