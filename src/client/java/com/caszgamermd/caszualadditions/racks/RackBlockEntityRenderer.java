@@ -55,6 +55,10 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
         BlockEntityRenderer.super.extractRenderState(rack,state,partial,camera,cracks);
         state.facing=rack.facing();
         state.sealed=rack.glassWrapped();
+        int progress=rack.pullProgress();
+        state.pullOut=Math.min(1.0f,progress/18.0f)*1.85f;
+        state.lowerBy=Math.max(0f,Math.min(1f,(progress-18)/22.0f))
+                *Math.max(0,rack.getBlockPos().getY()-rack.pullFloorY());
         if(state.sealed)blocks.update(state.glassPane,
                 Blocks.GLASS.defaultBlockState(),DISPLAY);
         state.outlined=rack.getLevel()!=null
@@ -149,6 +153,13 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
         poses.pushPose();
         // Four Minecraft pixels of total clearance across the 2-block deck:
         // 2px inset per edge. Scale cargo with its pallet as one assembly.
+        // First TWO Golems draw the wrapped pallet out of the shelf.
+        // On elevated bays it then descends down the open aisle shaft
+        // before the other two workers assemble around it. No extra
+        // cargo entity exists until the four-worker handoff succeeds.
+        poses.translate(state.facing.getStepX()*state.pullOut,
+                -state.lowerBy,
+                state.facing.getStepZ()*state.pullOut);
         poses.translate(x+.125,.06,z+.125);
         poses.scale(.875f,.875f,.875f);
         for(int i=0;i<4;i++){

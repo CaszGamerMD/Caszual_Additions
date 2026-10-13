@@ -77,6 +77,19 @@ public final class StorageGolemReturnPath {
             if(passable.test(outer))goals.add(outer);
         }
         if(goals.isEmpty())return null;
+        return search(from,shelf,passable,goals);
+    }
+
+    /** Go directly to a validated workstation/aisle tile rather than
+     * targeting the solid block above it. No diagonal movement or jumps. */
+    public static List<BlockPos> routeTo(BlockPos from,BlockPos target,
+            Predicate<BlockPos> passable){
+        if(from.getY()!=target.getY()||!passable.test(target))return null;
+        return search(from,target,passable,Set.of(target));
+    }
+
+    private static List<BlockPos> search(BlockPos from,BlockPos shelf,
+            Predicate<BlockPos> passable,Set<BlockPos> goals){
         if(goals.contains(from))return List.of();
         int minX=Math.min(from.getX(),shelf.getX())-DETOUR_MARGIN;
         int maxX=Math.max(from.getX(),shelf.getX())+DETOUR_MARGIN;

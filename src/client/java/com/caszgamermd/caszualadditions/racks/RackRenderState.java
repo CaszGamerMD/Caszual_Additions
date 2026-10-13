@@ -23,6 +23,7 @@ public final class RackRenderState extends BlockEntityRenderState {
     public Direction facing=Direction.NORTH;
     public boolean pallet;
     public boolean sealed;
+    public float pullOut,lowerBy;
     public boolean inputMode;
     public final BlockModelRenderState statusLamp=new BlockModelRenderState();
     public int visible;

@@ -128,7 +128,7 @@ public final class StoragePalletCrew {
                 ||w.escorting(player.getUUID())||w.pickupPending(player.getUUID())))
             return "This crew already has an active pallet pickup or delivery.";
         if(!source.hasPallet()||!source.sealed())
-            return "Pallet must be glass-wrapped before lifting (portable wrapper or Wrap Unit).";
+            return "Pallet must be plastic-wrapped before lifting (portable wrapper or Wrap Unit).";
         int ticket=source.beginPlayerHaul(player.getUUID());
         if(ticket==0)return "PTP cannot reserve pallet; check pending orders or an existing haul.";
         for(StorageGolem worker:workers)worker.beginPlayerPickup(source.getBlockPos(),ticket);
@@ -178,13 +178,20 @@ public final class StoragePalletCrew {
             return "Finish the crew's current pallet pickup or delivery first.";
         if(!rack.hasPallet())return "This rack has no pallet to collect.";
         if(!rack.glassWrapped())
-            return "Wrap the pallet in this rack with glass before Golems can lift it.";
-        if(!assembledNear(workers,rack.getBlockPos()))
-            return "Wait for all four Golems to catch up before collecting from this rack.";
-        for(StorageGolem worker:workers)worker.beginRackPickup(rack.getBlockPos());
-        return "Crew collecting wrapped pallet from rack "
+            return "Apply plastic stretch wrap before lifting this rack's pallet.";
+        RackPickupPlan plan=RackPickupPlan.find(level,rack);
+        if(plan==null)
+            return "Rack pickup requires a clear, two-wide aisle with floor support. "
+                    +"Elevated racks also need an unobstructed lowering shaft "
+                    +"(up to "+RackPickupPlan.MAX_DROP+" blocks down).";
+        if(!assembledNear(workers,plan.rigCenter()))
+            return "Wait for all four Golems to reach the aisle below this rack.";
+        for(StorageGolem worker:workers)
+            worker.beginRackPickup(rack.getBlockPos(),plan.floorY());
+        return "Two Golems will pull the plastic-wrapped pallet out of "
                 +RackNetwork.label(level,rack)
-                +". Wait for all four Golems to reach the rack front.";
+                +(plan.height()>0?" and lower it "+plan.height()+" blocks":"")
+                +"; the other two will then join the lift.";
     }
 
     private static boolean assembledNear(List<StorageGolem> members,
