@@ -123,7 +123,7 @@ public final class StorageScannerItem extends Item {
         }
         RackBlockEntity rack=RackBlock.controller(server,clicked);
         if(rack!=null){
-            user.sendSystemMessage(Component.literal(StoragePalletCrew.deliverRack(server,user,rack)));
+            user.sendSystemMessage(Component.literal(StoragePalletCrew.interactRack(server,user,rack)));
             return InteractionResult.SUCCESS;
         }
         // Place on the block face the player clicked; only a 2x2 clear,
