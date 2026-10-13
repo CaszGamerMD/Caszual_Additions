@@ -32,6 +32,8 @@ jobs:
         run: python3 scripts/warehouse_scanner_model_smoke.py
       - name: Verify Industrial Grade Concrete and Golem console (blocking)
         run: python3 scripts/warehouse_igc_golems_smoke.py
+      - name: Verify Storage Golem robot texture and joined head models (blocking)
+        run: python3 scripts/warehouse_golem_robot_texture_smoke.py
       - name: Verify free-standing pallet access and rack front grill (blocking)
         run: python3 scripts/warehouse_pallet_access_frame_smoke.py
       - name: Verify portable wrapping and shared four-Golem pallet carry (blocking)

@@ -40,7 +40,9 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
                     PartPose.offset(0,13,0));
             corner.addOrReplaceChild("head",CubeListBuilder.create()
                     .texOffs(0,20).addBox(-4,-5,-3,8,7,6),
-                    PartPose.offset(0,4,0));
+                    // Head extends from y=1 to y=8; torso starts at y=7.
+                // A one-pixel overlap closes the old floating-head gap.
+                PartPose.offset(0,6,0));
             corner.addOrReplaceChild("left_arm",CubeListBuilder.create()
                     .texOffs(28,20).addBox(-2,-1,-2,4,10,4),
                     PartPose.offset(7,11,0));
