@@ -40,6 +40,28 @@ public final class StorageGolemReturnPath {
                 &&!below.getCollisionShape(level,ground).isEmpty();
     }
 
+    /**
+     * A shelf is occupied by a solid block, not an air destination. A Golem
+     * can check in from a clear cardinal aisle cell one OR two blocks away.
+     * The two-cell option prevents four returning workers from queueing in a
+     * single narrow docking square. Never count a blocked inner cell as an
+     * accessible dock from two cells away (e.g. through a wall).
+     *
+     * The caller supplies a shelf position at the GOLEM'S standing Y level.
+     * The actual shelf block can be one block above or below that level.
+     */
+    public static boolean canDock(BlockPos feet,BlockPos shelf,
+            Predicate<BlockPos> passable){
+        if(feet.getY()!=shelf.getY())return false;
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            BlockPos inner=shelf.relative(side);
+            if(!passable.test(inner))continue;
+            if(feet.equals(inner)&&passable.test(feet))return true;
+            if(feet.equals(inner.relative(side))&&passable.test(feet))return true;
+        }
+        return false;
+    }
+
     /** Returns turn/end waypoints with the start omitted. No diagonal
      * corner cutting, ascents or leaps are permitted. A null result means
      * there is no complete same-level route through currently loaded blocks. */
@@ -48,8 +70,11 @@ public final class StorageGolemReturnPath {
         if(from.getY()!=shelf.getY())return null;
         Set<BlockPos> goals=new HashSet<>();
         for(Direction side:Direction.Plane.HORIZONTAL){
-            BlockPos goal=shelf.relative(side);
-            if(passable.test(goal))goals.add(goal);
+            BlockPos inner=shelf.relative(side);
+            if(!passable.test(inner))continue;
+            goals.add(inner);
+            BlockPos outer=inner.relative(side);
+            if(passable.test(outer))goals.add(outer);
         }
         if(goals.isEmpty())return null;
         if(goals.contains(from))return List.of();

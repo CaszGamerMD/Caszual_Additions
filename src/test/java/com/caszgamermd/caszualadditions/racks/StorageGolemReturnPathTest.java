@@ -38,8 +38,11 @@ final class StorageGolemReturnPathTest {
             previous=turn;
         }
         assertTrue(tookDetour,"Must detour on same Y rather than jumping over crate");
-        assertEquals(1,Math.abs(previous.getX()-home.getX())
-                +Math.abs(previous.getZ()-home.getZ()));
+        int finalDistance=Math.abs(previous.getX()-home.getX())
+                +Math.abs(previous.getZ()-home.getZ());
+        assertTrue(finalDistance>=1&&finalDistance<=2);
+        assertTrue(StorageGolemReturnPath.canDock(previous,home,
+                pos->!walls.contains(pos)&&!pos.equals(home)));
     }
 
     @Test void enclosedShelfCannotTriggerJumpShortcut(){
@@ -54,6 +57,30 @@ final class StorageGolemReturnPathTest {
     @Test void wrongFloorDoesNotPretendToBeFlat(){
         assertNull(StorageGolemReturnPath.route(
                 new BlockPos(0,65,0),new BlockPos(4,64,0),pos->true));
+    }
+
+    @Test void higherStandingFloorStillHasAnAccessibleShelfApproach(){
+        BlockPos actualShelf=new BlockPos(5,64,5);
+        BlockPos from=new BlockPos(2,65,5);
+        BlockPos shelfPlane=new BlockPos(actualShelf.getX(),from.getY(),actualShelf.getZ());
+        List<BlockPos> path=StorageGolemReturnPath.route(from,shelfPlane,
+                pos->!pos.equals(shelfPlane));
+        assertNotNull(path);
+        assertFalse(path.isEmpty());
+        for(BlockPos point:path)assertEquals(65,point.getY());
+        assertTrue(StorageGolemReturnPath.canDock(path.getLast(),shelfPlane,
+                pos->!pos.equals(shelfPlane)));
+    }
+
+    @Test void twoDeepAisleCanDockWithoutCrowdingOneBlock(){
+        BlockPos shelf=new BlockPos(5,64,5);
+        BlockPos outer=shelf.north(2);
+        assertTrue(StorageGolemReturnPath.canDock(outer,shelf,
+                pos->!pos.equals(shelf)));
+        assertEquals(List.of(),StorageGolemReturnPath.route(outer,shelf,
+                pos->!pos.equals(shelf)));
+        assertFalse(StorageGolemReturnPath.canDock(outer,shelf,
+                pos->!pos.equals(shelf)&&!pos.equals(shelf.north())));
     }
 
     @Test void nearbySideNeedsNoPath(){
