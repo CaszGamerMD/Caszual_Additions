@@ -42,6 +42,9 @@ public final class FunBarrelBlockEntity extends BlockEntity
     private NonNullList<ItemStack> items = NonNullList.withSize(PAGE_SIZE, ItemStack.EMPTY);
     private final Set<String> cataloged = new LinkedHashSet<>();
     private boolean initialized;
+    // New barrels are bundled immediately. Old barrels convert their
+    // existing (possibly partially depleted) stock once on next opening.
+    private boolean organized;
 
     public FunBarrelBlockEntity(BlockPos pos, BlockState state) {
         super(FunBarrelContent.BLOCK_ENTITY, pos, state);
@@ -53,7 +56,8 @@ public final class FunBarrelBlockEntity extends BlockEntity
                 || namespace.equals("prettyfrogs")
                 || namespace.equals("linked_aquariums")
                 || namespace.equals("caszutils")
-                || namespace.equals("colorful_rods");
+                || namespace.equals("colorful_rods")
+                || namespace.equals("ore_laundering");
     }
 
     /**
@@ -81,6 +85,7 @@ public final class FunBarrelBlockEntity extends BlockEntity
 
         boolean changed = !initialized;
         initialized = true;
+        List<ItemStack> additions = new ArrayList<>();
         for (Item item : registered) {
             String id = BuiltInRegistries.ITEM.getKey(item).toString();
             if (cataloged.contains(id)) continue;
@@ -89,17 +94,48 @@ public final class FunBarrelBlockEntity extends BlockEntity
             ItemStack stack = item.getDefaultInstance();
             if (stack.isEmpty()) continue;
             stack.setCount(1);
-            int target = firstEmptySlot();
-            if (target == -1) {
-                if (items.size() >= MAX_CAPACITY) break;
-                grow(items.size() + PAGE_SIZE);
-                target = firstEmptySlot();
-            }
-            items.set(target, stack);
+            additions.add(stack);
             cataloged.add(id);
             changed = true;
         }
+
+        if (!organized) {
+            // One-time migration of old saves, using ONLY their remaining
+            // contents. Items taken before this upgrade never respawn.
+            // First-time barrels get their new registry items here too.
+            List<ItemStack> remaining = new ArrayList<>();
+            for (ItemStack existing : items) {
+                if (!existing.isEmpty()) remaining.add(existing.copy());
+            }
+            remaining.addAll(additions);
+            repack(FunBarrelBundles.organize(remaining));
+            organized = true;
+            changed = true;
+        } else if (!additions.isEmpty()) {
+            // Don't unpack or reset a player's old bundles on each opening:
+            // newly-installed mod items become NEW category bundles only.
+            for (ItemStack entry : FunBarrelBundles.organize(additions)) {
+                int target = firstEmptySlot();
+                if (target == -1) {
+                    if (items.size() >= MAX_CAPACITY) break;
+                    grow(items.size() + PAGE_SIZE);
+                    target = firstEmptySlot();
+                }
+                items.set(target, entry);
+            }
+        }
         if (changed) setChanged();
+    }
+
+    private void repack(List<ItemStack> stacks) {
+        int needed = Math.max(PAGE_SIZE,
+                ((stacks.size() + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE);
+        NonNullList<ItemStack> packed = NonNullList.withSize(
+                Math.min(MAX_CAPACITY, needed), ItemStack.EMPTY);
+        for (int i = 0; i < Math.min(stacks.size(), packed.size()); i++) {
+            packed.set(i, stacks.get(i));
+        }
+        items = packed;
     }
 
     private int firstEmptySlot() {
@@ -174,6 +210,7 @@ public final class FunBarrelBlockEntity extends BlockEntity
         super.saveAdditional(output);
         output.putInt("capacity", items.size());
         output.putInt("initialized", initialized ? 1 : 0);
+        output.putInt("bundle_version", organized ? 1 : 0);
         output.store("cataloged", Codec.STRING.listOf(), List.copyOf(cataloged));
         ContainerHelper.saveAllItems(output, items);
     }
@@ -187,6 +224,7 @@ public final class FunBarrelBlockEntity extends BlockEntity
         items = NonNullList.withSize(capacity, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
         initialized = input.getIntOr("initialized", 0) != 0;
+        organized = input.getIntOr("bundle_version", 0) > 0;
         cataloged.clear();
         cataloged.addAll(input.read("cataloged", Codec.STRING.listOf()).orElse(List.of()));
     }
