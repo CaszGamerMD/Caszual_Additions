@@ -23,6 +23,24 @@ class FunBarrelTagSmokeTest(unittest.TestCase):
         self.assertIn("caszualFamily(id) ||", barrel,
                       "Older Caszual mods still work without adding resource-pack tags")
 
+    def test_bundle_categories_and_safe_migration(self):
+        bundle = (SRC / "funbarrel/FunBarrelBundles.java").read_text(encoding="utf-8")
+        barrel = (SRC / "funbarrel/FunBarrelBlockEntity.java").read_text(encoding="utf-8")
+        for label in ("End Rods", "RGB Blocks", "Warehouse Equipment",
+                      "XP Devices", "Ore Laundering"):
+            self.assertIn('"' + label + '"', bundle)
+        self.assertIn("DataComponents.BUNDLE_CONTENTS", bundle)
+        self.assertIn("new BundleContents(List.copyOf(contents))", bundle)
+        self.assertIn("entry.getMaxStackSize()", bundle)
+        self.assertIn("canFitInsideContainerItems()", bundle)
+        self.assertIn("List<ItemStack> loose", bundle)
+        self.assertIn('"bundle_version"', barrel)
+        self.assertIn("if (!organized)", barrel)
+        self.assertIn("remaining.addAll(additions)", barrel)
+        self.assertIn("FunBarrelBundles.organize(remaining)", barrel)
+        self.assertIn("FunBarrelBundles.organize(additions)", barrel)
+        self.assertIn('namespace.equals("ore_laundering")', barrel)
+
     def test_existing_barrels_refresh_without_duplicate_refills(self):
         block = (SRC / "funbarrel/FunBarrelBlock.java").read_text(encoding="utf-8")
         barrel = (SRC / "funbarrel/FunBarrelBlockEntity.java").read_text(encoding="utf-8")
