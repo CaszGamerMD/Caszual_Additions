@@ -11,7 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.component.BundleContents;
 
 /**
@@ -29,40 +29,47 @@ public final class FunBarrelBundles {
     private static final int MAX_WEIGHT = 64;
     private FunBarrelBundles() {}
 
-    private record Category(int order, String name, Item bundle) {}
+    private record Category(int order, String name, String bundleColor) {}
+
+    private static Item dyedBundle(String color) {
+        // Minecraft 26.2 removed the individual colored-bundle constants
+        // from Items; use the built-in item registry instead.
+        return BuiltInRegistries.ITEM.getValue(
+                Identifier.withDefaultNamespace(color + "_bundle"));
+    }
 
     private static Category category(Identifier id) {
         String ns=id.getNamespace(), path=id.getPath();
         if (ns.equals("ore_laundering"))
-            return new Category(70, "Ore Laundering", Items.LIME_BUNDLE);
+            return new Category(70, "Ore Laundering", "lime");
         if (ns.equals("prettyfrogs") || ns.equals("pretty_frogs"))
-            return new Category(80, "Pretty Frogs", Items.GREEN_BUNDLE);
+            return new Category(80, "Pretty Frogs", "green");
         if (ns.equals("linked_aquariums") || ns.equals("caszual_aquariums"))
-            return new Category(90, "Caszual Aquariums", Items.LIGHT_BLUE_BUNDLE);
+            return new Category(90, "Caszual Aquariums", "light_blue");
         if (ns.contains("mtg"))
-            return new Category(100, "Caszual MTG", Items.PURPLE_BUNDLE);
+            return new Category(100, "Caszual MTG", "purple");
         if (ns.contains("tvtime") || ns.contains("tv_time"))
-            return new Category(110, "Caszual TV Time", Items.BLUE_BUNDLE);
+            return new Category(110, "Caszual TV Time", "blue");
         if (ns.contains("miningrig") || ns.contains("mining_rig"))
-            return new Category(120, "Mining Rig", Items.GRAY_BUNDLE);
+            return new Category(120, "Mining Rig", "gray");
 
         if (path.endsWith("_end_rod") || path.equals("end_rod"))
-            return new Category(10, "End Rods", Items.ORANGE_BUNDLE);
+            return new Category(10, "End Rods", "orange");
         if (path.startsWith("rgb_") || path.equals("quarter_block"))
-            return new Category(20, "RGB Blocks", Items.CYAN_BUNDLE);
+            return new Category(20, "RGB Blocks", "cyan");
         if (path.contains("firefly_glass_box"))
-            return new Category(30, "Firefly Glass", Items.YELLOW_BUNDLE);
+            return new Category(30, "Firefly Glass", "yellow");
         if (path.startsWith("xp_"))
-            return new Category(40, "XP Devices", Items.LIME_BUNDLE);
+            return new Category(40, "XP Devices", "lime");
         if (path.contains("pallet") || path.contains("rack") ||
                 path.contains("warehouse") || path.contains("scanner") ||
                 path.contains("storage_golem") || path.startsWith("ptp_") ||
                 path.contains("industrial_grade_concrete") || path.contains("aisle_tag"))
-            return new Category(50, "Warehouse Equipment", Items.GRAY_BUNDLE);
+            return new Category(50, "Warehouse Equipment", "gray");
         if (path.contains("plushie") || path.contains("cosmetic") ||
                 path.contains("firefly") || path.contains("nautilus"))
-            return new Category(60, "Cosmetics and Fun", Items.PINK_BUNDLE);
-        return new Category(130, "Other Caszual Items", Items.WHITE_BUNDLE);
+            return new Category(60, "Cosmetics and Fun", "pink");
+        return new Category(130, "Other Caszual Items", "white");
     }
 
     /**
@@ -128,8 +135,8 @@ public final class FunBarrelBundles {
     }
 
     private static ItemStack bundle(Category section, List<ItemStack> contents, int sequence) {
-        ItemStack result = new ItemStack(section.bundle());
-        result.set(DataComponents.BUNDLE_CONTENTS, new BundleContents(List.copyOf(contents)));
+        ItemStack result = new ItemStack(dyedBundle(section.bundleColor()));
+        result.set(DataComponents.BUNDLE_CONTENTS, new BundleContents(contents.stream().map(ItemStackTemplate::fromNonEmptyStack).toList()));
         result.set(DataComponents.CUSTOM_NAME, Component.literal(section.name()
                 + (sequence == 1 ? "" : " (" + sequence + ")")));
         return result;
