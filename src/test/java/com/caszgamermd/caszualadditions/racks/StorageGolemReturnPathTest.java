@@ -83,6 +83,24 @@ final class StorageGolemReturnPathTest {
                 pos->!pos.equals(shelf)&&!pos.equals(shelf.north())));
     }
 
+    @Test void exactStationRouteAvoidsCrateWithoutJumping(){
+        BlockPos start=new BlockPos(0,70,0),target=new BlockPos(8,70,0);
+        Set<BlockPos> crates=blocked(70,new int[][]{{4,0},{4,1},{4,-1}});
+        List<BlockPos> route=StorageGolemReturnPath.routeTo(start,target,
+                p->!crates.contains(p));
+        assertNotNull(route);
+        assertEquals(target,route.getLast());
+        for(BlockPos turn:route)assertEquals(70,turn.getY());
+        assertNull(StorageGolemReturnPath.routeTo(start,target.above(),
+                p->true),"Never invent a ladder or jump through a rack");
+    }
+
+    @Test void exactWorkstationCannotBeInsideBlockingPallet(){
+        BlockPos start=new BlockPos(0,64,0),target=new BlockPos(3,64,0);
+        assertNull(StorageGolemReturnPath.routeTo(start,target,
+                p->!p.equals(target)));
+    }
+
     @Test void nearbySideNeedsNoPath(){
         BlockPos home=new BlockPos(5,64,5),start=home.north();
         assertEquals(List.of(),StorageGolemReturnPath.route(start,home,
