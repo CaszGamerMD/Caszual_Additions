@@ -1,7 +1,7 @@
 {
   "textures": {
     "concrete": "minecraft:block/lime_concrete",
-    "steel": "minecraft:block/iron_block"
+    "steel": "caszual_additions:block/suite/steel"
   },
   "elements": [
     {

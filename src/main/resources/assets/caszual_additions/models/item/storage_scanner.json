@@ -1,7 +1,7 @@
 {
   "ambientocclusion": false,
   "textures": {
-    "housing": "minecraft:block/polished_deepslate",
+    "housing": "caszual_additions:block/suite/slate",
     "rubber": "minecraft:block/black_concrete",
     "steel": "minecraft:block/gray_concrete",
     "trim": "minecraft:block/light_gray_concrete",
@@ -12,7 +12,7 @@
     "black": "minecraft:block/black_concrete",
     "amber": "minecraft:block/orange_concrete",
     "green": "minecraft:block/lime_concrete",
-    "particle": "minecraft:block/polished_deepslate"
+    "particle": "caszual_additions:block/suite/slate"
   },
   "elements": [
     {

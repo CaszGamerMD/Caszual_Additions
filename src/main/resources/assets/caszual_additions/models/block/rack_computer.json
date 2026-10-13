@@ -1,11 +1,11 @@
 {
   "textures": {
-    "steel": "minecraft:block/iron_block",
-    "dark": "minecraft:block/polished_deepslate",
-    "screen": "minecraft:block/cyan_concrete",
+    "steel": "caszual_additions:block/suite/steel",
+    "dark": "caszual_additions:block/suite/slate",
+    "screen": "caszual_additions:block/suite/display",
     "keys": "minecraft:block/light_gray_concrete",
     "accent": "minecraft:block/sea_lantern",
-    "particle": "minecraft:block/polished_deepslate"
+    "particle": "caszual_additions:block/suite/slate"
   },
   "elements": [
     {

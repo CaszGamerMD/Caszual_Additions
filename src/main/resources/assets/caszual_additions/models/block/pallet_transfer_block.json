@@ -1,6 +1,6 @@
 {
   "textures": {
-    "steel": "minecraft:block/iron_block",
+    "steel": "caszual_additions:block/suite/steel",
     "top": "minecraft:block/smooth_stone"
   },
   "elements": [

@@ -1,7 +1,7 @@
 {
   "textures": {
-    "frame": "minecraft:block/polished_deepslate",
-    "particle": "minecraft:block/polished_deepslate"
+    "frame": "caszual_additions:block/suite/slate",
+    "particle": "caszual_additions:block/suite/slate"
   },
   "elements": [
     {

@@ -1,7 +1,7 @@
 {
   "ambientocclusion": false,
   "textures": {
-    "metal": "minecraft:block/iron_block"
+    "metal": "caszual_additions:block/suite/steel"
   },
   "elements": [
     {

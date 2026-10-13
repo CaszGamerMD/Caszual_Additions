@@ -1,6 +1,6 @@
 {
   "textures": {
-    "frame": "minecraft:block/polished_deepslate"
+    "frame": "caszual_additions:block/suite/slate"
   },
   "elements": [
     {

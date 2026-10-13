@@ -1,9 +1,9 @@
 {
   "textures": {
-    "rod": "minecraft:block/iron_block",
-    "dark": "minecraft:block/polished_deepslate",
+    "rod": "caszual_additions:block/suite/steel",
+    "dark": "caszual_additions:block/suite/slate",
     "end": "minecraft:block/light_gray_concrete",
-    "particle": "minecraft:block/iron_block"
+    "particle": "caszual_additions:block/suite/steel"
   },
   "elements": [
     {

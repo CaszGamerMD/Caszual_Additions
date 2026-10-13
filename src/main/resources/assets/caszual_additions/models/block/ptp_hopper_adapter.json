@@ -1,7 +1,7 @@
 {
   "textures": {
-    "steel": "minecraft:block/iron_block",
-    "slate": "minecraft:block/deepslate_tiles",
+    "steel": "caszual_additions:block/suite/steel",
+    "slate": "caszual_additions:block/suite/slate",
     "port": "minecraft:block/hopper_inside"
   },
   "elements": [

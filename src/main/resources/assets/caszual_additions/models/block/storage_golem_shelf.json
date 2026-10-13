@@ -1,8 +1,8 @@
 {
   "ambientocclusion": false,
   "textures": {
-    "metal": "minecraft:block/iron_block",
-    "slate": "minecraft:block/polished_deepslate",
+    "metal": "caszual_additions:block/suite/steel",
+    "slate": "caszual_additions:block/suite/slate",
     "lamp": "minecraft:block/cyan_concrete"
   },
   "elements": [

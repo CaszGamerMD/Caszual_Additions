@@ -1,6 +1,6 @@
 {
   "textures": {
-    "metal": "minecraft:block/polished_deepslate",
+    "metal": "caszual_additions:block/suite/slate",
     "grate": "minecraft:block/iron_trapdoor"
   },
   "elements": [

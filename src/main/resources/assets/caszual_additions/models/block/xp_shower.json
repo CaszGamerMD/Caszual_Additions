@@ -1,7 +1,7 @@
 {
   "textures": {
-    "metal": "minecraft:block/iron_block",
-    "dark": "minecraft:block/polished_deepslate",
+    "metal": "caszual_additions:block/suite/steel",
+    "dark": "caszual_additions:block/suite/slate",
     "green": "minecraft:block/lime_concrete"
   },
   "elements": [

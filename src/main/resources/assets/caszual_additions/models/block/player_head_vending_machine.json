@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "body": "minecraft:block/iron_block",
+    "body": "caszual_additions:block/suite/steel",
     "dark": "minecraft:block/black_concrete",
     "glass": "minecraft:block/light_blue_stained_glass",
     "emerald": "minecraft:block/emerald_block",
-    "particle": "minecraft:block/iron_block"
+    "particle": "caszual_additions:block/suite/steel"
   },
   "elements": [
     {

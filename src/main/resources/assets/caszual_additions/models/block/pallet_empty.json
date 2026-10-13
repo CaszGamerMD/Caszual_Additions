@@ -1,6 +1,6 @@
 {
   "textures": {
-    "particle": "minecraft:block/oak_planks"
+    "particle": "caszual_additions:block/suite/oak"
   },
   "elements": []
 }

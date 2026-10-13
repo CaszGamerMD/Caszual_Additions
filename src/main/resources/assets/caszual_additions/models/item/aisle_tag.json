@@ -1,10 +1,10 @@
 {
   "textures": {
-    "base": "minecraft:block/polished_deepslate",
+    "base": "caszual_additions:block/suite/slate",
     "metal": "minecraft:block/light_gray_concrete",
     "face": "minecraft:block/black_concrete",
     "edge": "minecraft:block/cyan_concrete",
-    "particle": "minecraft:block/polished_deepslate"
+    "particle": "caszual_additions:block/suite/slate"
   },
   "elements": [
     {

@@ -1,6 +1,6 @@
 {
   "textures": {
-    "steel": "minecraft:block/iron_block",
+    "steel": "caszual_additions:block/suite/steel",
     "wrap": "minecraft:block/white_concrete",
     "highlight": "minecraft:block/redstone_block"
   },
