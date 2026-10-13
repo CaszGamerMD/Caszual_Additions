@@ -45,6 +45,10 @@ public final class MovingPallet extends PathfinderMob {
     private NonNullList<ItemStack> contents=NonNullList.withSize(216,ItemStack.EMPTY);
     private boolean delivered,deathDropsReleased;
     private int liftTicks;
+    // Detect an obstructed or abandoned path instead of waiting forever on
+    // the same unreachable target behind the player.
+    private double lastFollowDistance=Double.POSITIVE_INFINITY;
+    private int lastFollowProgressTick,obstacleSide;
 
     public MovingPallet(EntityType<? extends MovingPallet> type,Level level){
         super(type,level);
@@ -53,7 +57,7 @@ public final class MovingPallet extends PathfinderMob {
     public static AttributeSupplier.Builder attributes(){
         return PathfinderMob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH,40)
-                .add(Attributes.MOVEMENT_SPEED,.26)
+                .add(Attributes.MOVEMENT_SPEED,.36)
                 .add(Attributes.FOLLOW_RANGE,48);
     }
     @Override protected void registerGoals(){}
@@ -225,11 +229,28 @@ public final class MovingPallet extends PathfinderMob {
         if(player==null||player.isSpectator())return;
         // Exactly one navigation and collision body for all four corner
         // figures, with no teleporting through walls or individual drift.
-        double x=player.getX()-player.getDirection().getStepX()*3.2;
-        double z=player.getZ()-player.getDirection().getStepZ()*3.2;
-        if(distanceToSqr(x,player.getY(),z)>5)
-            if(tickCount%12==0)getNavigation().moveTo(x,player.getY(),z,.88);
-        if(distanceToSqr(x,player.getY(),z)<2)getNavigation().stop();
+        double x=player.getX()-player.getDirection().getStepX()*2.8;
+        double z=player.getZ()-player.getDirection().getStepZ()*2.8;
+        double distance=distanceToSqr(x,player.getY(),z);
+        if(distance+.15<lastFollowDistance){
+            lastFollowProgressTick=tickCount;
+            lastFollowDistance=distance;
+        }else if(tickCount-lastFollowProgressTick>70){
+            // If a pallet cannot pass directly through a narrow doorway,
+            // approach the player's left/right flank, alternate after each
+            // stall, and let vanilla find the actual collision-safe route.
+            getNavigation().stop();
+            obstacleSide=obstacleSide==1?-1:1;
+            lastFollowDistance=Double.POSITIVE_INFINITY;
+            lastFollowProgressTick=tickCount;
+        }
+        if(distance>4.0&&tickCount%8==0){
+            double side=obstacleSide*1.7;
+            double tx=x+player.getDirection().getStepZ()*side;
+            double tz=z-player.getDirection().getStepX()*side;
+            getNavigation().moveTo(tx,player.getY(),tz,1.18);
+        }
+        if(distance<1.5)getNavigation().stop();
     }
     private void dropCargo(ServerLevel level){
         if(pallet.isEmpty())return;
