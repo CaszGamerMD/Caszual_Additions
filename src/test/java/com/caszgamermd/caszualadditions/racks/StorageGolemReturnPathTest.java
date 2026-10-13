@@ -101,6 +101,37 @@ final class StorageGolemReturnPathTest {
                 p->!p.equals(target)));
     }
 
+    @Test void twoWorkersCanDockFromParallelAisleCells(){
+        BlockPos shelf=new BlockPos(12,64,12);
+        BlockPos first=shelf.north();
+        BlockPos second=shelf.north().east();
+        assertTrue(StorageGolemReturnPath.canDock(first,shelf,
+                p->!p.equals(shelf)));
+        assertTrue(StorageGolemReturnPath.canDock(second,shelf,
+                p->!p.equals(shelf)),
+                "Second returning worker must not queue for the first one's tile");
+        assertEquals(List.of(),StorageGolemReturnPath.route(second,shelf,
+                p->!p.equals(shelf)));
+    }
+
+    @Test void thirdAisleCellLetsSecondWorkerDockBeforeCollision(){
+        BlockPos shelf=new BlockPos(12,64,12);
+        BlockPos wait=shelf.north(3);
+        assertTrue(StorageGolemReturnPath.canDock(wait,shelf,
+                p->!p.equals(shelf)));
+        assertEquals(List.of(),StorageGolemReturnPath.route(wait,shelf,
+                p->!p.equals(shelf)));
+        // Access through a blocked nearer aisle cell must remain forbidden.
+        assertFalse(StorageGolemReturnPath.canDock(wait,shelf,
+                p->!p.equals(shelf)&&!p.equals(shelf.north(2))));
+    }
+
+    @Test void diagonalThroughClosedShelfCornerCannotDock(){
+        BlockPos shelf=new BlockPos(12,64,12);
+        assertFalse(StorageGolemReturnPath.canDock(shelf.north().east(),shelf,
+                p->!p.equals(shelf)&&!p.equals(shelf.north())));
+    }
+
     @Test void nearbySideNeedsNoPath(){
         BlockPos home=new BlockPos(5,64,5),start=home.north();
         assertEquals(List.of(),StorageGolemReturnPath.route(start,home,
