@@ -155,6 +155,38 @@ public final class StoragePalletCrew {
                 +"They will lift its 216-slot inventory together and follow you.";
     }
 
+    /**
+     * A rack is both a source and a destination: selecting one with the
+     * warehouse scanner retrieves its pallet when the crew is empty, or
+     * delivers the carried pallet when the crew is loaded.
+     */
+    public static String interactRack(ServerLevel level,ServerPlayer player,RackBlockEntity rack){
+        List<StorageGolem> workers=team(level,player);
+        if(moving(level,player)!=null
+                ||workers.stream().anyMatch(w->w.escorting(player.getUUID())&&w.holdsPallet()))
+            return deliverRack(level,player,rack);
+        return pickupRack(level,player,rack);
+    }
+
+    public static String pickupRack(ServerLevel level,ServerPlayer player,RackBlockEntity rack){
+        if(moving(level,player)!=null)return "Your four Golems are already carrying a pallet.";
+        List<StorageGolem> workers=team(level,player);
+        if(!completeTeam(workers))
+            return "Four assigned Golems must be nearby. Link a warehouse Scanner first.";
+        if(workers.stream().anyMatch(w->w.holdsPallet()
+                ||w.escorting(player.getUUID())||w.pickupPending(player.getUUID())))
+            return "Finish the crew's current pallet pickup or delivery first.";
+        if(!rack.hasPallet())return "This rack has no pallet to collect.";
+        if(!rack.glassWrapped())
+            return "Wrap the pallet in this rack with glass before Golems can lift it.";
+        if(!assembledNear(workers,rack.getBlockPos()))
+            return "Wait for all four Golems to catch up before collecting from this rack.";
+        for(StorageGolem worker:workers)worker.beginRackPickup(rack.getBlockPos());
+        return "Crew collecting wrapped pallet from rack "
+                +RackNetwork.label(level,rack)
+                +". Wait for all four Golems to reach the rack front.";
+    }
+
     private static boolean assembledNear(List<StorageGolem> members,
             BlockPos destination){
         for(StorageGolem golem:members)
