@@ -66,9 +66,12 @@ final class StorageGolemReturnPathTest {
         List<BlockPos> path=StorageGolemReturnPath.route(from,shelfPlane,
                 pos->!pos.equals(shelfPlane));
         assertNotNull(path);
-        assertFalse(path.isEmpty());
+        // With two-worker shared-shelf docking, a three-deep clear aisle
+        // is already a valid entrance; requiring an extra step would cause
+        // both Golems to crowd into the same tile.
         for(BlockPos point:path)assertEquals(65,point.getY());
-        assertTrue(StorageGolemReturnPath.canDock(path.getLast(),shelfPlane,
+        BlockPos finalPos=path.isEmpty()?from:path.getLast();
+        assertTrue(StorageGolemReturnPath.canDock(finalPos,shelfPlane,
                 pos->!pos.equals(shelfPlane)));
     }
 
