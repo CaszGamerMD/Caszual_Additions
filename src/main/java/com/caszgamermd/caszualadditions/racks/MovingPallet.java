@@ -346,9 +346,17 @@ public final class MovingPallet extends PathfinderMob {
         if(isDelivering()){tickDelivery(server);return;}
         // Exactly one navigation and collision body for all four corner
         // figures, with no teleporting through walls or individual drift.
-        double x=player.getX()-player.getDirection().getStepX()*2.8;
-        double z=player.getZ()-player.getDirection().getStepZ()*2.8;
-        double distance=distanceToSqr(x,player.getY(),z);
+        // Follow player POSITION, never their view direction. Turning
+        // in place does not make the carried platform orbit.
+        double x=player.getX(),z=player.getZ();
+        double dx=x-getX(),dz=z-getZ();
+        double distance=dx*dx+dz*dz;
+        if(distance<1.40*1.40&&Math.abs(getY()-player.getY())<1.0){
+            getNavigation().stop();
+            lastFollowDistance=Double.POSITIVE_INFINITY;
+            lastFollowProgressTick=tickCount;
+            return;
+        }
         if(distance+.15<lastFollowDistance){
             lastFollowProgressTick=tickCount;
             lastFollowDistance=distance;
@@ -361,13 +369,14 @@ public final class MovingPallet extends PathfinderMob {
             lastFollowDistance=Double.POSITIVE_INFINITY;
             lastFollowProgressTick=tickCount;
         }
-        if(distance>4.0&&tickCount%8==0){
-            double side=obstacleSide*1.7;
-            double tx=x+player.getDirection().getStepZ()*side;
-            double tz=z-player.getDirection().getStepX()*side;
-            getNavigation().moveTo(tx,player.getY(),tz,1.18);
-        }
-        if(distance<1.5)getNavigation().stop();
+        if((distance>1.90*1.90||Math.abs(getY()-player.getY())>1.6)
+                &&tickCount%12==0){
+            // Offset an approach only when physically stalled, not on turn.
+            double len=Math.sqrt(Math.max(distance,.0001));
+            double side=obstacleSide*.65;
+            getNavigation().moveTo(x-dz/len*side,player.getY(),
+                    z+dx/len*side,1.0);
+        }else if(distance<1.55*1.55)getNavigation().stop();
     }
     private void dropCargo(ServerLevel level){
         if(pallet.isEmpty())return;
@@ -392,6 +401,11 @@ public final class MovingPallet extends PathfinderMob {
         out.putString("owner",owner);
         out.putBoolean("delivered",delivered);
         out.putInt("lift_ticks",liftTicks);
+        out.putInt("delivery_mode",deliveryMode);
+        out.putInt("release_ticks",releaseTicks);
+        out.store("delivery_position",BlockPos.CODEC,deliveryPosition);
+        out.putString("delivery_facing",deliveryFacing.getName());
+        out.putString("delivery_failure",deliveryFailure);
         for(int i=0;i<4;i++)out.store("shelf_"+i,BlockPos.CODEC,shelves[i]);
         if(!pallet.isEmpty())out.store("pallet",ItemStack.CODEC,pallet);
         ContainerHelper.saveAllItems(out,contents);
@@ -402,6 +416,15 @@ public final class MovingPallet extends PathfinderMob {
         delivered=in.getBooleanOr("delivered",false);
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
+        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,2);
+        releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,20);
+        deliveryPosition=in.read("delivery_position",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        try{deliveryFacing=Direction.valueOf(
+                in.getStringOr("delivery_facing","north")
+                    .toUpperCase(java.util.Locale.ROOT));}
+        catch(IllegalArgumentException ex){deliveryFacing=Direction.NORTH;}
+        deliveryFailure=in.getStringOr("delivery_failure","");
+        entityData.set(RELEASE_TICKS,releaseTicks);
         for(int i=0;i<4;i++)
             shelves[i]=in.read("shelf_"+i,BlockPos.CODEC).orElse(BlockPos.ZERO);
         pallet=in.read("pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
