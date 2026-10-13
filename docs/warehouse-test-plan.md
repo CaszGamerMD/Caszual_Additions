@@ -77,6 +77,23 @@ chunk saves. Run these tests on a backed-up world, then on a dedicated server.
 - [ ] Confirm IGC floor does not replace the four real Golems' walking
       requirements, create remote inventory access, or duplicate pallets.
 
+## Shelf miniature Storage Golems — matching worker texture
+
+- [ ] Put **zero, one, then two** Golems into one shelf: it should show
+      precisely that many little robots, not permanent decorative dummies.
+- [ ] Compare docked figures to a full-size walking Golem with no other
+      resource packs enabled. The heads, chest plating, slate-gray metal,
+      cyan eyes, oily hands and dirty boots must use **the same UV skin**.
+- [ ] Inspect from north, east, south and west shelf facing directions.
+      Their faces must point out toward the open front, never into the wall.
+- [ ] Both robots should fit behind the shelf's side beams without
+      intersecting each other, poking through the roof or sinking in
+      the floor. The corrected head sits flush with its own torso.
+- [ ] Take or dispatch a Golem, then return it. Counts and rendered
+      robots must update immediately; shelf models are *not* entities.
+- [ ] Check with shader packs if present: eyes and dirty feet should
+      remain textured, with no iron-block / diamond-block proxy cubes.
+
 ## Storage Golem robot texture and head model
 
 - [ ] Examine an ordinary Golem in first and third person: its head must
