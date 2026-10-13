@@ -30,10 +30,15 @@ public final class StorageGolemShelfRenderer implements
     private static final String[] PARTS={
             "body","head","left_arm","right_arm","left_leg","right_leg"
     };
-    // Shelf floor is at 3/16; roof underside is at 14/16. The walking
-    // golem's 24-model-pixel silhouette is 0.66 blocks tall at .44 scale.
+    // ModelPart submission already converts model pixels to block units.
+    // Do NOT add another 1/16 scale: that shrinks docked robots to specks
+    // hovering against the shelf roof instead of standing on its floor.
+    // The real Golem spans ~24 model pixels (1.5 blocks). At .44 Y scale,
+    // the miniature stands .66 blocks high inside the 11/16-tall bay.
+    // Each figure spans 18 model pixels (1.125 blocks) from arm to arm;
+    // .32 X scale fits two workers with a small gap between the side beams.
     private static final float FOOT_Y=3f/16f;
-    private static final float WIDTH_SCALE=.34f;
+    private static final float WIDTH_SCALE=.32f;
     private static final float HEIGHT_SCALE=.44f;
     private final ModelPart miniature;
 
@@ -69,15 +74,16 @@ public final class StorageGolemShelfRenderer implements
         poses.translate(-.5f,0,-.5f);
 
         for(int i=0;i<state.docked;i++){
-            float cx=i==0?.30f:.70f;
+            float cx=i==0?.31f:.69f;
             poses.pushPose();
             // The top of the original model is at y=0 and its soles
             // at y=24. Flip its Y exactly as in Minecraft entity renders.
             // That leaves feet resting on the shelf floor and head tucked
             // beneath the upper crossbar; the face points out of the shelf.
             poses.translate(cx,FOOT_Y+1.5f*HEIGHT_SCALE,.45f);
+            // submitModelPart applies model-pixel-to-world conversion;
+            // multiplying by 1/16 here caused a second, unintended shrink.
             poses.scale(-WIDTH_SCALE,-HEIGHT_SCALE,HEIGHT_SCALE);
-            poses.scale(1f/16f,1f/16f,1f/16f);
             for(String name:PARTS)
                 collector.order(2).submitModelPart(
                         miniature.getChild(name),poses,

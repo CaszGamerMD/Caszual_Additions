@@ -86,6 +86,10 @@ chunk saves. Run these tests on a backed-up world, then on a dedicated server.
       cyan eyes, oily hands and dirty boots must use **the same UV skin**.
 - [ ] Inspect from north, east, south and west shelf facing directions.
       Their faces must point out toward the open front, never into the wall.
+- [ ] Both robots should be **large enough to fill most of the
+      shelf bay height** (about 0.66 Minecraft blocks), not appear as
+      specks floating against the back/top of the shelf. Their boots
+      must rest on the lower inner shelf surface.
 - [ ] Both robots should fit behind the shelf's side beams without
       intersecting each other, poking through the roof or sinking in
       the floor. The corrected head sits flush with its own torso.
