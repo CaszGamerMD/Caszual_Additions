@@ -39,12 +39,18 @@ public final class MovingPallet extends PathfinderMob {
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> LIFT_TICKS=
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> RELEASE_TICKS=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
     private String owner="";
     private final BlockPos[] shelves={BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO};
     private ItemStack pallet=ItemStack.EMPTY;
     private NonNullList<ItemStack> contents=NonNullList.withSize(216,ItemStack.EMPTY);
     private boolean delivered,deathDropsReleased;
     private int liftTicks;
+    private int deliveryMode,releaseTicks;
+    private BlockPos deliveryPosition=BlockPos.ZERO;
+    private Direction deliveryFacing=Direction.NORTH;
+    private String deliveryFailure="";
     // Detect an obstructed or abandoned path instead of waiting forever on
     // the same unreachable target behind the player.
     private double lastFollowDistance=Double.POSITIVE_INFINITY;
@@ -57,7 +63,7 @@ public final class MovingPallet extends PathfinderMob {
     public static AttributeSupplier.Builder attributes(){
         return PathfinderMob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH,40)
-                .add(Attributes.MOVEMENT_SPEED,.36)
+                .add(Attributes.MOVEMENT_SPEED,.144)
                 .add(Attributes.FOLLOW_RANGE,48);
     }
     @Override protected void registerGoals(){}
@@ -66,10 +72,14 @@ public final class MovingPallet extends PathfinderMob {
         builder.define(DISPLAY_PALLET,ItemStack.EMPTY);
         builder.define(DISPLAY_CARGO,0);
         builder.define(LIFT_TICKS,0);
+        builder.define(RELEASE_TICKS,0);
     }
     public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
     public int visibleCargo(){return entityData.get(DISPLAY_CARGO);}
     public float liftProgress(){return entityData.get(LIFT_TICKS)/12.0f;}
+    public float releaseProgress(){return entityData.get(RELEASE_TICKS)/20.0f;}
+    public boolean isDelivering(){return deliveryMode!=0;}
+    public String deliveryStatus(){return deliveryFailure;}
     public boolean owns(UUID player){return owner.equals(player.toString());}
     public boolean loaded(){return !pallet.isEmpty();}
     public boolean fromWarehouse(List<StorageGolemShelfEntity> group){
@@ -127,6 +137,112 @@ public final class MovingPallet extends PathfinderMob {
         delivered=true;
         syncDisplay();
     }
+    /** A scanner sets a destination; it NEVER places the pallet instantly. */
+    public String requestRackDelivery(ServerLevel level,RackBlockEntity rack){
+        if(!loaded()||delivered)return "No pallet ready to deliver.";
+        if(isDelivering())return "Crew already has a delivery destination.";
+        if(rack.hasPallet()||!rack.isEmpty())return "Destination rack must be empty.";
+        if(RackPickupPlan.find(level,rack)==null)
+            return "Rack needs a clear two-wide access aisle with floor support.";
+        deliveryPosition=rack.getBlockPos().immutable();
+        deliveryFacing=rack.facing();
+        deliveryMode=1;
+        releaseTicks=0;
+        deliveryFailure="";
+        entityData.set(RELEASE_TICKS,0);
+        return "Golems carrying pallet to rack "+deliveryPosition.toShortString()
+                +"; it will be unloaded only after they arrive.";
+    }
+    public String requestGroundDelivery(ServerLevel level,BlockPos location,Direction facing){
+        if(!loaded()||delivered)return "No pallet ready to deliver.";
+        if(isDelivering())return "Crew already has a delivery destination.";
+        if(!groundClear(level,location,facing))
+            return "Need a clear supported 2x2 destination floor.";
+        deliveryPosition=location.immutable();
+        deliveryFacing=facing;
+        deliveryMode=2;
+        releaseTicks=0;
+        deliveryFailure="";
+        entityData.set(RELEASE_TICKS,0);
+        return "Golems carrying pallet to "+location.toShortString()
+                +"; they will release it only after positioning.";
+    }
+    private boolean groundClear(ServerLevel level,BlockPos pos,Direction facing){
+        if(!(pallet.getItem() instanceof BlockItem bi)
+                ||!(bi.getBlock() instanceof PalletBlock block))return false;
+        BlockState state=block.defaultBlockState().setValue(PalletBlock.PART,0)
+                .setValue(PalletBlock.FACING,facing).setValue(PalletBlock.LEGACY,false);
+        for(int i=0;i<4;i++){
+            BlockPos cell=PalletBlock.partPos(pos,i,state);
+            if(level.isOutsideBuildHeight(cell)||!level.hasChunkAt(cell)
+                    ||!level.getWorldBorder().isWithinBounds(cell)
+                    ||!level.getBlockState(cell).canBeReplaced()
+                    ||!StorageGolemReturnPath.walkable(level,cell))return false;
+        }
+        return true;
+    }
+    private void abortDelivery(String problem){
+        deliveryFailure=problem;
+        deliveryMode=0;
+        releaseTicks=0;
+        entityData.set(RELEASE_TICKS,0);
+        getNavigation().stop();
+    }
+    private void tickDelivery(ServerLevel level){
+        if(!level.hasChunkAt(deliveryPosition))return;
+        BlockPos target=deliveryPosition;
+        double targetX,targetZ;
+        int targetY;
+        RackBlockEntity rack=null;
+        if(deliveryMode==1){
+            rack=level.getBlockEntity(target) instanceof RackBlockEntity found?found:null;
+            if(rack==null||rack.hasPallet()||!rack.isEmpty()){
+                abortDelivery("Target rack became unavailable; cargo remains onboard.");
+                return;
+            }
+            RackPickupPlan plan=RackPickupPlan.find(level,rack);
+            if(plan==null){
+                abortDelivery("Rack access aisle is obstructed; cargo remains onboard.");
+                return;
+            }
+            BlockPos left=RackBlock.cell(target,rack.facing(),0).relative(rack.facing(),2);
+            BlockPos right=RackBlock.cell(target,rack.facing(),1).relative(rack.facing(),2);
+            targetX=(left.getX()+right.getX())*.5+.5;
+            targetZ=(left.getZ()+right.getZ())*.5+.5;
+            targetY=plan.floorY();
+        }else{
+            if(!groundClear(level,target,deliveryFacing)){
+                abortDelivery("Destination floor is blocked; cargo remains onboard.");
+                return;
+            }
+            Direction right=deliveryFacing.getClockWise();
+            targetX=target.getX()+.5+(right.getStepX()+deliveryFacing.getStepX())*.5;
+            targetZ=target.getZ()+.5+(right.getStepZ()+deliveryFacing.getStepZ())*.5;
+            targetY=target.getY();
+        }
+        double dx=targetX-getX(),dz=targetZ-getZ();
+        if(dx*dx+dz*dz>.55*.55||Math.abs(getY()-targetY)>.6){
+            if(releaseTicks!=0){releaseTicks=0;entityData.set(RELEASE_TICKS,0);}
+            if(tickCount%8==0)
+                getNavigation().moveTo(targetX,targetY,targetZ,1.0);
+            return;
+        }
+        getNavigation().stop();
+        if(releaseTicks<20){
+            entityData.set(RELEASE_TICKS,++releaseTicks);
+            return;
+        }
+        // Only transfer inventory AFTER all four models turn inward and
+        // lower their arms; a rejected placement keeps the whole shipment.
+        boolean ok=deliveryMode==1?deliverToRack(rack)
+                :deliverToGround(level,target,deliveryFacing);
+        if(!ok){
+            abortDelivery("Placement failed; pallet and inventory remain onboard.");
+            return;
+        }
+        deliveryMode=0;
+    }
+
     public boolean deliverToRack(RackBlockEntity rack){
         if(!loaded()||rack.hasPallet()||!rack.isEmpty())return false;
         rack.install(pallet);
@@ -227,6 +343,7 @@ public final class MovingPallet extends PathfinderMob {
         try{id=UUID.fromString(owner);}catch(IllegalArgumentException ex){return;}
         var player=server.getPlayerByUUID(id);
         if(player==null||player.isSpectator())return;
+        if(isDelivering()){tickDelivery(server);return;}
         // Exactly one navigation and collision body for all four corner
         // figures, with no teleporting through walls or individual drift.
         double x=player.getX()-player.getDirection().getStepX()*2.8;
