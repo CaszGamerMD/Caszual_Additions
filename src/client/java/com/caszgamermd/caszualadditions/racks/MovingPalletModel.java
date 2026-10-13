@@ -78,7 +78,11 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             // destination each worker turns inward to the pallet, then
             // lowers their hands before detaching.
             float release=state.releaseProgress;
-            corners[i].yRot=(i%2==0?-.55f:.55f)*release;
+            // The front pair were facing away from the platform;
+            // they turn ~135 degrees to look back toward its center.
+            // The rear pair need only a ~45-degree inward turn.
+            float inward=i<2?2.35f:.79f;
+            corners[i].yRot=(i%2==0?-inward:inward)*release;
             float reach=-3.02f*state.liftProgress*(1.0f-release);
             leftArm[i].xRot=reach;
             rightArm[i].xRot=reach;
