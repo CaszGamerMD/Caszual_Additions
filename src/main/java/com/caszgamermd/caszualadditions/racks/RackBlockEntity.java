@@ -42,12 +42,51 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     private int filterMode,filterScope;
     private String filterSignature="";
     private int connectors;
+    // Visual-only two-worker extraction; rack retains the contents until
+    // the leader accepts all 216 slots after four workers assemble.
+    private String pullOwner="";
+    private long pullStartTick,pullLastTick;
+    private int pullFloorY;
 
     public RackBlockEntity(BlockPos pos, BlockState state) {
         super(RackContent.RACK_ENTITY, pos, state);
     }
 
     public boolean hasPallet() { return !pallet.isEmpty(); }
+
+    /** Reserve the pallet for ONE player's two-worker extraction animation.
+     * Stale reservations expire so interrupted jobs cannot lock a rack. */
+    public boolean startPull(java.util.UUID owner,int floorY){
+        if(level==null||level.isClientSide()||!hasPallet()||!glassWrapped())return false;
+        long now=level.getGameTime();
+        String id=owner.toString();
+        if(!pullOwner.isBlank()&&now-pullLastTick>200)resetPull();
+        if(!pullOwner.isBlank()&&!pullOwner.equals(id))return false;
+        if(pullOwner.isBlank()){
+            pullOwner=id;
+            pullStartTick=now;
+            pullFloorY=floorY;
+            setChanged();
+        }
+        pullLastTick=now;
+        return true;
+    }
+    public boolean pulling(java.util.UUID owner){return pullOwner.equals(owner.toString());}
+    public int pullProgress(){
+        if(pullOwner.isBlank()||level==null)return 0;
+        return (int)Math.clamp(level.getGameTime()-pullStartTick,0,RackPickupPlan.PULL_TICKS);
+    }
+    public int pullFloorY(){return pullFloorY;}
+    public void cancelPull(java.util.UUID owner){
+        if(pulling(owner))resetPull();
+    }
+    private void resetPull(){
+        if(pullOwner.isBlank())return;
+        pullOwner="";
+        pullStartTick=0;
+        pullLastTick=0;
+        setChanged();
+    }
     public ItemStack palletStack(){return pallet.copy();}
     public boolean glassWrapped(){
         return com.caszgamermd.caszualadditions.pallet.GlassPalletWrap.wrapped(pallet);
@@ -65,6 +104,7 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     }
     public void install(ItemStack item) {
         if (hasPallet()) return;
+        resetPull();
         pallet = item.copyWithCount(1);
         filterItem=com.caszgamermd.caszualadditions.pallet.PalletData.filter(item);
         filterMode=com.caszgamermd.caszualadditions.pallet.PalletData.filterMode(item);
@@ -81,8 +121,8 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
      * Invoked on the server after all four assigned workers arrive.
      */
     public boolean liftToCarrier(StorageGolem leader) {
-        if (leader == null || !hasPallet() || !glassWrapped() || leader.holdsPallet())
-            return false;
+        if (leader == null || !hasPallet() || !glassWrapped() || leader.holdsPallet()
+                ||pullProgress()<RackPickupPlan.PULL_TICKS)return false;
         ItemStack deck = com.caszgamermd.caszualadditions.pallet.GlassPalletWrap.withWrap(
                 com.caszgamermd.caszualadditions.pallet.PalletData.applyFilterSettings(pallet,this),
                 true);
@@ -99,6 +139,7 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         filterSignature="";
         filterMode=0;
         filterScope=0;
+        resetPull();
         setChanged();
         return true;
     }
@@ -113,6 +154,7 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         ItemStack result = com.caszgamermd.caszualadditions.pallet.PalletData.applyFilterSettings(
                 pallet,this);
         pallet = ItemStack.EMPTY;
+        resetPull();
         filterItem = "";
         filterUpgrade=ItemStack.EMPTY;
         filterSignature="";
@@ -225,6 +267,12 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         output.putString("filter_signature",filterSignature);
         if(!filterUpgrade.isEmpty())output.store("filter_upgrade",ItemStack.CODEC,filterUpgrade);
         output.putInt("connectors",connectors);
+        if(!pullOwner.isBlank()){
+            output.putString("pull_owner",pullOwner);
+            output.putLong("pull_start",pullStartTick);
+            output.putLong("pull_last",pullLastTick);
+            output.putInt("pull_floor",pullFloorY);
+        }
     }
     @Override protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
@@ -245,6 +293,10 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         if(filterUpgrade.isEmpty()&&!filterItem.isBlank())
             filterUpgrade=new ItemStack(RackContent.PALLET_FILTER);
         connectors=input.getIntOr("connectors",0);
+        pullOwner=input.getStringOr("pull_owner","");
+        pullStartTick=input.getLongOr("pull_start",0);
+        pullLastTick=input.getLongOr("pull_last",0);
+        pullFloorY=input.getIntOr("pull_floor",worldPosition.getY());
     }
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider provider){
         return saveWithoutMetadata(provider);
