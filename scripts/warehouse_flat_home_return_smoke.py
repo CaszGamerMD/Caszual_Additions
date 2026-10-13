@@ -10,7 +10,10 @@ method=s[s.index("    private void releaseOutput("):s.index("    public BlockPos
 assert "returnToShelf(level)" not in method
 assert "releaseOutput(level);" not in method
 home=s[s.index("    private void returnToShelf("):s.index("    private Container loaded(")]
-assert "StorageGolemReturnPath.route(from,home," in home
+assert "StorageGolemReturnPath.route(from,shelfPlane," in home
 assert "StorageGolemReturnPath.walkable(level,p)" in home
 assert "No level path? WAIT and retry" in home
+assert "StorageGolemReturnPath.canDock(feet,shelfPlane," in s
+assert "Math.abs(feet.getY()-home.getY())>1" in s
+assert "StorageGolemReturnPath.walkable(level,p)" in home
 print("PASS: return-home jobs use flat routes and output release does not recurse")
