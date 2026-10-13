@@ -98,7 +98,7 @@ public final class StorageGolem extends PathfinderMob {
     public static AttributeSupplier.Builder attributes(){
         return PathfinderMob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH,20)
-                .add(Attributes.MOVEMENT_SPEED,0.35)
+                .add(Attributes.MOVEMENT_SPEED,0.2625)
                 .add(Attributes.FOLLOW_RANGE,28);
     }
     @Override protected void registerGoals() {
@@ -496,17 +496,24 @@ public final class StorageGolem extends PathfinderMob {
         }
         var player=level.getPlayerByUUID(owner);
         if(player==null||player.isSpectator())return;
-        // Both empty crew and laden team stay with player, not static rack.
-        // A stable four-corner formation. The shared 2x2 pallet is drawn
-        // only by the lead carrier between all four raised-arm Golems.
-        // The squad walks a few blocks BEHIND the player and stays together.
-        double behindX=-player.getDirection().getStepX()*2.8;
-        double behindZ=-player.getDirection().getStepZ()*2.8;
-        double x=player.getX()+behindX+(haulIndex%2==0?-.90:.90);
-        double z=player.getZ()+behindZ+(haulIndex<2?-.90:.90);
-        if(distanceToSqr(x,player.getY(),z)>5){
-            if(tickCount%10==0)getNavigation().moveTo(x,player.getY(),z,1.18);
-        }else getNavigation().stop();
+        // An empty crew stays at the position where it last caught up.
+        // No relative orientation, no forced follow-behind formation:
+        // spinning the player in place must not cause any path changes.
+        // Approx. one block of horizontal personal space with a small
+        // start/stop hysteresis to avoid constant short movement bursts.
+        double dx=getX()-player.getX(), dz=getZ()-player.getZ();
+        double horizontal=dx*dx+dz*dz;
+        double yDifference=Math.abs(getY()-player.getY());
+        if(horizontal<1.35*1.35&&yDifference<1.0){
+            getNavigation().stop();
+            return;
+        }
+        if(horizontal>1.85*1.85||yDifference>1.5){
+            if(tickCount%12==0)
+                getNavigation().moveTo(player.getX(),player.getY(),player.getZ(),1.0);
+        }else if(!getNavigation().isDone()&&horizontal<1.55*1.55){
+            getNavigation().stop();
+        }
     }
     private PtpBlockEntity haulSource(ServerLevel level){
         return level.hasChunkAt(source)

@@ -53,11 +53,30 @@ public final class StorageGolemReturnPath {
     public static boolean canDock(BlockPos feet,BlockPos shelf,
             Predicate<BlockPos> passable){
         if(feet.getY()!=shelf.getY())return false;
+        // Cardinal aisle approaches: either worker may check in from one,
+        // two or three clear cells away. Both shelf slots stay independent.
         for(Direction side:Direction.Plane.HORIZONTAL){
-            BlockPos inner=shelf.relative(side);
-            if(!passable.test(inner))continue;
-            if(feet.equals(inner)&&passable.test(feet))return true;
-            if(feet.equals(inner.relative(side))&&passable.test(feet))return true;
+            BlockPos cell=shelf;
+            for(int depth=1;depth<=3;depth++){
+                cell=cell.relative(side);
+                if(!passable.test(cell))break;
+                if(feet.equals(cell))return true;
+            }
+        }
+        // A 2-wide aisle can hold returning workers side-by-side rather
+        // than driving both into the exact same entrance square. Both
+        // intermediate tiles must be traversable; never dock diagonally
+        // through the corner of a solid wall.
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            for(Direction other:Direction.Plane.HORIZONTAL){
+                if(side.getAxis()==other.getAxis())continue;
+                BlockPos first=shelf.relative(side);
+                BlockPos second=shelf.relative(other);
+                BlockPos corner=first.relative(other);
+                if(feet.equals(corner)&&passable.test(feet)
+                        &&passable.test(first)&&passable.test(second))
+                    return true;
+            }
         }
         return false;
     }
@@ -72,9 +91,22 @@ public final class StorageGolemReturnPath {
         for(Direction side:Direction.Plane.HORIZONTAL){
             BlockPos inner=shelf.relative(side);
             if(!passable.test(inner))continue;
-            goals.add(inner);
-            BlockPos outer=inner.relative(side);
-            if(passable.test(outer))goals.add(outer);
+            BlockPos cell=inner;
+            goals.add(cell);
+            for(int depth=2;depth<=3;depth++){
+                cell=cell.relative(side);
+                if(!passable.test(cell))break;
+                goals.add(cell);
+            }
+        }
+        for(Direction side:Direction.Plane.HORIZONTAL)
+            for(Direction other:Direction.Plane.HORIZONTAL){
+                if(side.getAxis()==other.getAxis())continue;
+                BlockPos first=shelf.relative(side);
+                BlockPos second=shelf.relative(other);
+                BlockPos corner=first.relative(other);
+                if(passable.test(first)&&passable.test(second)
+                        &&passable.test(corner))goals.add(corner);
         }
         if(goals.isEmpty())return null;
         return search(from,shelf,passable,goals);

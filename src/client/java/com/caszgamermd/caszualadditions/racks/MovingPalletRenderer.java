@@ -41,6 +41,7 @@ public final class MovingPalletRenderer extends MobRenderer<
         ItemStack stack=entity.displayPallet();
         state.visible=!stack.isEmpty();
         state.liftProgress=entity.liftProgress();
+        state.releaseProgress=entity.releaseProgress();
         state.cargo=stack.isEmpty()?0:entity.visibleCargo();
         if(stack.isEmpty())return;
         Block material=Blocks.OAK_PLANKS;
