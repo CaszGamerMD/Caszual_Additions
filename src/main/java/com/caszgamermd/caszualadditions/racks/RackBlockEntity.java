@@ -74,6 +74,35 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
                 ?new ItemStack(RackContent.PALLET_FILTER):ItemStack.EMPTY;
         setChanged();
     }
+    /**
+     * Transfer the entire installed pallet, its filter and all 216 slots to
+     * ONE Golem leader. The rack is cleared only after loadPallet succeeds,
+     * so a failed pickup never loses items or duplicates a pallet.
+     * Invoked on the server after all four assigned workers arrive.
+     */
+    public boolean liftToCarrier(StorageGolem leader) {
+        if (leader == null || !hasPallet() || !glassWrapped() || leader.holdsPallet())
+            return false;
+        ItemStack deck = com.caszgamermd.caszualadditions.pallet.GlassPalletWrap.withWrap(
+                com.caszgamermd.caszualadditions.pallet.PalletData.applyFilterSettings(pallet,this),
+                true);
+        if (deck.isEmpty()) return false;
+        NonNullList<ItemStack> stock=NonNullList.withSize(CAPACITY,ItemStack.EMPTY);
+        for (int i=0;i<CAPACITY;i++)stock.set(i,items.get(i).copy());
+        if (!leader.loadPallet(deck,stock))return false;
+
+        // From this point on only the Golem holds the inventory.
+        items=NonNullList.withSize(CAPACITY,ItemStack.EMPTY);
+        pallet=ItemStack.EMPTY;
+        filterItem="";
+        filterUpgrade=ItemStack.EMPTY;
+        filterSignature="";
+        filterMode=0;
+        filterScope=0;
+        setChanged();
+        return true;
+    }
+
     public ItemStack takePallet() {
         if (!isEmpty()) return ItemStack.EMPTY;
         return dropPallet();
