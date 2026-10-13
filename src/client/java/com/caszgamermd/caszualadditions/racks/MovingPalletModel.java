@@ -68,8 +68,15 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             float offset=(i==0||i==3)?0:Mth.PI;
             leftLeg[i].xRot=Mth.cos(phase+offset)*1.15f*amount;
             rightLeg[i].xRot=Mth.cos(phase+offset+Mth.PI)*1.15f*amount;
-            leftArm[i].xRot=-1.40f*state.liftProgress;
-            rightArm[i].xRot=-1.40f*state.liftProgress;
+            // Minecraft's arm boxes point DOWN from their shoulder.
+            // -1.4 radians pointed the arms forward horizontally; rotate
+            // almost half a turn to put the HANDS above the heads and under
+            // the deck. Hold this pose while carrying, not only lifting.
+            float reach=-3.02f*state.liftProgress;
+            leftArm[i].xRot=reach;
+            rightArm[i].xRot=reach;
+            leftArm[i].zRot=-.12f*state.liftProgress;
+            rightArm[i].zRot=.12f*state.liftProgress;
         }
     }
 }
