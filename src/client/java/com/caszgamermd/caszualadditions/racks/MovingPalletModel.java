@@ -17,10 +17,12 @@ import net.minecraft.util.Mth;
 public final class MovingPalletModel extends EntityModel<MovingPalletRenderState> {
     private final ModelPart[] leftLeg=new ModelPart[4],rightLeg=new ModelPart[4];
     private final ModelPart[] leftArm=new ModelPart[4],rightArm=new ModelPart[4];
+    private final ModelPart[] corners=new ModelPart[4];
     public MovingPalletModel(ModelPart root){
         super(root);
         for(int i=0;i<4;i++){
             ModelPart corner=root.getChild("corner_"+i);
+            corners[i]=corner;
             leftLeg[i]=corner.getChild("left_leg");
             rightLeg[i]=corner.getChild("right_leg");
             leftArm[i]=corner.getChild("left_arm");
@@ -72,7 +74,12 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             // -1.4 radians pointed the arms forward horizontally; rotate
             // almost half a turn to put the HANDS above the heads and under
             // the deck. Hold this pose while carrying, not only lifting.
-            float reach=-3.02f*state.liftProgress;
+            // The crew does not let go in transit. At the placed
+            // destination each worker turns inward to the pallet, then
+            // lowers their hands before detaching.
+            float release=state.releaseProgress;
+            corners[i].yRot=(i%2==0?-.55f:.55f)*release;
+            float reach=-3.02f*state.liftProgress*(1.0f-release);
             leftArm[i].xRot=reach;
             rightArm[i].xRot=reach;
             leftArm[i].zRot=-.12f*state.liftProgress;
