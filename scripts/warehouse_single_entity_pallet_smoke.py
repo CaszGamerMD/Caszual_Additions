@@ -21,7 +21,7 @@ for text in ("NonNullList.withSize(216","ContainerHelper.saveAllItems",
              "EntityDataSerializers.ITEM_STACK","EntityDataSerializers.INT"):
     assert text in entity,text
 assert entity.index("if(!verify(rack))") < entity.index("clearCargo();"),"No early cargo deletion"
-assert entity.index("complete=verify(dest);") < entity.index("clearCargo();",entity.index("deliverToGround"))
+assert entity.index("complete=verify(dest);") < entity.index("clearCargo();",entity.index("public boolean deliverToGround("))
 assert "layer()" in model and "PartPose.offset(x,0,z)" in model
 assert "state.walkAnimationPos" in model and "leftLeg[i].xRot" in model
 assert "leftArm[i].xRot=-1.40f*state.liftProgress" in model
