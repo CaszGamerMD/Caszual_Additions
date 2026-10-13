@@ -212,14 +212,7 @@ public final class StoragePalletCrew {
     }
     public static String deliverRack(ServerLevel level,ServerPlayer player,RackBlockEntity rack){
         MovingPallet rig=moving(level,player);
-        if(rig!=null){
-            if(rig.distanceToSqr(rack.getBlockPos().getX()+.5,
-                    rack.getBlockPos().getY()+.5,rack.getBlockPos().getZ()+.5)>20*20)
-                return "Wait for the pallet team to arrive at the destination rack.";
-            return rig.deliverToRack(rack)
-                    ?"Pallet delivered. The four Golems are separating and will follow you home."
-                    :"Rack must be completely empty; the moving pallet retains its contents.";
-        }
+        if(rig!=null)return rig.requestRackDelivery(level,rack);
         List<StorageGolem> workers=team(level,player);
         StorageGolem lead=leader(workers,player.getUUID());
         if(lead==null)return "Wait until all four Golems finish lifting and follow you.";
@@ -234,14 +227,8 @@ public final class StoragePalletCrew {
     }
     public static String deliverGround(ServerLevel level,ServerPlayer player,BlockPos location){
         MovingPallet rig=moving(level,player);
-        if(rig!=null){
-            if(rig.distanceToSqr(location.getX()+.5,location.getY()+.5,
-                    location.getZ()+.5)>20*20)
-                return "Wait for the moving pallet team to catch up before placing it.";
-            return rig.deliverToGround(level,location,player.getDirection())
-                    ?"Pallet delivered. The Golems are separating and will follow you home."
-                    :"Need a clear loaded 2x2 floor. The moving pallet keeps its inventory.";
-        }
+        if(rig!=null)return rig.requestGroundDelivery(
+                level,location,player.getDirection());
         List<StorageGolem> workers=team(level,player);
         StorageGolem lead=leader(workers,player.getUUID());
         if(lead==null)return "Wait for the four Golems to complete pickup before placing.";
@@ -276,9 +263,13 @@ public final class StoragePalletCrew {
     }
     public static String status(ServerLevel level,ServerPlayer player){
         MovingPallet rig=moving(level,player);
-        if(rig!=null)return "Four Golems locked to one raised pallet entity; "
-                +"following you, "+(rig.loaded()?"carrying 216-slot pallet":"unloading pallet")
-                +". Deliver the pallet before dismissing your team.";
+        if(rig!=null)return rig.isDelivering()
+                ?"Crew heading to assigned pallet placement. They will turn inward and "
+                    +"release only AFTER arriving."
+                :"Four Golems carry one shared pallet near the player. "
+                    +(rig.deliveryStatus().isBlank()
+                        ?"Choose a delivery location with the Warehouse Scanner."
+                        :rig.deliveryStatus());
         List<StorageGolem> workers=team(level,player);
         if(workers.isEmpty())return "No linked crew nearby. Right-click a Rack Computer to enlist four.";
         int cargo=0;
