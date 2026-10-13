@@ -30,7 +30,7 @@ class FunBarrelTagSmokeTest(unittest.TestCase):
                       "XP Devices", "Ore Laundering"):
             self.assertIn('"' + label + '"', bundle)
         self.assertIn("DataComponents.BUNDLE_CONTENTS", bundle)
-        self.assertIn("new BundleContents(List.copyOf(contents))", bundle)
+        self.assertIn("new BundleContents(contents.stream().map(ItemStackTemplate::fromNonEmptyStack).toList())", bundle)
         self.assertIn("entry.getMaxStackSize()", bundle)
         self.assertIn("canFitInsideContainerItems()", bundle)
         self.assertIn("List<ItemStack> loose", bundle)
