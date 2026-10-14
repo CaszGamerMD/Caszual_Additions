@@ -176,7 +176,7 @@ public final class MovingPallet extends PathfinderMob {
         if(isDelivering())return "Crew already has a delivery destination.";
         if(rack.hasPallet()||!rack.isEmpty())return "Destination rack must be empty.";
         if(RackPickupPlan.find(level,rack)==null)
-            return "Rack needs a clear two-wide access aisle with floor support.";
+            return "Rack needs a clear 2-wide, 3-deep access aisle with floor support.";
         deliveryPosition=rack.getBlockPos().immutable();
         deliveryFacing=rack.facing();
         deliveryMode=1;
