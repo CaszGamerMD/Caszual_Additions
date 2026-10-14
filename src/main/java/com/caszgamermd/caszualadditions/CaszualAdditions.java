@@ -1,5 +1,6 @@
 package com.caszgamermd.caszualadditions;
 
+import com.caszgamermd.caszualadditions.antiwarden.AntiWardenContent;
 import com.caszgamermd.caszualadditions.rods.ColorfulRods;
 import com.caszgamermd.caszualadditions.headvending.HeadVendingContent;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
@@ -24,6 +25,7 @@ public final class CaszualAdditions implements ModInitializer {
     @Override
     public void onInitialize() {
         CaszUtils.initialize();
+        AntiWardenContent.initialize();
 
         QuarterBlocks.initialize();
         ColorfulRods.initialize();

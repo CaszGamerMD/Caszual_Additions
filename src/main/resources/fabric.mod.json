@@ -34,7 +34,8 @@
   },
   "mixins": [
     "caszual_additions.mixins.json",
-    "caszual_additions.client.mixins.json"
+    "caszual_additions.client.mixins.json",
+    "caszual_additions.antiwarden.mixins.json"
   ],
   "suggests": {
     "jei": "*",
