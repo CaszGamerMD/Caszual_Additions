@@ -367,7 +367,7 @@ public final class RackComputerScreen extends Screen {
         graphics.text(font,Component.literal(compact(orderStatus,
                 Math.max(20,(width-45)/6))),22,75,0xff9fedaf,false);
         graphics.text(font,Component.literal(
-                "Select stock in RACKS & PTPs, enter a quantity, and ADD TO LIST."),
+                "Select stock in RACKS, ADD TO LIST. Click a row here to remove it."),
                 22,99,0xffc5dbce,false);
         graphics.fill(20,125,width-20,height-83,0xff21392e);
         graphics.text(font,Component.literal("ITEM"),30,133,0xffb3f9c1,false);
@@ -430,6 +430,21 @@ public final class RackComputerScreen extends Screen {
     }
 
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {
+        if(page==2){
+            int mx=(int)event.x(),my=(int)event.y();
+            int rows=Math.max(0,(height-251)/25);
+            if(mx>=26&&mx<width-26&&my>=150&&my<150+rows*25){
+                int index=orderScroll+(my-150)/25;
+                if(index>=0&&index<orderList.size()){
+                    String selected=new java.util.ArrayList<>(orderList.keySet()).get(index);
+                    orderList.remove(selected);
+                    orderStatus="Removed "+selected+" from order.";
+                    orderScroll=Math.min(orderScroll,Math.max(0,orderList.size()-1));
+                    return true;
+                }
+            }
+            return super.mouseClicked(event,doubleClick);
+        }
         if(page!=0)return super.mouseClicked(event,doubleClick);
         int split=Math.max(200,width/2);
         int mx=(int)event.x(),my=(int)event.y();
