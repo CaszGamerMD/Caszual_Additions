@@ -17,12 +17,10 @@ import net.minecraft.util.Mth;
 public final class MovingPalletModel extends EntityModel<MovingPalletRenderState> {
     private final ModelPart[] leftLeg=new ModelPart[4],rightLeg=new ModelPart[4];
     private final ModelPart[] leftArm=new ModelPart[4],rightArm=new ModelPart[4];
-    private final ModelPart[] corners=new ModelPart[4];
     public MovingPalletModel(ModelPart root){
         super(root);
         for(int i=0;i<4;i++){
             ModelPart corner=root.getChild("corner_"+i);
-            corners[i]=corner;
             leftLeg[i]=corner.getChild("left_leg");
             rightLeg[i]=corner.getChild("right_leg");
             leftArm[i]=corner.getChild("left_arm");
@@ -70,22 +68,12 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             float offset=(i==0||i==3)?0:Mth.PI;
             leftLeg[i].xRot=Mth.cos(phase+offset)*1.15f*amount;
             rightLeg[i].xRot=Mth.cos(phase+offset+Mth.PI)*1.15f*amount;
-            // Minecraft's arm boxes point DOWN from their shoulder.
-            // -1.4 radians pointed the arms forward horizontally; rotate
-            // almost half a turn to put the HANDS above the heads and under
-            // the deck. Hold this pose while carrying, not only lifting.
-            // The crew does not let go in transit. At the placed
-            // destination each worker turns inward to the pallet, then
-            // lowers their hands before detaching.
-            float release=state.releaseProgress;
-            // The front pair were facing away from the platform;
-            // they turn ~135 degrees to look back toward its center.
-            // The rear pair need only a ~45-degree inward turn.
-            float inward=i<2?2.35f:.79f;
-            corners[i].yRot=(i%2==0?-inward:inward)*release;
-            float reach=-3.02f*state.liftProgress*(1.0f-release);
-            leftArm[i].xRot=reach;
-            rightArm[i].xRot=reach;
+            // Each robot is a permanently attached corner of the ONE rig.
+            // Nothing on its body rotates or translates independently:
+            // only the legs animate. Both arms stay raised supporting the
+            // pallet throughout travel and until the four separate again.
+            leftArm[i].xRot=-3.02f*state.liftProgress;
+            rightArm[i].xRot=-3.02f*state.liftProgress;
             leftArm[i].zRot=-.12f*state.liftProgress;
             rightArm[i].zRot=.12f*state.liftProgress;
         }
