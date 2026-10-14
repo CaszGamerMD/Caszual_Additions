@@ -660,15 +660,25 @@ public final class StorageGolem extends PathfinderMob {
     /** Workstations occupy solid blocks. Choose standable aisle squares
      * at the robot's foot level, instead of asking vanilla pathfinding to
      * climb onto the target machine or upper rack frame. */
+    private boolean occupiedByWorker(ServerLevel level,BlockPos pos){
+        return !level.getEntitiesOfClass(StorageGolem.class,
+                new net.minecraft.world.phys.AABB(pos).inflate(.1,.05,.1),
+                golem->golem!=this&&!golem.isRemoved()).isEmpty();
+    }
     private BlockPos floorApproach(ServerLevel level,BlockPos desired){
         BlockPos onFloor=new BlockPos(desired.getX(),blockPosition().getY(),desired.getZ());
-        if(openWalkway(level,onFloor))return onFloor;
+        if(openWalkway(level,onFloor)&&!occupiedByWorker(level,onFloor))
+            return onFloor;
+        // A rack/packing-station approach is a ZONE, not one magic cell.
+        // If another golem occupies the best square, use a neighboring
+        // service tile instead of both workers walking into each other.
         for(int range=1;range<=3;range++)
             for(Direction direction:Direction.Plane.HORIZONTAL){
                 BlockPos nearby=onFloor.relative(direction,range);
-                if(openWalkway(level,nearby))return nearby;
+                if(openWalkway(level,nearby)
+                        &&!occupiedByWorker(level,nearby))return nearby;
             }
-        return desired;
+        return openWalkway(level,onFloor)?onFloor:desired;
     }
     private BlockPos approach(ServerLevel level,BlockPos place) {
         if(groundPickup&&level.hasChunkAt(place)){
