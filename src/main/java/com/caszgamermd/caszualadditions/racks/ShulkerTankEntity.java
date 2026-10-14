@@ -87,6 +87,8 @@ public final class ShulkerTankEntity extends BlockEntity implements Container {
             boolean added=false;
             for(int station=0;station<STATIONS&&!added;station++){
                 ItemStack current=nextWorking.get(station);
+                if(current.isEmpty()&&!nextFinished.get(station).isEmpty())
+                    continue; // no phantom consumption of an empty shulker
                 ItemStack base=current.isEmpty()?ItemStack.EMPTY
                         :StorageGolemPacking.emptyVersion(current);
                 if(current.isEmpty()){
@@ -136,7 +138,10 @@ public final class ShulkerTankEntity extends BlockEntity implements Container {
         flushFinished(level,ptp,true);
     }
     public void flushFinished(ServerLevel level){
-        flushFinished(level,attachedOutput(level),true);
+        PtpBlockEntity output=attachedOutput(level);
+        if(output!=null&&output.pendingOutputOrders()==0)
+            finishOrder(level,output);
+        flushFinished(level,output,true);
     }
     private void flushFinished(ServerLevel level,PtpBlockEntity ptp,boolean safeOnly){
         if(ptp==null||!ptp.readyForOutput())return;
