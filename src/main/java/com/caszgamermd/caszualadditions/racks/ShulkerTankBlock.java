@@ -3,6 +3,9 @@ package com.caszgamermd.caszualadditions.racks;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -24,7 +27,8 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
-/** Two-high magazine accepting exactly 64 empty shulker boxes of any variant. */
+/** Two-high Shulker Station: 64 empty-box magazine, three simultaneous
+ * packing positions, and adapter-only export of completed boxes to a pallet. */
 public final class ShulkerTankBlock extends Block implements EntityBlock {
     public static final EnumProperty<DoubleBlockHalf> HALF=
             EnumProperty.create("half",DoubleBlockHalf.class);
@@ -62,6 +66,16 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
         return state.getValue(HALF)==DoubleBlockHalf.LOWER
                 ?new ShulkerTankEntity(pos,state):null;
     }
+    @Override public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
+            Level level,BlockState state,BlockEntityType<T> type){
+        if(level.isClientSide()||state.getValue(HALF)!=DoubleBlockHalf.LOWER)
+            return null;
+        return (world,pos,block,entity)->{
+            if(world instanceof ServerLevel server
+                    &&entity instanceof ShulkerTankEntity station
+                    &&server.getGameTime()%20==0)station.flushFinished(server);
+        };
+    }
     @Override protected InteractionResult useItemOn(ItemStack item, BlockState state,Level level,
             BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit) {
         if(!ShulkerTankEntity.isEmptyShulker(item))return InteractionResult.PASS;
@@ -70,7 +84,8 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
         if(tank!=null && tank.add(item.copyWithCount(1))) {
             if(!player.getAbilities().instabuild)item.shrink(1);
             player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                    "Shulker Tank: "+tank.count()+"/64 empty boxes"));
+                    "Shulker Station: "+tank.count()+"/64 empty boxes, "
+                    +tank.activeCount()+"/3 packing"));
         }
         return InteractionResult.SUCCESS;
     }
@@ -84,7 +99,9 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
                     if(!result.isEmpty())player.getInventory().placeItemBackInInventory(result);
                 }
                 player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "Shulker Tank: "+tank.count()+"/64 (sneak-click to remove one)"));
+                        "Shulker Station: "+tank.count()+"/64 empties, "
+                        +tank.activeCount()+"/3 packing, "+tank.finishedCount()
+                        +" completed waiting (sneak-click: take one empty)"));
             }
         }
         return InteractionResult.SUCCESS;
@@ -95,6 +112,8 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
             ShulkerTankEntity tank=level.getBlockEntity(root) instanceof ShulkerTankEntity t?t:null;
             if(tank!=null&&!player.getAbilities().instabuild){
                 Containers.dropContents(level,root,tank);
+                for(ItemStack box:tank.takePackedOnBreak())
+                    Block.popResource(level,root,box);
                 Block.popResource(level,root,new ItemStack(this));
             }
             BlockPos other=state.getValue(HALF)==DoubleBlockHalf.UPPER?pos.below():pos.above();
