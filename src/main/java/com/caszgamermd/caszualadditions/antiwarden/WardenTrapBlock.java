@@ -64,9 +64,9 @@ public final class WardenTrapBlock extends BaseEntityBlock {
             BlockPos pos,Player player,BlockHitResult hit){
         if(!level.isClientSide()
                 &&level.getBlockEntity(pos) instanceof WardenTrapBlockEntity trap){
-            player.displayClientMessage(Component.literal(
+            player.sendSystemMessage(Component.literal(
                     trap.isHolding()?"Warden trapped — harvesting experience."
-                            :"Trap armed. Only Wardens trigger it."),true);
+                            :"Trap armed. Only Wardens trigger it."));
         }
         return InteractionResult.SUCCESS;
     }
