@@ -989,7 +989,10 @@ public final class StorageGolem extends PathfinderMob {
         super.tick();
         if(!(level() instanceof ServerLevel level))return;
         if(tickCount%10==0)updateTaskLabel();
-        if(tickCount%2!=0)return;
+        // Movement controls expire after each mob AI tick. Drive the next
+        // checked aisle cell EVERY server tick; previously the one-shot
+        // commands were sent only once per ten ticks, causing stop/go
+        // stuttering and making route recovery appear frozen.
         // Return-home jobs MUST use the flat same-Y grid router, never the
         // generic approach() navigation that can select a jump over a block.
         if(stage==2){
