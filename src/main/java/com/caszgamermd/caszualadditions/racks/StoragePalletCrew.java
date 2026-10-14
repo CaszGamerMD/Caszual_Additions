@@ -181,7 +181,7 @@ public final class StoragePalletCrew {
             return "Apply plastic stretch wrap before lifting this rack's pallet.";
         RackPickupPlan plan=RackPickupPlan.find(level,rack);
         if(plan==null)
-            return "Rack pickup requires a clear, two-wide aisle with floor support. "
+            return "Rack pickup needs a clear 2-block-wide path within the 3-block aisle. "
                     +"Elevated racks also need an unobstructed lowering shaft "
                     +"(up to "+RackPickupPlan.MAX_DROP+" blocks down).";
         if(!assembledNear(workers,plan.rigCenter()))
