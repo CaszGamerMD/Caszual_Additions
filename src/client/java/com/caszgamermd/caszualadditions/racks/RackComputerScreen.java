@@ -22,6 +22,10 @@ public final class RackComputerScreen extends Screen {
     private EditBox search, orderQuantity;
     private final java.util.List<AbstractWidget> rackWidgets=new java.util.ArrayList<>();
     private final java.util.List<AbstractWidget> workerWidgets=new java.util.ArrayList<>();
+    private final java.util.List<AbstractWidget> orderWidgets=new java.util.ArrayList<>();
+    private final java.util.LinkedHashMap<String,Integer> orderList=new java.util.LinkedHashMap<>();
+    private int orderScroll;
+    private String orderStatus="Select stock on RACKS, add items, then submit the list.";
     private JsonArray workers=new JsonArray();
     private int page,workerScroll,activeGolems,igcCount,refreshTicks;
     private String workerStatus="Choose a work request or inspect active tasks.";
@@ -34,14 +38,20 @@ public final class RackComputerScreen extends Screen {
         workerWidgets.add(widget);
         return addRenderableWidget(widget);
     }
+    private <T extends AbstractWidget> T addOrders(T widget){
+        orderWidgets.add(widget);
+        return addRenderableWidget(widget);
+    }
     private void showPage(int target){
         page=target;
         for(AbstractWidget widget:rackWidgets)widget.visible=page==0;
         for(AbstractWidget widget:workerWidgets)widget.visible=page==1;
+        for(AbstractWidget widget:orderWidgets)widget.visible=page==2;
         sendQuery();
     }
     private String selectedItemId = "";
-    private JsonArray racks=new JsonArray(), contents=new JsonArray(), ptps=new JsonArray();
+    private JsonArray racks=new JsonArray(), contents=new JsonArray(),
+            ptps=new JsonArray(), stations=new JsonArray();
     private int selectedPtpIndex;
     private Button ptpNextButton,ptpModeButton,ptpWrapButton;
     private int selectedX=Integer.MIN_VALUE, selectedY,selectedZ;
@@ -63,11 +73,14 @@ public final class RackComputerScreen extends Screen {
         String typed=search==null?"":search.getValue();
         rackWidgets.clear();
         workerWidgets.clear();
-        int tabLeft=Math.max(210,width-246);
+        orderWidgets.clear();
+        int tabLeft=Math.max(210,width-353);
         addRenderableWidget(Button.builder(Component.literal("RACKS & PTPs"),
-                b->showPage(0)).bounds(tabLeft,13,108,20).build());
+                b->showPage(0)).bounds(tabLeft,13,107,20).build());
         addRenderableWidget(Button.builder(Component.literal("STORAGE GOLEMS"),
-                b->showPage(1)).bounds(tabLeft+113,13,126,20).build());
+                b->showPage(1)).bounds(tabLeft+110,13,119,20).build());
+        addRenderableWidget(Button.builder(Component.literal("ORDER LIST"),
+                b->showPage(2)).bounds(tabLeft+232,13,114,20).build());
         int left=22, y=45;
         search=addRack(new EditBox(font,left,y,
                 Math.max(90,width-270),23,Component.literal("Search rack network")));
@@ -100,8 +113,8 @@ public final class RackComputerScreen extends Screen {
         orderQuantity.setMaxLength(4);
         orderQuantity.setValue("64");
         int orderButtonX=orderInputX+64;
-        addRack(Button.builder(Component.literal("REQUEST ITEMS"),
-                b->requestItem()).bounds(orderButtonX,height-63,
+        addRack(Button.builder(Component.literal("ADD TO LIST"),
+                b->addToOrderList()).bounds(orderButtonX,height-63,
                         Math.max(60,width-orderButtonX-20),22).build());
         addRack(Button.builder(Component.literal("Close"),
                 b->onClose()).bounds(width-99,height-34,80,22).build());
@@ -130,6 +143,19 @@ public final class RackComputerScreen extends Screen {
         addWorkers(Button.builder(Component.literal("▼"),
                 b->workerScroll=Math.min(Math.max(0,workers.size()-1),workerScroll+1))
                 .bounds(width-51,height-34,25,22).build());
+        addOrders(Button.builder(Component.literal("SUBMIT ORDER LIST"),
+                b->submitOrderList()).bounds(22,height-69,Math.max(122,width/3),23).build());
+        addOrders(Button.builder(Component.literal("CLEAR LIST"),
+                b->{orderList.clear();orderStatus="Order list cleared.";})
+                .bounds(27+Math.max(122,width/3),height-69,104,23).build());
+        addOrders(Button.builder(Component.literal("REMOVE LAST"),
+                b->removeLastOrder()).bounds(22,height-41,108,21).build());
+        addOrders(Button.builder(Component.literal("▲"),
+                b->orderScroll=Math.max(0,orderScroll-1))
+                .bounds(width-81,height-41,25,21).build());
+        addOrders(Button.builder(Component.literal("▼"),
+                b->orderScroll=Math.min(Math.max(0,orderList.size()-1),orderScroll+1))
+                .bounds(width-51,height-41,25,21).build());
         showPage(page);
     }
 
@@ -178,16 +204,45 @@ public final class RackComputerScreen extends Screen {
                 ?"UNWRAP":"WRAP"));
     }
 
-    private void requestItem() {
+    private void addToOrderList() {
         if(selectedItemId.isBlank()){status="Click an item in the inspected rack first.";return;}
         int count;
         try{count=Integer.parseInt(orderQuantity.getValue().strip());}
         catch(NumberFormatException e){status="Enter a quantity from 1 to 4096.";return;}
         if(count<1||count>4096){status="Order quantity must be 1–4096.";return;}
-        ClientPlayNetworking.send(new RackComputerNet.OrderRequest(computer,selectedItemId,count));
+        int total=orderList.getOrDefault(selectedItemId,0)+count;
+        if(total>4096){status="At most 4096 per item.";return;}
+        if(!orderList.containsKey(selectedItemId)&&orderList.size()>=16){
+            status="Maximum 16 different items per order.";return;
+        }
+        orderList.put(selectedItemId,total);
+        status="Added to list: "+selectedItemId+" x"+total
+                +". Open ORDER LIST to review and submit.";
+        orderStatus=status;
+    }
+    private void removeLastOrder(){
+        if(orderList.isEmpty())return;
+        String last="";
+        for(String id:orderList.keySet())last=id;
+        orderList.remove(last);
+        orderStatus="Removed "+last;
+    }
+    private void submitOrderList(){
+        if(orderList.isEmpty()){orderStatus="Add at least one item.";return;}
+        StringBuilder rows=new StringBuilder();
+        orderList.forEach((id,count)->{
+            if(!rows.isEmpty())rows.append('\n');
+            rows.append(id).append('|').append(count);
+        });
+        ClientPlayNetworking.send(new RackComputerNet.OrderListRequest(
+                computer,rows.toString()));
+        orderStatus="Submitted list; waiting for server confirmation...";
     }
 
-    public void acceptOrderReply(String message){status=message;workerStatus=message;}
+    public void acceptOrderReply(String message){
+        status=message;workerStatus=message;orderStatus=message;
+        if(message.startsWith("Order submitted:"))orderList.clear();
+    }
 
     public void accept(BlockPos pos,String raw) {
         if(!computer.equals(pos))return;
@@ -195,6 +250,7 @@ public final class RackComputerScreen extends Screen {
             JsonObject obj=JsonParser.parseString(raw).getAsJsonObject();
             racks=obj.getAsJsonArray("racks");
             ptps=obj.has("ptps")?obj.getAsJsonArray("ptps"):new JsonArray();
+            stations=obj.has("stations")?obj.getAsJsonArray("stations"):new JsonArray();
             workers=obj.has("workers")?obj.getAsJsonArray("workers"):new JsonArray();
             activeGolems=obj.has("activeGolems")?obj.get("activeGolems").getAsInt():0;
             igcCount=obj.has("industrialConcrete")
@@ -241,6 +297,10 @@ public final class RackComputerScreen extends Screen {
                 22,19,0xffc5ffd0,false);
         if(page==1){
             drawWorkers(graphics);
+            return;
+        }
+        if(page==2){
+            drawOrderList(graphics);
             return;
         }
         graphics.text(font,Component.literal(status),22,77,0xff9fedaf,false);
@@ -303,6 +363,46 @@ public final class RackComputerScreen extends Screen {
                 99,height-27,0xff91c3a1,false);
     }
 
+    private void drawOrderList(GuiGraphicsExtractor graphics){
+        graphics.text(font,Component.literal("ORDER BUILDER  •  "+orderList.size()
+                +" / 16 item types"),22,50,0xffb3f9c1,false);
+        graphics.text(font,Component.literal(compact(orderStatus,
+                Math.max(20,(width-45)/6))),22,75,0xff9fedaf,false);
+        graphics.text(font,Component.literal(
+                "Select stock in RACKS, ADD TO LIST. Click a row here to remove it."),
+                22,99,0xffc5dbce,false);
+        int connected=0,empty=0,packing=0,ready=0;
+        for(var entry:stations){
+            JsonObject row=entry.getAsJsonObject();
+            if(row.get("connected").getAsBoolean())connected++;
+            empty+=row.get("empty").getAsInt();
+            packing+=row.get("packing").getAsInt();
+            ready+=row.get("ready").getAsInt();
+        }
+        graphics.text(font,Component.literal("SHULKER STATIONS: "+connected
+                +"/"+stations.size()+" attached | "+empty+" empty | "
+                +packing+" packing | "+ready+" ready"),22,114,0xff83eadd,false);
+        graphics.fill(20,125,width-20,height-83,0xff21392e);
+        graphics.text(font,Component.literal("ITEM"),30,133,0xffb3f9c1,false);
+        graphics.text(font,Component.literal("QUANTITY"),width-114,133,
+                0xffb3f9c1,false);
+        int rows=Math.max(0,(height-251)/25);
+        int position=0;
+        for(var entry:orderList.entrySet()){
+            if(position>=orderScroll&&position<orderScroll+rows){
+                int y=150+(position-orderScroll)*25;
+                graphics.fill(26,y,width-26,y+23,
+                        position%2==0?0xff2e4a3b:0xff294236);
+                graphics.text(font,Component.literal(compact(entry.getKey(),
+                        Math.max(12,(width-180)/6))),34,y+6,
+                        0xffd8f5de,false);
+                graphics.text(font,Component.literal("x"+entry.getValue()),
+                        width-105,y+6,0xffa8e4c5,false);
+            }
+            position++;
+        }
+    }
+
     private void drawWorkers(GuiGraphicsExtractor graphics){
         graphics.text(font,Component.literal("Network: "+shelfCount+" shelves / "
                 +dockedGolems+" docked / "+activeGolems+" active / "
@@ -343,7 +443,22 @@ public final class RackComputerScreen extends Screen {
     }
 
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {
-        if(page==1)return super.mouseClicked(event,doubleClick);
+        if(page==2){
+            int mx=(int)event.x(),my=(int)event.y();
+            int rows=Math.max(0,(height-251)/25);
+            if(mx>=26&&mx<width-26&&my>=150&&my<150+rows*25){
+                int index=orderScroll+(my-150)/25;
+                if(index>=0&&index<orderList.size()){
+                    String selected=new java.util.ArrayList<>(orderList.keySet()).get(index);
+                    orderList.remove(selected);
+                    orderStatus="Removed "+selected+" from order.";
+                    orderScroll=Math.min(orderScroll,Math.max(0,orderList.size()-1));
+                    return true;
+                }
+            }
+            return super.mouseClicked(event,doubleClick);
+        }
+        if(page!=0)return super.mouseClicked(event,doubleClick);
         int split=Math.max(200,width/2);
         int mx=(int)event.x(),my=(int)event.y();
         if(mx>=split+7&&mx<width-27 && my>=184 && my<height-95){

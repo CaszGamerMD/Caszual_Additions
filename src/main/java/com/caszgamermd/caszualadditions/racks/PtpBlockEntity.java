@@ -236,6 +236,18 @@ public final class PtpBlockEntity extends BlockEntity
         return count;
     }
     public OutputOrder nextOutputOrder(){return outputOrders.peekFirst();}
+    /** A multi-item order is one atomic submission: accept ALL lines or none,
+     * so a partially full queue cannot silently drop the end of an order. */
+    public boolean queueOutputList(java.util.List<OutputOrder> lines){
+        if(input||hauling()||lines.isEmpty()
+                ||outputOrders.size()+lines.size()>MAX_OUTPUT_ORDERS)return false;
+        for(OutputOrder line:lines)
+            if(line.itemId()==null||line.itemId().isBlank()
+                    ||line.remaining()<1||line.remaining()>4096)return false;
+        outputOrders.addAll(lines);
+        setChanged();
+        return true;
+    }
     public boolean queueOutput(String itemId,int quantity){
         if(input||hauling()||itemId==null||itemId.isBlank()||quantity<1||quantity>4096
                 ||outputOrders.size()>=MAX_OUTPUT_ORDERS)return false;

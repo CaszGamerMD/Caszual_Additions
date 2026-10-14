@@ -64,46 +64,53 @@ public final class StorageGolemDispatch {
     }
     private static boolean dispatchOutput(ServerLevel level,StorageGolemShelfEntity shelf,
             List<StorageGolemShelfEntity> group,BlockPos terminal){
-        PtpBlockEntity point=outputPoint(level,group,terminal);
-        if(point==null||!point.readyForOutput())return false;
-        PtpBlockEntity.OutputOrder order=point.nextOutputOrder();
+        PtpBlockEntity output=outputPoint(level,group,terminal);
+        if(output==null||!output.readyForOutput())return false;
+        PtpBlockEntity.OutputOrder order=output.nextOutputOrder();
         if(order==null)return false;
-        ShulkerTankEntity magazine=tank(level,group);
-        ItemStack emptyBox=magazine==null?ItemStack.EMPTY:magazine.peek();
+        ShulkerTankEntity station=null;
+        for(ShulkerTankEntity candidate:WarehouseNetwork
+                .fromShelfGroup(level,group).tanks()){
+            if(candidate.attachedOutput(level)==output){
+                station=candidate;break;
+            }
+        }
+        // An order cannot bypass the packing machine: the complete shulker
+        // is always transferred through a physically adjacent Hopper Adapter.
+        if(station==null)return false;
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
             if(!rack.hasPallet()||rack.isEmpty())continue;
-            for(int i=0;i<rack.getContainerSize();i++){
+            List<ItemStack> preview=new java.util.ArrayList<>(9);
+            int amount=0;
+            for(int i=0;i<rack.getContainerSize()&&preview.size()<9
+                    &&amount<order.remaining();i++){
                 ItemStack stack=rack.getItem(i);
-                if(stack.isEmpty() || !BuiltInRegistries.ITEM.getKey(stack.getItem())
-                        .toString().equals(order.itemId()))continue;
-                // A packed trip can carry 27 original stacks. The preview
-                // checks the actual filled-box components against the PTP
-                // filter before reserving any inventory or taking a box.
-                ItemStack preview=emptyBox.isEmpty()||!stack.getItem().canFitInsideContainerItems()
-                        ?ItemStack.EMPTY:StorageGolemPacking.fill(emptyBox,
-                            List.of(stack.copyWithCount(Math.min(
-                                    stack.getCount(),order.remaining()))));
-                boolean pack=!preview.isEmpty() && freeRoom(point,preview)>0;
-                int amount=pack?Math.min(order.remaining(),27*64)
-                        :Math.min(order.remaining(),
-                                Math.min(stack.getCount(),freeRoom(point,stack)));
-                if(amount<=0)continue;
-                StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(level,
-                        net.minecraft.world.entity.EntitySpawnReason.EVENT);
-                if(worker==null)return false;
-                int ticket=point.reserveOutput(order.itemId(),amount);
-                if(ticket==0)return false;
-                worker.assignOutput(shelf.getBlockPos(),rack.getBlockPos(),
-                        point.getBlockPos(),stack,ticket,amount);
-                if(pack)worker.assignPackedOutput(magazine.getBlockPos(),amount);
-                worker.setPos(shelf.getBlockPos().getX()+.5,
-                        shelf.getBlockPos().getY()+1,shelf.getBlockPos().getZ()+.5);
-                if(!shelf.take()){point.releaseOutput(ticket);return false;}
-                if(!level.addFreshEntity(worker)){
-                    shelf.add();point.releaseOutput(ticket);
-                }
-                return true;
+                if(stack.isEmpty()||!BuiltInRegistries.ITEM.getKey(stack.getItem())
+                        .toString().equals(order.itemId())
+                        ||!stack.getItem().canFitInsideContainerItems())continue;
+                int quantity=Math.min(stack.getCount(),
+                        Math.min(order.remaining()-amount,9*64-amount));
+                if(quantity<=0)break;
+                preview.add(stack.copyWithCount(quantity));
+                amount+=quantity;
             }
+            if(amount==0||!station.canAccept(preview,level,output))continue;
+            StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(level,
+                    net.minecraft.world.entity.EntitySpawnReason.EVENT);
+            if(worker==null)return false;
+            int ticket=output.reserveOutput(order.itemId(),amount);
+            if(ticket==0)return false;
+            worker.assignOutput(shelf.getBlockPos(),rack.getBlockPos(),
+                    station.getBlockPos(),preview.getFirst(),ticket,amount);
+            worker.assignStationOrder(station.getBlockPos(),
+                    output.getBlockPos(),amount);
+            worker.setPos(shelf.getBlockPos().getX()+.5,
+                    shelf.getBlockPos().getY()+1,shelf.getBlockPos().getZ()+.5);
+            if(!shelf.take()){output.releaseOutput(ticket);return false;}
+            if(!level.addFreshEntity(worker)){
+                shelf.add();output.releaseOutput(ticket);
+            }
+            return true;
         }
         return false;
     }
