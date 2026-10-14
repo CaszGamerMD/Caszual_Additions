@@ -9,9 +9,7 @@
     "SlotAccessor",
     "AnvilBlockDamageMixin",
     "AnvilMenuUnbreakableMixin",
-    "QuarterCreativeBreakServerMixin",
-    "com.caszgamermd.caszualadditions.antiwarden.mixin.WoolHelmetEffectMixin",
-    "com.caszgamermd.caszualadditions.antiwarden.mixin.WoolBootsVibrationMixin"
+    "QuarterCreativeBreakServerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
