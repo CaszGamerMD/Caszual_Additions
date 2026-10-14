@@ -241,7 +241,7 @@ public final class MovingPallet extends PathfinderMob {
         // sub-block-perfect navigation target every 8 ticks.
         if(horizontal>.40||vertical>.65){
             if(releaseTicks!=0){releaseTicks=0;entityData.set(RELEASE_TICKS,0);}
-            if(horizontal<2.1&&vertical<.70){
+            if(horizontal>.01&&horizontal<2.1&&vertical<.70){
                 getNavigation().stop();
                 double step=Math.min(.13,horizontal);
                 move(MoverType.SELF,new Vec3(dx/horizontal*step,0,dz/horizontal*step));
@@ -347,8 +347,27 @@ public final class MovingPallet extends PathfinderMob {
             StorageGolem golem=RackContent.STORAGE_GOLEM_TYPE.create(level,EntitySpawnReason.EVENT);
             if(golem==null){for(StorageGolem worker:spawned)worker.discard();return false;}
             golem.assignPlayerCrew(shelves[i],i,id);
-            golem.setPos(getX()+(i%2==0?-.65:.65),getY(),
-                    getZ()+(i<2?-.65:.65));
+            // After the pallet is placed the former corner of the carried
+            // model may be INSIDE the new pallet block. Stand each separate
+            // worker safely OUTSIDE its footprint, oriented towards the
+            // delivered load. Until this point all four corners were rigid.
+            double x=(i%2==0?-1.5:1.5);
+            double z=(i<2?-1.5:1.5);
+            double yaw=Math.toRadians(getYRot());
+            double rx=x*Math.cos(yaw)-z*Math.sin(yaw);
+            double rz=x*Math.sin(yaw)+z*Math.cos(yaw);
+            double gx=getX()+rx,gz=getZ()+rz;
+            BlockPos feet=BlockPos.containing(gx,getY(),gz);
+            if(!StorageGolemReturnPath.walkable(level,feet)){
+                for(StorageGolem worker:spawned)worker.discard();
+                return false; // Retry when a safe aisle opens; no lost Golems.
+            }
+            golem.setPos(gx,getY(),gz);
+            double towardX=getX()-gx,towardZ=getZ()-gz;
+            float face=(float)Math.toDegrees(Math.atan2(-towardX,towardZ));
+            golem.setYRot(face);
+            golem.setYHeadRot(face);
+            golem.setYBodyRot(face);
             if(!level.addFreshEntity(golem)){
                 for(StorageGolem worker:spawned)worker.discard();
                 return false;
