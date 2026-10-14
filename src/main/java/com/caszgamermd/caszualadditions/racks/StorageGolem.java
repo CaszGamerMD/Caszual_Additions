@@ -98,6 +98,8 @@ public final class StorageGolem extends PathfinderMob {
     private BlockPos lastHomeGoal=BlockPos.ZERO;
     private BlockPos blockedHomeCell=BlockPos.ZERO;
     private int avoidHomeUntil;
+    private String routeIssue="";
+    private int routeFailures;
     public StorageGolem(EntityType<? extends StorageGolem> type,Level level){
         super(type,level);
         setPersistenceRequired();
@@ -274,6 +276,38 @@ public final class StorageGolem extends PathfinderMob {
         if(!cargo.isEmpty())return cargo.getHoverName().getString()
                 +" x"+cargo.getCount();
         return emptyBox.isEmpty()?"EMPTY":"EMPTY SHULKER";
+    }
+    /** Every independently walking robot advertises its actual task.
+     * The PALLET prefix is preserved for the existing pallet renderer. */
+    private void updateTaskLabel(){
+        String label;
+        if(playerHaul&&stage!=2){
+            label="PALLET "+(haulIndex+1)+"/4 | "
+                    +(stage==0?"COLLECT":"WITH PLAYER");
+        }else if(stage==2){
+            label=routeIssue.isBlank()?"RETURN | SHELF":
+                    "RETURN | "+routeIssue;
+        }else{
+            label=switch(stage){
+                case 0 -> (stationOrder?"ORDER":"PICK")+" | "+shortItem();
+                case 1 -> (stationOrder?"TO SHULKER":"DELIVER")+" | "+shortItem();
+                case 3 -> "RETURN STOCK | "+shortItem();
+                case 4 -> "GET EMPTY BOX";
+                case 5 -> "RETURN EMPTY BOX";
+                default -> currentWork();
+            };
+            if(haulJob)label="HAUL "+(haulIndex+1)+"/4 | "+(stage==0?"COLLECT":"DELIVER");
+            if(!routeIssue.isBlank())label+=" | "+routeIssue;
+        }
+        if(getCustomName()==null||!getCustomName().getString().equals(label))
+            setCustomName(Component.literal(label));
+        if(!isCustomNameVisible())setCustomNameVisible(true);
+    }
+    private String shortItem(){
+        String id=itemId;
+        int colon=id.indexOf(':');
+        if(colon>=0)id=id.substring(colon+1);
+        return id.isBlank()?"STOCK":id.length()>15?id.substring(0,15):id;
     }
     public int crewIndex(){return haulIndex;}
     public void beginPlayerPickup(BlockPos ptp,int ticket){
@@ -715,6 +749,32 @@ public final class StorageGolem extends PathfinderMob {
      * make the Golem stop and restart. Stalls force replanning; true level
      * changes still use vanilla ramp/stair navigation.
      */
+    /** Cheap occupied-aisle snapshot, captured ONCE per A* search, never
+     * queried thousands of times inside the routing predicate. */
+    private java.util.Set<BlockPos> occupiedAisle(ServerLevel level,BlockPos goal){
+        java.util.Set<BlockPos> positions=new java.util.HashSet<>();
+        double midX=(getX()+goal.getX())*.5,midZ=(getZ()+goal.getZ())*.5;
+        double range=Math.min(48,Math.max(12,Math.abs(goal.getX()-getX())*.5+7
+                +Math.abs(goal.getZ()-getZ())*.5));
+        for(StorageGolem other:level.getEntitiesOfClass(StorageGolem.class,
+                new net.minecraft.world.phys.AABB(
+                        midX-range,getY()-1,midZ-range,
+                        midX+range,getY()+2,midZ+range),
+                g->g!=this&&!g.isRemoved())){
+            positions.add(other.blockPosition());
+        }
+        positions.remove(blockPosition());
+        return positions;
+    }
+    private void steerOnFloor(BlockPos next,double speed){
+        // Vanilla navigation cuts diagonally across blocked rack corners
+        // and keeps trying a stalled endpoint. Instead drive towards the
+        // center of each checked, cardinally-adjacent floor cell. Path search
+        // decides every turn; no path to a solid workstation is ever issued.
+        if(!getNavigation().isDone())getNavigation().stop();
+        getMoveControl().setWantedPosition(next.getX()+.5,next.getY(),
+                next.getZ()+.5,speed);
+    }
     private void walkTo(ServerLevel level,BlockPos target,double speed){
         BlockPos feet=blockPosition();
         if(!target.equals(workGoal)){
@@ -723,6 +783,7 @@ public final class StorageGolem extends PathfinderMob {
             nextWorkPlan=0;
             lastWorkDistance=Double.POSITIVE_INFINITY;
             lastWorkProgress=tickCount;
+            routeIssue="";
         }
         if(feet.getY()!=target.getY()){
             if(tickCount%10==0)getNavigation().moveTo(
@@ -731,15 +792,25 @@ public final class StorageGolem extends PathfinderMob {
         }
         while(!flatWorkRoute.isEmpty()
                 &&distanceToSqr(flatWorkRoute.peekFirst().getX()+.5,
-                        target.getY(),flatWorkRoute.peekFirst().getZ()+.5)<1.2)
+                        target.getY(),flatWorkRoute.peekFirst().getZ()+.5)<.32){
             flatWorkRoute.removeFirst();
+            lastWorkDistance=Double.POSITIVE_INFINITY;
+            lastWorkProgress=tickCount;
+        }
         if(flatWorkRoute.isEmpty()&&tickCount>=nextWorkPlan){
-            List<BlockPos> route=StorageGolemReturnPath.routeTo(feet,target,
+            var occupied=occupiedAisle(level,target);
+            List<BlockPos> route=StorageGolemReturnPath.steps(feet,target,
                     p->StorageGolemReturnPath.walkable(level,p)
+                            &&!occupied.contains(p)
                             &&(tickCount>=avoidWorkUntil
                                 ||!p.equals(blockedWorkCell)));
-            nextWorkPlan=tickCount+40;
-            if(route!=null)flatWorkRoute.addAll(route);
+            nextWorkPlan=tickCount+20;
+            if(route!=null){
+                flatWorkRoute.addAll(route);
+                routeIssue="";
+            }else{
+                routeIssue="NO WALKABLE ROUTE";
+            }
         }
         if(flatWorkRoute.isEmpty())return;
         BlockPos next=flatWorkRoute.peekFirst();
@@ -749,7 +820,8 @@ public final class StorageGolem extends PathfinderMob {
             lastWorkProgress=tickCount;
         }else if(tickCount-lastWorkProgress>50){
             blockedWorkCell=next.immutable();
-            avoidWorkUntil=tickCount+120;
+            avoidWorkUntil=tickCount+60;
+            routeIssue="REROUTING";
             flatWorkRoute.clear();
             nextWorkPlan=0;
             getNavigation().stop();
@@ -757,9 +829,7 @@ public final class StorageGolem extends PathfinderMob {
             lastWorkDistance=Double.POSITIVE_INFINITY;
             return;
         }
-        if(getNavigation().isDone()||tickCount%30==0)
-            getNavigation().moveTo(
-                    next.getX()+.5,next.getY(),next.getZ()+.5,speed);
+        steerOnFloor(next,speed);
     }
     private final ArrayDeque<BlockPos> flatWorkRoute=new ArrayDeque<>();
 
@@ -852,23 +922,27 @@ public final class StorageGolem extends PathfinderMob {
                 break;
             }
             if(distanceToSqr(waypoint.getX()+.5,waypoint.getY(),
-                    waypoint.getZ()+.5)<.85){
+                    waypoint.getZ()+.5)<.32){
                 flatHomeRoute.removeFirst();
                 lastHomeWaypointDistance=Double.POSITIVE_INFINITY;
                 lastHomeProgressTick=tickCount;
             }else break;
         }
         if(flatHomeRoute.isEmpty()&&tickCount>=nextHomeReplanTick){
-            var planned=StorageGolemReturnPath.route(from,shelfPlane,
+            var occupied=occupiedAisle(level,shelfPlane);
+            var planned=StorageGolemReturnPath.stepsHome(from,shelfPlane,
                     p->StorageGolemReturnPath.walkable(level,p)
+                            &&!occupied.contains(p)
                             &&(tickCount>=avoidHomeUntil
                                 ||!p.equals(blockedHomeCell)));
-            nextHomeReplanTick=tickCount+60;
+            nextHomeReplanTick=tickCount+20;
             if(planned!=null){
                 flatHomeRoute.addAll(planned);
                 lastHomeWaypointDistance=Double.POSITIVE_INFINITY;
                 lastHomeProgressTick=tickCount;
+                routeIssue="";
             }else{
+                routeIssue="WAITING FOR AISLE";
                 // No level path? WAIT and retry after changes. Don't
                 // substitute a jump-over-the-obstacle route.
                 getNavigation().stop();
@@ -895,7 +969,8 @@ public final class StorageGolem extends PathfinderMob {
             // so repeated retries explore a different aisle instead of
             // restarting the identical blocked path forever.
             blockedHomeCell=next.immutable();
-            avoidHomeUntil=tickCount+120;
+            avoidHomeUntil=tickCount+60;
+            routeIssue="REROUTING";
             getNavigation().stop();
             flatHomeRoute.clear();
             nextHomeReplanTick=0;
@@ -904,9 +979,7 @@ public final class StorageGolem extends PathfinderMob {
         // Never redirect a worker which is already within the docking
         // aisle just because the other worker reached a nearby waypoint.
         if(atShelfEntrance(level))returnToShelf(level);
-        else if(getNavigation().isDone()||tickCount%30==0)
-            getNavigation().moveTo(next.getX()+.5,next.getY(),
-                    next.getZ()+.5,1.08);
+        else steerOnFloor(next,1.08);
     }
     private Container loaded(ServerLevel level,BlockPos pos) {
         return level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof Container c
@@ -914,7 +987,9 @@ public final class StorageGolem extends PathfinderMob {
     }
     @Override public void tick(){
         super.tick();
-        if(!(level() instanceof ServerLevel level)||tickCount%10!=0)return;
+        if(!(level() instanceof ServerLevel level))return;
+        if(tickCount%10==0)updateTaskLabel();
+        if(tickCount%2!=0)return;
         // Return-home jobs MUST use the flat same-Y grid router, never the
         // generic approach() navigation that can select a jump over a block.
         if(stage==2){
