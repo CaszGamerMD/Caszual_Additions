@@ -17,6 +17,8 @@ import net.minecraft.world.Containers;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.BlockItem;
@@ -51,6 +53,10 @@ public final class MovingPallet extends PathfinderMob {
     private BlockPos deliveryPosition=BlockPos.ZERO;
     private Direction deliveryFacing=Direction.NORTH;
     private String deliveryFailure="";
+    // A nearly two-block-wide mob can stop pathing before reaching a
+    // precise point. Align locally after navigation and detect real stalls.
+    private int deliveryStallTicks;
+    private double lastDeliveryDistance=Double.POSITIVE_INFINITY;
     // Detect an obstructed or abandoned path instead of waiting forever on
     // the same unreachable target behind the player.
     private double lastFollowDistance=Double.POSITIVE_INFINITY;
@@ -149,6 +155,8 @@ public final class MovingPallet extends PathfinderMob {
         deliveryMode=1;
         releaseTicks=0;
         deliveryFailure="";
+        deliveryStallTicks=0;
+        lastDeliveryDistance=Double.POSITIVE_INFINITY;
         entityData.set(RELEASE_TICKS,0);
         return "Golems carrying pallet to rack "+deliveryPosition.toShortString()
                 +"; it will be unloaded only after they arrive.";
@@ -163,6 +171,8 @@ public final class MovingPallet extends PathfinderMob {
         deliveryMode=2;
         releaseTicks=0;
         deliveryFailure="";
+        deliveryStallTicks=0;
+        lastDeliveryDistance=Double.POSITIVE_INFINITY;
         entityData.set(RELEASE_TICKS,0);
         return "Golems carrying pallet to "+location.toShortString()
                 +"; they will release it only after positioning.";
@@ -184,6 +194,8 @@ public final class MovingPallet extends PathfinderMob {
     private void abortDelivery(String problem){
         deliveryFailure=problem;
         deliveryMode=0;
+        deliveryStallTicks=0;
+        lastDeliveryDistance=Double.POSITIVE_INFINITY;
         releaseTicks=0;
         entityData.set(RELEASE_TICKS,0);
         getNavigation().stop();
@@ -221,13 +233,35 @@ public final class MovingPallet extends PathfinderMob {
             targetY=target.getY();
         }
         double dx=targetX-getX(),dz=targetZ-getZ();
-        if(dx*dx+dz*dz>.55*.55||Math.abs(getY()-targetY)>.6){
+        double horizontal=Math.sqrt(dx*dx+dz*dz);
+        double vertical=Math.abs(getY()-targetY);
+        // Pathfinding stops early for a 1.85-wide mob. Once close enough
+        // to be in the clear delivery aisle, align using normal
+        // collision-checked movement instead of requesting an impossible
+        // sub-block-perfect navigation target every 8 ticks.
+        if(horizontal>.40||vertical>.65){
             if(releaseTicks!=0){releaseTicks=0;entityData.set(RELEASE_TICKS,0);}
-            if(tickCount%8==0)
+            if(horizontal<2.1&&vertical<.70){
+                getNavigation().stop();
+                double step=Math.min(.13,horizontal);
+                move(MoverType.SELF,new Vec3(dx/horizontal*step,0,dz/horizontal*step));
+            }else if(tickCount%10==0){
                 getNavigation().moveTo(targetX,targetY,targetZ,1.0);
+            }
+            double remaining=Math.hypot(targetX-getX(),targetZ-getZ());
+            if(remaining+.025<lastDeliveryDistance){
+                lastDeliveryDistance=remaining;
+                deliveryStallTicks=0;
+            }else if(++deliveryStallTicks>100){
+                abortDelivery("Pallet cannot reach the marked placement: "
+                        +"check for a clear 2-block-wide access route. "
+                        +"Cargo remains onboard; select another location.");
+            }
             return;
         }
         getNavigation().stop();
+        lastDeliveryDistance=Double.POSITIVE_INFINITY;
+        deliveryStallTicks=0;
         if(releaseTicks<20){
             entityData.set(RELEASE_TICKS,++releaseTicks);
             return;
@@ -341,9 +375,11 @@ public final class MovingPallet extends PathfinderMob {
         }
         UUID id;
         try{id=UUID.fromString(owner);}catch(IllegalArgumentException ex){return;}
+        // A committed scanner order is independent of the player's facing
+        // or location, even if the player walks away after selecting it.
+        if(isDelivering()){tickDelivery(server);return;}
         var player=server.getPlayerByUUID(id);
         if(player==null||player.isSpectator())return;
-        if(isDelivering()){tickDelivery(server);return;}
         // Exactly one navigation and collision body for all four corner
         // figures, with no teleporting through walls or individual drift.
         // Follow player POSITION, never their view direction. Turning
