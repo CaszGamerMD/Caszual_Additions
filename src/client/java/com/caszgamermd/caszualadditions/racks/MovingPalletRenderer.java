@@ -38,10 +38,19 @@ public final class MovingPalletRenderer extends MobRenderer<
     @Override public void extractRenderState(MovingPallet entity,
             MovingPalletRenderState state,float partialTick){
         super.extractRenderState(entity,state,partialTick);
+        // LivingEntityRenderer otherwise swivels the whole group to match
+        // navigator body yaw while the separately rendered pallet remains
+        // world-aligned. Keep all four attached bots' facing LOCKED instead
+        // of letting them act like a single neck joint.
+        state.bodyRot=180.0f;
         ItemStack stack=entity.displayPallet();
         state.visible=!stack.isEmpty();
         state.liftProgress=entity.liftProgress();
         state.releaseProgress=entity.releaseProgress();
+        state.rackInsertProgress=entity.rackInsertProgress();
+        state.rackInsertX=entity.rackInsertX();
+        state.rackInsertY=entity.rackInsertY();
+        state.rackInsertZ=entity.rackInsertZ();
         state.cargo=stack.isEmpty()?0:entity.visibleCargo();
         if(stack.isEmpty())return;
         Block material=Blocks.OAK_PLANKS;
@@ -69,6 +78,15 @@ public final class MovingPalletRenderer extends MobRenderer<
         super.submit(state,pose,collector,camera);
         if(!state.visible)return;
         pose.pushPose();
+        // Inverse of the rack extraction renderer:
+        // 0..22 ticks lift pallet to shelf level, then 22..40 slide it
+        // inward. Robots stay rigidly at their four corner offsets until
+        // the final inventory handoff; ONLY the artwork moves.
+        float stage=state.rackInsertProgress;
+        float lift=Math.min(1f,stage*40f/22f);
+        float slide=Math.max(0f,Math.min(1f,(stage*40f-22f)/18f));
+        pose.translate(state.rackInsertX*slide,
+                state.rackInsertY*lift,state.rackInsertZ*slide);
         // Origin = geometric middle of the unit. All four Golems have
         // identical corner offsets relative to this one pallet platform.
         pose.translate(-.9f,.50f+.98f*state.liftProgress,-.9f);
