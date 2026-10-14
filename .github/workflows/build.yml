@@ -56,6 +56,8 @@ jobs:
         run: python3 scripts/warehouse_reverse_insert_wrapper_smoke.py
       - name: Verify multi-item orders, 9-slot Golems and Shulker Station (blocking)
         run: python3 scripts/warehouse_station_orders_smoke.py
+      - name: Check Golem routing, tasks and three-wide rack aisle (blocking)
+        run: python3 scripts/warehouse_golem_route_and_aisle_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()

@@ -26,7 +26,7 @@ assert "RackPickupPlan.find(level,rack)" in crew
 assert "rack.startPull(owner,rackFloorY)" in golem
 assert "rack.pullProgress()>=RackPickupPlan.PULL_TICKS" in golem
 assert "new BlockPos(" in source("RackPickupPlan.java")
-assert "StorageGolemReturnPath.routeTo(" in golem
+assert "StorageGolemReturnPath.steps(" in golem
 assert "public boolean liftToCarrier(StorageGolem leader)" in rack
 assert "PalletData.applyFilterSettings(pallet,this)" in rack
 assert "stock.set(i,items.get(i).copy())" in rack

@@ -176,7 +176,7 @@ public final class MovingPallet extends PathfinderMob {
         if(isDelivering())return "Crew already has a delivery destination.";
         if(rack.hasPallet()||!rack.isEmpty())return "Destination rack must be empty.";
         if(RackPickupPlan.find(level,rack)==null)
-            return "Rack needs a clear two-wide access aisle with floor support.";
+            return "Rack needs a clear 2-wide, 3-deep access aisle with floor support.";
         deliveryPosition=rack.getBlockPos().immutable();
         deliveryFacing=rack.facing();
         deliveryMode=1;
@@ -449,9 +449,21 @@ public final class MovingPallet extends PathfinderMob {
         discard();
         return true;
     }
+    private void updateCrewLabel(){
+        String text=delivered?"4 GOLEMS | UNLOADING"
+                :isDelivering()?(deliveryMode==1
+                    ?"4 GOLEMS | DELIVERING TO RACK"
+                    :"4 GOLEMS | PLACING PALLET")
+                :liftTicks<12?"4 GOLEMS | LIFTING"
+                :"4 GOLEMS | FOLLOWING PLAYER";
+        if(getCustomName()==null||!getCustomName().getString().equals(text))
+            setCustomName(net.minecraft.network.chat.Component.literal(text));
+        if(!isCustomNameVisible())setCustomNameVisible(true);
+    }
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel server))return;
+        if(tickCount%10==0)updateCrewLabel();
         if(delivered){
             if(tickCount%20==0)restoreWorkers(server);
             return;
