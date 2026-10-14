@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "com.caszgamermd.caszualadditions.antiwarden.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "WoolHelmetEffectMixin",
+    "WoolBootsVibrationMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
