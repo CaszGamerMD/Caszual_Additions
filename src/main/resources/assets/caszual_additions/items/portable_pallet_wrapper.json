@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "minecraft:item/shears"
+    "model": "caszual_additions:item/portable_pallet_wrapper"
   }
 }

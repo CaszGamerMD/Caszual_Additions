@@ -36,8 +36,9 @@ assert "state.releaseProgress=entity.releaseProgress()" in rig_renderer
 assert "rig.requestRackDelivery(level,rack)" in crew
 assert "rig.requestGroundDelivery(" in crew
 assert "if(isDelivering()){tickDelivery(server);return;}" in rig
-assert "if(releaseTicks<20)" in rig
-assert rig.index("if(releaseTicks<20)") < rig.index("boolean ok=deliveryMode==1")
+assert "releaseDuration=deliveryMode==1?RackPickupPlan.PULL_TICKS:20" in rig
+assert "if(releaseTicks<releaseDuration)" in rig
+assert rig.index("if(releaseTicks<releaseDuration)") < rig.index("boolean ok=deliveryMode==1")
 assert "delivery_mode" in rig and "delivery_position" in rig
 assert "delivery_failure" in rig
 assert "groundClear(level,target,deliveryFacing)" in rig

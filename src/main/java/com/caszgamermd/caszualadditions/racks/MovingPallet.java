@@ -43,6 +43,16 @@ public final class MovingPallet extends PathfinderMob {
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> RELEASE_TICKS=
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
+    // Only the pallet/artwork translates into the rack during the reverse
+    // extraction animation. All four robot corner models stay rigid.
+    private static final EntityDataAccessor<Boolean> RACK_INSERT_ACTIVE=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Float> RACK_INSERT_X=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> RACK_INSERT_Y=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> RACK_INSERT_Z=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.FLOAT);
     private String owner="";
     private final BlockPos[] shelves={BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO};
     private ItemStack pallet=ItemStack.EMPTY;
@@ -79,11 +89,23 @@ public final class MovingPallet extends PathfinderMob {
         builder.define(DISPLAY_CARGO,0);
         builder.define(LIFT_TICKS,0);
         builder.define(RELEASE_TICKS,0);
+        builder.define(RACK_INSERT_ACTIVE,false);
+        builder.define(RACK_INSERT_X,0.0f);
+        builder.define(RACK_INSERT_Y,0.0f);
+        builder.define(RACK_INSERT_Z,0.0f);
     }
     public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
     public int visibleCargo(){return entityData.get(DISPLAY_CARGO);}
     public float liftProgress(){return entityData.get(LIFT_TICKS)/12.0f;}
     public float releaseProgress(){return entityData.get(RELEASE_TICKS)/20.0f;}
+    public boolean rackInserting(){return entityData.get(RACK_INSERT_ACTIVE);}
+    public float rackInsertProgress(){
+        return rackInserting()
+                ?Math.clamp(entityData.get(RELEASE_TICKS)/40.0f,0,1):0;
+    }
+    public float rackInsertX(){return entityData.get(RACK_INSERT_X);}
+    public float rackInsertY(){return entityData.get(RACK_INSERT_Y);}
+    public float rackInsertZ(){return entityData.get(RACK_INSERT_Z);}
     public boolean isDelivering(){return deliveryMode!=0;}
     public String deliveryStatus(){return deliveryFailure;}
     public boolean owns(UUID player){return owner.equals(player.toString());}
@@ -158,6 +180,7 @@ public final class MovingPallet extends PathfinderMob {
         deliveryPosition=rack.getBlockPos().immutable();
         deliveryFacing=rack.facing();
         deliveryMode=1;
+        entityData.set(RACK_INSERT_ACTIVE,true);
         releaseTicks=0;
         deliveryFailure="";
         deliveryStallTicks=0;
@@ -174,6 +197,7 @@ public final class MovingPallet extends PathfinderMob {
         deliveryPosition=location.immutable();
         deliveryFacing=facing;
         deliveryMode=2;
+        entityData.set(RACK_INSERT_ACTIVE,false);
         releaseTicks=0;
         deliveryFailure="";
         deliveryStallTicks=0;
@@ -199,6 +223,7 @@ public final class MovingPallet extends PathfinderMob {
     private void abortDelivery(String problem){
         deliveryFailure=problem;
         deliveryMode=0;
+        entityData.set(RACK_INSERT_ACTIVE,false);
         deliveryStallTicks=0;
         lastDeliveryDistance=Double.POSITIVE_INFINITY;
         releaseTicks=0;
@@ -267,7 +292,24 @@ public final class MovingPallet extends PathfinderMob {
         getNavigation().stop();
         lastDeliveryDistance=Double.POSITIVE_INFINITY;
         deliveryStallTicks=0;
-        if(releaseTicks<20){
+        if(deliveryMode==1&&rack!=null){
+            // Reverse pickup: first lift the pallet from the aisle to the
+            // rack bay's elevation (22 ticks), then slide it inward through
+            // the front opening (18 ticks). No cargo is transferred yet.
+            BlockPos first=RackBlock.cell(target,rack.facing(),0);
+            double minX=first.getX(),minZ=first.getZ();
+            for(int i=1;i<4;i++){
+                BlockPos cell=RackBlock.cell(target,rack.facing(),i);
+                minX=Math.min(minX,cell.getX());
+                minZ=Math.min(minZ,cell.getZ());
+            }
+            entityData.set(RACK_INSERT_X,(float)(minX+1-getX()));
+            entityData.set(RACK_INSERT_Z,(float)(minZ+1-getZ()));
+            entityData.set(RACK_INSERT_Y,(float)(
+                    rack.getBlockPos().getY()+.06-(getY()+1.48)));
+        }
+        int releaseDuration=deliveryMode==1?RackPickupPlan.PULL_TICKS:20;
+        if(releaseTicks<releaseDuration){
             entityData.set(RELEASE_TICKS,++releaseTicks);
             return;
         }
@@ -280,6 +322,7 @@ public final class MovingPallet extends PathfinderMob {
             return;
         }
         deliveryMode=0;
+        entityData.set(RACK_INSERT_ACTIVE,false);
         // Try separation immediately at the successful placement point.
         // If the aisle is crowded, keep the escrowed four-worker identity
         // and retry next ticks instead of spawning inside solid blocks.
@@ -513,6 +556,7 @@ public final class MovingPallet extends PathfinderMob {
         catch(IllegalArgumentException ex){deliveryFacing=Direction.NORTH;}
         deliveryFailure=in.getStringOr("delivery_failure","");
         entityData.set(RELEASE_TICKS,releaseTicks);
+        entityData.set(RACK_INSERT_ACTIVE,deliveryMode==1);
         for(int i=0;i<4;i++)
             shelves[i]=in.read("shelf_"+i,BlockPos.CODEC).orElse(BlockPos.ZERO);
         pallet=in.read("pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);

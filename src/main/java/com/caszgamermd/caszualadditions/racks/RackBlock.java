@@ -300,6 +300,15 @@ public final class RackBlock extends Block implements EntityBlock {
     @Override protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(
             BlockState state,net.minecraft.world.level.BlockGetter level,
             BlockPos pos,net.minecraft.world.phys.shapes.CollisionContext context){
+        // The frame is visually hollow for player access, but a 0.7-wide
+        // Storage Golem can path straight through the empty center and get
+        // stuck against the cargo. For warehouse robot bodies treat every
+        // segment of the entire 2x2x3 rack as a solid cell. Players keep
+        // the original precise metal-frame/cargo collision.
+        if (context instanceof net.minecraft.world.phys.shapes.EntityCollisionContext entityContext
+                && (entityContext.getEntity() instanceof StorageGolem
+                    ||entityContext.getEntity() instanceof MovingPallet))
+            return net.minecraft.world.phys.shapes.Shapes.block();
         return net.minecraft.world.phys.shapes.Shapes.or(
                 RackFrameShapes.cell(state),
                 RackCargoCollision.shape(level,pos,state));
