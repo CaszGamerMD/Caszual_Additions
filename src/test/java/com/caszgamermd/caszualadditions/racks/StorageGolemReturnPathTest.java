@@ -135,6 +135,17 @@ final class StorageGolemReturnPathTest {
                 p->!p.equals(shelf)&&!p.equals(shelf.north())));
     }
 
+    @Test void avoidsOccupiedWaypointAndFindsAnotherAisle(){
+        BlockPos from=new BlockPos(0,64,0),destination=new BlockPos(6,64,0);
+        BlockPos occupied=new BlockPos(2,64,0);
+        List<BlockPos> path=StorageGolemReturnPath.routeTo(from,destination,
+                point->!point.equals(occupied));
+        assertNotNull(path,"An occupied aisle tile should permit detouring");
+        assertEquals(destination,path.getLast());
+        assertFalse(path.contains(occupied));
+        for(BlockPos waypoint:path)assertEquals(64,waypoint.getY());
+    }
+
     @Test void nearbySideNeedsNoPath(){
         BlockPos home=new BlockPos(5,64,5),start=home.north();
         assertEquals(List.of(),StorageGolemReturnPath.route(start,home,
