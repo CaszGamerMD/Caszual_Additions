@@ -35,6 +35,12 @@ public final class StorageGolemReturnPath {
         BlockState headState=level.getBlockState(feet.above());
         BlockPos ground=feet.below();
         BlockState below=level.getBlockState(ground);
+        // Don't treat the empty-looking interior of the rack as traversable,
+        // and never take a "shortcut" across the upper steel frame.
+        // All rack segments count as full obstacles for warehouse paths.
+        if(feetState.getBlock() instanceof RackBlock
+                ||headState.getBlock() instanceof RackBlock
+                ||below.getBlock() instanceof RackBlock)return false;
         return feetState.getCollisionShape(level,feet).isEmpty()
                 &&headState.getCollisionShape(level,feet.above()).isEmpty()
                 &&!below.getCollisionShape(level,ground).isEmpty();
