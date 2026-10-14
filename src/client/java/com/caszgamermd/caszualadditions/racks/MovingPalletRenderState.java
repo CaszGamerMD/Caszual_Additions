@@ -9,6 +9,7 @@ public final class MovingPalletRenderState extends LivingEntityRenderState {
     public boolean visible;
     public float liftProgress;
     public float releaseProgress;
+    public float rackInsertProgress,rackInsertX,rackInsertY,rackInsertZ;
     public final BlockModelRenderState deck=new BlockModelRenderState();
     public final BlockModelRenderState foot=new BlockModelRenderState();
     public final BlockModelRenderState crate=new BlockModelRenderState();
