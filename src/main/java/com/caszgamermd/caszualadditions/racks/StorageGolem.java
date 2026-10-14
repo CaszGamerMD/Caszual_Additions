@@ -96,6 +96,8 @@ public final class StorageGolem extends PathfinderMob {
     private int nextHomeReplanTick,lastHomeProgressTick;
     private double lastHomeWaypointDistance=Double.POSITIVE_INFINITY;
     private BlockPos lastHomeGoal=BlockPos.ZERO;
+    private BlockPos blockedHomeCell=BlockPos.ZERO;
+    private int avoidHomeUntil;
     public StorageGolem(EntityType<? extends StorageGolem> type,Level level){
         super(type,level);
         setPersistenceRequired();
@@ -703,6 +705,8 @@ public final class StorageGolem extends PathfinderMob {
     }
     private BlockPos workGoal=BlockPos.ZERO;
     private int lastWorkProgress, nextWorkPlan;
+    private BlockPos blockedWorkCell=BlockPos.ZERO;
+    private int avoidWorkUntil;
     private double lastWorkDistance=Double.POSITIVE_INFINITY;
 
     /**
@@ -731,7 +735,9 @@ public final class StorageGolem extends PathfinderMob {
             flatWorkRoute.removeFirst();
         if(flatWorkRoute.isEmpty()&&tickCount>=nextWorkPlan){
             List<BlockPos> route=StorageGolemReturnPath.routeTo(feet,target,
-                    p->StorageGolemReturnPath.walkable(level,p));
+                    p->StorageGolemReturnPath.walkable(level,p)
+                            &&(tickCount>=avoidWorkUntil
+                                ||!p.equals(blockedWorkCell)));
             nextWorkPlan=tickCount+40;
             if(route!=null)flatWorkRoute.addAll(route);
         }
@@ -742,6 +748,8 @@ public final class StorageGolem extends PathfinderMob {
             lastWorkDistance=distance;
             lastWorkProgress=tickCount;
         }else if(tickCount-lastWorkProgress>50){
+            blockedWorkCell=next.immutable();
+            avoidWorkUntil=tickCount+120;
             flatWorkRoute.clear();
             nextWorkPlan=0;
             getNavigation().stop();
@@ -749,8 +757,9 @@ public final class StorageGolem extends PathfinderMob {
             lastWorkDistance=Double.POSITIVE_INFINITY;
             return;
         }
-        if(tickCount%10==0)getNavigation().moveTo(
-                next.getX()+.5,next.getY(),next.getZ()+.5,speed);
+        if(getNavigation().isDone()||tickCount%30==0)
+            getNavigation().moveTo(
+                    next.getX()+.5,next.getY(),next.getZ()+.5,speed);
     }
     private final ArrayDeque<BlockPos> flatWorkRoute=new ArrayDeque<>();
 
@@ -851,7 +860,9 @@ public final class StorageGolem extends PathfinderMob {
         }
         if(flatHomeRoute.isEmpty()&&tickCount>=nextHomeReplanTick){
             var planned=StorageGolemReturnPath.route(from,shelfPlane,
-                    p->StorageGolemReturnPath.walkable(level,p));
+                    p->StorageGolemReturnPath.walkable(level,p)
+                            &&(tickCount>=avoidHomeUntil
+                                ||!p.equals(blockedHomeCell)));
             nextHomeReplanTick=tickCount+60;
             if(planned!=null){
                 flatHomeRoute.addAll(planned);
@@ -879,6 +890,12 @@ public final class StorageGolem extends PathfinderMob {
         }else if(tickCount-lastHomeProgressTick>50){
             // Dynamic blockers (e.g. a new rack/pallet) may invalidate a
             // corridor even when its terminal waypoint is clear.
+            // Another Golem may occupy this same aisle waypoint. Mark
+            // that ONE cell as temporarily impassable for the next search,
+            // so repeated retries explore a different aisle instead of
+            // restarting the identical blocked path forever.
+            blockedHomeCell=next.immutable();
+            avoidHomeUntil=tickCount+120;
             getNavigation().stop();
             flatHomeRoute.clear();
             nextHomeReplanTick=0;
@@ -887,7 +904,7 @@ public final class StorageGolem extends PathfinderMob {
         // Never redirect a worker which is already within the docking
         // aisle just because the other worker reached a nearby waypoint.
         if(atShelfEntrance(level))returnToShelf(level);
-        else if(tickCount%10==0)
+        else if(getNavigation().isDone()||tickCount%30==0)
             getNavigation().moveTo(next.getX()+.5,next.getY(),
                     next.getZ()+.5,1.08);
     }
