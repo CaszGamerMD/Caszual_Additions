@@ -331,6 +331,19 @@ public final class RackComputerNet {
             transferPoints.add(cell);
         }
         root.add("ptps",transferPoints);
+        JsonArray stations=new JsonArray();
+        for(ShulkerTankEntity station:WarehouseNetwork.fromComputer(level,computer).tanks()){
+            JsonObject row=new JsonObject();
+            row.addProperty("x",station.getBlockPos().getX());
+            row.addProperty("y",station.getBlockPos().getY());
+            row.addProperty("z",station.getBlockPos().getZ());
+            row.addProperty("empty",station.count());
+            row.addProperty("packing",station.activeCount());
+            row.addProperty("ready",station.finishedCount());
+            row.addProperty("connected",station.attachedOutput(level)!=null);
+            stations.add(row);
+        }
+        root.add("stations",stations);
         root.addProperty("dockedGolems",shelves.stream()
                 .mapToInt(StorageGolemShelfEntity::docked).sum());
         root.addProperty("golemSortingEnabled",
