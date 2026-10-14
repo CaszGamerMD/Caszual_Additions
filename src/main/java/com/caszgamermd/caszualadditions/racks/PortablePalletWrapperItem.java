@@ -11,7 +11,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 
-/** Reusable, handheld glass-pane wrapping kit. It never extracts contents. */
+/** Reusable, handheld clear plastic stretch-wrap dispenser. It never extracts contents. */
 public final class PortablePalletWrapperItem extends Item {
     public PortablePalletWrapperItem(Properties properties){super(properties);}
 
@@ -29,8 +29,8 @@ public final class PortablePalletWrapperItem extends Item {
             if(level instanceof ServerLevel){
                 pallet.setGlassWrapped(!pallet.glassWrapped());
                 player.sendSystemMessage(Component.literal(pallet.glassWrapped()
-                        ?"Pallet sealed in clear glass panels. Four Golems can now lift it."
-                        :"Glass wrapping removed."));
+                        ?"Pallet secured in clear plastic stretch wrap. Four Golems can now lift it."
+                        :"Plastic stretch wrap removed."));
             }
             return InteractionResult.SUCCESS;
         }
@@ -40,7 +40,7 @@ public final class PortablePalletWrapperItem extends Item {
             if(level instanceof ServerLevel){
                 rack.setGlassWrapped(!rack.glassWrapped());
                 player.sendSystemMessage(Component.literal(
-                        rack.glassWrapped()?"Rack pallet glass-wrapped.":"Rack pallet unwrapped."));
+                        rack.glassWrapped()?"Rack pallet plastic-wrapped.":"Rack pallet unwrapped."));
             }
             return InteractionResult.SUCCESS;
         }
@@ -55,7 +55,7 @@ public final class PortablePalletWrapperItem extends Item {
                 }
                 ptp.setSealed(!ptp.sealed());
                 player.sendSystemMessage(Component.literal(
-                        ptp.sealed()?"PTP pallet glass-wrapped.":"PTP pallet unwrapped."));
+                        ptp.sealed()?"PTP pallet plastic-wrapped.":"PTP pallet unwrapped."));
             }
             return InteractionResult.SUCCESS;
         }
