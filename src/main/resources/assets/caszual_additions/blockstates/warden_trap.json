@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "tripped=false": {
+      "model": "caszual_additions:block/warden_trap_open"
+    },
+    "tripped=true": {
+      "model": "caszual_additions:block/warden_trap_closed"
+    }
+  }
+}
