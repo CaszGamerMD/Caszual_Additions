@@ -589,9 +589,20 @@ public final class StorageGolem extends PathfinderMob {
     }
     public BlockPos home(){return home;}
     private boolean openWalkway(ServerLevel level,BlockPos p){
-        return level.hasChunkAt(p)&&level.hasChunkAt(p.above())
-                &&level.getBlockState(p).getCollisionShape(level,p).isEmpty()
-                &&level.getBlockState(p.above()).getCollisionShape(level,p.above()).isEmpty();
+        return StorageGolemReturnPath.walkable(level,p);
+    }
+    /** Workstations occupy solid blocks. Choose standable aisle squares
+     * at the robot's foot level, instead of asking vanilla pathfinding to
+     * climb onto the target machine or upper rack frame. */
+    private BlockPos floorApproach(ServerLevel level,BlockPos desired){
+        BlockPos onFloor=new BlockPos(desired.getX(),blockPosition().getY(),desired.getZ());
+        if(openWalkway(level,onFloor))return onFloor;
+        for(int range=1;range<=3;range++)
+            for(Direction direction:Direction.Plane.HORIZONTAL){
+                BlockPos nearby=onFloor.relative(direction,range);
+                if(openWalkway(level,nearby))return nearby;
+            }
+        return desired;
     }
     private BlockPos approach(ServerLevel level,BlockPos place) {
         if(groundPickup&&level.hasChunkAt(place)){
@@ -631,7 +642,7 @@ public final class StorageGolem extends PathfinderMob {
             double score=Double.POSITIVE_INFINITY;
             for(int i=0;i<faces.length;i++){
                 int side=(i+(haulJob?haulIndex:0))%faces.length;
-                BlockPos p=place.relative(faces[side],distance);
+                BlockPos p=floorApproach(level,place.relative(faces[side],distance));
                 if(!openWalkway(level,p))continue;
                 // The four workers take different available sides in index
                 // order. Ordinary jobs take the closest free side to home.
@@ -639,7 +650,7 @@ public final class StorageGolem extends PathfinderMob {
                 double candidate=p.distSqr(home);
                 if(candidate<score){score=candidate;best=p;}
             }
-            return best==null?place.south(distance):best;
+            return best==null?floorApproach(level,place.south(distance)):best;
         }
         if(be instanceof RackBlockEntity rack){
             if(rackPickup){
@@ -652,12 +663,13 @@ public final class StorageGolem extends PathfinderMob {
             }
             BlockPos front=RackBlock.cell(place,rack.facing(),haulIndex%2)
                     .relative(rack.facing(),1+haulIndex/2);
-            if(openWalkway(level,front))return front;
-            BlockPos fallback=RackBlock.cell(place,rack.facing(),haulIndex%2)
-                    .relative(rack.facing());
-            return openWalkway(level,fallback)?fallback:front;
+            BlockPos aisle=floorApproach(level,front);
+            if(openWalkway(level,aisle))return aisle;
+            BlockPos fallback=floorApproach(level,RackBlock.cell(place,
+                    rack.facing(),haulIndex%2).relative(rack.facing(),2));
+            return openWalkway(level,fallback)?fallback:aisle;
         }
-        return place;
+        return floorApproach(level,place);
     }
     private BlockPos workGoal=BlockPos.ZERO;
     private int lastWorkProgress, nextWorkPlan;
@@ -822,13 +834,19 @@ public final class StorageGolem extends PathfinderMob {
                 return;
             }
         }
-        if(flatHomeRoute.isEmpty())return;
+        if(flatHomeRoute.isEmpty()){
+            // A completed or zero-length route means we have reached an
+            // accessible entrance even if path node coordinates are rounded
+            // differently from the mob's actual standing block.
+            if(tickCount>=nextHomeReplanTick)nextHomeReplanTick=0;
+            return;
+        }
         BlockPos next=flatHomeRoute.peekFirst();
         double distance=distanceToSqr(next.getX()+.5,next.getY(),next.getZ()+.5);
         if(distance+.12<lastHomeWaypointDistance){
             lastHomeWaypointDistance=distance;
             lastHomeProgressTick=tickCount;
-        }else if(tickCount-lastHomeProgressTick>90){
+        }else if(tickCount-lastHomeProgressTick>50){
             // Dynamic blockers (e.g. a new rack/pallet) may invalidate a
             // corridor even when its terminal waypoint is clear.
             getNavigation().stop();
@@ -836,7 +854,10 @@ public final class StorageGolem extends PathfinderMob {
             nextHomeReplanTick=0;
             return;
         }
-        if(tickCount%10==0)
+        // Never redirect a worker which is already within the docking
+        // aisle just because the other worker reached a nearby waypoint.
+        if(atShelfEntrance(level))returnToShelf(level);
+        else if(tickCount%10==0)
             getNavigation().moveTo(next.getX()+.5,next.getY(),
                     next.getZ()+.5,1.08);
     }
@@ -868,9 +889,7 @@ public final class StorageGolem extends PathfinderMob {
         BlockPos walkway=approach(level,target);
         if(!level.hasChunkAt(target) || !level.hasChunkAt(walkway))return;
         if(!closeTo(walkway)){
-            if(tickCount%20==0)
-                getNavigation().moveTo(walkway.getX()+.5,walkway.getY(),
-                        walkway.getZ()+.5,1.10);
+            walkTo(level,walkway,1.10);
             return;
         }
         getNavigation().stop();
