@@ -498,6 +498,10 @@ public final class MovingPallet extends PathfinderMob {
         super.readAdditionalSaveData(in);
         owner=in.getStringOr("owner","");
         delivered=in.getBooleanOr("delivered",false);
+        if(delivered){
+            setNoGravity(true);
+            noPhysics=true;
+        }
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
         deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,2);
