@@ -50,7 +50,8 @@ public final class RackComputerScreen extends Screen {
         sendQuery();
     }
     private String selectedItemId = "";
-    private JsonArray racks=new JsonArray(), contents=new JsonArray(), ptps=new JsonArray();
+    private JsonArray racks=new JsonArray(), contents=new JsonArray(),
+            ptps=new JsonArray(), stations=new JsonArray();
     private int selectedPtpIndex;
     private Button ptpNextButton,ptpModeButton,ptpWrapButton;
     private int selectedX=Integer.MIN_VALUE, selectedY,selectedZ;
@@ -249,6 +250,7 @@ public final class RackComputerScreen extends Screen {
             JsonObject obj=JsonParser.parseString(raw).getAsJsonObject();
             racks=obj.getAsJsonArray("racks");
             ptps=obj.has("ptps")?obj.getAsJsonArray("ptps"):new JsonArray();
+            stations=obj.has("stations")?obj.getAsJsonArray("stations"):new JsonArray();
             workers=obj.has("workers")?obj.getAsJsonArray("workers"):new JsonArray();
             activeGolems=obj.has("activeGolems")?obj.get("activeGolems").getAsInt():0;
             igcCount=obj.has("industrialConcrete")
@@ -369,6 +371,17 @@ public final class RackComputerScreen extends Screen {
         graphics.text(font,Component.literal(
                 "Select stock in RACKS, ADD TO LIST. Click a row here to remove it."),
                 22,99,0xffc5dbce,false);
+        int connected=0,empty=0,packing=0,ready=0;
+        for(var entry:stations){
+            JsonObject row=entry.getAsJsonObject();
+            if(row.get("connected").getAsBoolean())connected++;
+            empty+=row.get("empty").getAsInt();
+            packing+=row.get("packing").getAsInt();
+            ready+=row.get("ready").getAsInt();
+        }
+        graphics.text(font,Component.literal("SHULKER STATIONS: "+connected
+                +"/"+stations.size()+" attached | "+empty+" empty | "
+                +packing+" packing | "+ready+" ready"),22,114,0xff83eadd,false);
         graphics.fill(20,125,width-20,height-83,0xff21392e);
         graphics.text(font,Component.literal("ITEM"),30,133,0xffb3f9c1,false);
         graphics.text(font,Component.literal("QUANTITY"),width-114,133,
