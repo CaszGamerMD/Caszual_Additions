@@ -141,6 +141,11 @@ public final class MovingPallet extends PathfinderMob {
         pallet=ItemStack.EMPTY;
         contents=NonNullList.withSize(216,ItemStack.EMPTY);
         delivered=true;
+        // Once placed this carrier no longer represents physical cargo.
+        // Keep it from colliding with the just-placed blocks while it
+        // creates four safe individual workers on the next tick.
+        setNoGravity(true);
+        noPhysics=true;
         syncDisplay();
     }
     /** A scanner sets a destination; it NEVER places the pallet instantly. */
@@ -275,6 +280,10 @@ public final class MovingPallet extends PathfinderMob {
             return;
         }
         deliveryMode=0;
+        // Try separation immediately at the successful placement point.
+        // If the aisle is crowded, keep the escrowed four-worker identity
+        // and retry next ticks instead of spawning inside solid blocks.
+        restoreWorkers(level);
     }
 
     public boolean deliverToRack(RackBlockEntity rack){
@@ -351,23 +360,43 @@ public final class MovingPallet extends PathfinderMob {
             // model may be INSIDE the new pallet block. Stand each separate
             // worker safely OUTSIDE its footprint, oriented towards the
             // delivered load. Until this point all four corners were rigid.
-            double x=(i%2==0?-1.5:1.5);
-            double z=(i<2?-1.5:1.5);
+            // Search progressively wider aisle rings, starting near
+            // this worker's former corner. A rack or a placed pallet may
+            // occupy one or more corners. Never put a detached Golem
+            // inside the solid pallet/rack frame or another Golem's cell.
+            boolean found=false;
             double yaw=Math.toRadians(getYRot());
-            double rx=x*Math.cos(yaw)-z*Math.sin(yaw);
-            double rz=x*Math.sin(yaw)+z*Math.cos(yaw);
-            double gx=getX()+rx,gz=getZ()+rz;
-            BlockPos feet=BlockPos.containing(gx,getY(),gz);
-            if(!StorageGolemReturnPath.walkable(level,feet)){
-                for(StorageGolem worker:spawned)worker.discard();
-                return false; // Retry when a safe aisle opens; no lost Golems.
+            for(double radius:new double[]{1.55,2.25,3.05,3.85}){
+                for(int step=0;step<8&&!found;step++){
+                    int slot=(i*2+step)%8;
+                    double angle=Math.PI*.25*slot;
+                    double x=radius*Math.cos(angle),z=radius*Math.sin(angle);
+                    double gx=getX()+x*Math.cos(yaw)-z*Math.sin(yaw);
+                    double gz=getZ()+x*Math.sin(yaw)+z*Math.cos(yaw);
+                    BlockPos feet=BlockPos.containing(gx,getY(),gz);
+                    if(!StorageGolemReturnPath.walkable(level,feet))continue;
+                    boolean occupied=false;
+                    for(StorageGolem placed:spawned)
+                        if(placed.blockPosition().equals(feet)
+                                ||placed.distanceToSqr(gx,getY(),gz)<1.0){
+                            occupied=true;break;
+                        }
+                    if(occupied)continue;
+                    golem.setPos(gx,getY(),gz);
+                    if(!level.noCollision(golem))continue;
+                    double towardX=getX()-gx,towardZ=getZ()-gz;
+                    float face=(float)Math.toDegrees(Math.atan2(-towardX,towardZ));
+                    golem.setYRot(face);
+                    golem.setYHeadRot(face);
+                    golem.setYBodyRot(face);
+                    found=true;
+                }
+                if(found)break;
             }
-            golem.setPos(gx,getY(),gz);
-            double towardX=getX()-gx,towardZ=getZ()-gz;
-            float face=(float)Math.toDegrees(Math.atan2(-towardX,towardZ));
-            golem.setYRot(face);
-            golem.setYHeadRot(face);
-            golem.setYBodyRot(face);
+            if(!found){
+                for(StorageGolem worker:spawned)worker.discard();
+                return false; // No duplication: retry when a safe aisle opens.
+            }
             if(!level.addFreshEntity(golem)){
                 for(StorageGolem worker:spawned)worker.discard();
                 return false;
