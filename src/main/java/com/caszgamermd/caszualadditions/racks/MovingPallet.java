@@ -17,6 +17,8 @@ import net.minecraft.world.Containers;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.BlockItem;
@@ -51,6 +53,10 @@ public final class MovingPallet extends PathfinderMob {
     private BlockPos deliveryPosition=BlockPos.ZERO;
     private Direction deliveryFacing=Direction.NORTH;
     private String deliveryFailure="";
+    // A nearly two-block-wide mob can stop pathing before reaching a
+    // precise point. Align locally after navigation and detect real stalls.
+    private int deliveryStallTicks;
+    private double lastDeliveryDistance=Double.POSITIVE_INFINITY;
     // Detect an obstructed or abandoned path instead of waiting forever on
     // the same unreachable target behind the player.
     private double lastFollowDistance=Double.POSITIVE_INFINITY;
@@ -135,6 +141,11 @@ public final class MovingPallet extends PathfinderMob {
         pallet=ItemStack.EMPTY;
         contents=NonNullList.withSize(216,ItemStack.EMPTY);
         delivered=true;
+        // Once placed this carrier no longer represents physical cargo.
+        // Keep it from colliding with the just-placed blocks while it
+        // creates four safe individual workers on the next tick.
+        setNoGravity(true);
+        noPhysics=true;
         syncDisplay();
     }
     /** A scanner sets a destination; it NEVER places the pallet instantly. */
@@ -149,6 +160,8 @@ public final class MovingPallet extends PathfinderMob {
         deliveryMode=1;
         releaseTicks=0;
         deliveryFailure="";
+        deliveryStallTicks=0;
+        lastDeliveryDistance=Double.POSITIVE_INFINITY;
         entityData.set(RELEASE_TICKS,0);
         return "Golems carrying pallet to rack "+deliveryPosition.toShortString()
                 +"; it will be unloaded only after they arrive.";
@@ -163,6 +176,8 @@ public final class MovingPallet extends PathfinderMob {
         deliveryMode=2;
         releaseTicks=0;
         deliveryFailure="";
+        deliveryStallTicks=0;
+        lastDeliveryDistance=Double.POSITIVE_INFINITY;
         entityData.set(RELEASE_TICKS,0);
         return "Golems carrying pallet to "+location.toShortString()
                 +"; they will release it only after positioning.";
@@ -184,6 +199,8 @@ public final class MovingPallet extends PathfinderMob {
     private void abortDelivery(String problem){
         deliveryFailure=problem;
         deliveryMode=0;
+        deliveryStallTicks=0;
+        lastDeliveryDistance=Double.POSITIVE_INFINITY;
         releaseTicks=0;
         entityData.set(RELEASE_TICKS,0);
         getNavigation().stop();
@@ -221,13 +238,35 @@ public final class MovingPallet extends PathfinderMob {
             targetY=target.getY();
         }
         double dx=targetX-getX(),dz=targetZ-getZ();
-        if(dx*dx+dz*dz>.55*.55||Math.abs(getY()-targetY)>.6){
+        double horizontal=Math.sqrt(dx*dx+dz*dz);
+        double vertical=Math.abs(getY()-targetY);
+        // Pathfinding stops early for a 1.85-wide mob. Once close enough
+        // to be in the clear delivery aisle, align using normal
+        // collision-checked movement instead of requesting an impossible
+        // sub-block-perfect navigation target every 8 ticks.
+        if(horizontal>.40||vertical>.65){
             if(releaseTicks!=0){releaseTicks=0;entityData.set(RELEASE_TICKS,0);}
-            if(tickCount%8==0)
+            if(horizontal>.01&&horizontal<2.1&&vertical<.70){
+                getNavigation().stop();
+                double step=Math.min(.13,horizontal);
+                move(MoverType.SELF,new Vec3(dx/horizontal*step,0,dz/horizontal*step));
+            }else if(tickCount%10==0){
                 getNavigation().moveTo(targetX,targetY,targetZ,1.0);
+            }
+            double remaining=Math.hypot(targetX-getX(),targetZ-getZ());
+            if(remaining+.025<lastDeliveryDistance){
+                lastDeliveryDistance=remaining;
+                deliveryStallTicks=0;
+            }else if(++deliveryStallTicks>100){
+                abortDelivery("Pallet cannot reach the marked placement: "
+                        +"check for a clear 2-block-wide access route. "
+                        +"Cargo remains onboard; select another location.");
+            }
             return;
         }
         getNavigation().stop();
+        lastDeliveryDistance=Double.POSITIVE_INFINITY;
+        deliveryStallTicks=0;
         if(releaseTicks<20){
             entityData.set(RELEASE_TICKS,++releaseTicks);
             return;
@@ -241,6 +280,10 @@ public final class MovingPallet extends PathfinderMob {
             return;
         }
         deliveryMode=0;
+        // Try separation immediately at the successful placement point.
+        // If the aisle is crowded, keep the escrowed four-worker identity
+        // and retry next ticks instead of spawning inside solid blocks.
+        restoreWorkers(level);
     }
 
     public boolean deliverToRack(RackBlockEntity rack){
@@ -313,8 +356,47 @@ public final class MovingPallet extends PathfinderMob {
             StorageGolem golem=RackContent.STORAGE_GOLEM_TYPE.create(level,EntitySpawnReason.EVENT);
             if(golem==null){for(StorageGolem worker:spawned)worker.discard();return false;}
             golem.assignPlayerCrew(shelves[i],i,id);
-            golem.setPos(getX()+(i%2==0?-.65:.65),getY(),
-                    getZ()+(i<2?-.65:.65));
+            // After the pallet is placed the former corner of the carried
+            // model may be INSIDE the new pallet block. Stand each separate
+            // worker safely OUTSIDE its footprint, oriented towards the
+            // delivered load. Until this point all four corners were rigid.
+            // Search progressively wider aisle rings, starting near
+            // this worker's former corner. A rack or a placed pallet may
+            // occupy one or more corners. Never put a detached Golem
+            // inside the solid pallet/rack frame or another Golem's cell.
+            boolean found=false;
+            double yaw=Math.toRadians(getYRot());
+            for(double radius:new double[]{1.55,2.25,3.05,3.85}){
+                for(int step=0;step<8&&!found;step++){
+                    int slot=(i*2+step)%8;
+                    double angle=Math.PI*.25*slot;
+                    double x=radius*Math.cos(angle),z=radius*Math.sin(angle);
+                    double gx=getX()+x*Math.cos(yaw)-z*Math.sin(yaw);
+                    double gz=getZ()+x*Math.sin(yaw)+z*Math.cos(yaw);
+                    BlockPos feet=BlockPos.containing(gx,getY(),gz);
+                    if(!StorageGolemReturnPath.walkable(level,feet))continue;
+                    boolean occupied=false;
+                    for(StorageGolem placed:spawned)
+                        if(placed.blockPosition().equals(feet)
+                                ||placed.distanceToSqr(gx,getY(),gz)<1.0){
+                            occupied=true;break;
+                        }
+                    if(occupied)continue;
+                    golem.setPos(gx,getY(),gz);
+                    if(!level.noCollision(golem))continue;
+                    double towardX=getX()-gx,towardZ=getZ()-gz;
+                    float face=(float)Math.toDegrees(Math.atan2(-towardX,towardZ));
+                    golem.setYRot(face);
+                    golem.setYHeadRot(face);
+                    golem.setYBodyRot(face);
+                    found=true;
+                }
+                if(found)break;
+            }
+            if(!found){
+                for(StorageGolem worker:spawned)worker.discard();
+                return false; // No duplication: retry when a safe aisle opens.
+            }
             if(!level.addFreshEntity(golem)){
                 for(StorageGolem worker:spawned)worker.discard();
                 return false;
@@ -341,9 +423,11 @@ public final class MovingPallet extends PathfinderMob {
         }
         UUID id;
         try{id=UUID.fromString(owner);}catch(IllegalArgumentException ex){return;}
+        // A committed scanner order is independent of the player's facing
+        // or location, even if the player walks away after selecting it.
+        if(isDelivering()){tickDelivery(server);return;}
         var player=server.getPlayerByUUID(id);
         if(player==null||player.isSpectator())return;
-        if(isDelivering()){tickDelivery(server);return;}
         // Exactly one navigation and collision body for all four corner
         // figures, with no teleporting through walls or individual drift.
         // Follow player POSITION, never their view direction. Turning
@@ -414,6 +498,10 @@ public final class MovingPallet extends PathfinderMob {
         super.readAdditionalSaveData(in);
         owner=in.getStringOr("owner","");
         delivered=in.getBooleanOr("delivered",false);
+        if(delivered){
+            setNoGravity(true);
+            noPhysics=true;
+        }
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
         deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,2);

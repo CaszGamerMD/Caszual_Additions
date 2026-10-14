@@ -28,10 +28,10 @@ assert "player.getDirection()" not in rig_follow
 assert "distance<1.40*1.40" in rig_follow
 assert "getNavigation().stop()" in rig_follow
 
-assert "leftArm[i].xRot=reach" in rig_model
-assert "float reach=-3.02f*state.liftProgress" in rig_model
+assert "rightArm[i].xRot=-3.02f*state.liftProgress" in rig_model
+assert "leftArm[i].xRot=-3.02f*state.liftProgress" in rig_model
 assert "leftArm.xRot=-3.02f" in golem_model
-assert "corners[i].yRot=" in rig_model
+assert "corners[i].yRot=" not in rig_model
 assert "state.releaseProgress=entity.releaseProgress()" in rig_renderer
 assert "rig.requestRackDelivery(level,rack)" in crew
 assert "rig.requestGroundDelivery(" in crew

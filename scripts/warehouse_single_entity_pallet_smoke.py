@@ -24,9 +24,9 @@ assert entity.index("if(!verify(rack))") < entity.index("clearCargo();"),"No ear
 assert entity.index("complete=verify(dest);") < entity.index("clearCargo();",entity.index("public boolean deliverToGround("))
 assert "layer()" in model and "PartPose.offset(x,0,z)" in model
 assert "state.walkAnimationPos" in model and "leftLeg[i].xRot" in model
-assert "float reach=-3.02f*state.liftProgress" in model
-assert "leftArm[i].xRot=reach" in model
-assert "corners[i].yRot=" in model
+assert "leftArm[i].xRot=-3.02f*state.liftProgress" in model
+assert "rightArm[i].xRot=-3.02f*state.liftProgress" in model
+assert "corners[i].yRot=" not in model
 assert "if(liftTicks<12)" in entity
 assert "entityData.set(LIFT_TICKS,liftTicks)" in entity
 assert 'out.putInt("lift_ticks",liftTicks)' in entity
