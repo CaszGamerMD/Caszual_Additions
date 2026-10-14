@@ -118,6 +118,36 @@ public final class StorageGolemReturnPath {
         return search(from,shelf,passable,goals);
     }
 
+    /** Cell-by-cell same-floor route for steering. Adjacent targets
+     * prevent vanilla navigation from cutting across shelf corners. */
+    public static List<BlockPos> steps(BlockPos from,BlockPos target,
+            Predicate<BlockPos> passable){
+        if(from.getY()!=target.getY()||!passable.test(target))return null;
+        return search(from,target,passable,Set.of(target),false);
+    }
+    public static List<BlockPos> stepsHome(BlockPos from,BlockPos shelf,
+            Predicate<BlockPos> passable){
+        if(from.getY()!=shelf.getY())return null;
+        java.util.Set<BlockPos> goals=new java.util.LinkedHashSet<>();
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            BlockPos cell=shelf;
+            for(int depth=1;depth<=3;depth++){
+                cell=cell.relative(side);
+                if(!passable.test(cell))break;
+                goals.add(cell);
+            }
+        }
+        for(Direction side:Direction.Plane.HORIZONTAL)
+            for(Direction other:Direction.Plane.HORIZONTAL){
+                if(side.getAxis()==other.getAxis())continue;
+                BlockPos first=shelf.relative(side),second=shelf.relative(other);
+                BlockPos corner=first.relative(other);
+                if(passable.test(first)&&passable.test(second)
+                        &&passable.test(corner))goals.add(corner);
+            }
+        if(goals.isEmpty())return null;
+        return search(from,shelf,passable,goals,false);
+    }
     /** Go directly to a validated workstation/aisle tile rather than
      * targeting the solid block above it. No diagonal movement or jumps. */
     public static List<BlockPos> routeTo(BlockPos from,BlockPos target,
@@ -128,6 +158,11 @@ public final class StorageGolemReturnPath {
 
     private static List<BlockPos> search(BlockPos from,BlockPos shelf,
             Predicate<BlockPos> passable,Set<BlockPos> goals){
+        return search(from,shelf,passable,goals,true);
+    }
+
+    private static List<BlockPos> search(BlockPos from,BlockPos shelf,
+            Predicate<BlockPos> passable,Set<BlockPos> goals,boolean cornersOnly){
         if(goals.contains(from))return List.of();
         int minX=Math.min(from.getX(),shelf.getX())-DETOUR_MARGIN;
         int maxX=Math.max(from.getX(),shelf.getX())+DETOUR_MARGIN;
@@ -154,6 +189,7 @@ public final class StorageGolemReturnPath {
         ArrayList<BlockPos> cells=new ArrayList<>();
         for(BlockPos p=finish;!p.equals(from);p=parents.get(p))cells.add(p);
         Collections.reverse(cells);
+        if(!cornersOnly)return cells;
         // Only navigate to corners. Every straight corridor was checked
         // cell-by-cell for 2-block headroom and supporting ground.
         ArrayList<BlockPos> turns=new ArrayList<>();
