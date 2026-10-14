@@ -10,6 +10,7 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import com.caszgamermd.caszualadditions.funbarrel.FunBarrelContent;
+import com.caszgamermd.caszualadditions.antiwarden.AntiWardenContent;
 import com.caszgamermd.caszualadditions.racks.RackContent;
 
 public final class CaszualItemGroups {
@@ -44,6 +45,9 @@ public final class CaszualItemGroups {
                                     RackContent.STORAGE_SHELF_ITEM,RackContent.STORAGE_GOLEM_ITEM))
                                 output.accept(new ItemStack(item));
                             output.accept(new ItemStack(RackContent.PORTABLE_WRAPPER));
+                            output.accept(new ItemStack(AntiWardenContent.WOOL_HELMET));
+                            output.accept(new ItemStack(AntiWardenContent.WOOL_BOOTS));
+                            output.accept(new ItemStack(AntiWardenContent.WARDEN_TRAP));
                             for(var blockItem:RackContent.INDUSTRIAL_CONCRETE_ITEMS.values())
                                 output.accept(new ItemStack(blockItem));
                             BuiltInRegistries.ITEM.forEach(item -> {
