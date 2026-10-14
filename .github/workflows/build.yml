@@ -52,6 +52,8 @@ jobs:
         run: python3 scripts/warehouse_rack_pickup_smoke.py
       - name: Verify carrying pose, follow distance, delivery, and shared-shelf docking (blocking)
         run: python3 scripts/warehouse_carry_follow_delivery_smoke.py
+      - name: Verify rack insertion animation, rigid carrier and 3D wrapper (blocking)
+        run: python3 scripts/warehouse_reverse_insert_wrapper_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()
