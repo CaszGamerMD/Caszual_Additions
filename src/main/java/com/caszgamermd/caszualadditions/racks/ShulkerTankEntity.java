@@ -160,6 +160,19 @@ public final class ShulkerTankEntity extends BlockEntity implements Container {
         ItemContainerContents contents=stack.get(DataComponents.CONTAINER);
         return contents==null || contents.nonEmptyItemCopyStream().findAny().isEmpty();
     }
+    public List<ItemStack> takePackedOnBreak(){
+        List<ItemStack> result=new ArrayList<>();
+        for(int i=0;i<STATIONS;i++){
+            if(!working.get(i).isEmpty())result.add(working.get(i).copy());
+            if(!finished.get(i).isEmpty())result.add(finished.get(i).copy());
+            working.set(i,ItemStack.EMPTY);
+            finished.set(i,ItemStack.EMPTY);
+        }
+        bufferedItems=0;
+        setChanged();
+        return result;
+    }
+
     public int count() {
         int count=0;
         for(ItemStack stack:boxes)if(!stack.isEmpty())count++;
