@@ -29,13 +29,20 @@ public final class RackPickupPlan {
     public int height(){return root.getY()-floorY;}
     public Direction facing(){return facing;}
 
-    /** First pair gets both outer edges of the pallet, second pair waits
-     * farther back and only joins after the pallet clears the rack frame. */
+    /** Both pairs occupy a two-by-two formation inside the THREE clear
+     * aisle cells between opposite racks. Do not reserve depth four: that is
+     * the opposing rack, not an aisle tile. */
     public BlockPos goal(int worker, boolean pulled){
         int column=worker%2;
-        int depth=worker<2 ? 2 : (pulled ? 3 : 4);
+        int depth=worker<2 ? 2 : 3;
         return withY(RackBlock.cell(root,facing,column)
                 .relative(facing,depth),floorY);
+    }
+    /** A two-wide load only needs two clear rows and one adjacent staging
+     * row. Clearance beyond that is not part of the active bay. */
+    public static final int AISLE_DEPTH=3;
+    public static boolean accessibleRows(int clearDepth){
+        return clearDepth>=AISLE_DEPTH;
     }
 
     public BlockPos rigCenter(){
@@ -58,7 +65,7 @@ public final class RackPickupPlan {
         for(int y=root.getY();y>=root.getY()-MAX_DROP;y--){
             boolean clear=true;
             for(int col=0;col<2&&clear;col++)
-                for(int depth=1;depth<=4&&clear;depth++){
+                for(int depth=1;depth<=AISLE_DEPTH&&clear;depth++){
                     BlockPos base=withY(RackBlock.cell(root,direction,col)
                             .relative(direction,depth),y);
                     if(!StorageGolemReturnPath.walkable(level,base))clear=false;
