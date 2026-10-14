@@ -2,6 +2,9 @@ package com.caszgamermd.caszualadditions.antiwarden;
 
 import com.caszgamermd.caszualadditions.CaszualAdditions;
 import java.util.Map;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.effect.MobEffects;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -50,6 +53,17 @@ public final class AntiWardenContent {
                 CaszualAdditions.id("warden_trap"),
                 FabricBlockEntityTypeBuilder.create(
                         WardenTrapBlockEntity::new,WARDEN_TRAP).build());
+        // If the player equips the hood after already receiving Darkness,
+        // clear the existing effect as well as blocking all future attempts.
+        ServerTickEvents.END_SERVER_TICK.register(server->{
+            if(server.getTickCount()%5!=0)return;
+            for(var player:server.getPlayerList().getPlayers()){
+                if(player.getItemBySlot(EquipmentSlot.HEAD).is(WOOL_HELMET)){
+                    player.removeEffect(MobEffects.DARKNESS);
+                    player.removeEffect(MobEffects.BLINDNESS);
+                }
+            }
+        });
     }
     private static Item armor(String name,ArmorType slot){
         var id=CaszualAdditions.id(name);
