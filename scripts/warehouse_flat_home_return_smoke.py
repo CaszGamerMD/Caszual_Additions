@@ -5,7 +5,9 @@ s=(Path(__file__).resolve().parents[1]/
    "src/main/java/com/caszgamermd/caszualadditions/racks/StorageGolem.java").read_text()
 tick=s[s.index("    @Override public void tick()"):s.index("    @Override protected void addAdditionalSaveData(")]
 assert tick.index("if(stage==2){") < tick.index("if(haulJob){")
-assert "releaseOutput(level);\n            returnToShelf(level);" in tick
+assert "releaseOutput(level);" in tick
+assert "returnToShelf(level);" in tick
+assert "if(stationOrder&&!orderItems().isEmpty())dropOrderCargo(level);" in tick
 method=s[s.index("    private void releaseOutput("):s.index("    public BlockPos home()")]
 assert "returnToShelf(level)" not in method
 assert "releaseOutput(level);" not in method
