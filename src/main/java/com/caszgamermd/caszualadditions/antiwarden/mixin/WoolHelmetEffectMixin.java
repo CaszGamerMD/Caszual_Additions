@@ -21,7 +21,8 @@ public abstract class WoolHelmetEffectMixin {
             Entity source,CallbackInfoReturnable<Boolean> cir){
         if((Object)this instanceof Player player
                 &&player.getItemBySlot(EquipmentSlot.HEAD).is(AntiWardenContent.WOOL_HELMET)
-                &&(effect.is(MobEffects.DARKNESS)||effect.is(MobEffects.BLINDNESS))){
+                &&(effect.getEffect().is(MobEffects.DARKNESS)
+                        ||effect.getEffect().is(MobEffects.BLINDNESS))){
             cir.setReturnValue(false);
         }
     }
