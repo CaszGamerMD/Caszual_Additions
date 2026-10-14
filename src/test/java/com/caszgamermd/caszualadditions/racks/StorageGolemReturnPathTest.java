@@ -146,6 +146,43 @@ final class StorageGolemReturnPathTest {
         for(BlockPos waypoint:path)assertEquals(64,waypoint.getY());
     }
 
+    @Test void perCellRouteAvoidsWorkerInThreeWideAisle(){
+        BlockPos from=new BlockPos(0,64,0),target=new BlockPos(5,64,0);
+        Set<BlockPos> walls=new HashSet<>();
+        // Opposing racks bound a three-cell-wide corridor. A worker at
+        // (2,0) should be overtaken through another aisle square.
+        for(int x=0;x<=5;x++){
+            walls.add(new BlockPos(x,64,-2));
+            walls.add(new BlockPos(x,64,2));
+        }
+        walls.add(new BlockPos(2,64,0));
+        List<BlockPos> steps=StorageGolemReturnPath.steps(from,target,
+                cell->!walls.contains(cell));
+        assertNotNull(steps);
+        assertEquals(target,steps.getLast());
+        BlockPos previous=from;
+        for(BlockPos next:steps){
+            assertEquals(1,Math.abs(previous.getX()-next.getX())
+                    +Math.abs(previous.getZ()-next.getZ()),
+                    "Each movement target must be a cardinally adjacent tile");
+            assertEquals(from.getY(),next.getY());
+            assertFalse(walls.contains(next),"No cutting through racks or robots");
+            previous=next;
+        }
+    }
+
+    @Test void shelfHasMoreThanOneAvailableDockCell(){
+        BlockPos from=new BlockPos(0,64,0),shelf=new BlockPos(6,64,0);
+        BlockPos firstDock=shelf.west();
+        List<BlockPos> secondRoute=StorageGolemReturnPath.stepsHome(from,shelf,
+                p->!p.equals(shelf)&&!p.equals(firstDock));
+        assertNotNull(secondRoute);
+        BlockPos end=secondRoute.isEmpty()?from:secondRoute.getLast();
+        assertFalse(end.equals(firstDock),"Second worker must not aim at occupied entrance");
+        assertTrue(StorageGolemReturnPath.canDock(end,shelf,
+                p->!p.equals(shelf)&&!p.equals(firstDock)));
+    }
+
     @Test void nearbySideNeedsNoPath(){
         BlockPos home=new BlockPos(5,64,5),start=home.north();
         assertEquals(List.of(),StorageGolemReturnPath.route(start,home,
