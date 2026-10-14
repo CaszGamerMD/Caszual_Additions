@@ -57,6 +57,18 @@ public final class RackComputerNet {
                         ByteBufCodecs.INT,OrderRequest::quantity,OrderRequest::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
+    /** Bounded newline list: registry-id|quantity (max 16 lines).
+     * One click on SUBMIT sends the entire shopping list. */
+    public record OrderListRequest(BlockPos computer,String lines)
+            implements CustomPacketPayload {
+        public static final Type<OrderListRequest> TYPE=new Type<>(
+                CaszualAdditions.id("rack_order_list_request"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,OrderListRequest> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,OrderListRequest::computer,
+                        ByteBufCodecs.stringUtf8(4096),OrderListRequest::lines,
+                        OrderListRequest::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
     public record OrderReply(String message) implements CustomPacketPayload {
         public static final Type<OrderReply> TYPE=new Type<>(CaszualAdditions.id("rack_order_reply"));
         public static final StreamCodec<RegistryFriendlyByteBuf,OrderReply> CODEC=
@@ -99,6 +111,7 @@ public final class RackComputerNet {
         PayloadTypeRegistry.serverboundPlay().register(Query.TYPE,Query.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Snapshot.TYPE,Snapshot.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(OrderRequest.TYPE,OrderRequest.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(OrderListRequest.TYPE,OrderListRequest.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(OrderReply.TYPE,OrderReply.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GolemControl.TYPE,GolemControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(PtpControl.TYPE,PtpControl.CODEC);
@@ -107,6 +120,8 @@ public final class RackComputerNet {
                 context.server().execute(()->answer(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(OrderRequest.TYPE,(payload,context)->
                 context.server().execute(()->acceptOrder(context.player(),payload)));
+        ServerPlayNetworking.registerGlobalReceiver(OrderListRequest.TYPE,(payload,context)->
+                context.server().execute(()->acceptOrderList(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(GolemControl.TYPE,(payload,context)->
                 context.server().execute(()->setGolemSorting(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(PtpControl.TYPE,(payload,context)->
@@ -184,6 +199,63 @@ public final class RackComputerNet {
         for(StorageGolemShelfEntity s:shelves)s.setSortingEnabled(control.enabled());
         reply(player,control.enabled()?"Storage Golem sorting enabled.":"Storage Golem sorting paused.");
         answer(player,new Query(at,"",BlockPos.ZERO));
+    }
+
+    private static void acceptOrderList(ServerPlayer player,OrderListRequest order){
+        ServerLevel level=player.level();
+        BlockPos computer=order.computer();
+        if(!level.hasChunkAt(computer)
+                ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER)
+                ||player.distanceToSqr(computer.getX()+.5,computer.getY()+.5,
+                        computer.getZ()+.5)>100)return;
+        String[] rows=order.lines().split("\\n",-1);
+        if(rows.length==0||rows.length>16){
+            reply(player,"An order can contain 1–16 distinct items.");return;
+        }
+        var racks=RackNetwork.fromComputer(level,computer);
+        if(racks.isEmpty()){reply(player,"No connected racks.");return;}
+        java.util.LinkedHashMap<String,Integer> requested=new java.util.LinkedHashMap<>();
+        for(String row:rows){
+            String[] pair=row.split("\\|",-1);
+            if(pair.length!=2){reply(player,"Invalid order-list entry.");return;}
+            var id=net.minecraft.resources.Identifier.tryParse(pair[0]);
+            int count;
+            try{count=Integer.parseInt(pair[1]);}
+            catch(NumberFormatException exception){
+                reply(player,"Invalid order quantity.");return;
+            }
+            if(id==null||count<1||count>4096||requested.containsKey(id.toString())){
+                reply(player,"Duplicate/invalid item or quantity (1–4096).");return;
+            }
+            var item=BuiltInRegistries.ITEM.getValue(id);
+            if(item==null||!BuiltInRegistries.ITEM.getKey(item).equals(id)){
+                reply(player,"Unknown item "+pair[0]);return;
+            }
+            boolean found=false;
+            for(RackBlockEntity rack:racks){
+                for(int slot=0;slot<rack.getContainerSize();slot++)
+                    if(rack.getItem(slot).is(item)){found=true;break;}
+                if(found)break;
+            }
+            if(!found){reply(player,"Item not stocked: "+pair[0]);return;}
+            requested.put(id.toString(),count);
+        }
+        if(requested.isEmpty()){reply(player,"Order list is empty.");return;}
+        List<StorageGolemShelfEntity> shelves=nearbyShelves(level,computer);
+        if(shelves.isEmpty()){reply(player,"Connect a Storage Golem Shelf.");return;}
+        PtpBlockEntity output=StorageGolemDispatch.outputPoint(level,shelves,computer);
+        if(output==null){
+            reply(player,"Connect a PTP set to OUTPUT with a pallet.");return;
+        }
+        java.util.List<PtpBlockEntity.OutputOrder> lines=new java.util.ArrayList<>();
+        requested.forEach((id,count)->lines.add(new PtpBlockEntity.OutputOrder(id,count)));
+        if(!output.queueOutputList(lines)){
+            reply(player,"Output queue full or busy (16 items max); nothing was added.");
+            return;
+        }
+        reply(player,"Order submitted: "+requested.size()
+                +" item types. Storage Golems will collect them for the Shulker Station.");
+        answer(player,new Query(computer,"",BlockPos.ZERO));
     }
 
     private static void acceptOrder(ServerPlayer player,OrderRequest order) {
