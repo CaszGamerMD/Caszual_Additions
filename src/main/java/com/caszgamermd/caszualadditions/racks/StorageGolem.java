@@ -672,7 +672,8 @@ public final class StorageGolem extends PathfinderMob {
         // A rack/packing-station approach is a ZONE, not one magic cell.
         // If another golem occupies the best square, use a neighboring
         // service tile instead of both workers walking into each other.
-        for(int range=1;range<=3;range++)
+        int maxShift=openWalkway(level,onFloor)?1:3;
+        for(int range=1;range<=maxShift;range++)
             for(Direction direction:Direction.Plane.HORIZONTAL){
                 BlockPos nearby=onFloor.relative(direction,range);
                 if(openWalkway(level,nearby)
