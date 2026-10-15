@@ -14,7 +14,7 @@ assert "if (seen.add(item))output.accept(new ItemStack(item));" in src
 assert "&& seen.add(item)) output.accept(stack);" in src
 assert "add.accept(AntiWardenContent.WOOL_HELMET);" in src
 assert "add.accept(AntiWardenContent.WOOL_BOOTS);" in src
-assert "add.accept(AntiWardenContent.WARDEN_TRAP);" in src
+assert "add.accept(AntiWardenContent.WARDEN_TRAP.asItem());" in src
 # No unguarded stack submissions are allowed inside this tab callback.
 assert "output.accept(new ItemStack(" in src
 assert src.count("output.accept(new ItemStack(")==1
