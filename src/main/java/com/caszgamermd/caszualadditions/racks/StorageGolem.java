@@ -854,11 +854,39 @@ public final class StorageGolem extends PathfinderMob {
      * must not make a returning Golem wait forever outside its home.
      */
     private boolean atShelfEntrance(ServerLevel level){
+        return atShelfEntrance(level,home);
+    }
+    private boolean atShelfEntrance(ServerLevel level,BlockPos shelfPos){
         BlockPos feet=blockPosition();
-        if(Math.abs(feet.getY()-home.getY())>1)return false;
-        BlockPos shelfPlane=new BlockPos(home.getX(),feet.getY(),home.getZ());
-        return StorageGolemReturnPath.canDock(feet,shelfPlane,
+        if(Math.abs(feet.getY()-shelfPos.getY())>1)return false;
+        BlockPos shelfPlane=new BlockPos(shelfPos.getX(),feet.getY(),
+                shelfPos.getZ());
+        return StorageGolemReturnPath.canDockNearby(feet,shelfPlane,
                 p->StorageGolemReturnPath.walkable(level,p));
+    }
+    /**
+     * A shelf bank is shared capacity. If the assigned two-slot shelf was
+     * refilled while the worker was away, dock into another physically
+     * reachable, connected shelf with space. Never teleport a robot to a
+     * remote member of a long shelf network or allocate a third token.
+     */
+    private StorageGolemShelfEntity availableDock(ServerLevel level,
+            StorageGolemShelfEntity assigned){
+        if(assigned.docked()<2)return assigned;
+        StorageGolemShelfEntity nearest=null;
+        double best=Double.POSITIVE_INFINITY;
+        for(StorageGolemShelfEntity member:StorageGolemShelfEntity.linked(
+                level,home)){
+            if(member.docked()>=2
+                    ||!atShelfEntrance(level,member.getBlockPos()))continue;
+            BlockPos pos=member.getBlockPos();
+            double distance=distanceToSqr(pos.getX()+.5,getY(),pos.getZ()+.5);
+            if(distance<best){
+                nearest=member;
+                best=distance;
+            }
+        }
+        return nearest;
     }
     /** Returning to a shelf never targets its top or walks through it.
      * Four-direction same-floor detours avoid the normal AI temptation to
@@ -871,7 +899,9 @@ public final class StorageGolem extends PathfinderMob {
         if(atShelfEntrance(level)){
             getNavigation().stop();
             flatHomeRoute.clear();
-            if(shelf.add()){
+            StorageGolemShelfEntity receiving=availableDock(level,shelf);
+            if(receiving!=null&&receiving.add()){
+                routeIssue="";
                 setCustomNameVisible(false);
                 // A recalled/aborted worker can still own unsorted items,
                 // an empty shulker or even a loaded pallet. The previous
@@ -889,9 +919,10 @@ public final class StorageGolem extends PathfinderMob {
                 dropCarriedPallet(level);
                 discard();
             }else{
-                // No phantom docking: keep the real worker until a slot opens.
-                // Give a visible reason instead of silently freezing nearby.
-                setCustomName(Component.literal("SHELF FULL"));
+                // Keep the real worker until a usable slot opens. Make the
+                // reason persist through periodic task-label updates.
+                routeIssue="SHELF FULL 2/2";
+                setCustomName(Component.literal("RETURN | "+routeIssue));
                 setCustomNameVisible(true);
             }
             return;
