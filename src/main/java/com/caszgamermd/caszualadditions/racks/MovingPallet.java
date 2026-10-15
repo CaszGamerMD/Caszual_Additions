@@ -3,6 +3,7 @@ package com.caszgamermd.caszualadditions.racks;
 import com.caszgamermd.caszualadditions.pallet.PalletBlock;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntity;
 import java.util.List;
+import java.util.ArrayDeque;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -71,6 +72,17 @@ public final class MovingPallet extends PathfinderMob {
     // the same unreachable target behind the player.
     private double lastFollowDistance=Double.POSITIVE_INFINITY;
     private int lastFollowProgressTick,obstacleSide;
+    // The one physical load follows a checked footprint-wide path, not
+    // unrestricted vanilla ground navigation that climbs nearby crates.
+    private final ArrayDeque<BlockPos> floorFollowRoute=new ArrayDeque<>();
+    private BlockPos lastFloorPlayer=BlockPos.ZERO;
+    private int nextFloorFollowPlan;
+    private BlockPos obstructedFloorCell=BlockPos.ZERO;
+    private int avoidFloorCellUntil;
+    private final ArrayDeque<BlockPos> rackFrontRoute=new ArrayDeque<>();
+    private BlockPos lastRackFront=BlockPos.ZERO;
+    private int nextRackFrontPlan,lastRackProgressTick;
+    private double lastRackWaypointDistance=Double.POSITIVE_INFINITY;
 
     public MovingPallet(EntityType<? extends MovingPallet> type,Level level){
         super(type,level);
@@ -173,13 +185,16 @@ public final class MovingPallet extends PathfinderMob {
     /** A scanner sets a destination; it NEVER places the pallet instantly. */
     public String requestRackDelivery(ServerLevel level,RackBlockEntity rack){
         if(!loaded()||delivered)return "No pallet ready to deliver.";
-        if(isDelivering())return "Crew already has a delivery destination.";
+        // A new scanner click can retarget a blocked delivery.
         if(rack.hasPallet()||!rack.isEmpty())return "Destination rack must be empty.";
         if(RackPickupPlan.find(level,rack)==null)
             return "Rack needs a clear 2-wide, 3-deep access aisle with floor support.";
         deliveryPosition=rack.getBlockPos().immutable();
         deliveryFacing=rack.facing();
         deliveryMode=1;
+        rackFrontRoute.clear();
+        lastRackFront=BlockPos.ZERO;
+        nextRackFrontPlan=0;
         entityData.set(RACK_INSERT_ACTIVE,true);
         releaseTicks=0;
         deliveryFailure="";
@@ -191,12 +206,14 @@ public final class MovingPallet extends PathfinderMob {
     }
     public String requestGroundDelivery(ServerLevel level,BlockPos location,Direction facing){
         if(!loaded()||delivered)return "No pallet ready to deliver.";
-        if(isDelivering())return "Crew already has a delivery destination.";
+        // A new scanner click can retarget a blocked delivery.
         if(!groundClear(level,location,facing))
             return "Need a clear supported 2x2 destination floor.";
         deliveryPosition=location.immutable();
         deliveryFacing=facing;
         deliveryMode=2;
+        rackFrontRoute.clear();
+        nextRackFrontPlan=0;
         entityData.set(RACK_INSERT_ACTIVE,false);
         releaseTicks=0;
         deliveryFailure="";
@@ -230,6 +247,82 @@ public final class MovingPallet extends PathfinderMob {
         entityData.set(RELEASE_TICKS,0);
         getNavigation().stop();
     }
+    /** Path obstruction is a WAIT state, never a task cancellation. */
+    private void waitForDelivery(String reason){
+        deliveryFailure=reason;
+        deliveryStallTicks=0;
+        lastDeliveryDistance=Double.POSITIVE_INFINITY;
+        releaseTicks=0;
+        entityData.set(RELEASE_TICKS,0);
+        rackFrontRoute.clear();
+        nextRackFrontPlan=tickCount+20;
+        getNavigation().stop();
+    }
+    /**
+     * Drive the single loaded entity to the actual two-column FRONT aisle,
+     * never to a shorter path against the rack's back or side wall.
+     * A route failure does not discard the persisted scanner assignment.
+     */
+    private void navigateToRackFront(ServerLevel level,BlockPos goal,
+            double exactX,double exactZ){
+        BlockPos current=blockPosition();
+        if(current.getY()!=goal.getY()){
+            if(tickCount%12==0)
+                getNavigation().moveTo(exactX,goal.getY(),exactZ,1.0);
+            deliveryFailure="MOVING TO RACK-FRONT FLOOR";
+            return;
+        }
+        if(!goal.equals(lastRackFront)){
+            lastRackFront=goal.immutable();
+            rackFrontRoute.clear();
+            nextRackFrontPlan=0;
+        }
+        while(!rackFrontRoute.isEmpty()){
+            BlockPos step=rackFrontRoute.peekFirst();
+            if(!safePlatformFloor(level,step)){
+                rackFrontRoute.clear();
+                nextRackFrontPlan=0;
+                break;
+            }
+            double dx=step.getX()+.5-getX(),dz=step.getZ()+.5-getZ();
+            if(dx*dx+dz*dz>=.28)break;
+            rackFrontRoute.removeFirst();
+            lastRackWaypointDistance=Double.POSITIVE_INFINITY;
+            lastRackProgressTick=tickCount;
+        }
+        if(rackFrontRoute.isEmpty()&&tickCount>=nextRackFrontPlan){
+            List<BlockPos> steps=MovingPalletFloorPath.toRackFront(
+                    current,goal,p->safePlatformFloor(level,p));
+            nextRackFrontPlan=tickCount+20;
+            if(steps==null){
+                deliveryFailure="WAITING: NO CLEAR RACK FRONT ROUTE";
+                getNavigation().stop();
+                return;
+            }
+            rackFrontRoute.addAll(steps);
+            lastRackWaypointDistance=Double.POSITIVE_INFINITY;
+            lastRackProgressTick=tickCount;
+        }
+        if(rackFrontRoute.isEmpty())return;
+        BlockPos next=rackFrontRoute.peekFirst();
+        double dx=next.getX()+.5-getX(),dz=next.getZ()+.5-getZ();
+        double distance=dx*dx+dz*dz;
+        if(distance+.03<lastRackWaypointDistance){
+            lastRackProgressTick=tickCount;
+            lastRackWaypointDistance=distance;
+        }else if(tickCount-lastRackProgressTick>100){
+            rackFrontRoute.clear();
+            nextRackFrontPlan=tickCount+20;
+            lastRackWaypointDistance=Double.POSITIVE_INFINITY;
+            deliveryFailure="WAITING: RACK-FRONT PATH BLOCKED, RETRYING";
+            getNavigation().stop();
+            return;
+        }
+        deliveryFailure="MOVING TO RACK FRONT";
+        getNavigation().stop();
+        getMoveControl().setWantedPosition(next.getX()+.5,
+                next.getY(),next.getZ()+.5,1.0);
+    }
     private void tickDelivery(ServerLevel level){
         if(!level.hasChunkAt(deliveryPosition))return;
         BlockPos target=deliveryPosition;
@@ -239,12 +332,12 @@ public final class MovingPallet extends PathfinderMob {
         if(deliveryMode==1){
             rack=level.getBlockEntity(target) instanceof RackBlockEntity found?found:null;
             if(rack==null||rack.hasPallet()||!rack.isEmpty()){
-                abortDelivery("Target rack became unavailable; cargo remains onboard.");
+                waitForDelivery("WAITING: RACK UNAVAILABLE (ORDER SAVED)");
                 return;
             }
             RackPickupPlan plan=RackPickupPlan.find(level,rack);
             if(plan==null){
-                abortDelivery("Rack access aisle is obstructed; cargo remains onboard.");
+                waitForDelivery("WAITING: CLEAR RACK FRONT AISLE (ORDER SAVED)");
                 return;
             }
             BlockPos left=RackBlock.cell(target,rack.facing(),0).relative(rack.facing(),2);
@@ -254,7 +347,7 @@ public final class MovingPallet extends PathfinderMob {
             targetY=plan.floorY();
         }else{
             if(!groundClear(level,target,deliveryFacing)){
-                abortDelivery("Destination floor is blocked; cargo remains onboard.");
+                waitForDelivery("WAITING: DELIVERY FLOOR BLOCKED (ORDER SAVED)");
                 return;
             }
             Direction right=deliveryFacing.getClockWise();
@@ -265,6 +358,16 @@ public final class MovingPallet extends PathfinderMob {
         double dx=targetX-getX(),dz=targetZ-getZ();
         double horizontal=Math.sqrt(dx*dx+dz*dz);
         double vertical=Math.abs(getY()-targetY);
+        if(deliveryMode==1&&rack!=null
+                &&(horizontal>1.6||vertical>.70)){
+            if(releaseTicks!=0){
+                releaseTicks=0;entityData.set(RELEASE_TICKS,0);
+            }
+            navigateToRackFront(level,
+                    BlockPos.containing(targetX,targetY,targetZ),
+                    targetX,targetZ);
+            return;
+        }
         // Pathfinding stops early for a 1.85-wide mob. Once close enough
         // to be in the clear delivery aisle, align using normal
         // collision-checked movement instead of requesting an impossible
@@ -283,9 +386,7 @@ public final class MovingPallet extends PathfinderMob {
                 lastDeliveryDistance=remaining;
                 deliveryStallTicks=0;
             }else if(++deliveryStallTicks>100){
-                abortDelivery("Pallet cannot reach the marked placement: "
-                        +"check for a clear 2-block-wide access route. "
-                        +"Cargo remains onboard; select another location.");
+                waitForDelivery("WAITING: DELIVERY APPROACH BLOCKED, RETRYING");
             }
             return;
         }
@@ -293,6 +394,19 @@ public final class MovingPallet extends PathfinderMob {
         lastDeliveryDistance=Double.POSITIVE_INFINITY;
         deliveryStallTicks=0;
         if(deliveryMode==1&&rack!=null){
+            // The final commit requires being physically in FRONT of the
+            // rack's two open columns, not beside/behind the shelf frame.
+            BlockPos a=RackBlock.cell(target,rack.facing(),0);
+            BlockPos b=RackBlock.cell(target,rack.facing(),1);
+            double cx=(a.getX()+b.getX())*.5+.5;
+            double cz=(a.getZ()+b.getZ())*.5+.5;
+            double front=(getX()-cx)*rack.facing().getStepX()
+                    +(getZ()-cz)*rack.facing().getStepZ();
+            if(front<1.25){
+                waitForDelivery("WAITING: CREW MUST APPROACH RACK FRONT");
+                return;
+            }
+            deliveryFailure="INSERTING PALLET";
             // Reverse pickup: first lift the pallet from the aisle to the
             // rack bay's elevation (22 ticks), then slide it inward through
             // the front opening (18 ticks). No cargo is transferred yet.
@@ -318,10 +432,11 @@ public final class MovingPallet extends PathfinderMob {
         boolean ok=deliveryMode==1?deliverToRack(rack)
                 :deliverToGround(level,target,deliveryFacing);
         if(!ok){
-            abortDelivery("Placement failed; pallet and inventory remain onboard.");
+            waitForDelivery("WAITING: PLACEMENT BLOCKED, RETRYING");
             return;
         }
         deliveryMode=0;
+        deliveryFailure="";
         entityData.set(RACK_INSERT_ACTIVE,false);
         // Try separation immediately at the successful placement point.
         // If the aisle is crowded, keep the escrowed four-worker identity
@@ -449,6 +564,90 @@ public final class MovingPallet extends PathfinderMob {
         discard();
         return true;
     }
+    /**
+     * Check the actual loaded platform's ground support and footprint,
+     * not just the central Golem's feet. A 1.85-wide pallet cannot fit
+     * through a one-block opening or stand half over the edge of a rack.
+     */
+    private boolean safePlatformFloor(ServerLevel level,BlockPos center){
+        for(int x=-1;x<=1;x++)
+            for(int z=-1;z<=1;z++){
+                BlockPos cell=center.offset(x,0,z);
+                if(!StorageGolemReturnPath.walkable(level,cell))
+                    return false;
+            }
+        return true;
+    }
+
+    private void followOnFloor(ServerLevel level,
+            net.minecraft.world.entity.player.Player player){
+        BlockPos playerFloor=BlockPos.containing(
+                player.getX(),player.getY(),player.getZ());
+        BlockPos current=blockPosition();
+        boolean higher=player.getY()>getY()+.8;
+        double dx=player.getX()-getX(),dz=player.getZ()-getZ();
+        if(dx*dx+dz*dz<=1.6*1.6
+                &&Math.abs(player.getY()-getY())<.7){
+            getNavigation().stop();
+            floorFollowRoute.clear();
+            return;
+        }
+        // Only a real elevated player authorizes a one-block ascent.
+        // Otherwise this entire navigation path contains level or LOWER
+        // waypoints and the loaded platform does not climb cargo/racks.
+        if(!playerFloor.equals(lastFloorPlayer)
+                ||floorFollowRoute.isEmpty()&&tickCount>=nextFloorFollowPlan){
+            lastFloorPlayer=playerFloor.immutable();
+            floorFollowRoute.clear();
+            var route=MovingPalletFloorPath.route(current,playerFloor,higher,
+                    position->safePlatformFloor(level,position)
+                            &&(tickCount>=avoidFloorCellUntil
+                                ||!position.equals(obstructedFloorCell)));
+            nextFloorFollowPlan=tickCount+24;
+            if(route!=null)floorFollowRoute.addAll(route);
+            lastFollowDistance=Double.POSITIVE_INFINITY;
+            lastFollowProgressTick=tickCount;
+        }
+        while(!floorFollowRoute.isEmpty()){
+            BlockPos waypoint=floorFollowRoute.peekFirst();
+            if(!safePlatformFloor(level,waypoint)){
+                floorFollowRoute.clear();
+                nextFloorFollowPlan=0;
+                return;
+            }
+            double sx=waypoint.getX()+.5-getX();
+            double sz=waypoint.getZ()+.5-getZ();
+            if(sx*sx+sz*sz<.28&&Math.abs(getY()-waypoint.getY())<.8){
+                floorFollowRoute.removeFirst();
+                lastFollowDistance=Double.POSITIVE_INFINITY;
+                lastFollowProgressTick=tickCount;
+            }else break;
+        }
+        if(floorFollowRoute.isEmpty())return;
+        BlockPos next=floorFollowRoute.peekFirst();
+        double vx=next.getX()+.5-getX();
+        double vz=next.getZ()+.5-getZ();
+        double distance=vx*vx+vz*vz;
+        if(distance+.035<lastFollowDistance){
+            lastFollowDistance=distance;
+            lastFollowProgressTick=tickCount;
+        }else if(tickCount-lastFollowProgressTick>60){
+            obstructedFloorCell=next.immutable();
+            avoidFloorCellUntil=tickCount+80;
+            floorFollowRoute.clear();
+            nextFloorFollowPlan=0;
+            lastFollowDistance=Double.POSITIVE_INFINITY;
+            lastFollowProgressTick=tickCount;
+            getNavigation().stop();
+            return;
+        }
+        getNavigation().stop();
+        // Move control handles stepping off a supported ledge and falling
+        // exactly one block down, instead of jumping back to level ground.
+        getMoveControl().setWantedPosition(next.getX()+.5,
+                next.getY(),next.getZ()+.5,1.0);
+    }
+
     private void updateCrewLabel(){
         String text=delivered?"4 GOLEMS | UNLOADING"
                 :isDelivering()?(deliveryMode==1
@@ -483,39 +682,10 @@ public final class MovingPallet extends PathfinderMob {
         if(isDelivering()){tickDelivery(server);return;}
         var player=server.getPlayerByUUID(id);
         if(player==null||player.isSpectator())return;
-        // Exactly one navigation and collision body for all four corner
-        // figures, with no teleporting through walls or individual drift.
-        // Follow player POSITION, never their view direction. Turning
-        // in place does not make the carried platform orbit.
-        double x=player.getX(),z=player.getZ();
-        double dx=x-getX(),dz=z-getZ();
-        double distance=dx*dx+dz*dz;
-        if(distance<1.40*1.40&&Math.abs(getY()-player.getY())<1.0){
-            getNavigation().stop();
-            lastFollowDistance=Double.POSITIVE_INFINITY;
-            lastFollowProgressTick=tickCount;
-            return;
-        }
-        if(distance+.15<lastFollowDistance){
-            lastFollowProgressTick=tickCount;
-            lastFollowDistance=distance;
-        }else if(tickCount-lastFollowProgressTick>70){
-            // If a pallet cannot pass directly through a narrow doorway,
-            // approach the player's left/right flank, alternate after each
-            // stall, and let vanilla find the actual collision-safe route.
-            getNavigation().stop();
-            obstacleSide=obstacleSide==1?-1:1;
-            lastFollowDistance=Double.POSITIVE_INFINITY;
-            lastFollowProgressTick=tickCount;
-        }
-        if((distance>1.90*1.90||Math.abs(getY()-player.getY())>1.6)
-                &&tickCount%12==0){
-            // Offset an approach only when physically stalled, not on turn.
-            double len=Math.sqrt(Math.max(distance,.0001));
-            double side=obstacleSide*.65;
-            getNavigation().moveTo(x-dz/len*side,player.getY(),
-                    z+dx/len*side,1.0);
-        }else if(distance<1.55*1.55)getNavigation().stop();
+        // The four attached robots are one 1.85-wide load. Prefer level
+        // warehouse aisles; allow one-block drops; only climb when the
+        // followed PLAYER has actually moved up.
+        followOnFloor(server,player);
     }
     private void dropCargo(ServerLevel level){
         if(pallet.isEmpty())return;

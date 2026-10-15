@@ -183,6 +183,38 @@ final class StorageGolemReturnPathTest {
                 p->!p.equals(shelf)&&!p.equals(firstDock)));
     }
 
+    @Test void shelfPerimeterAcceptsStalledNeighborWithoutPixelPerfectAisleGoal(){
+        BlockPos shelf=new BlockPos(10,64,10);
+        BlockPos left=new BlockPos(8,64,12);
+        BlockPos right=new BlockPos(12,64,12);
+        // From either side of the front service aisle, a connected path
+        // reaches the shelf without walking through its solid body.
+        assertTrue(StorageGolemReturnPath.canDockNearby(left,shelf,
+                p->!p.equals(shelf)));
+        assertTrue(StorageGolemReturnPath.canDockNearby(right,shelf,
+                p->!p.equals(shelf)));
+        assertFalse(StorageGolemReturnPath.canDock(left,shelf,
+                p->!p.equals(shelf)), "This used to strand a nearby worker");
+    }
+
+    @Test void perimeterDoesNotDockThroughEnclosingWall(){
+        BlockPos shelf=new BlockPos(10,64,10);
+        BlockPos worker=new BlockPos(12,64,12);
+        Set<BlockPos> wall=blocked(64,new int[][]{
+            {9,10},{11,10},{10,9},{10,11},{11,11},{12,11},{11,12}
+        });
+        assertFalse(StorageGolemReturnPath.canDockNearby(worker,shelf,
+                p->!p.equals(shelf)&&!wall.contains(p)));
+    }
+
+    @Test void tooDistantOrWrongHeightStillCannotDock(){
+        BlockPos shelf=new BlockPos(0,64,0);
+        assertFalse(StorageGolemReturnPath.canDockNearby(
+                new BlockPos(5,64,0),shelf,p->!p.equals(shelf)));
+        assertFalse(StorageGolemReturnPath.canDockNearby(
+                new BlockPos(2,65,1),shelf,p->true));
+    }
+
     @Test void nearbySideNeedsNoPath(){
         BlockPos home=new BlockPos(5,64,5),start=home.north();
         assertEquals(List.of(),StorageGolemReturnPath.route(start,home,

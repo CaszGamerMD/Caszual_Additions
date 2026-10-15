@@ -87,6 +87,52 @@ public final class StorageGolemReturnPath {
         return false;
     }
 
+    /**
+     * Docking is a reachable SERVICE AREA, not a single center-of-block
+     * waypoint. Real golems stop short of a shelf when another worker
+     * occupies the intended square, or when walking around the corner of
+     * a bank of linked shelves. They may check in from anywhere within
+     * four horizontal blocks of their shelf, provided a short CARDINAL
+     * path leads there through truly walkable aisle cells.
+     *
+     * The shelf itself is never crossed. There are no jumps, no through-wall
+     * diagonal shortcuts and no docking through solid rack frames.
+     */
+    public static boolean canDockNearby(BlockPos feet,BlockPos shelf,
+            Predicate<BlockPos> passable){
+        if(feet.getY()!=shelf.getY())return false;
+        int dx=feet.getX()-shelf.getX(),dz=feet.getZ()-shelf.getZ();
+        if(dx*dx+dz*dz>16)return false;
+        if(canDock(feet,shelf,passable))return true;
+        // A standable goal is important: never grant docking from inside a
+        // collision block. Occupied worker cells are deliberately allowed.
+        if(!passable.test(feet))return false;
+        ArrayDeque<BlockPos> queue=new ArrayDeque<>();
+        Map<BlockPos,Integer> depth=new HashMap<>();
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            BlockPos neighbor=shelf.relative(side);
+            if(passable.test(neighbor)){
+                depth.put(neighbor,1);
+                queue.addLast(neighbor);
+            }
+        }
+        while(!queue.isEmpty()){
+            BlockPos cell=queue.removeFirst();
+            int steps=depth.get(cell);
+            if(cell.equals(feet))return true;
+            if(steps>=5)continue;
+            for(Direction side:Direction.Plane.HORIZONTAL){
+                BlockPos next=cell.relative(side);
+                int x=next.getX()-shelf.getX(),z=next.getZ()-shelf.getZ();
+                if(x*x+z*z>16||next.equals(shelf)
+                        ||depth.containsKey(next)||!passable.test(next))continue;
+                depth.put(next,steps+1);
+                queue.addLast(next);
+            }
+        }
+        return false;
+    }
+
     /** Returns turn/end waypoints with the start omitted. No diagonal
      * corner cutting, ascents or leaps are permitted. A null result means
      * there is no complete same-level route through currently loaded blocks. */

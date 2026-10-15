@@ -43,7 +43,7 @@ public final class PtpBlockEntity extends BlockEntity
     private int activeTicket,ticketSequence,reservedOutput;
     // Leases survive reload. A missing worker cannot permanently block FIFO.
     private long ticketDeadline;
-    private static final long TICKET_LEASE_TICKS=2400; // two minutes
+    private static final long TICKET_LEASE_TICKS=12000; // ten minutes: reroutes can take time
     // A wrapped pallet is owned by this sealed PTP during the entire haul.
     // The four walking Golems are an escort, NEVER a second inventory owner.
     private int haulSequence,haulTicket,haulSourceMask,haulArrivalMask;
@@ -51,7 +51,7 @@ public final class PtpBlockEntity extends BlockEntity
     private String haulPlayer="";
     private boolean playerHaul,haulCargoMoved;
     private long haulDeadline;
-    private static final long HAUL_LEASE_TICKS=6000; // five minutes
+    private static final long HAUL_LEASE_TICKS=24000; // twenty minutes for staged pallet transfers
 
     private void expireHaul(){
         if(haulTicket!=0&&level!=null&&level.getGameTime()>haulDeadline)

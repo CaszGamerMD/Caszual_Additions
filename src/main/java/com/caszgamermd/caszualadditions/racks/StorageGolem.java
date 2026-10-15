@@ -681,7 +681,72 @@ public final class StorageGolem extends PathfinderMob {
             }
         return openWalkway(level,onFloor)?onFloor:desired;
     }
+    /**
+     * Orders use a persistent accessible SERVICE CELL, not the center of a
+     * full rack block. Probe both front columns and the nearby station aisle,
+     * then pick an actual traversable route rather than a geometrically
+     * close wall. Keep the choice long enough for another worker to pass.
+     */
+    private BlockPos orderApproach(ServerLevel level,BlockPos place){
+        if(place.equals(orderAccessTarget)&&stage==orderAccessStage
+                &&tickCount<orderAccessExpires
+                &&openWalkway(level,orderAccessGoal)
+                &&(!occupiedByWorker(level,orderAccessGoal)
+                    ||blockPosition().equals(orderAccessGoal)))
+            return orderAccessGoal;
+        orderAccessTarget=place.immutable();
+        orderAccessStage=stage;
+        orderAccessExpires=tickCount+60;
+        BlockEntity machine=level.hasChunkAt(place)?level.getBlockEntity(place):null;
+        java.util.LinkedHashSet<BlockPos> choices=new java.util.LinkedHashSet<>();
+        if(machine instanceof RackBlockEntity rack){
+            // The rack is opaque to Golems: approach ONLY from its FRONT,
+            // never through a side/back frame or its upper cargo bays.
+            for(int depth=1;depth<=3;depth++)
+                for(int col=0;col<2;col++){
+                    BlockPos cell=RackBlock.cell(place,rack.facing(),col)
+                            .relative(rack.facing(),depth);
+                    choices.add(new BlockPos(cell.getX(),blockPosition().getY(),
+                            cell.getZ()));
+                }
+        }else{
+            for(int depth=1;depth<=2;depth++)
+                for(Direction side:Direction.Plane.HORIZONTAL){
+                    BlockPos cell=place.relative(side,depth);
+                    choices.add(new BlockPos(cell.getX(),blockPosition().getY(),
+                            cell.getZ()));
+                }
+        }
+        var occupied=occupiedAisle(level,place);
+        BlockPos feet=blockPosition(),best=null;
+        int bestLength=Integer.MAX_VALUE;
+        for(BlockPos cell:choices){
+            if(!openWalkway(level,cell)
+                    ||occupied.contains(cell)&&!cell.equals(feet))continue;
+            List<BlockPos> route=StorageGolemReturnPath.steps(feet,cell,
+                    p->openWalkway(level,p)&&!occupied.contains(p));
+            if(route!=null&&route.size()<bestLength){
+                best=cell;
+                bestLength=route.size();
+            }
+        }
+        if(best==null){
+            // Keep the task pending until an aisle opens; never silently
+            // choose a route through the solid rack as a fallback.
+            routeIssue="WAITING FOR ORDER ACCESS";
+            // Wait at the FIRST front/service position, never select an
+            // unverified rear rack face or accidentally complete a pickup
+            // from behind a solid frame.
+            return choices.isEmpty()?place:choices.iterator().next();
+        }
+        orderAccessGoal=best.immutable();
+        routeIssue="";
+        return best;
+    }
+
     private BlockPos approach(ServerLevel level,BlockPos place) {
+        if(stationOrder&&(stage==0||stage==1||stage==3))
+            return orderApproach(level,place);
         if(groundPickup&&level.hasChunkAt(place)){
             BlockState base=level.getBlockState(place);
             if(base.getBlock() instanceof PalletBlock){
@@ -748,6 +813,11 @@ public final class StorageGolem extends PathfinderMob {
         }
         return floorApproach(level,place);
     }
+    // Stable order pick/drop approach. Recomputing the nearest free cell
+    // every tick makes two workers switch sides indefinitely at one shelf.
+    private BlockPos orderAccessGoal=BlockPos.ZERO;
+    private BlockPos orderAccessTarget=BlockPos.ZERO;
+    private int orderAccessStage=-1,orderAccessExpires;
     private BlockPos workGoal=BlockPos.ZERO;
     private int lastWorkProgress, nextWorkPlan;
     private BlockPos blockedWorkCell=BlockPos.ZERO;
@@ -845,7 +915,10 @@ public final class StorageGolem extends PathfinderMob {
     private final ArrayDeque<BlockPos> flatWorkRoute=new ArrayDeque<>();
 
     private boolean closeTo(BlockPos p){
-        return distanceToSqr(p.getX()+.5,p.getY()+.5,p.getZ()+.5)<3.5;
+        // An order must actually reach the selected service square.
+        // The old 1.87-block radius could treat a rack wall as arrival.
+        return distanceToSqr(p.getX()+.5,p.getY()+.5,p.getZ()+.5)
+                <(stationOrder?.94:3.5);
     }
     /**
      * Dock at the same floor the Golem is actually walking on. Shelves
@@ -854,11 +927,39 @@ public final class StorageGolem extends PathfinderMob {
      * must not make a returning Golem wait forever outside its home.
      */
     private boolean atShelfEntrance(ServerLevel level){
+        return atShelfEntrance(level,home);
+    }
+    private boolean atShelfEntrance(ServerLevel level,BlockPos shelfPos){
         BlockPos feet=blockPosition();
-        if(Math.abs(feet.getY()-home.getY())>1)return false;
-        BlockPos shelfPlane=new BlockPos(home.getX(),feet.getY(),home.getZ());
-        return StorageGolemReturnPath.canDock(feet,shelfPlane,
+        if(Math.abs(feet.getY()-shelfPos.getY())>1)return false;
+        BlockPos shelfPlane=new BlockPos(shelfPos.getX(),feet.getY(),
+                shelfPos.getZ());
+        return StorageGolemReturnPath.canDockNearby(feet,shelfPlane,
                 p->StorageGolemReturnPath.walkable(level,p));
+    }
+    /**
+     * A shelf bank is shared capacity. If the assigned two-slot shelf was
+     * refilled while the worker was away, dock into another physically
+     * reachable, connected shelf with space. Never teleport a robot to a
+     * remote member of a long shelf network or allocate a third token.
+     */
+    private StorageGolemShelfEntity availableDock(ServerLevel level,
+            StorageGolemShelfEntity assigned){
+        if(assigned.docked()<2)return assigned;
+        StorageGolemShelfEntity nearest=null;
+        double best=Double.POSITIVE_INFINITY;
+        for(StorageGolemShelfEntity member:StorageGolemShelfEntity.linked(
+                level,home)){
+            if(member.docked()>=2
+                    ||!atShelfEntrance(level,member.getBlockPos()))continue;
+            BlockPos pos=member.getBlockPos();
+            double distance=distanceToSqr(pos.getX()+.5,getY(),pos.getZ()+.5);
+            if(distance<best){
+                nearest=member;
+                best=distance;
+            }
+        }
+        return nearest;
     }
     /** Returning to a shelf never targets its top or walks through it.
      * Four-direction same-floor detours avoid the normal AI temptation to
@@ -871,7 +972,9 @@ public final class StorageGolem extends PathfinderMob {
         if(atShelfEntrance(level)){
             getNavigation().stop();
             flatHomeRoute.clear();
-            if(shelf.add()){
+            StorageGolemShelfEntity receiving=availableDock(level,shelf);
+            if(receiving!=null&&receiving.add()){
+                routeIssue="";
                 setCustomNameVisible(false);
                 // A recalled/aborted worker can still own unsorted items,
                 // an empty shulker or even a loaded pallet. The previous
@@ -889,9 +992,10 @@ public final class StorageGolem extends PathfinderMob {
                 dropCarriedPallet(level);
                 discard();
             }else{
-                // No phantom docking: keep the real worker until a slot opens.
-                // Give a visible reason instead of silently freezing nearby.
-                setCustomName(Component.literal("SHELF FULL"));
+                // Keep the real worker until a usable slot opens. Make the
+                // reason persist through periodic task-label updates.
+                routeIssue="SHELF FULL 2/2";
+                setCustomName(Component.literal("RETURN | "+routeIssue));
                 setCustomNameVisible(true);
             }
             return;
@@ -1038,9 +1142,16 @@ public final class StorageGolem extends PathfinderMob {
             }
             ShulkerTankEntity tank=level.getBlockEntity(magazine)
                     instanceof ShulkerTankEntity t?t:null;
-            if(tank==null||tank.isEmpty()){stage=2;return;}
+            if(tank==null||tank.isEmpty()){
+                routeIssue="WAITING FOR EMPTY SHULKERS";
+                return;
+            }
             emptyBox=tank.take();
-            if(emptyBox.isEmpty()){stage=2;return;}
+            if(emptyBox.isEmpty()){
+                routeIssue="WAITING FOR EMPTY SHULKERS";
+                return;
+            }
+            routeIssue="";
             stage=0;return;
         }
         if(stage==5){
@@ -1061,7 +1172,11 @@ public final class StorageGolem extends PathfinderMob {
                 Container stock=loaded(level,source);
                 if(ptp==null||!ptp.hasReservation(outputTicket)
                         ||station==null||stock==null){
-                    stage=2;return;
+                    // Missing/temporarily unloaded stock, a congested
+                    // station or a slow reservation must not erase a
+                    // player's submitted order after one tick.
+                    routeIssue="WAITING FOR ORDER SOURCE / STATION";
+                    return;
                 }
                 List<ItemStack> preview=new ArrayList<>(9);
                 List<Integer> slots=new ArrayList<>(9);
@@ -1075,15 +1190,24 @@ public final class StorageGolem extends PathfinderMob {
                     preview.add(item.copyWithCount(take));slots.add(i);
                     collected+=take;
                 }
-                if(preview.isEmpty()||!station.canAccept(preview,level,ptp)){
-                    stage=2;return;
+                if(preview.isEmpty()){
+                    routeIssue="WAITING FOR ORDER STOCK";
+                    return; // Reservation and task remain active.
                 }
+                if(!station.canAccept(preview,level,ptp)){
+                    routeIssue="WAITING FOR SHULKER SPACE";
+                    return; // A station may finish/flush a box next tick.
+                }
+                routeIssue="";
                 List<ItemStack> taken=new ArrayList<>(9);
                 for(int i=0;i<slots.size();i++){
                     ItemStack part=stock.removeItem(slots.get(i),preview.get(i).getCount());
                     if(!part.isEmpty())taken.add(part);
                 }
-                if(taken.isEmpty()){stage=2;return;}
+                if(taken.isEmpty()){
+                    routeIssue="WAITING FOR RACK STOCK";
+                    return;
+                }
                 orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
                 for(int i=0;i<taken.size();i++)orderCargo.set(i,taken.get(i));
                 stage=1;waitTicks=0;return;
@@ -1161,9 +1285,13 @@ public final class StorageGolem extends PathfinderMob {
                 ShulkerTankEntity station=level.getBlockEntity(destination)
                         instanceof ShulkerTankEntity t?t:null;
                 List<ItemStack> delivery=orderItems();
-                if(delivery.isEmpty()){stage=2;return;}
+                if(delivery.isEmpty()){
+                    routeIssue="ORDER CARGO MISSING";
+                    stage=2;return;
+                }
                 if(ptp==null||!ptp.hasReservation(outputTicket)||station==null){
-                    stage=3;return;
+                    routeIssue="WAITING FOR ORDER DESTINATION";
+                    return;
                 }
                 if(station.accept(delivery,level,ptp)){
                     int count=delivery.stream().mapToInt(ItemStack::getCount).sum();
@@ -1172,7 +1300,13 @@ public final class StorageGolem extends PathfinderMob {
                     station.finishOrder(level,ptp);
                     stage=2;waitTicks=0;return;
                 }
-                if(++waitTicks>80){stage=3;waitTicks=0;}
+                // A busy 3-shulker station is NOT a rejected order.
+                // Retain all nine cargo slots until there is room instead
+                // of abandoning the delivery after just four seconds.
+                if(tickCount%20==0){
+                    waitTicks++;
+                    routeIssue="WAITING FOR STATION SPACE";
+                }
                 return;
             }
             if(cargo.isEmpty()){stage=2;return;}
@@ -1195,12 +1329,20 @@ public final class StorageGolem extends PathfinderMob {
                     stage=2;
                 }
             } else if(++waitTicks>80){
-                if(outputJob)stage=3;
-                else {
+                if(outputJob){
+                    // Keep this reservation and loaded stack in transit.
+                    // An output PTP may temporarily be full while its
+                    // hopper/attached Shulker Station is still working.
+                    routeIssue="WAITING FOR OUTPUT SPACE";
+                }else{
                     // Input sorting may reroute to another compatible rack.
                     BlockPos alternate=StorageGolemDispatch.findRackFor(level,home,cargo);
-                    if(alternate!=null)destination=alternate;
-                    else stage=2;
+                    if(alternate!=null){
+                        destination=alternate;
+                        routeIssue="REROUTING TO AVAILABLE RACK";
+                    }else{
+                        routeIssue="WAITING FOR RACK SPACE";
+                    }
                 }
                 waitTicks=0;
             }

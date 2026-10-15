@@ -23,9 +23,10 @@ assert ".add(Attributes.MOVEMENT_SPEED,.144)" in rig
 player_follow=golem[golem.index("        // An empty crew stays"):golem.index("    private PtpBlockEntity haulSource")]
 assert "player.getDirection()" not in player_follow
 assert "getNavigation().stop()" in player_follow
-rig_follow=rig[rig.index("        // Follow player POSITION, never their view direction."):rig.index("    private void dropCargo(")]
+rig_follow=rig[rig.index("    private void followOnFloor("):rig.index("    private void dropCargo(")]
 assert "player.getDirection()" not in rig_follow
-assert "distance<1.40*1.40" in rig_follow
+assert "MovingPalletFloorPath.route(" in rig_follow
+assert "player.getY()>getY()+.8" in rig_follow
 assert "getNavigation().stop()" in rig_follow
 
 assert "rightArm[i].xRot=-3.02f*state.liftProgress" in rig_model
