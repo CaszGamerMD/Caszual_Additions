@@ -258,6 +258,71 @@ public final class MovingPallet extends PathfinderMob {
         nextRackFrontPlan=tickCount+20;
         getNavigation().stop();
     }
+    /**
+     * Drive the single loaded entity to the actual two-column FRONT aisle,
+     * never to a shorter path against the rack's back or side wall.
+     * A route failure does not discard the persisted scanner assignment.
+     */
+    private void navigateToRackFront(ServerLevel level,BlockPos goal,
+            double exactX,double exactZ){
+        BlockPos current=blockPosition();
+        if(current.getY()!=goal.getY()){
+            if(tickCount%12==0)
+                getNavigation().moveTo(exactX,goal.getY(),exactZ,1.0);
+            deliveryFailure="MOVING TO RACK-FRONT FLOOR";
+            return;
+        }
+        if(!goal.equals(lastRackFront)){
+            lastRackFront=goal.immutable();
+            rackFrontRoute.clear();
+            nextRackFrontPlan=0;
+        }
+        while(!rackFrontRoute.isEmpty()){
+            BlockPos step=rackFrontRoute.peekFirst();
+            if(!safePlatformFloor(level,step)){
+                rackFrontRoute.clear();
+                nextRackFrontPlan=0;
+                break;
+            }
+            double dx=step.getX()+.5-getX(),dz=step.getZ()+.5-getZ();
+            if(dx*dx+dz*dz>=.28)break;
+            rackFrontRoute.removeFirst();
+            lastRackWaypointDistance=Double.POSITIVE_INFINITY;
+            lastRackProgressTick=tickCount;
+        }
+        if(rackFrontRoute.isEmpty()&&tickCount>=nextRackFrontPlan){
+            List<BlockPos> steps=MovingPalletFloorPath.toRackFront(
+                    current,goal,p->safePlatformFloor(level,p));
+            nextRackFrontPlan=tickCount+20;
+            if(steps==null){
+                deliveryFailure="WAITING: NO CLEAR RACK FRONT ROUTE";
+                getNavigation().stop();
+                return;
+            }
+            rackFrontRoute.addAll(steps);
+            lastRackWaypointDistance=Double.POSITIVE_INFINITY;
+            lastRackProgressTick=tickCount;
+        }
+        if(rackFrontRoute.isEmpty())return;
+        BlockPos next=rackFrontRoute.peekFirst();
+        double dx=next.getX()+.5-getX(),dz=next.getZ()+.5-getZ();
+        double distance=dx*dx+dz*dz;
+        if(distance+.03<lastRackWaypointDistance){
+            lastRackProgressTick=tickCount;
+            lastRackWaypointDistance=distance;
+        }else if(tickCount-lastRackProgressTick>100){
+            rackFrontRoute.clear();
+            nextRackFrontPlan=tickCount+20;
+            lastRackWaypointDistance=Double.POSITIVE_INFINITY;
+            deliveryFailure="WAITING: RACK-FRONT PATH BLOCKED, RETRYING";
+            getNavigation().stop();
+            return;
+        }
+        deliveryFailure="MOVING TO RACK FRONT";
+        getNavigation().stop();
+        getMoveControl().setWantedPosition(next.getX()+.5,
+                next.getY(),next.getZ()+.5,1.0);
+    }
     private void tickDelivery(ServerLevel level){
         if(!level.hasChunkAt(deliveryPosition))return;
         BlockPos target=deliveryPosition;
@@ -293,6 +358,16 @@ public final class MovingPallet extends PathfinderMob {
         double dx=targetX-getX(),dz=targetZ-getZ();
         double horizontal=Math.sqrt(dx*dx+dz*dz);
         double vertical=Math.abs(getY()-targetY);
+        if(deliveryMode==1&&rack!=null
+                &&(horizontal>1.6||vertical>.70)){
+            if(releaseTicks!=0){
+                releaseTicks=0;entityData.set(RELEASE_TICKS,0);
+            }
+            navigateToRackFront(level,
+                    BlockPos.containing(targetX,targetY,targetZ),
+                    targetX,targetZ);
+            return;
+        }
         // Pathfinding stops early for a 1.85-wide mob. Once close enough
         // to be in the clear delivery aisle, align using normal
         // collision-checked movement instead of requesting an impossible
@@ -319,6 +394,19 @@ public final class MovingPallet extends PathfinderMob {
         lastDeliveryDistance=Double.POSITIVE_INFINITY;
         deliveryStallTicks=0;
         if(deliveryMode==1&&rack!=null){
+            // The final commit requires being physically in FRONT of the
+            // rack's two open columns, not beside/behind the shelf frame.
+            BlockPos a=RackBlock.cell(target,rack.facing(),0);
+            BlockPos b=RackBlock.cell(target,rack.facing(),1);
+            double cx=(a.getX()+b.getX())*.5+.5;
+            double cz=(a.getZ()+b.getZ())*.5+.5;
+            double front=(getX()-cx)*rack.facing().getStepX()
+                    +(getZ()-cz)*rack.facing().getStepZ();
+            if(front<1.25){
+                waitForDelivery("WAITING: CREW MUST APPROACH RACK FRONT");
+                return;
+            }
+            deliveryFailure="INSERTING PALLET";
             // Reverse pickup: first lift the pallet from the aisle to the
             // rack bay's elevation (22 ticks), then slide it inward through
             // the front opening (18 ticks). No cargo is transferred yet.
