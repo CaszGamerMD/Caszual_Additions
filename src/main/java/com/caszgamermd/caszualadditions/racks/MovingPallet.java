@@ -79,6 +79,10 @@ public final class MovingPallet extends PathfinderMob {
     private int nextFloorFollowPlan;
     private BlockPos obstructedFloorCell=BlockPos.ZERO;
     private int avoidFloorCellUntil;
+    private final ArrayDeque<BlockPos> rackFrontRoute=new ArrayDeque<>();
+    private BlockPos lastRackFront=BlockPos.ZERO;
+    private int nextRackFrontPlan,lastRackProgressTick;
+    private double lastRackWaypointDistance=Double.POSITIVE_INFINITY;
 
     public MovingPallet(EntityType<? extends MovingPallet> type,Level level){
         super(type,level);
@@ -181,13 +185,16 @@ public final class MovingPallet extends PathfinderMob {
     /** A scanner sets a destination; it NEVER places the pallet instantly. */
     public String requestRackDelivery(ServerLevel level,RackBlockEntity rack){
         if(!loaded()||delivered)return "No pallet ready to deliver.";
-        if(isDelivering())return "Crew already has a delivery destination.";
+        // A new scanner click can retarget a blocked delivery.
         if(rack.hasPallet()||!rack.isEmpty())return "Destination rack must be empty.";
         if(RackPickupPlan.find(level,rack)==null)
             return "Rack needs a clear 2-wide, 3-deep access aisle with floor support.";
         deliveryPosition=rack.getBlockPos().immutable();
         deliveryFacing=rack.facing();
         deliveryMode=1;
+        rackFrontRoute.clear();
+        lastRackFront=BlockPos.ZERO;
+        nextRackFrontPlan=0;
         entityData.set(RACK_INSERT_ACTIVE,true);
         releaseTicks=0;
         deliveryFailure="";
@@ -199,12 +206,14 @@ public final class MovingPallet extends PathfinderMob {
     }
     public String requestGroundDelivery(ServerLevel level,BlockPos location,Direction facing){
         if(!loaded()||delivered)return "No pallet ready to deliver.";
-        if(isDelivering())return "Crew already has a delivery destination.";
+        // A new scanner click can retarget a blocked delivery.
         if(!groundClear(level,location,facing))
             return "Need a clear supported 2x2 destination floor.";
         deliveryPosition=location.immutable();
         deliveryFacing=facing;
         deliveryMode=2;
+        rackFrontRoute.clear();
+        nextRackFrontPlan=0;
         entityData.set(RACK_INSERT_ACTIVE,false);
         releaseTicks=0;
         deliveryFailure="";
@@ -238,6 +247,17 @@ public final class MovingPallet extends PathfinderMob {
         entityData.set(RELEASE_TICKS,0);
         getNavigation().stop();
     }
+    /** Path obstruction is a WAIT state, never a task cancellation. */
+    private void waitForDelivery(String reason){
+        deliveryFailure=reason;
+        deliveryStallTicks=0;
+        lastDeliveryDistance=Double.POSITIVE_INFINITY;
+        releaseTicks=0;
+        entityData.set(RELEASE_TICKS,0);
+        rackFrontRoute.clear();
+        nextRackFrontPlan=tickCount+20;
+        getNavigation().stop();
+    }
     private void tickDelivery(ServerLevel level){
         if(!level.hasChunkAt(deliveryPosition))return;
         BlockPos target=deliveryPosition;
@@ -247,12 +267,12 @@ public final class MovingPallet extends PathfinderMob {
         if(deliveryMode==1){
             rack=level.getBlockEntity(target) instanceof RackBlockEntity found?found:null;
             if(rack==null||rack.hasPallet()||!rack.isEmpty()){
-                abortDelivery("Target rack became unavailable; cargo remains onboard.");
+                waitForDelivery("WAITING: RACK UNAVAILABLE (ORDER SAVED)");
                 return;
             }
             RackPickupPlan plan=RackPickupPlan.find(level,rack);
             if(plan==null){
-                abortDelivery("Rack access aisle is obstructed; cargo remains onboard.");
+                waitForDelivery("WAITING: CLEAR RACK FRONT AISLE (ORDER SAVED)");
                 return;
             }
             BlockPos left=RackBlock.cell(target,rack.facing(),0).relative(rack.facing(),2);
@@ -262,7 +282,7 @@ public final class MovingPallet extends PathfinderMob {
             targetY=plan.floorY();
         }else{
             if(!groundClear(level,target,deliveryFacing)){
-                abortDelivery("Destination floor is blocked; cargo remains onboard.");
+                waitForDelivery("WAITING: DELIVERY FLOOR BLOCKED (ORDER SAVED)");
                 return;
             }
             Direction right=deliveryFacing.getClockWise();
@@ -291,9 +311,7 @@ public final class MovingPallet extends PathfinderMob {
                 lastDeliveryDistance=remaining;
                 deliveryStallTicks=0;
             }else if(++deliveryStallTicks>100){
-                abortDelivery("Pallet cannot reach the marked placement: "
-                        +"check for a clear 2-block-wide access route. "
-                        +"Cargo remains onboard; select another location.");
+                waitForDelivery("WAITING: DELIVERY APPROACH BLOCKED, RETRYING");
             }
             return;
         }
@@ -326,10 +344,11 @@ public final class MovingPallet extends PathfinderMob {
         boolean ok=deliveryMode==1?deliverToRack(rack)
                 :deliverToGround(level,target,deliveryFacing);
         if(!ok){
-            abortDelivery("Placement failed; pallet and inventory remain onboard.");
+            waitForDelivery("WAITING: PLACEMENT BLOCKED, RETRYING");
             return;
         }
         deliveryMode=0;
+        deliveryFailure="";
         entityData.set(RACK_INSERT_ACTIVE,false);
         // Try separation immediately at the successful placement point.
         // If the aisle is crowded, keep the escrowed four-worker identity
