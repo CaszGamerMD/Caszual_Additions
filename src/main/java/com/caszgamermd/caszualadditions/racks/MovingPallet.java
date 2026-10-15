@@ -3,6 +3,7 @@ package com.caszgamermd.caszualadditions.racks;
 import com.caszgamermd.caszualadditions.pallet.PalletBlock;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntity;
 import java.util.List;
+import java.util.ArrayDeque;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -71,6 +72,13 @@ public final class MovingPallet extends PathfinderMob {
     // the same unreachable target behind the player.
     private double lastFollowDistance=Double.POSITIVE_INFINITY;
     private int lastFollowProgressTick,obstacleSide;
+    // The one physical load follows a checked footprint-wide path, not
+    // unrestricted vanilla ground navigation that climbs nearby crates.
+    private final ArrayDeque<BlockPos> floorFollowRoute=new ArrayDeque<>();
+    private BlockPos lastFloorPlayer=BlockPos.ZERO;
+    private int nextFloorFollowPlan;
+    private BlockPos obstructedFloorCell=BlockPos.ZERO;
+    private int avoidFloorCellUntil;
 
     public MovingPallet(EntityType<? extends MovingPallet> type,Level level){
         super(type,level);
@@ -449,6 +457,90 @@ public final class MovingPallet extends PathfinderMob {
         discard();
         return true;
     }
+    /**
+     * Check the actual loaded platform's ground support and footprint,
+     * not just the central Golem's feet. A 1.85-wide pallet cannot fit
+     * through a one-block opening or stand half over the edge of a rack.
+     */
+    private boolean safePlatformFloor(ServerLevel level,BlockPos center){
+        for(int x=-1;x<=1;x++)
+            for(int z=-1;z<=1;z++){
+                BlockPos cell=center.offset(x,0,z);
+                if(!StorageGolemReturnPath.walkable(level,cell))
+                    return false;
+            }
+        return true;
+    }
+
+    private void followOnFloor(ServerLevel level,
+            net.minecraft.server.level.ServerPlayer player){
+        BlockPos playerFloor=BlockPos.containing(
+                player.getX(),player.getY(),player.getZ());
+        BlockPos current=blockPosition();
+        boolean higher=player.getY()>getY()+.8;
+        double dx=player.getX()-getX(),dz=player.getZ()-getZ();
+        if(dx*dx+dz*dz<=1.6*1.6
+                &&Math.abs(player.getY()-getY())<.7){
+            getNavigation().stop();
+            floorFollowRoute.clear();
+            return;
+        }
+        // Only a real elevated player authorizes a one-block ascent.
+        // Otherwise this entire navigation path contains level or LOWER
+        // waypoints and the loaded platform does not climb cargo/racks.
+        if(!playerFloor.equals(lastFloorPlayer)
+                ||floorFollowRoute.isEmpty()&&tickCount>=nextFloorFollowPlan){
+            lastFloorPlayer=playerFloor.immutable();
+            floorFollowRoute.clear();
+            var route=MovingPalletFloorPath.route(current,playerFloor,higher,
+                    position->safePlatformFloor(level,position)
+                            &&(tickCount>=avoidFloorCellUntil
+                                ||!position.equals(obstructedFloorCell)));
+            nextFloorFollowPlan=tickCount+24;
+            if(route!=null)floorFollowRoute.addAll(route);
+            lastFollowDistance=Double.POSITIVE_INFINITY;
+            lastFollowProgressTick=tickCount;
+        }
+        while(!floorFollowRoute.isEmpty()){
+            BlockPos waypoint=floorFollowRoute.peekFirst();
+            if(!safePlatformFloor(level,waypoint)){
+                floorFollowRoute.clear();
+                nextFloorFollowPlan=0;
+                return;
+            }
+            double sx=waypoint.getX()+.5-getX();
+            double sz=waypoint.getZ()+.5-getZ();
+            if(sx*sx+sz*sz<.28&&Math.abs(getY()-waypoint.getY())<.8){
+                floorFollowRoute.removeFirst();
+                lastFollowDistance=Double.POSITIVE_INFINITY;
+                lastFollowProgressTick=tickCount;
+            }else break;
+        }
+        if(floorFollowRoute.isEmpty())return;
+        BlockPos next=floorFollowRoute.peekFirst();
+        double vx=next.getX()+.5-getX();
+        double vz=next.getZ()+.5-getZ();
+        double distance=vx*vx+vz*vz;
+        if(distance+.035<lastFollowDistance){
+            lastFollowDistance=distance;
+            lastFollowProgressTick=tickCount;
+        }else if(tickCount-lastFollowProgressTick>60){
+            obstructedFloorCell=next.immutable();
+            avoidFloorCellUntil=tickCount+80;
+            floorFollowRoute.clear();
+            nextFloorFollowPlan=0;
+            lastFollowDistance=Double.POSITIVE_INFINITY;
+            lastFollowProgressTick=tickCount;
+            getNavigation().stop();
+            return;
+        }
+        getNavigation().stop();
+        // Move control handles stepping off a supported ledge and falling
+        // exactly one block down, instead of jumping back to level ground.
+        getMoveControl().setWantedPosition(next.getX()+.5,
+                next.getY(),next.getZ()+.5,1.0);
+    }
+
     private void updateCrewLabel(){
         String text=delivered?"4 GOLEMS | UNLOADING"
                 :isDelivering()?(deliveryMode==1
@@ -483,39 +575,10 @@ public final class MovingPallet extends PathfinderMob {
         if(isDelivering()){tickDelivery(server);return;}
         var player=server.getPlayerByUUID(id);
         if(player==null||player.isSpectator())return;
-        // Exactly one navigation and collision body for all four corner
-        // figures, with no teleporting through walls or individual drift.
-        // Follow player POSITION, never their view direction. Turning
-        // in place does not make the carried platform orbit.
-        double x=player.getX(),z=player.getZ();
-        double dx=x-getX(),dz=z-getZ();
-        double distance=dx*dx+dz*dz;
-        if(distance<1.40*1.40&&Math.abs(getY()-player.getY())<1.0){
-            getNavigation().stop();
-            lastFollowDistance=Double.POSITIVE_INFINITY;
-            lastFollowProgressTick=tickCount;
-            return;
-        }
-        if(distance+.15<lastFollowDistance){
-            lastFollowProgressTick=tickCount;
-            lastFollowDistance=distance;
-        }else if(tickCount-lastFollowProgressTick>70){
-            // If a pallet cannot pass directly through a narrow doorway,
-            // approach the player's left/right flank, alternate after each
-            // stall, and let vanilla find the actual collision-safe route.
-            getNavigation().stop();
-            obstacleSide=obstacleSide==1?-1:1;
-            lastFollowDistance=Double.POSITIVE_INFINITY;
-            lastFollowProgressTick=tickCount;
-        }
-        if((distance>1.90*1.90||Math.abs(getY()-player.getY())>1.6)
-                &&tickCount%12==0){
-            // Offset an approach only when physically stalled, not on turn.
-            double len=Math.sqrt(Math.max(distance,.0001));
-            double side=obstacleSide*.65;
-            getNavigation().moveTo(x-dz/len*side,player.getY(),
-                    z+dx/len*side,1.0);
-        }else if(distance<1.55*1.55)getNavigation().stop();
+        // The four attached robots are one 1.85-wide load. Prefer level
+        // warehouse aisles; allow one-block drops; only climb when the
+        // followed PLAYER has actually moved up.
+        followOnFloor(server,player);
     }
     private void dropCargo(ServerLevel level){
         if(pallet.isEmpty())return;
