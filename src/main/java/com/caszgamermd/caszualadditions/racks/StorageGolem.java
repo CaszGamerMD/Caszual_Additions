@@ -681,7 +681,69 @@ public final class StorageGolem extends PathfinderMob {
             }
         return openWalkway(level,onFloor)?onFloor:desired;
     }
+    /**
+     * Orders use a persistent accessible SERVICE CELL, not the center of a
+     * full rack block. Probe both front columns and the nearby station aisle,
+     * then pick an actual traversable route rather than a geometrically
+     * close wall. Keep the choice long enough for another worker to pass.
+     */
+    private BlockPos orderApproach(ServerLevel level,BlockPos place){
+        if(place.equals(orderAccessTarget)&&stage==orderAccessStage
+                &&tickCount<orderAccessExpires
+                &&openWalkway(level,orderAccessGoal)
+                &&(!occupiedByWorker(level,orderAccessGoal)
+                    ||blockPosition().equals(orderAccessGoal)))
+            return orderAccessGoal;
+        orderAccessTarget=place.immutable();
+        orderAccessStage=stage;
+        orderAccessExpires=tickCount+60;
+        BlockEntity machine=level.hasChunkAt(place)?level.getBlockEntity(place):null;
+        java.util.LinkedHashSet<BlockPos> choices=new java.util.LinkedHashSet<>();
+        if(machine instanceof RackBlockEntity rack){
+            // The rack is opaque to Golems: approach ONLY from its FRONT,
+            // never through a side/back frame or its upper cargo bays.
+            for(int depth=1;depth<=3;depth++)
+                for(int col=0;col<2;col++){
+                    BlockPos cell=RackBlock.cell(place,rack.facing(),col)
+                            .relative(rack.facing(),depth);
+                    choices.add(new BlockPos(cell.getX(),blockPosition().getY(),
+                            cell.getZ()));
+                }
+        }else{
+            for(int depth=1;depth<=2;depth++)
+                for(Direction side:Direction.Plane.HORIZONTAL){
+                    BlockPos cell=place.relative(side,depth);
+                    choices.add(new BlockPos(cell.getX(),blockPosition().getY(),
+                            cell.getZ()));
+                }
+        }
+        var occupied=occupiedAisle(level,place);
+        BlockPos feet=blockPosition(),best=null;
+        int bestLength=Integer.MAX_VALUE;
+        for(BlockPos cell:choices){
+            if(!openWalkway(level,cell)
+                    ||occupied.contains(cell)&&!cell.equals(feet))continue;
+            List<BlockPos> route=StorageGolemReturnPath.steps(feet,cell,
+                    p->openWalkway(level,p)&&!occupied.contains(p));
+            if(route!=null&&route.size()<bestLength){
+                best=cell;
+                bestLength=route.size();
+            }
+        }
+        if(best==null){
+            // Keep the task pending until an aisle opens; never silently
+            // choose a route through the solid rack as a fallback.
+            routeIssue="WAITING FOR ORDER ACCESS";
+            return floorApproach(level,place);
+        }
+        orderAccessGoal=best.immutable();
+        routeIssue="";
+        return best;
+    }
+
     private BlockPos approach(ServerLevel level,BlockPos place) {
+        if(stationOrder&&(stage==0||stage==1||stage==3))
+            return orderApproach(level,place);
         if(groundPickup&&level.hasChunkAt(place)){
             BlockState base=level.getBlockState(place);
             if(base.getBlock() instanceof PalletBlock){
@@ -748,6 +810,11 @@ public final class StorageGolem extends PathfinderMob {
         }
         return floorApproach(level,place);
     }
+    // Stable order pick/drop approach. Recomputing the nearest free cell
+    // every tick makes two workers switch sides indefinitely at one shelf.
+    private BlockPos orderAccessGoal=BlockPos.ZERO;
+    private BlockPos orderAccessTarget=BlockPos.ZERO;
+    private int orderAccessStage=-1,orderAccessExpires;
     private BlockPos workGoal=BlockPos.ZERO;
     private int lastWorkProgress, nextWorkPlan;
     private BlockPos blockedWorkCell=BlockPos.ZERO;
@@ -845,7 +912,10 @@ public final class StorageGolem extends PathfinderMob {
     private final ArrayDeque<BlockPos> flatWorkRoute=new ArrayDeque<>();
 
     private boolean closeTo(BlockPos p){
-        return distanceToSqr(p.getX()+.5,p.getY()+.5,p.getZ()+.5)<3.5;
+        // An order must actually reach the selected service square.
+        // The old 1.87-block radius could treat a rack wall as arrival.
+        return distanceToSqr(p.getX()+.5,p.getY()+.5,p.getZ()+.5)
+                <(stationOrder?.94:3.5);
     }
     /**
      * Dock at the same floor the Golem is actually walking on. Shelves
