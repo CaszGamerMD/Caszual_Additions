@@ -1069,9 +1069,16 @@ public final class StorageGolem extends PathfinderMob {
             }
             ShulkerTankEntity tank=level.getBlockEntity(magazine)
                     instanceof ShulkerTankEntity t?t:null;
-            if(tank==null||tank.isEmpty()){stage=2;return;}
+            if(tank==null||tank.isEmpty()){
+                routeIssue="WAITING FOR EMPTY SHULKERS";
+                return;
+            }
             emptyBox=tank.take();
-            if(emptyBox.isEmpty()){stage=2;return;}
+            if(emptyBox.isEmpty()){
+                routeIssue="WAITING FOR EMPTY SHULKERS";
+                return;
+            }
+            routeIssue="";
             stage=0;return;
         }
         if(stage==5){
@@ -1106,9 +1113,15 @@ public final class StorageGolem extends PathfinderMob {
                     preview.add(item.copyWithCount(take));slots.add(i);
                     collected+=take;
                 }
-                if(preview.isEmpty()||!station.canAccept(preview,level,ptp)){
-                    stage=2;return;
+                if(preview.isEmpty()){
+                    routeIssue="WAITING FOR ORDER STOCK";
+                    return; // Reservation and task remain active.
                 }
+                if(!station.canAccept(preview,level,ptp)){
+                    routeIssue="WAITING FOR SHULKER SPACE";
+                    return; // A station may finish/flush a box next tick.
+                }
+                routeIssue="";
                 List<ItemStack> taken=new ArrayList<>(9);
                 for(int i=0;i<slots.size();i++){
                     ItemStack part=stock.removeItem(slots.get(i),preview.get(i).getCount());
@@ -1203,7 +1216,13 @@ public final class StorageGolem extends PathfinderMob {
                     station.finishOrder(level,ptp);
                     stage=2;waitTicks=0;return;
                 }
-                if(++waitTicks>80){stage=3;waitTicks=0;}
+                // A busy 3-shulker station is NOT a rejected order.
+                // Retain all nine cargo slots until there is room instead
+                // of abandoning the delivery after just four seconds.
+                if(tickCount%20==0){
+                    waitTicks++;
+                    routeIssue="WAITING FOR STATION SPACE";
+                }
                 return;
             }
             if(cargo.isEmpty()){stage=2;return;}
@@ -1226,12 +1245,20 @@ public final class StorageGolem extends PathfinderMob {
                     stage=2;
                 }
             } else if(++waitTicks>80){
-                if(outputJob)stage=3;
-                else {
+                if(outputJob){
+                    // Keep this reservation and loaded stack in transit.
+                    // An output PTP may temporarily be full while its
+                    // hopper/attached Shulker Station is still working.
+                    routeIssue="WAITING FOR OUTPUT SPACE";
+                }else{
                     // Input sorting may reroute to another compatible rack.
                     BlockPos alternate=StorageGolemDispatch.findRackFor(level,home,cargo);
-                    if(alternate!=null)destination=alternate;
-                    else stage=2;
+                    if(alternate!=null){
+                        destination=alternate;
+                        routeIssue="REROUTING TO AVAILABLE RACK";
+                    }else{
+                        routeIssue="WAITING FOR RACK SPACE";
+                    }
                 }
                 waitTicks=0;
             }
