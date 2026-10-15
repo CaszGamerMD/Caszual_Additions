@@ -16,7 +16,7 @@ assert "StorageGolemReturnPath.stepsHome(from,shelfPlane," in home
 assert "steerOnFloor(next,1.08)" in home
 assert "StorageGolemReturnPath.walkable(level,p)" in home
 assert "No level path? WAIT and retry" in home
-assert "StorageGolemReturnPath.canDock(feet,shelfPlane," in s
+assert "StorageGolemReturnPath.canDockNearby(feet,shelfPlane," in s
 assert "Math.abs(feet.getY()-home.getY())>1" in s
 assert "StorageGolemReturnPath.walkable(level,p)" in home
 print("PASS: return-home jobs use flat routes and output release does not recurse")
