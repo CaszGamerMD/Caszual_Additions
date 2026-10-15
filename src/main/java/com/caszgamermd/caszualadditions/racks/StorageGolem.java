@@ -734,7 +734,10 @@ public final class StorageGolem extends PathfinderMob {
             // Keep the task pending until an aisle opens; never silently
             // choose a route through the solid rack as a fallback.
             routeIssue="WAITING FOR ORDER ACCESS";
-            return floorApproach(level,place);
+            // Wait at the FIRST front/service position, never select an
+            // unverified rear rack face or accidentally complete a pickup
+            // from behind a solid frame.
+            return choices.isEmpty()?place:choices.iterator().next();
         }
         orderAccessGoal=best.immutable();
         routeIssue="";
@@ -1169,7 +1172,11 @@ public final class StorageGolem extends PathfinderMob {
                 Container stock=loaded(level,source);
                 if(ptp==null||!ptp.hasReservation(outputTicket)
                         ||station==null||stock==null){
-                    stage=2;return;
+                    // Missing/temporarily unloaded stock, a congested
+                    // station or a slow reservation must not erase a
+                    // player's submitted order after one tick.
+                    routeIssue="WAITING FOR ORDER SOURCE / STATION";
+                    return;
                 }
                 List<ItemStack> preview=new ArrayList<>(9);
                 List<Integer> slots=new ArrayList<>(9);
@@ -1197,7 +1204,10 @@ public final class StorageGolem extends PathfinderMob {
                     ItemStack part=stock.removeItem(slots.get(i),preview.get(i).getCount());
                     if(!part.isEmpty())taken.add(part);
                 }
-                if(taken.isEmpty()){stage=2;return;}
+                if(taken.isEmpty()){
+                    routeIssue="WAITING FOR RACK STOCK";
+                    return;
+                }
                 orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
                 for(int i=0;i<taken.size();i++)orderCargo.set(i,taken.get(i));
                 stage=1;waitTicks=0;return;
@@ -1275,9 +1285,13 @@ public final class StorageGolem extends PathfinderMob {
                 ShulkerTankEntity station=level.getBlockEntity(destination)
                         instanceof ShulkerTankEntity t?t:null;
                 List<ItemStack> delivery=orderItems();
-                if(delivery.isEmpty()){stage=2;return;}
+                if(delivery.isEmpty()){
+                    routeIssue="ORDER CARGO MISSING";
+                    stage=2;return;
+                }
                 if(ptp==null||!ptp.hasReservation(outputTicket)||station==null){
-                    stage=3;return;
+                    routeIssue="WAITING FOR ORDER DESTINATION";
+                    return;
                 }
                 if(station.accept(delivery,level,ptp)){
                     int count=delivery.stream().mapToInt(ItemStack::getCount).sum();
