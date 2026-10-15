@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -23,7 +24,36 @@ public final class RackComputerScreen extends Screen {
     private final java.util.List<AbstractWidget> rackWidgets=new java.util.ArrayList<>();
     private final java.util.List<AbstractWidget> workerWidgets=new java.util.ArrayList<>();
     private final java.util.List<AbstractWidget> orderWidgets=new java.util.ArrayList<>();
+    // A draft belongs to a physical Rack Computer in this loaded world,
+    // NOT one temporary Screen instance. The weak world key ensures an
+    // unrelated server/world can't see the previous session's shopping list.
+    private static final java.util.WeakHashMap<Object,
+            java.util.Map<BlockPos,java.util.LinkedHashMap<String,Integer>>>
+            SAVED_DRAFTS=new java.util.WeakHashMap<>();
     private final java.util.LinkedHashMap<String,Integer> orderList=new java.util.LinkedHashMap<>();
+    private Object draftWorld;
+    private void saveDraft(){
+        if(draftWorld==null)return;
+        synchronized(SAVED_DRAFTS){
+            SAVED_DRAFTS.computeIfAbsent(draftWorld,
+                    ignored->new java.util.HashMap<>())
+                    .put(computer.immutable(),new java.util.LinkedHashMap<>(orderList));
+        }
+    }
+    private void loadDraft(){
+        Object world=Minecraft.getInstance().level;
+        if(world==null||world==draftWorld)return;
+        draftWorld=world;
+        synchronized(SAVED_DRAFTS){
+            orderList.clear();
+            var stored=SAVED_DRAFTS.get(world);
+            if(stored!=null&&stored.containsKey(computer))
+                orderList.putAll(stored.get(computer));
+        }
+        if(!orderList.isEmpty())
+            orderStatus="Draft restored: "+orderList.size()
+                    +" items. Review before submitting.";
+    }
     private int orderScroll;
     private String orderStatus="Select stock on RACKS, add items, then submit the list.";
     private JsonArray workers=new JsonArray();
@@ -70,6 +100,7 @@ public final class RackComputerScreen extends Screen {
     }
 
     @Override protected void init() {
+        loadDraft();
         String typed=search==null?"":search.getValue();
         rackWidgets.clear();
         workerWidgets.clear();
@@ -146,7 +177,7 @@ public final class RackComputerScreen extends Screen {
         addOrders(Button.builder(Component.literal("SUBMIT ORDER LIST"),
                 b->submitOrderList()).bounds(22,height-69,Math.max(122,width/3),23).build());
         addOrders(Button.builder(Component.literal("CLEAR LIST"),
-                b->{orderList.clear();orderStatus="Order list cleared.";})
+                b->{orderList.clear();saveDraft();orderStatus="Order list cleared.";})
                 .bounds(27+Math.max(122,width/3),height-69,104,23).build());
         addOrders(Button.builder(Component.literal("REMOVE LAST"),
                 b->removeLastOrder()).bounds(22,height-41,108,21).build());
@@ -216,6 +247,7 @@ public final class RackComputerScreen extends Screen {
             status="Maximum 16 different items per order.";return;
         }
         orderList.put(selectedItemId,total);
+        saveDraft();
         status="Added to list: "+selectedItemId+" x"+total
                 +". Open ORDER LIST to review and submit.";
         orderStatus=status;
@@ -225,6 +257,7 @@ public final class RackComputerScreen extends Screen {
         String last="";
         for(String id:orderList.keySet())last=id;
         orderList.remove(last);
+        saveDraft();
         orderStatus="Removed "+last;
     }
     private void submitOrderList(){
@@ -241,7 +274,10 @@ public final class RackComputerScreen extends Screen {
 
     public void acceptOrderReply(String message){
         status=message;workerStatus=message;orderStatus=message;
-        if(message.startsWith("Order submitted:"))orderList.clear();
+        if(message.startsWith("Order submitted:")){
+            orderList.clear();
+            saveDraft();
+        }
     }
 
     public void accept(BlockPos pos,String raw) {
@@ -451,6 +487,7 @@ public final class RackComputerScreen extends Screen {
                 if(index>=0&&index<orderList.size()){
                     String selected=new java.util.ArrayList<>(orderList.keySet()).get(index);
                     orderList.remove(selected);
+                    saveDraft();
                     orderStatus="Removed "+selected+" from order.";
                     orderScroll=Math.min(orderScroll,Math.max(0,orderList.size()-1));
                     return true;
