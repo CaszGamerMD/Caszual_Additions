@@ -72,6 +72,6 @@ public final class MovingPalletFloorPath {
         double x=spot.getX()-player.getX();
         double z=spot.getZ()-player.getZ();
         return x*x+z*z<=3.25
-                &&Math.abs(spot.getY()-player.getY())<=1;
+                &&spot.getY()==player.getY();
     }
 }
