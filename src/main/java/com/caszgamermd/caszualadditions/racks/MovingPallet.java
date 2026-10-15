@@ -580,7 +580,7 @@ public final class MovingPallet extends PathfinderMob {
     }
 
     private void followOnFloor(ServerLevel level,
-            net.minecraft.server.level.ServerPlayer player){
+            net.minecraft.world.entity.player.Player player){
         BlockPos playerFloor=BlockPos.containing(
                 player.getX(),player.getY(),player.getZ());
         BlockPos current=blockPosition();
