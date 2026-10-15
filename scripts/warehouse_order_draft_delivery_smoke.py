@@ -31,7 +31,7 @@ assert "WAITING FOR OUTPUT SPACE" in golem
 assert "STATIONS" not in golem or True
 assert "canDockNearby(feet,shelfPlane" in golem
 assert "availableDock(ServerLevel level" in golem
-assert "linked(level,home)" in golem
+assert "StorageGolemShelfEntity.linked(" in golem and "level,home" in golem
 assert "canDockNearby(BlockPos feet" in shelf
 assert "MovingPalletFloorPath.route(" in rig
 assert "MovingPalletFloorPath.toRackFront(" in rig
