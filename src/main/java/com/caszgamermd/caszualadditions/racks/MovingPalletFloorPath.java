@@ -68,6 +68,46 @@ public final class MovingPalletFloorPath {
         Collections.reverse(result);
         return result;
     }
+    /**
+     * Rack delivery has an EXACT front-aisle destination; proximity to
+     * the nearest rack block is not enough and may put the crew behind
+     * its solid frame. This route uses the same checked level-only cells
+     * as loaded follow, but does not stop short of the front staging cell.
+     */
+    public static List<BlockPos> toRackFront(BlockPos start,BlockPos target,
+            Predicate<BlockPos> standable){
+        if(start.getY()!=target.getY())return null;
+        if(start.equals(target))return List.of();
+        int minX=Math.min(start.getX(),target.getX())-MARGIN;
+        int maxX=Math.max(start.getX(),target.getX())+MARGIN;
+        int minZ=Math.min(start.getZ(),target.getZ())-MARGIN;
+        int maxZ=Math.max(start.getZ(),target.getZ())+MARGIN;
+        ArrayDeque<BlockPos> queue=new ArrayDeque<>();
+        Map<BlockPos,BlockPos> parent=new HashMap<>();
+        queue.add(start);
+        parent.put(start,start);
+        while(!queue.isEmpty()&&parent.size()<MAX_CELLS){
+            BlockPos current=queue.removeFirst();
+            if(current.equals(target)){
+                ArrayList<BlockPos> result=new ArrayList<>();
+                for(BlockPos p=current;!p.equals(start);p=parent.get(p))
+                    result.add(p);
+                Collections.reverse(result);
+                return result;
+            }
+            for(Direction side:Direction.Plane.HORIZONTAL){
+                BlockPos next=current.relative(side);
+                if(next.getX()<minX||next.getX()>maxX
+                        ||next.getZ()<minZ||next.getZ()>maxZ
+                        ||parent.containsKey(next)||!standable.test(next))
+                    continue;
+                parent.put(next,current);
+                queue.addLast(next);
+            }
+        }
+        return null;
+    }
+
     private static boolean nearPlayer(BlockPos spot,BlockPos player){
         double x=spot.getX()-player.getX();
         double z=spot.getZ()-player.getZ();
