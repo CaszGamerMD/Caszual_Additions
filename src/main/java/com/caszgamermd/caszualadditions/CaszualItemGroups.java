@@ -57,7 +57,7 @@ public final class CaszualItemGroups {
                             add.accept(RackContent.PORTABLE_WRAPPER);
                             add.accept(AntiWardenContent.WOOL_HELMET);
                             add.accept(AntiWardenContent.WOOL_BOOTS);
-                            add.accept(AntiWardenContent.WARDEN_TRAP);
+                            add.accept(AntiWardenContent.WARDEN_TRAP.asItem());
                             for(var blockItem:RackContent.INDUSTRIAL_CONCRETE_ITEMS.values())
                                 add.accept(blockItem);
                             BuiltInRegistries.ITEM.forEach(item -> {
