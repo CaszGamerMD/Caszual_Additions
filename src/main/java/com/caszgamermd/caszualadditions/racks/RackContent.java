@@ -86,6 +86,7 @@ public final class RackContent {
         STORAGE_SCANNER_ITEM=Registry.register(BuiltInRegistries.ITEM,scannerKey,
                 new StorageScannerItem(new Item.Properties()
                         .stacksTo(1).setId(scannerKey)));
+        StorageScannerItem.initialize();
         ResourceKey<Item> portableWrapKey=ResourceKey.create(Registries.ITEM,
                 CaszualAdditions.id("portable_pallet_wrapper"));
         PORTABLE_WRAPPER=Registry.register(BuiltInRegistries.ITEM,portableWrapKey,
