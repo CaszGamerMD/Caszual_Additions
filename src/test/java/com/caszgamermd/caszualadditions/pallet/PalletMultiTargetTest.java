@@ -17,9 +17,13 @@ final class PalletMultiTargetTest {
         assertFalse(PalletFilterNet.validTarget(0,",minecraft:stone"));
         assertFalse(PalletFilterNet.validTarget(1,"minecraft,  BAD!"));
         assertFalse(PalletFilterNet.validTarget(2,"minecraft:logs,,minecraft:planks"));
-        assertFalse(PalletFilterNet.validTarget(0,
+        assertTrue(PalletFilterNet.validTarget(0,
                 "minecraft:a,minecraft:b,minecraft:c,minecraft:d,minecraft:e,"
                 +"minecraft:f,minecraft:g,minecraft:h,minecraft:i"));
+        assertTrue(PalletFilterNet.validTarget(0,
+                String.join(",",java.util.Collections.nCopies(16,"minecraft:stone"))));
+        assertFalse(PalletFilterNet.validTarget(0,
+                String.join(",",java.util.Collections.nCopies(17,"minecraft:stone"))));
     }
     @Test void exactModeRemainsSampleOnly() {
         assertFalse(PalletFilterNet.validTarget(3,"minecraft:diamond_sword"));
