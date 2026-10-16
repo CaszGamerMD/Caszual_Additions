@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "S S",
+    "C C",
+    "SSS"
+  ],
+  "key": {
+    "S": "minecraft:stick",
+    "C": "minecraft:chest"
+  },
+  "result": {
+    "id": "caszual_additions:stack_of_pallets",
+    "count": 1
+  }
+}
