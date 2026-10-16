@@ -309,14 +309,19 @@ public final class PtpBlockEntity extends BlockEntity
             if(level.getBlockState(PtpBlock.cell(root,p)).is(RackContent.PTP_WRAP))return true;
         return false;
     }
-    public boolean installPallet(ItemStack stack){
-        if(hasPallet()||level==null)return false;
+    public boolean canInstallPallet(){
+        if(hasPallet()||level==null||hauling()||pendingOutputOrders()>0)
+            return false;
         BlockPos root=worldPosition.offset(-1,0,-1);
         for(int y=1;y<=3;y++)for(int z=0;z<3;z++)for(int x=0;x<3;x++){
             BlockPos p=root.offset(x,y,z);
             if(level.isOutsideBuildHeight(p)||!level.hasChunkAt(p)
                     ||!level.getBlockState(p).canBeReplaced())return false;
         }
+        return true;
+    }
+    public boolean installPallet(ItemStack stack){
+        if(!canInstallPallet())return false;
         pallet=stack.copyWithCount(1);
         filterTarget=PalletData.filter(stack);
         filterMode=PalletData.filterMode(stack);
