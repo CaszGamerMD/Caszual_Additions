@@ -447,7 +447,7 @@ public final class MovingPallet extends PathfinderMob {
         var warehouse=WarehouseNetwork.fromComputer(level,computer);
         PtpBlockEntity point=null;
         for(PtpBlockEntity candidate:warehouse.points()){
-            if(candidate.hasPallet()||candidate.hauling())continue;
+            if(!candidate.canInstallPallet())continue;
             if(point==null||candidate.input()&&!point.input())point=candidate;
         }
         RackBlockEntity rack=null;
