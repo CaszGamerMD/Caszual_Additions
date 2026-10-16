@@ -87,8 +87,8 @@ public final class StoragePalletCrew {
             BlockPos computer){
         MovingPallet rig=moving(level,player);
         if(rig==null)return "No loaded pallet crew to send home.";
-        if(!rig.fromWarehouse(WarehouseConnections.shelvesForComputer(level,computer)))
-            return "This crew belongs to a different warehouse.";
+        // The item link already authenticates the computer/dimension. The
+        // distant home chunks need not be loaded just to record the order.
         return rig.returnToWarehouse(level,computer);
     }
 
