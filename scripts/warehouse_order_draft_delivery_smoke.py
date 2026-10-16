@@ -29,10 +29,10 @@ assert "WAITING FOR ORDER STOCK" in golem
 assert "WAITING FOR ORDER DESTINATION" in golem
 assert "WAITING FOR OUTPUT SPACE" in golem
 assert "STATIONS" not in golem or True
-assert "canDockNearby(feet,shelfPlane" in golem
+assert "canDockFrontNearby(feet,shelfPos,facing" in golem
 assert "availableDock(ServerLevel level" in golem
 assert "StorageGolemShelfEntity.linked(" in golem and "level,home" in golem
-assert "canDockNearby(BlockPos feet" in shelf
+assert "canDockFrontNearby(BlockPos feet" in shelf
 assert "MovingPalletFloorPath.route(" in rig
 assert "MovingPalletFloorPath.toRackFront(" in rig
 assert "waitForDelivery(" in rig

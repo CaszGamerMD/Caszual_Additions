@@ -46,10 +46,101 @@ public final class StorageGolem extends PathfinderMob {
             SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Integer> DISPLAY_CARGO=
             SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.INT);
+    // These are three SAMPLES of actual in-transit items. The complete
+    // nine-slot order inventory stays server-owned and persisted in NBT.
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_A=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_B=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_C=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_D=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_E=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_F=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_G=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_H=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_I=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Integer> DISPLAY_HELD_SLOTS=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.INT);
     @Override protected void defineSynchedData(SynchedEntityData.Builder builder){
         super.defineSynchedData(builder);
         builder.define(DISPLAY_PALLET,ItemStack.EMPTY);
         builder.define(DISPLAY_CARGO,0);
+        builder.define(DISPLAY_HELD_A,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_B,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_C,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_D,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_E,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_F,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_G,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_H,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_I,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_SLOTS,0);
+    }
+    public int displayedLoadSlots(){return entityData.get(DISPLAY_HELD_SLOTS);}
+    public ItemStack displayedLoad(int sample){
+        return switch(sample){
+            case 0->entityData.get(DISPLAY_HELD_A);
+            case 1->entityData.get(DISPLAY_HELD_B);
+            case 2->entityData.get(DISPLAY_HELD_C);
+            case 3->entityData.get(DISPLAY_HELD_D);
+            case 4->entityData.get(DISPLAY_HELD_E);
+            case 5->entityData.get(DISPLAY_HELD_F);
+            case 6->entityData.get(DISPLAY_HELD_G);
+            case 7->entityData.get(DISPLAY_HELD_H);
+            case 8->entityData.get(DISPLAY_HELD_I);
+            default->ItemStack.EMPTY;
+        };
+    }
+    private void setHeldVisual(EntityDataAccessor<ItemStack> accessor,
+            ItemStack stack){
+        ItemStack sample=stack.isEmpty()?ItemStack.EMPTY:stack.copyWithCount(1);
+        if(!ItemStack.matches(entityData.get(accessor),sample))
+            entityData.set(accessor,sample);
+    }
+    private void syncHeldVisual(){
+        if(!carryingPallet.isEmpty()){
+            clearHeldVisual();return;
+        }
+        java.util.ArrayList<ItemStack> real=new java.util.ArrayList<>(9);
+        if(stationOrder){
+            for(ItemStack stack:orderCargo)
+                if(!stack.isEmpty())real.add(stack);
+        }else{
+            if(!cargo.isEmpty())real.add(cargo);
+            if(!emptyBox.isEmpty())real.add(emptyBox);
+        }
+        int slots=real.size();
+        if(entityData.get(DISPLAY_HELD_SLOTS)!=slots)
+            entityData.set(DISPLAY_HELD_SLOTS,slots);
+        setHeldVisual(DISPLAY_HELD_A,slots>0?real.get(0):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_B,slots>1?real.get(1):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_C,slots>2?real.get(2):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_D,slots>3?real.get(3):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_E,slots>4?real.get(4):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_F,slots>5?real.get(5):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_G,slots>6?real.get(6):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_H,slots>7?real.get(7):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_I,slots>8?real.get(8):ItemStack.EMPTY);
+    }
+    private void clearHeldVisual(){
+        if(entityData.get(DISPLAY_HELD_SLOTS)!=0)
+            entityData.set(DISPLAY_HELD_SLOTS,0);
+        setHeldVisual(DISPLAY_HELD_A,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_B,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_C,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_D,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_E,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_F,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_G,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_H,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_I,ItemStack.EMPTY);
     }
     public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
     public int visibleCargoCount(){return entityData.get(DISPLAY_CARGO);}
@@ -75,6 +166,7 @@ public final class StorageGolem extends PathfinderMob {
     // An order runner has nine REAL cargo slots. Its shulker is packed at
     // the station, not invisibly inside the worker.
     private boolean stationOrder;
+    private boolean palletStackJob;
     private BlockPos orderPoint=BlockPos.ZERO;
     private NonNullList<ItemStack> orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
     // Four workers are independently saved and physically navigate both
@@ -126,6 +218,14 @@ public final class StorageGolem extends PathfinderMob {
         this.requestedSample=sample.copyWithCount(1);
         this.packedJob=false;this.magazine=BlockPos.ZERO;
         this.emptyBox=ItemStack.EMPTY;this.packedItemCount=0;
+    }
+    public void assignPalletStack(BlockPos shelf,BlockPos sourcePtp,BlockPos rack){
+        assign(shelf,sourcePtp,rack,new ItemStack(RackContent.STACK_OF_PALLETS));
+        palletStackJob=true;
+        itemId="caszual_additions:stack_of_pallets";
+    }
+    public boolean isPalletStackJobFrom(BlockPos ptp){
+        return palletStackJob&&stage!=2&&source.equals(ptp);
     }
     public void assignOutput(BlockPos home,BlockPos source,BlockPos destination,
             ItemStack sample,int ticket,int quantity){
@@ -241,6 +341,7 @@ public final class StorageGolem extends PathfinderMob {
     public BlockPos workTarget(){return destination;}
     public String assignedOwner(){return playerHaul?haulOwner:"";}
     public String currentWork(){
+        if(palletStackJob)return stage==0?"COLLECTING EMPTY PALLET":stage==1?"STACKING EMPTY PALLET":"RETURNING TO SHELF";
         if(playerHaul)return switch(stage){
             case 0->"LIFTING WRAPPED PALLET";
             case 1->"FOLLOWING PLAYER / "+(holdsPallet()?"CARRYING PALLET":"ESCORT");
@@ -931,10 +1032,13 @@ public final class StorageGolem extends PathfinderMob {
     }
     private boolean atShelfEntrance(ServerLevel level,BlockPos shelfPos){
         BlockPos feet=blockPosition();
-        if(Math.abs(feet.getY()-shelfPos.getY())>1)return false;
-        BlockPos shelfPlane=new BlockPos(shelfPos.getX(),feet.getY(),
-                shelfPos.getZ());
-        return StorageGolemReturnPath.canDockNearby(feet,shelfPlane,
+        if(feet.getY()!=shelfPos.getY())return false;
+        if(!level.hasChunkAt(shelfPos)
+                ||!level.getBlockState(shelfPos).is(RackContent.STORAGE_SHELF))
+            return false;
+        Direction facing=level.getBlockState(shelfPos)
+                .getValue(StorageGolemShelfBlock.FACING);
+        return StorageGolemReturnPath.canDockFrontNearby(feet,shelfPos,facing,
                 p->StorageGolemReturnPath.walkable(level,p));
     }
     /**
@@ -1001,20 +1105,16 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         BlockPos from=blockPosition();
-        if(Math.abs(from.getY()-home.getY())>1){
+        if(from.getY()!=home.getY()){
             // An actual stair/ramp may be necessary when a worker is on a
             // DIFFERENT floor. Only use vanilla elevation navigation here.
             // Never instruct it to climb onto the shelf itself.
             BlockPos closest=null;
             double score=Double.POSITIVE_INFINITY;
-            for(int floorY=home.getY();floorY<=home.getY()+1;floorY++)
-                for(Direction dir:Direction.Plane.HORIZONTAL){
-                    BlockPos access=new BlockPos(home.getX(),floorY,home.getZ())
-                            .relative(dir);
-                    if(!StorageGolemReturnPath.walkable(level,access))continue;
-                    double candidate=access.distSqr(from);
-                    if(candidate<score){closest=access;score=candidate;}
-                }
+            BlockPos front=home.relative(StorageGolemShelfDoor.front(shelf));
+            if(StorageGolemReturnPath.walkable(level,front)){
+                closest=front;
+            }
             if(closest!=null&&tickCount%20==0)
                 getNavigation().moveTo(closest.getX()+.5,
                         closest.getY(),closest.getZ()+.5,1.10);
@@ -1023,7 +1123,7 @@ public final class StorageGolem extends PathfinderMob {
         // Plan around the shelf's X/Z on the GOLEM'S current floor, not the
         // shelf block Y. This fixes a deadlock when the shelf is at ground
         // block height and the Golem walks beside it one block higher.
-        BlockPos shelfPlane=new BlockPos(home.getX(),from.getY(),home.getZ());
+        BlockPos shelfPlane=home;
         if(!lastHomeGoal.equals(shelfPlane)){
             lastHomeGoal=shelfPlane.immutable();
             flatHomeRoute.clear();
@@ -1046,6 +1146,7 @@ public final class StorageGolem extends PathfinderMob {
         if(flatHomeRoute.isEmpty()&&tickCount>=nextHomeReplanTick){
             var occupied=occupiedAisle(level,shelfPlane);
             var planned=StorageGolemReturnPath.stepsHome(from,shelfPlane,
+                    StorageGolemShelfDoor.front(shelf),
                     p->StorageGolemReturnPath.walkable(level,p)
                             &&!occupied.contains(p)
                             &&(tickCount>=avoidHomeUntil
@@ -1100,10 +1201,68 @@ public final class StorageGolem extends PathfinderMob {
         return level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof Container c
                 ?c:null;
     }
+    /**
+     * One physical Golem carries one EMPTY pallet from an INPUT transfer
+     * station to a Stack of Pallets sitting inside a rack pallet. Items are
+     * transferred only at the actual source/target, never by remote teleport.
+     */
+    private void tickPalletStackJob(ServerLevel level){
+        BlockPos machine=stage==0?source:destination;
+        if(!level.hasChunkAt(machine))return;
+        BlockPos access=approach(level,machine);
+        if(!level.hasChunkAt(access))return;
+        if(!closeTo(access)){
+            walkTo(level,access,1.10);
+            return;
+        }
+        getNavigation().stop();
+        if(stage==0){
+            PtpBlockEntity ptp=level.getBlockEntity(source)
+                    instanceof PtpBlockEntity p?p:null;
+            if(ptp==null||!ptp.input()||!ptp.hasPallet()||ptp.sealed()
+                    ||!ptp.emptyCargo()){
+                routeIssue="WAITING FOR EMPTY INPUT PALLET";
+                return;
+            }
+            // Atomic ownership change: remove only after the worker actually
+            // arrives, and keep the resulting stack in the saved cargo field.
+            ItemStack taken=ptp.removePallet();
+            if(taken.isEmpty())return;
+            cargo=taken;
+            stage=1;
+            routeIssue="";
+            return;
+        }
+        if(cargo.isEmpty()){
+            stage=2;return;
+        }
+        RackBlockEntity rack=level.getBlockEntity(destination)
+                instanceof RackBlockEntity r?r:null;
+        if(rack==null||!rack.hasPallet()){
+            routeIssue="WAITING FOR PALLET STACK STORAGE";
+            return;
+        }
+        for(int i=0;i<rack.getContainerSize();i++){
+            ItemStack magazine=rack.getItem(i);
+            if(!StackOfPalletsItem.canStore(magazine,cargo))continue;
+            ItemStack updated=magazine.copy();
+            if(!StackOfPalletsItem.put(updated,cargo)
+                    ||!rack.canPlaceItem(i,updated))continue;
+            rack.setItem(i,updated);
+            if(!ItemStack.matches(rack.getItem(i),updated))continue;
+            cargo=ItemStack.EMPTY;
+            stage=2;
+            routeIssue="";
+            return;
+        }
+        routeIssue="WAITING FOR AVAILABLE STACK OF PALLETS";
+    }
+
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel level))return;
         if(tickCount%10==0)updateTaskLabel();
+        syncHeldVisual();
         // Movement controls expire after each mob AI tick. Drive the next
         // checked aisle cell EVERY server tick; previously the one-shot
         // commands were sent only once per ten ticks, causing stop/go
@@ -1116,6 +1275,7 @@ public final class StorageGolem extends PathfinderMob {
             returnToShelf(level);
             return;
         }
+        if(palletStackJob){tickPalletStackJob(level);return;}
         if(haulJob){
             if(playerHaul)tickPlayerHaul(level);
             else tickHaul(level);
@@ -1409,6 +1569,7 @@ public final class StorageGolem extends PathfinderMob {
         if(!cargo.isEmpty())out.store("cargo",ItemStack.CODEC,cargo);
         out.putInt("stage",stage);out.putString("item",itemId);out.putInt("wait",waitTicks);
         out.putBoolean("output_job",outputJob);
+        out.putBoolean("pallet_stack_job",palletStackJob);
         out.putInt("output_ticket",outputTicket);
         out.putInt("pickup_limit",pickupLimit);
         if(!requestedSample.isEmpty())out.store("requested_sample",ItemStack.CODEC,requestedSample);
@@ -1441,6 +1602,7 @@ public final class StorageGolem extends PathfinderMob {
         itemId=in.getStringOr("item","");
         waitTicks=Math.max(0,in.getIntOr("wait",0));
         outputJob=in.getBooleanOr("output_job",false);
+        palletStackJob=in.getBooleanOr("pallet_stack_job",false);
         outputTicket=Math.max(0,in.getIntOr("output_ticket",0));
         pickupLimit=Math.clamp(in.getIntOr("pickup_limit",64),1,27*64);
         requestedSample=in.read("requested_sample",ItemStack.CODEC).orElse(ItemStack.EMPTY);
@@ -1465,6 +1627,7 @@ public final class StorageGolem extends PathfinderMob {
         palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
         ContainerHelper.loadAllItems(in,palletContents);
         syncPalletVisual();
+        syncHeldVisual();
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel server &&!deathDropsReleased){

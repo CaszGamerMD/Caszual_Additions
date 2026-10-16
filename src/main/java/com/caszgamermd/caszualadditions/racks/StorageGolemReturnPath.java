@@ -133,6 +133,58 @@ public final class StorageGolemReturnPath {
         return false;
     }
 
+    /** Only the front-facing OPENING is a valid check-in. A path may
+     * curve around other shelves, but its final service tile must be in
+     * front of the shelf and connected to its unblocked door. */
+    public static boolean canDockFrontNearby(BlockPos feet,BlockPos shelf,
+            Direction facing,Predicate<BlockPos> passable){
+        if(feet.getY()!=shelf.getY()||!passable.test(feet))return false;
+        int x=feet.getX()-shelf.getX(),z=feet.getZ()-shelf.getZ();
+        if(x*x+z*z>16||x*facing.getStepX()+z*facing.getStepZ()<1)return false;
+        BlockPos door=shelf.relative(facing);
+        if(!passable.test(door))return false;
+        ArrayDeque<BlockPos> queue=new ArrayDeque<>();
+        Map<BlockPos,Integer> steps=new HashMap<>();
+        queue.add(door);steps.put(door,1);
+        while(!queue.isEmpty()){
+            BlockPos point=queue.removeFirst();
+            if(point.equals(feet))return true;
+            int depth=steps.get(point);
+            if(depth>=5)continue;
+            for(Direction dir:Direction.Plane.HORIZONTAL){
+                BlockPos next=point.relative(dir);
+                int dx=next.getX()-shelf.getX(),dz=next.getZ()-shelf.getZ();
+                if(dx*dx+dz*dz>16
+                        ||dx*facing.getStepX()+dz*facing.getStepZ()<1
+                        ||steps.containsKey(next)||!passable.test(next))continue;
+                steps.put(next,depth+1);
+                queue.addLast(next);
+            }
+        }
+        return false;
+    }
+
+    /** Only aim at the open-facing side: the roof, back and side panels
+     * are all solid shelf walls, never door targets. */
+    public static List<BlockPos> stepsHome(BlockPos from,BlockPos shelf,
+            Direction facing,Predicate<BlockPos> passable){
+        if(from.getY()!=shelf.getY())return null;
+        BlockPos door=shelf.relative(facing);
+        if(!passable.test(door))return null;
+        Set<BlockPos> goals=new HashSet<>();
+        for(int distance=1;distance<=3;distance++){
+            BlockPos middle=shelf.relative(facing,distance);
+            if(!passable.test(middle))break;
+            goals.add(middle);
+            for(Direction side:Direction.Plane.HORIZONTAL){
+                if(side.getAxis()==facing.getAxis())continue;
+                BlockPos lateral=middle.relative(side);
+                if(passable.test(lateral))goals.add(lateral);
+            }
+        }
+        return goals.isEmpty()?null:search(from,shelf,passable,goals,false);
+    }
+
     /** Returns turn/end waypoints with the start omitted. No diagonal
      * corner cutting, ascents or leaps are permitted. A null result means
      * there is no complete same-level route through currently loaded blocks. */

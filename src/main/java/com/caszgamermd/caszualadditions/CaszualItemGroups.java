@@ -55,6 +55,7 @@ public final class CaszualItemGroups {
                                     RackContent.STORAGE_SHELF_ITEM,RackContent.STORAGE_GOLEM_ITEM))
                                 add.accept(item);
                             add.accept(RackContent.PORTABLE_WRAPPER);
+                            add.accept(RackContent.STACK_OF_PALLETS);
                             add.accept(AntiWardenContent.WOOL_HELMET);
                             add.accept(AntiWardenContent.WOOL_BOOTS);
                             add.accept(AntiWardenContent.WARDEN_TRAP.asItem());

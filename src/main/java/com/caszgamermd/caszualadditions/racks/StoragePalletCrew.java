@@ -81,6 +81,17 @@ public final class StoragePalletCrew {
         return true;
     }
 
+    /** Shift-use the linked scanner in the air to send its current loaded
+     * crew and their wrapped cargo back to the assigned warehouse. */
+    public static String returnLoadedCrew(ServerLevel level,ServerPlayer player,
+            BlockPos computer){
+        MovingPallet rig=moving(level,player);
+        if(rig==null)return "No loaded pallet crew to send home.";
+        // The item link already authenticates the computer/dimension. The
+        // distant home chunks need not be loaded just to record the order.
+        return rig.returnToWarehouse(level,computer);
+    }
+
     public static String enlist(ServerLevel level,ServerPlayer player,BlockPos computer){
         if(moving(level,player)!=null||!team(level,player).isEmpty())
             return "Four Golems already assigned. Deliver the carried pallet, then dismiss at the warehouse.";
@@ -97,6 +108,11 @@ public final class StoragePalletCrew {
         List<StorageGolemShelfEntity> withdrawn=new ArrayList<>();
         for(int i=0;i<4;i++){
             StorageGolemShelfEntity shelf=available.get(i);
+            BlockPos shelfDoor=StorageGolemShelfDoor.exit(level,shelf);
+            if(shelfDoor==null){
+                rollback(spawned,withdrawn);
+                return "Shelf front opening is blocked; clear the aisle before dispatching the crew.";
+            }
             StorageGolem golem=RackContent.STORAGE_GOLEM_TYPE.create(level,EntitySpawnReason.EVENT);
             if(golem==null||!shelf.take()){
                 rollback(spawned,withdrawn);
@@ -104,8 +120,8 @@ public final class StoragePalletCrew {
             }
             withdrawn.add(shelf);
             golem.assignPlayerCrew(shelf.getBlockPos(),i,player.getUUID());
-            golem.setPos(shelf.getBlockPos().getX()+.5,
-                    shelf.getBlockPos().getY()+1,shelf.getBlockPos().getZ()+.5);
+            StorageGolemShelfDoor.emerge(golem,shelfDoor,
+                    StorageGolemShelfDoor.front(shelf));
             if(!level.addFreshEntity(golem)){
                 rollback(spawned,withdrawn);
                 return "Worker spawn failed; existing assignments rolled back.";

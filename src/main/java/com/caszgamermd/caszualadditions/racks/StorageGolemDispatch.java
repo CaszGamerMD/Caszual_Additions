@@ -78,6 +78,8 @@ public final class StorageGolemDispatch {
         // An order cannot bypass the packing machine: the complete shulker
         // is always transferred through a physically adjacent Hopper Adapter.
         if(station==null)return false;
+        BlockPos shelfDoor=StorageGolemShelfDoor.exit(level,shelf);
+        if(shelfDoor==null)return false; // Don't consume the worker token.
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
             if(!rack.hasPallet()||rack.isEmpty())continue;
             List<ItemStack> preview=new java.util.ArrayList<>(9);
@@ -104,8 +106,8 @@ public final class StorageGolemDispatch {
                     station.getBlockPos(),preview.getFirst(),ticket,amount);
             worker.assignStationOrder(station.getBlockPos(),
                     output.getBlockPos(),amount);
-            worker.setPos(shelf.getBlockPos().getX()+.5,
-                    shelf.getBlockPos().getY()+1,shelf.getBlockPos().getZ()+.5);
+            StorageGolemShelfDoor.emerge(worker,shelfDoor,
+                    StorageGolemShelfDoor.front(shelf));
             if(!shelf.take()){output.releaseOutput(ticket);return false;}
             if(!level.addFreshEntity(worker)){
                 shelf.add();output.releaseOutput(ticket);
@@ -160,11 +162,81 @@ public final class StorageGolemDispatch {
         List<StorageGolemShelfEntity> group=StorageGolemShelfEntity.linked(level,home);
         BlockPos computer=computer(level,group);
         if(computer==null)return null;
+        // Copper-Golem sorting preference:
+        // 1. a pallet ALREADY containing this exact item/component;
+        // 2. an explicit whitelist allowing the sample;
+        // 3. any other pallet allowing it (including empty/unfiltered and
+        //    blacklist pallets that do not exclude this item).
+        // Preserve source-order tie breaking to avoid job ping-pong.
+        RackBlockEntity best=null;
+        int bestPriority=Integer.MAX_VALUE;
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,computer)){
-            if(rack.hasPallet()&&canInsert(level,rack.getBlockPos(),sample))
-                return rack.getBlockPos();
+            if(!rack.hasPallet()||!canInsert(level,rack.getBlockPos(),sample))
+                continue;
+            int priority=2;
+            for(int slot=0;slot<rack.getContainerSize();slot++){
+                ItemStack existing=rack.getItem(slot);
+                if(!existing.isEmpty()
+                        &&ItemStack.isSameItemSameComponents(existing,sample)){
+                    priority=0;break;
+                }
+            }
+            if(priority!=0&&rack.filterUpgrade().is(RackContent.PALLET_FILTER)
+                    &&rack.filterMode()==0
+                    &&!rack.filterTarget().isBlank()&&rack.allows(sample))
+                priority=1;
+            if(priority<bestPriority){
+                bestPriority=priority;
+                best=rack;
+                if(priority==0)break;
+            }
         }
-        return null;
+        return best==null?null:best.getBlockPos();
+    }
+    /**
+     * Pallet magazine restocking is a real one-worker job, not a magic
+     * direct transfer. Source is an empty pallet on an INPUT PTP; destination
+     * is a Stack of Pallets inside a reachable warehouse rack.
+     */
+    private static boolean dispatchPalletMagazine(ServerLevel level,
+            StorageGolemShelfEntity shelf,BlockPos terminal){
+        RackBlockEntity target=null;
+        for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
+            if(!rack.hasPallet())continue;
+            for(int i=0;i<rack.getContainerSize();i++){
+                ItemStack stack=rack.getItem(i);
+                if(stack.is(RackContent.STACK_OF_PALLETS)
+                        &&StackOfPalletsItem.count(stack)<StackOfPalletsItem.CAPACITY){
+                    target=rack;break;
+                }
+            }
+            if(target!=null)break;
+        }
+        if(target==null)return false;
+        for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,terminal).points()){
+            if(!ptp.input()||!ptp.hasPallet()||ptp.sealed()
+                    ||!ptp.emptyCargo()||!StackOfPalletsItem.isPallet(ptp.palletStack()))
+                continue;
+            // A second shelf may be ticking: do not assign two Golems
+            // to the same empty pallet.
+            BlockPos source=ptp.getBlockPos();
+            if(!level.getEntitiesOfClass(StorageGolem.class,
+                    new net.minecraft.world.phys.AABB(source).inflate(96),
+                    worker->worker.isPalletStackJobFrom(source)).isEmpty())
+                continue;
+            BlockPos door=StorageGolemShelfDoor.exit(level,shelf);
+            if(door==null)return false;
+            StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(level,
+                    net.minecraft.world.entity.EntitySpawnReason.EVENT);
+            if(worker==null)return false;
+            worker.assignPalletStack(shelf.getBlockPos(),source,target.getBlockPos());
+            StorageGolemShelfDoor.emerge(worker,door,
+                    StorageGolemShelfDoor.front(shelf));
+            if(!shelf.take())return false;
+            if(!level.addFreshEntity(worker))shelf.add();
+            return true;
+        }
+        return false;
     }
     public static void tryDispatch(ServerLevel level,StorageGolemShelfEntity shelf){
         if(shelf.docked()==0)return;
@@ -176,6 +248,8 @@ public final class StorageGolemDispatch {
         // Real outbound orders take priority; input sorting continues whenever
         // there is no dispatchable output item or output space.
         if(dispatchOutput(level,shelf,group,terminal))return;
+        // Empty installed INPUT pallets feed Stack of Pallets magazines.
+        if(dispatchPalletMagazine(level,shelf,terminal))return;
         PtpBlockEntity ptp=inputPoint(level,group,terminal);
         if(ptp==null)return;
         ItemStack sample=ItemStack.EMPTY;
@@ -187,14 +261,16 @@ public final class StorageGolemDispatch {
             if(dest!=null){sample=test.copyWithCount(1);break;}
         }
         if(dest==null)return;
+        BlockPos shelfDoor=StorageGolemShelfDoor.exit(level,shelf);
+        if(shelfDoor==null)return; // Worker waits behind its closed door.
 
         // Only remove a worker token once an entity is ready to be spawned.
         StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(level,
                 net.minecraft.world.entity.EntitySpawnReason.EVENT);
         if(worker==null)return;
         worker.assign(shelf.getBlockPos(),ptp.getBlockPos(),dest,sample);
-        worker.setPos(shelf.getBlockPos().getX()+.5,
-                shelf.getBlockPos().getY()+1,shelf.getBlockPos().getZ()+.5);
+        StorageGolemShelfDoor.emerge(worker,shelfDoor,
+                StorageGolemShelfDoor.front(shelf));
         if(!shelf.take())return;
         if(!level.addFreshEntity(worker))shelf.add();
     }

@@ -78,7 +78,13 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
     }
     @Override protected InteractionResult useItemOn(ItemStack item, BlockState state,Level level,
             BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit) {
-        if(!ShulkerTankEntity.isEmptyShulker(item))return InteractionResult.PASS;
+        if(!ShulkerTankEntity.isEmptyShulker(item)){
+            if(level instanceof ServerLevel &&player instanceof ServerPlayer server){
+                ShulkerTankEntity station=controller(level,pos);
+                if(station!=null)server.openMenu(station);
+            }
+            return InteractionResult.SUCCESS;
+        }
         if(level.isClientSide())return InteractionResult.SUCCESS;
         ShulkerTankEntity tank=controller(level,pos);
         if(tank!=null && tank.add(item.copyWithCount(1))) {
@@ -98,10 +104,8 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
                     ItemStack result=tank.take();
                     if(!result.isEmpty())player.getInventory().placeItemBackInInventory(result);
                 }
-                player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "Shulker Station: "+tank.count()+"/64 empties, "
-                        +tank.activeCount()+"/3 packing, "+tank.finishedCount()
-                        +" completed waiting (sneak-click: take one empty)"));
+                if(player instanceof ServerPlayer serverPlayer)
+                    serverPlayer.openMenu(tank);
             }
         }
         return InteractionResult.SUCCESS;

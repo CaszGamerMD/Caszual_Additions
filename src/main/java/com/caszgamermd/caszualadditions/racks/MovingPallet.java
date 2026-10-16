@@ -62,6 +62,7 @@ public final class MovingPallet extends PathfinderMob {
     private int liftTicks;
     private int deliveryMode,releaseTicks;
     private BlockPos deliveryPosition=BlockPos.ZERO;
+    private BlockPos remoteWarehouse=BlockPos.ZERO;
     private Direction deliveryFacing=Direction.NORTH;
     private String deliveryFailure="";
     // A nearly two-block-wide mob can stop pathing before reaching a
@@ -119,7 +120,48 @@ public final class MovingPallet extends PathfinderMob {
     public float rackInsertY(){return entityData.get(RACK_INSERT_Y);}
     public float rackInsertZ(){return entityData.get(RACK_INSERT_Z);}
     public boolean isDelivering(){return deliveryMode!=0;}
+    public boolean returningToWarehouse(){return deliveryMode==3;}
+    public boolean remoteExchangeActive(){return deliveryMode==4;}
+    public boolean freshPalletOnly(){
+        if(pallet.isEmpty())return false;
+        for(ItemStack content:contents)if(!content.isEmpty())return false;
+        return true;
+    }
+    public boolean acceptRecoveredPallet(ItemStack wrapped,NonNullList<ItemStack> recovered){
+        if(!remoteExchangeActive()||!freshPalletOnly()||wrapped.isEmpty()||recovered.size()!=216)
+            return false;
+        pallet=wrapped.copyWithCount(1);
+        for(int i=0;i<216;i++)contents.set(i,recovered.get(i).copy());
+        syncDisplay();
+        deliveryMode=3;
+        deliveryPosition=remoteWarehouse;
+        deliveryFailure="RETURNING RECOVERED PALLET TO WAREHOUSE";
+        return true;
+    }
+    public boolean beginRemoteExchange(BlockPos target,BlockPos computer){
+        if(!freshPalletOnly()||deliveryMode!=0)return false;
+        remoteWarehouse=computer.immutable();
+        deliveryPosition=target.immutable();
+        deliveryMode=4;
+        deliveryFailure="DELIVERING FRESH PALLET FOR REMOTE SWAP";
+        return true;
+    }
     public String deliveryStatus(){return deliveryFailure;}
+    /** A durable order; the crew retains its cargo until it reaches home. */
+    public String returnToWarehouse(ServerLevel level,BlockPos computer){
+        if(!loaded())return "The crew is not carrying a pallet.";
+        if(level.hasChunkAt(computer)
+                &&!level.getBlockState(computer).is(RackContent.RACK_COMPUTER))
+            return "Linked Rack Computer no longer exists.";
+        deliveryPosition=computer.immutable();
+        deliveryMode=3;
+        releaseTicks=0;
+        entityData.set(RELEASE_TICKS,0);
+        entityData.set(RACK_INSERT_ACTIVE,false);
+        deliveryFailure="RETURNING PALLET TO WAREHOUSE";
+        getNavigation().stop();
+        return "Return assigned: INPUT PTP first, vacant PTP second, then free rack.";
+    }
     public boolean owns(UUID player){return owner.equals(player.toString());}
     public boolean loaded(){return !pallet.isEmpty();}
     public boolean fromWarehouse(List<StorageGolemShelfEntity> group){
@@ -323,7 +365,163 @@ public final class MovingPallet extends PathfinderMob {
         getMoveControl().setWantedPosition(next.getX()+.5,
                 next.getY(),next.getZ()+.5,1.0);
     }
+    /**
+     * Retain the same wrapped pallet and all 216 slots while the four-Golem
+     * carrier returns. Prefer a vacant INPUT PTP, then any vacant PTP,
+     * and only then a front-accessible rack slot. Unwrap AFTER successful
+     * PTP commit. A blocked destination is a persistent WAIT, not deletion.
+     */
+    /** Vanilla pathfinders cannot solve a 200+ block route in one pass.
+     * Walk it in short, loaded, pallet-width-safe stages without teleporting
+     * or climbing warehouse cargo. If a corridor is unloaded, WAIT.
+     */
+    private boolean navigateRemoteFloor(ServerLevel level,BlockPos target){
+        double dx=target.getX()+.5-getX(),dz=target.getZ()+.5-getZ();
+        double span=Math.hypot(dx,dz);
+        BlockPos waypoint=target;
+        if(span>12){
+            waypoint=null;
+            for(int len:new int[]{10,8,6,4}){
+                int x=(int)Math.floor(getX()+dx/span*len);
+                int z=(int)Math.floor(getZ()+dz/span*len);
+                BlockPos forward=new BlockPos(x,blockPosition().getY(),z);
+                if(safePlatformFloor(level,forward)){
+                    waypoint=forward;break;
+                }
+            }
+            if(waypoint==null){
+                deliveryFailure="WAITING: CORRIDOR UNLOADED OR BLOCKED";
+                getNavigation().stop();
+                return false;
+            }
+        }
+        if(tickCount%12==0)getNavigation().moveTo(waypoint.getX()+.5,
+                waypoint.getY(),waypoint.getZ()+.5,1.0);
+        return true;
+    }
+
+    private void tickRemoteExchange(ServerLevel level){
+        BlockPos target=deliveryPosition;
+        var old=StorageGroundPalletTransfer.wrappedController(level,target);
+        if(old==null){
+            deliveryFailure="WAITING: REMOTE WRAPPED PALLET MISSING OR UNLOADED";
+            getNavigation().stop();return;
+        }
+        BlockPos best=null;
+        double bestDistance=Double.POSITIVE_INFINITY;
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            for(int steps=3;steps<=4;steps++){
+                BlockPos trial=target.relative(side,steps);
+                if(!safePlatformFloor(level,trial))continue;
+                double d=trial.distSqr(blockPosition());
+                if(d<bestDistance){bestDistance=d;best=trial;}
+            }
+        }
+        if(best==null){
+            deliveryFailure="WAITING: NO CLEAR REMOTE LOADING AISLE";
+            getNavigation().stop();return;
+        }
+        double dx=best.getX()+.5-getX(),dz=best.getZ()+.5-getZ();
+        if(dx*dx+dz*dz>2.25||Math.abs(best.getY()-getY())>.8){
+            deliveryFailure="CARRYING FRESH PALLET TO REMOTE PICKUP";
+            navigateRemoteFloor(level,best);
+            return;
+        }
+        getNavigation().stop();
+        if(!StorageGroundPalletTransfer.exchange(level,target,this)){
+            deliveryFailure="WAITING: REMOTE EXCHANGE COULD NOT COMPLETE";
+        }
+    }
+    private void tickWarehouseReturn(ServerLevel level){
+        BlockPos computer=deliveryPosition;
+        if(!level.hasChunkAt(computer)){
+            deliveryFailure="WAITING FOR WAREHOUSE CHUNK";
+            getNavigation().stop();
+            return;
+        }
+        if(!level.getBlockState(computer).is(RackContent.RACK_COMPUTER)){
+            deliveryFailure="WAITING: HOME COMPUTER MISSING";
+            getNavigation().stop();
+            return;
+        }
+        var warehouse=WarehouseNetwork.fromComputer(level,computer);
+        PtpBlockEntity point=null;
+        for(PtpBlockEntity candidate:warehouse.points()){
+            if(!candidate.canInstallPallet())continue;
+            if(point==null||candidate.input()&&!point.input())point=candidate;
+        }
+        RackBlockEntity rack=null;
+        if(point==null){
+            for(RackBlockEntity candidate:warehouse.racks())
+                if(!candidate.hasPallet()&&candidate.isEmpty()
+                        &&RackPickupPlan.find(level,candidate)!=null){
+                    rack=candidate;break;
+                }
+        }
+        if(point==null&&rack==null){
+            deliveryFailure="WAITING: NO VACANT INPUT PTP OR RACK";
+            getNavigation().stop();return;
+        }
+        BlockPos target=point!=null?point.getBlockPos():rack.getBlockPos();
+        BlockPos service=null;
+        if(rack!=null){
+            RackPickupPlan plan=RackPickupPlan.find(level,rack);
+            if(plan!=null)service=plan.rigCenter();
+        }else{
+            for(Direction face:Direction.Plane.HORIZONTAL){
+                BlockPos candidate=target.relative(face,3);
+                if(safePlatformFloor(level,candidate)){
+                    service=candidate;break;
+                }
+            }
+        }
+        if(service==null){
+            deliveryFailure="WAITING: UNLOADING AISLE BLOCKED";
+            getNavigation().stop();return;
+        }
+        double dx=service.getX()+.5-getX(),dz=service.getZ()+.5-getZ();
+        if(dx*dx+dz*dz>2.25||Math.abs(service.getY()-getY())>.8){
+            deliveryFailure="RETURNING TO "+(point!=null?"INPUT PTP":"RACK");
+            navigateRemoteFloor(level,service);
+            return;
+        }
+        getNavigation().stop();
+        boolean done=false;
+        if(point!=null){
+            ItemStack unwrapped=com.caszgamermd.caszualadditions.pallet.GlassPalletWrap
+                    .withWrap(pallet.copy(),false);
+            if(point.installPallet(unwrapped)){
+                boolean valid=allFit(point);
+                if(valid){
+                    for(int i=0;i<216;i++)
+                        if(!contents.get(i).isEmpty())
+                            point.setItem(i,contents.get(i).copy());
+                    valid=verify(point);
+                }
+                if(valid){
+                    point.setInput(true);
+                    clearCargo();
+                    done=true;
+                }else{
+                    point.clearContent();
+                    point.dropPallet();
+                }
+            }
+        }else if(rack!=null){
+            done=deliverToRack(rack);
+        }
+        if(!done){
+            deliveryFailure="WAITING: RETURN DESTINATION NOT READY";
+            return;
+        }
+        deliveryMode=0;
+        deliveryFailure="";
+        restoreWorkers(level);
+    }
+
     private void tickDelivery(ServerLevel level){
+        if(deliveryMode==3){tickWarehouseReturn(level);return;}
+        if(deliveryMode==4){tickRemoteExchange(level);return;}
         if(!level.hasChunkAt(deliveryPosition))return;
         BlockPos target=deliveryPosition;
         double targetX,targetZ;
@@ -650,8 +848,10 @@ public final class MovingPallet extends PathfinderMob {
 
     private void updateCrewLabel(){
         String text=delivered?"4 GOLEMS | UNLOADING"
-                :isDelivering()?(deliveryMode==1
-                    ?"4 GOLEMS | DELIVERING TO RACK"
+                :isDelivering()?(deliveryMode==4
+                    ?"4 GOLEMS | REMOTE PALLET SWAP"
+                    :deliveryMode==3?"4 GOLEMS | RETURNING TO WAREHOUSE"
+                    :deliveryMode==1?"4 GOLEMS | DELIVERING TO RACK"
                     :"4 GOLEMS | PLACING PALLET")
                 :liftTicks<12?"4 GOLEMS | LIFTING"
                 :"4 GOLEMS | FOLLOWING PLAYER";
@@ -713,6 +913,7 @@ public final class MovingPallet extends PathfinderMob {
         out.putInt("delivery_mode",deliveryMode);
         out.putInt("release_ticks",releaseTicks);
         out.store("delivery_position",BlockPos.CODEC,deliveryPosition);
+        out.store("remote_warehouse",BlockPos.CODEC,remoteWarehouse);
         out.putString("delivery_facing",deliveryFacing.getName());
         out.putString("delivery_failure",deliveryFailure);
         for(int i=0;i<4;i++)out.store("shelf_"+i,BlockPos.CODEC,shelves[i]);
@@ -729,9 +930,10 @@ public final class MovingPallet extends PathfinderMob {
         }
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
-        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,2);
+        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,4);
         releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,20);
         deliveryPosition=in.read("delivery_position",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        remoteWarehouse=in.read("remote_warehouse",BlockPos.CODEC).orElse(BlockPos.ZERO);
         try{deliveryFacing=Direction.valueOf(
                 in.getStringOr("delivery_facing","north")
                     .toUpperCase(java.util.Locale.ROOT));}
