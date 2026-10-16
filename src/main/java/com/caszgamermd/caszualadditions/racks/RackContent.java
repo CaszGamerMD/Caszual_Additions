@@ -3,6 +3,9 @@ package com.caszgamermd.caszualadditions.racks;
 import com.caszgamermd.caszualadditions.CaszualAdditions;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.core.Registry;
+import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -37,6 +40,7 @@ public final class RackContent {
     public static Item RACK_TAG, AISLE_TAG, CONNECTOR, PALLET_FILTER, WAREHOUSE_TEST_KIT;
     public static BlockEntityType<RackBlockEntity> RACK_ENTITY;
     public static BlockEntityType<ShulkerTankEntity> SHULKER_TANK_ENTITY;
+    public static MenuType<ShulkerStationMenu> SHULKER_STATION_MENU;
 
     private RackContent() {}
     private static Item item(String name) {
@@ -124,6 +128,11 @@ public final class RackContent {
         SHULKER_TANK_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
                 CaszualAdditions.id("shulker_tank"),
                 FabricBlockEntityTypeBuilder.create(ShulkerTankEntity::new,SHULKER_TANK).build());
+        SHULKER_STATION_MENU=Registry.register(BuiltInRegistries.MENU,
+                CaszualAdditions.id("shulker_station"),
+                new ExtendedMenuType<>(
+                        (id,inventory,pos)->new ShulkerStationMenu(id,inventory,pos),
+                        BlockPos.STREAM_CODEC));
 
         // All warehouse storage and orders use physical shelves and PTPs.
         Identifier ptpId=CaszualAdditions.id("pallet_transfer_block");
