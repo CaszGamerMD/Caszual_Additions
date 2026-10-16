@@ -43,6 +43,16 @@ public final class StorageGolemRenderer
                 &&label.startsWith("PALLET 1/4")
                 &&!golem.displayPallet().isEmpty();
         state.visibleCargo=state.showSharedPallet?golem.visibleCargoCount():0;
+        state.heldSlots=state.carryingPallet?0:golem.displayedLoadSlots();
+        for(int i=0;i<state.heldSlots&&i<9;i++){
+            ItemStack sample=golem.displayedLoad(i);
+            if(sample.isEmpty())continue;
+            Block material=PalletContent.CARDBOARD_RENDER_PROXY;
+            if(sample.getItem() instanceof BlockItem blockItem
+                    &&blockItem.getBlock().defaultBlockState().isSolid())
+                material=blockItem.getBlock();
+            blocks.update(state.held[i],material.defaultBlockState(),DISPLAY);
+        }
         if(state.showSharedPallet){
             Block material=Blocks.OAK_PLANKS;
             ItemStack carried=golem.displayPallet();
@@ -74,6 +84,19 @@ public final class StorageGolemRenderer
     @Override public void submit(StorageGolemRenderState state,PoseStack pose,
             SubmitNodeCollector collector,CameraRenderState camera){
         super.submit(state,pose,collector,camera);
+        if(state.heldSlots>0&&!state.carryingPallet){
+            // Nine real cargo slots become a visible tray of matching
+            // block textures or cardboard cartons for non-solid items.
+            // This is a rendering preview ONLY; no stacks are spawned.
+            pose.pushPose();
+            for(int i=0;i<state.heldSlots&&i<9;i++){
+                int col=i%3, row=i/3;
+                piece(state.held[i],state,pose,collector,
+                        -.37f+col*.255f,.90f+row*.23f,-.68f,
+                        .23f,.21f,.23f);
+            }
+            pose.popPose();
+        }
         if(!state.showSharedPallet)return;
         pose.pushPose();
         // Crew index 0 is NW of a 1.8 x 1.8 formation. Four corners
