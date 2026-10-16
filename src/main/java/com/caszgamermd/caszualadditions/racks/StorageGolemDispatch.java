@@ -78,6 +78,8 @@ public final class StorageGolemDispatch {
         // An order cannot bypass the packing machine: the complete shulker
         // is always transferred through a physically adjacent Hopper Adapter.
         if(station==null)return false;
+        BlockPos shelfDoor=StorageGolemShelfDoor.exit(level,shelf);
+        if(shelfDoor==null)return false; // Don't consume the worker token.
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
             if(!rack.hasPallet()||rack.isEmpty())continue;
             List<ItemStack> preview=new java.util.ArrayList<>(9);
@@ -104,8 +106,8 @@ public final class StorageGolemDispatch {
                     station.getBlockPos(),preview.getFirst(),ticket,amount);
             worker.assignStationOrder(station.getBlockPos(),
                     output.getBlockPos(),amount);
-            worker.setPos(shelf.getBlockPos().getX()+.5,
-                    shelf.getBlockPos().getY()+1,shelf.getBlockPos().getZ()+.5);
+            StorageGolemShelfDoor.emerge(worker,shelfDoor,
+                    StorageGolemShelfDoor.front(shelf));
             if(!shelf.take()){output.releaseOutput(ticket);return false;}
             if(!level.addFreshEntity(worker)){
                 shelf.add();output.releaseOutput(ticket);
@@ -187,14 +189,16 @@ public final class StorageGolemDispatch {
             if(dest!=null){sample=test.copyWithCount(1);break;}
         }
         if(dest==null)return;
+        BlockPos shelfDoor=StorageGolemShelfDoor.exit(level,shelf);
+        if(shelfDoor==null)return; // Worker waits behind its closed door.
 
         // Only remove a worker token once an entity is ready to be spawned.
         StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(level,
                 net.minecraft.world.entity.EntitySpawnReason.EVENT);
         if(worker==null)return;
         worker.assign(shelf.getBlockPos(),ptp.getBlockPos(),dest,sample);
-        worker.setPos(shelf.getBlockPos().getX()+.5,
-                shelf.getBlockPos().getY()+1,shelf.getBlockPos().getZ()+.5);
+        StorageGolemShelfDoor.emerge(worker,shelfDoor,
+                StorageGolemShelfDoor.front(shelf));
         if(!shelf.take())return;
         if(!level.addFreshEntity(worker))shelf.add();
     }
