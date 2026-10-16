@@ -98,10 +98,8 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
                     ItemStack result=tank.take();
                     if(!result.isEmpty())player.getInventory().placeItemBackInInventory(result);
                 }
-                player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "Shulker Station: "+tank.count()+"/64 empties, "
-                        +tank.activeCount()+"/3 packing, "+tank.finishedCount()
-                        +" completed waiting (sneak-click: take one empty)"));
+                if(player instanceof ServerPlayer serverPlayer)
+                    serverPlayer.openMenu(tank);
             }
         }
         return InteractionResult.SUCCESS;
