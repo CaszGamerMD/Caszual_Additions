@@ -162,11 +162,36 @@ public final class StorageGolemDispatch {
         List<StorageGolemShelfEntity> group=StorageGolemShelfEntity.linked(level,home);
         BlockPos computer=computer(level,group);
         if(computer==null)return null;
+        // Copper-Golem sorting preference:
+        // 1. a pallet ALREADY containing this exact item/component;
+        // 2. an explicit whitelist allowing the sample;
+        // 3. any other pallet allowing it (including empty/unfiltered and
+        //    blacklist pallets that do not exclude this item).
+        // Preserve source-order tie breaking to avoid job ping-pong.
+        RackBlockEntity best=null;
+        int bestPriority=Integer.MAX_VALUE;
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,computer)){
-            if(rack.hasPallet()&&canInsert(level,rack.getBlockPos(),sample))
-                return rack.getBlockPos();
+            if(!rack.hasPallet()||!canInsert(level,rack.getBlockPos(),sample))
+                continue;
+            int priority=2;
+            for(int slot=0;slot<rack.getContainerSize();slot++){
+                ItemStack existing=rack.getItem(slot);
+                if(!existing.isEmpty()
+                        &&ItemStack.isSameItemSameComponents(existing,sample)){
+                    priority=0;break;
+                }
+            }
+            if(priority!=0&&rack.filterUpgrade().is(RackContent.PALLET_FILTER)
+                    &&rack.filterMode()==0
+                    &&!rack.filterTarget().isBlank()&&rack.allows(sample))
+                priority=1;
+            if(priority<bestPriority){
+                bestPriority=priority;
+                best=rack;
+                if(priority==0)break;
+            }
         }
-        return null;
+        return best==null?null:best.getBlockPos();
     }
     public static void tryDispatch(ServerLevel level,StorageGolemShelfEntity shelf){
         if(shelf.docked()==0)return;
