@@ -108,12 +108,24 @@ public final class RemotePalletDispatch {
         carrier.setPos(staging.getX()+.5,staging.getY(),staging.getZ()+.5);
         if(sourceRack!=null){
             sourceRack.setItem(sourceSlot,updated);
-            if(!ItemStack.matches(sourceRack.getItem(sourceSlot),updated))
-                return "Fresh pallet magazine rejected withdrawal.";
+            if(!ItemStack.matches(sourceRack.getItem(sourceSlot),updated)){
+                // No crew has been consumed yet. Restore the entire magazine
+                // before reporting a rejected withdrawal to the scanner.
+                sourceRack.setItem(sourceSlot,previous);
+                return "WAITING: pallet magazine could not withdraw a fresh pallet.";
+            }
         }else{
             ItemStack removed=sourcePtp.removePallet();
-            if(removed.isEmpty()||!ItemStack.matches(removed,fresh))
-                return "Fresh INPUT PTP pallet is no longer available.";
+            if(!ItemStack.matches(removed,fresh)){
+                // The PTP may have returned a different pallet than the one
+                // inspected. Never abandon that real item on an early return.
+                if(!removed.isEmpty()&&!sourcePtp.installPallet(removed)){
+                    BlockPos drop=sourcePtp.getBlockPos();
+                    net.minecraft.world.Containers.dropItemStack(level,
+                            drop.getX()+.5,drop.getY()+.5,drop.getZ()+.5,removed);
+                }
+                return "WAITING: INPUT PTP pallet changed during withdrawal.";
+            }
         }
         int consumed=0;
         for(StorageGolemShelfEntity shelf:shelves){
