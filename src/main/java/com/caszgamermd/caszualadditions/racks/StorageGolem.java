@@ -166,6 +166,7 @@ public final class StorageGolem extends PathfinderMob {
     // An order runner has nine REAL cargo slots. Its shulker is packed at
     // the station, not invisibly inside the worker.
     private boolean stationOrder;
+    private boolean palletStackJob;
     private BlockPos orderPoint=BlockPos.ZERO;
     private NonNullList<ItemStack> orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
     // Four workers are independently saved and physically navigate both
@@ -217,6 +218,14 @@ public final class StorageGolem extends PathfinderMob {
         this.requestedSample=sample.copyWithCount(1);
         this.packedJob=false;this.magazine=BlockPos.ZERO;
         this.emptyBox=ItemStack.EMPTY;this.packedItemCount=0;
+    }
+    public void assignPalletStack(BlockPos shelf,BlockPos sourcePtp,BlockPos rack){
+        assign(shelf,sourcePtp,rack,new ItemStack(RackContent.STACK_OF_PALLETS));
+        palletStackJob=true;
+        itemId="caszual_additions:stack_of_pallets";
+    }
+    public boolean isPalletStackJobFrom(BlockPos ptp){
+        return palletStackJob&&stage!=2&&source.equals(ptp);
     }
     public void assignOutput(BlockPos home,BlockPos source,BlockPos destination,
             ItemStack sample,int ticket,int quantity){
@@ -332,6 +341,7 @@ public final class StorageGolem extends PathfinderMob {
     public BlockPos workTarget(){return destination;}
     public String assignedOwner(){return playerHaul?haulOwner:"";}
     public String currentWork(){
+        if(palletStackJob)return stage==0?"COLLECTING EMPTY PALLET":stage==1?"STACKING EMPTY PALLET":"RETURNING TO SHELF";
         if(playerHaul)return switch(stage){
             case 0->"LIFTING WRAPPED PALLET";
             case 1->"FOLLOWING PLAYER / "+(holdsPallet()?"CARRYING PALLET":"ESCORT");
@@ -1191,6 +1201,63 @@ public final class StorageGolem extends PathfinderMob {
         return level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof Container c
                 ?c:null;
     }
+    /**
+     * One physical Golem carries one EMPTY pallet from an INPUT transfer
+     * station to a Stack of Pallets sitting inside a rack pallet. Items are
+     * transferred only at the actual source/target, never by remote teleport.
+     */
+    private void tickPalletStackJob(ServerLevel level){
+        BlockPos machine=stage==0?source:destination;
+        if(!level.hasChunkAt(machine))return;
+        BlockPos access=approach(level,machine);
+        if(!level.hasChunkAt(access))return;
+        if(!closeTo(access)){
+            walkTo(level,access,1.10);
+            return;
+        }
+        getNavigation().stop();
+        if(stage==0){
+            PtpBlockEntity ptp=level.getBlockEntity(source)
+                    instanceof PtpBlockEntity p?p:null;
+            if(ptp==null||!ptp.input()||!ptp.hasPallet()||ptp.sealed()
+                    ||!ptp.emptyCargo()){
+                routeIssue="WAITING FOR EMPTY INPUT PALLET";
+                return;
+            }
+            // Atomic ownership change: remove only after the worker actually
+            // arrives, and keep the resulting stack in the saved cargo field.
+            ItemStack taken=ptp.removePallet();
+            if(taken.isEmpty())return;
+            cargo=taken;
+            stage=1;
+            routeIssue="";
+            return;
+        }
+        if(cargo.isEmpty()){
+            stage=2;return;
+        }
+        RackBlockEntity rack=level.getBlockEntity(destination)
+                instanceof RackBlockEntity r?r:null;
+        if(rack==null||!rack.hasPallet()){
+            routeIssue="WAITING FOR PALLET STACK STORAGE";
+            return;
+        }
+        for(int i=0;i<rack.getContainerSize();i++){
+            ItemStack magazine=rack.getItem(i);
+            if(!StackOfPalletsItem.canStore(magazine,cargo))continue;
+            ItemStack updated=magazine.copy();
+            if(!StackOfPalletsItem.put(updated,cargo)
+                    ||!rack.canPlaceItem(i,updated))continue;
+            rack.setItem(i,updated);
+            if(!ItemStack.matches(rack.getItem(i),updated))continue;
+            cargo=ItemStack.EMPTY;
+            stage=2;
+            routeIssue="";
+            return;
+        }
+        routeIssue="WAITING FOR AVAILABLE STACK OF PALLETS";
+    }
+
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel level))return;
@@ -1208,6 +1275,7 @@ public final class StorageGolem extends PathfinderMob {
             returnToShelf(level);
             return;
         }
+        if(palletStackJob){tickPalletStackJob(level);return;}
         if(haulJob){
             if(playerHaul)tickPlayerHaul(level);
             else tickHaul(level);
@@ -1501,6 +1569,7 @@ public final class StorageGolem extends PathfinderMob {
         if(!cargo.isEmpty())out.store("cargo",ItemStack.CODEC,cargo);
         out.putInt("stage",stage);out.putString("item",itemId);out.putInt("wait",waitTicks);
         out.putBoolean("output_job",outputJob);
+        out.putBoolean("pallet_stack_job",palletStackJob);
         out.putInt("output_ticket",outputTicket);
         out.putInt("pickup_limit",pickupLimit);
         if(!requestedSample.isEmpty())out.store("requested_sample",ItemStack.CODEC,requestedSample);
@@ -1533,6 +1602,7 @@ public final class StorageGolem extends PathfinderMob {
         itemId=in.getStringOr("item","");
         waitTicks=Math.max(0,in.getIntOr("wait",0));
         outputJob=in.getBooleanOr("output_job",false);
+        palletStackJob=in.getBooleanOr("pallet_stack_job",false);
         outputTicket=Math.max(0,in.getIntOr("output_ticket",0));
         pickupLimit=Math.clamp(in.getIntOr("pickup_limit",64),1,27*64);
         requestedSample=in.read("requested_sample",ItemStack.CODEC).orElse(ItemStack.EMPTY);
