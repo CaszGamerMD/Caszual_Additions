@@ -138,9 +138,15 @@ public final class StorageScannerItem extends Item {
         if(level instanceof ServerLevel server&&player instanceof ServerPlayer user){
             ItemStack stack=player.getItemInHand(hand);
             BlockPos home=linkedComputer(stack,server);
-            user.sendSystemMessage(Component.literal(
-                    (home==null?"Scanner not linked.":"Warehouse at "+home.toShortString()+". ")
-                            +StoragePalletCrew.status(server,user)));
+            if(home!=null&&player.isShiftKeyDown()){
+                user.sendSystemMessage(Component.literal(
+                        StoragePalletCrew.returnLoadedCrew(server,user,home)));
+            }else{
+                user.sendSystemMessage(Component.literal(
+                        (home==null?"Scanner not linked.":"Warehouse at "+home.toShortString()+". ")
+                                +StoragePalletCrew.status(server,user)
+                                +(home==null?"":" Sneak-use in air to return your loaded crew.")));
+            }
         }
         return InteractionResult.SUCCESS;
     }
