@@ -14,8 +14,8 @@ public final class ShulkerStationScreen extends AbstractContainerScreen<ShulkerS
         titleLabelX=13;titleLabelY=12;
         inventoryLabelX=8;inventoryLabelY=190;
     }
-    @Override protected void renderBg(GuiGraphicsExtractor graphics,float partial,
-            int mouseX,int mouseY){
+    @Override public void extractBackground(GuiGraphicsExtractor graphics,int mouseX,
+            int mouseY,float partial){
         int x=leftPos,y=topPos;
         graphics.fill(x,y,x+WIDTH,y+HEIGHT,0xff17242b);
         graphics.fill(x+3,y+3,x+WIDTH-3,y+HEIGHT-3,0xff38515a);
@@ -40,7 +40,7 @@ public final class ShulkerStationScreen extends AbstractContainerScreen<ShulkerS
             }
         }
     }
-    @Override protected void renderLabels(GuiGraphicsExtractor graphics,
+    @Override protected void extractLabels(GuiGraphicsExtractor graphics,
             int mouseX,int mouseY){
         graphics.text(font,Component.literal("SHULKER STATION"),
                 13,14,0xffb9efe0,false);
