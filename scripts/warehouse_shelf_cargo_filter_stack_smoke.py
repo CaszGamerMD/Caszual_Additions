@@ -31,7 +31,7 @@ assert "priority=0;break;" in dispatch
 assert "priority=1;" in dispatch
 assert "rack.allows(sample)" in dispatch
 assert "FILTER_SLOT=PAGE_SIZE" in get(j,"pallet/PalletMenu.java")
-assert "new Slot(moduleSlot,0,344,76)" in get(j,"pallet/PalletMenu.java")
+assert "new Slot(moduleSlot,0,348,76)" in get(j,"pallet/PalletMenu.java")
 assert "boolean filterOpen;" in screen
 assert "editGhost(row*4+col)" in screen
 assert "if(rules.length>16)" in filterNet
