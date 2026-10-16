@@ -46,10 +46,65 @@ public final class StorageGolem extends PathfinderMob {
             SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Integer> DISPLAY_CARGO=
             SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.INT);
+    // These are three SAMPLES of actual in-transit items. The complete
+    // nine-slot order inventory stays server-owned and persisted in NBT.
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_A=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_B=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_C=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Integer> DISPLAY_HELD_SLOTS=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.INT);
     @Override protected void defineSynchedData(SynchedEntityData.Builder builder){
         super.defineSynchedData(builder);
         builder.define(DISPLAY_PALLET,ItemStack.EMPTY);
         builder.define(DISPLAY_CARGO,0);
+        builder.define(DISPLAY_HELD_A,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_B,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_C,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_SLOTS,0);
+    }
+    public int displayedLoadSlots(){return entityData.get(DISPLAY_HELD_SLOTS);}
+    public ItemStack displayedLoad(int sample){
+        return switch(sample){
+            case 0->entityData.get(DISPLAY_HELD_A);
+            case 1->entityData.get(DISPLAY_HELD_B);
+            case 2->entityData.get(DISPLAY_HELD_C);
+            default->ItemStack.EMPTY;
+        };
+    }
+    private void setHeldVisual(EntityDataAccessor<ItemStack> accessor,
+            ItemStack stack){
+        ItemStack sample=stack.isEmpty()?ItemStack.EMPTY:stack.copyWithCount(1);
+        if(!ItemStack.matches(entityData.get(accessor),sample))
+            entityData.set(accessor,sample);
+    }
+    private void syncHeldVisual(){
+        if(!carryingPallet.isEmpty()){
+            clearHeldVisual();return;
+        }
+        java.util.ArrayList<ItemStack> real=new java.util.ArrayList<>(9);
+        if(stationOrder){
+            for(ItemStack stack:orderCargo)
+                if(!stack.isEmpty())real.add(stack);
+        }else{
+            if(!cargo.isEmpty())real.add(cargo);
+            if(!emptyBox.isEmpty())real.add(emptyBox);
+        }
+        int slots=real.size();
+        if(entityData.get(DISPLAY_HELD_SLOTS)!=slots)
+            entityData.set(DISPLAY_HELD_SLOTS,slots);
+        setHeldVisual(DISPLAY_HELD_A,slots>0?real.get(0):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_B,slots>1?real.get(1):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_C,slots>2?real.get(2):ItemStack.EMPTY);
+    }
+    private void clearHeldVisual(){
+        if(entityData.get(DISPLAY_HELD_SLOTS)!=0)
+            entityData.set(DISPLAY_HELD_SLOTS,0);
+        setHeldVisual(DISPLAY_HELD_A,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_B,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_C,ItemStack.EMPTY);
     }
     public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
     public int visibleCargoCount(){return entityData.get(DISPLAY_CARGO);}
@@ -1104,6 +1159,7 @@ public final class StorageGolem extends PathfinderMob {
         super.tick();
         if(!(level() instanceof ServerLevel level))return;
         if(tickCount%10==0)updateTaskLabel();
+        syncHeldVisual();
         // Movement controls expire after each mob AI tick. Drive the next
         // checked aisle cell EVERY server tick; previously the one-shot
         // commands were sent only once per ten ticks, causing stop/go
@@ -1465,6 +1521,7 @@ public final class StorageGolem extends PathfinderMob {
         palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
         ContainerHelper.loadAllItems(in,palletContents);
         syncPalletVisual();
+        syncHeldVisual();
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel server &&!deathDropsReleased){
