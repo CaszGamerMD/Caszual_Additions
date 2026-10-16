@@ -66,6 +66,8 @@ jobs:
         run: python3 scripts/warehouse_order_draft_delivery_smoke.py
       - name: Verify shelf doors, cargo visuals, clipboard filter and pallet magazine (blocking)
         run: python3 scripts/warehouse_shelf_cargo_filter_stack_smoke.py
+      - name: Verify queued remote recovery, complete cargo handoff and Shulker Station UI
+        run: python3 scripts/warehouse_remote_exchange_shulker_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()
