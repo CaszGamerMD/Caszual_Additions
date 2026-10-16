@@ -101,7 +101,7 @@ public final class PalletMenu extends AbstractContainerMenu {
             @Override public boolean stillValid(Player player){return backing.stillValid(player);}
             @Override public void clearContent(){setItem(0,ItemStack.EMPTY);}
         };
-        addSlot(new Slot(moduleSlot,0,24,204) {
+        addSlot(new Slot(moduleSlot,0,344,76) {
             @Override public boolean mayPlace(ItemStack stack) {
                 return stack.is(RackContent.PALLET_FILTER) && filter!=null;
             }
