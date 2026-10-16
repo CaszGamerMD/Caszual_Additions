@@ -6,6 +6,7 @@ import com.caszgamermd.caszualadditions.pallet.PalletCargoCollisionBlock;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -34,8 +35,10 @@ public final class StackOfPalletsItem extends Item {
         var contents=magazine.getOrDefault(DataComponents.CONTAINER,
                 ItemContainerContents.EMPTY);
         List<ItemStack> stored=new ArrayList<>(CAPACITY);
-        contents.nonEmptyStream().limit(CAPACITY).forEach(
-                s->stored.add(s.copyWithCount(1)));
+        NonNullList<ItemStack> physical=NonNullList.withSize(CAPACITY,ItemStack.EMPTY);
+        contents.copyInto(physical);
+        for(ItemStack item:physical)
+            if(!item.isEmpty())stored.add(item.copyWithCount(1));
         return stored;
     }
     public static boolean isPallet(ItemStack item){
