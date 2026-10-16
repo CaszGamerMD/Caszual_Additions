@@ -64,6 +64,16 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
         rightLeg.xRot=Mth.cos(phase+Mth.PI)*1.1f*amount;
         leftArm.xRot=rightLeg.xRot*.6f;
         rightArm.xRot=leftLeg.xRot*.6f;
+        if(state.heldSlots>0&&!state.carryingPallet){
+            // Load kept up on both forearms, tucked against the chest.
+            leftArm.xRot=-1.05f;
+            rightArm.xRot=-1.05f;
+            leftArm.zRot=-.14f;
+            rightArm.zRot=.14f;
+        }else{
+            leftArm.zRot=0;
+            rightArm.zRot=0;
+        }
         if(state.carryingPallet){
             // Both hands remain elevated during the loaded walk.
             // The actual pallet remains escrowed on the source PTP.
