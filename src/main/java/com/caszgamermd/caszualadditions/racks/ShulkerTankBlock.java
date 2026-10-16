@@ -78,7 +78,13 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
     }
     @Override protected InteractionResult useItemOn(ItemStack item, BlockState state,Level level,
             BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit) {
-        if(!ShulkerTankEntity.isEmptyShulker(item))return InteractionResult.PASS;
+        if(!ShulkerTankEntity.isEmptyShulker(item)){
+            if(level instanceof ServerLevel &&player instanceof ServerPlayer server){
+                ShulkerTankEntity station=controller(level,pos);
+                if(station!=null)server.openMenu(station);
+            }
+            return InteractionResult.SUCCESS;
+        }
         if(level.isClientSide())return InteractionResult.SUCCESS;
         ShulkerTankEntity tank=controller(level,pos);
         if(tank!=null && tank.add(item.copyWithCount(1))) {
