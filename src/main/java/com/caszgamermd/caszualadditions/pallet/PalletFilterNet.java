@@ -16,7 +16,7 @@ public final class PalletFilterNet {
                 new Type<>(CaszualAdditions.id("pallet_filter_target"));
         public static final StreamCodec<RegistryFriendlyByteBuf,SetTarget> CODEC=
                 StreamCodec.composite(ByteBufCodecs.INT,SetTarget::containerId,
-                        ByteBufCodecs.stringUtf8(100),SetTarget::value,SetTarget::new);
+                        ByteBufCodecs.stringUtf8(512),SetTarget::value,SetTarget::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
 
@@ -34,13 +34,13 @@ public final class PalletFilterNet {
     }
 
     public static boolean validTarget(int scope,String target){
-        if(target.length()>100)return false;
+        if(target.length()>512)return false;
         if(target.isBlank())return true;
         if(scope==3)return false; // EXACT requires a live sample, not typed components
-        // Up to eight independent OR targets in item/namespace/tag scope.
+        // Up to sixteen independent OR targets in item/namespace/tag scope.
         // No recursive expressions or unchecked user-supplied predicates.
         String[] rules=target.split(",",-1);
-        if(rules.length>8)return false;
+        if(rules.length>16)return false;
         for(String part:rules){
             String entry=part.strip();
             if(entry.isEmpty())return false;
