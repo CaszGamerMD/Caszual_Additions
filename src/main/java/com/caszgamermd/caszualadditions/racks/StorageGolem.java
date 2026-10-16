@@ -54,6 +54,18 @@ public final class StorageGolem extends PathfinderMob {
             SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_C=
             SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_D=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_E=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_F=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_G=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_H=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_I=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Integer> DISPLAY_HELD_SLOTS=
             SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.INT);
     @Override protected void defineSynchedData(SynchedEntityData.Builder builder){
@@ -63,6 +75,12 @@ public final class StorageGolem extends PathfinderMob {
         builder.define(DISPLAY_HELD_A,ItemStack.EMPTY);
         builder.define(DISPLAY_HELD_B,ItemStack.EMPTY);
         builder.define(DISPLAY_HELD_C,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_D,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_E,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_F,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_G,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_H,ItemStack.EMPTY);
+        builder.define(DISPLAY_HELD_I,ItemStack.EMPTY);
         builder.define(DISPLAY_HELD_SLOTS,0);
     }
     public int displayedLoadSlots(){return entityData.get(DISPLAY_HELD_SLOTS);}
@@ -71,6 +89,12 @@ public final class StorageGolem extends PathfinderMob {
             case 0->entityData.get(DISPLAY_HELD_A);
             case 1->entityData.get(DISPLAY_HELD_B);
             case 2->entityData.get(DISPLAY_HELD_C);
+            case 3->entityData.get(DISPLAY_HELD_D);
+            case 4->entityData.get(DISPLAY_HELD_E);
+            case 5->entityData.get(DISPLAY_HELD_F);
+            case 6->entityData.get(DISPLAY_HELD_G);
+            case 7->entityData.get(DISPLAY_HELD_H);
+            case 8->entityData.get(DISPLAY_HELD_I);
             default->ItemStack.EMPTY;
         };
     }
@@ -98,6 +122,12 @@ public final class StorageGolem extends PathfinderMob {
         setHeldVisual(DISPLAY_HELD_A,slots>0?real.get(0):ItemStack.EMPTY);
         setHeldVisual(DISPLAY_HELD_B,slots>1?real.get(1):ItemStack.EMPTY);
         setHeldVisual(DISPLAY_HELD_C,slots>2?real.get(2):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_D,slots>3?real.get(3):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_E,slots>4?real.get(4):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_F,slots>5?real.get(5):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_G,slots>6?real.get(6):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_H,slots>7?real.get(7):ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_I,slots>8?real.get(8):ItemStack.EMPTY);
     }
     private void clearHeldVisual(){
         if(entityData.get(DISPLAY_HELD_SLOTS)!=0)
@@ -105,6 +135,12 @@ public final class StorageGolem extends PathfinderMob {
         setHeldVisual(DISPLAY_HELD_A,ItemStack.EMPTY);
         setHeldVisual(DISPLAY_HELD_B,ItemStack.EMPTY);
         setHeldVisual(DISPLAY_HELD_C,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_D,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_E,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_F,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_G,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_H,ItemStack.EMPTY);
+        setHeldVisual(DISPLAY_HELD_I,ItemStack.EMPTY);
     }
     public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
     public int visibleCargoCount(){return entityData.get(DISPLAY_CARGO);}
