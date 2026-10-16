@@ -282,7 +282,7 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
         // The slot is still a real upgrade slot; shift-click/right-click
         // can remove its module as usual.
         if(x>=343&&x<363&&y>=75&&y<96&&menu.hasFilter()
-                &&menu.getCarried().isEmpty()&&event.button()==0&&!hasShiftDown()){
+                &&menu.getCarried().isEmpty()&&event.button()==0){
             filterOpen=!filterOpen;
             ghostPreview=menu.filterTarget();
             targetField.setValue(ghostPreview);
