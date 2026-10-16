@@ -131,7 +131,7 @@ public final class RackContent {
         SHULKER_STATION_MENU=Registry.register(BuiltInRegistries.MENU,
                 CaszualAdditions.id("shulker_station"),
                 new ExtendedMenuType<>(
-                        (id,inventory,pos)->new ShulkerStationMenu(id,inventory,pos),
+                        (menuId,inventory,pos)->new ShulkerStationMenu(menuId,inventory,pos),
                         BlockPos.STREAM_CODEC));
 
         // All warehouse storage and orders use physical shelves and PTPs.
