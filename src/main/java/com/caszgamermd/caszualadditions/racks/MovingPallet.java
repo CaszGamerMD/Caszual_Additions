@@ -62,6 +62,7 @@ public final class MovingPallet extends PathfinderMob {
     private int liftTicks;
     private int deliveryMode,releaseTicks;
     private BlockPos deliveryPosition=BlockPos.ZERO;
+    private BlockPos remoteWarehouse=BlockPos.ZERO;
     private Direction deliveryFacing=Direction.NORTH;
     private String deliveryFailure="";
     // A nearly two-block-wide mob can stop pathing before reaching a
@@ -120,6 +121,31 @@ public final class MovingPallet extends PathfinderMob {
     public float rackInsertZ(){return entityData.get(RACK_INSERT_Z);}
     public boolean isDelivering(){return deliveryMode!=0;}
     public boolean returningToWarehouse(){return deliveryMode==3;}
+    public boolean remoteExchangeActive(){return deliveryMode==4;}
+    public boolean freshPalletOnly(){
+        if(pallet.isEmpty())return false;
+        for(ItemStack content:contents)if(!content.isEmpty())return false;
+        return true;
+    }
+    public boolean acceptRecoveredPallet(ItemStack wrapped,NonNullList<ItemStack> recovered){
+        if(!remoteExchangeActive()||!freshPalletOnly()||wrapped.isEmpty()||recovered.size()!=216)
+            return false;
+        pallet=wrapped.copyWithCount(1);
+        for(int i=0;i<216;i++)contents.set(i,recovered.get(i).copy());
+        syncDisplay();
+        deliveryMode=3;
+        deliveryPosition=remoteWarehouse;
+        deliveryFailure="RETURNING RECOVERED PALLET TO WAREHOUSE";
+        return true;
+    }
+    public boolean beginRemoteExchange(BlockPos target,BlockPos computer){
+        if(!freshPalletOnly()||deliveryMode!=0)return false;
+        remoteWarehouse=computer.immutable();
+        deliveryPosition=target.immutable();
+        deliveryMode=4;
+        deliveryFailure="DELIVERING FRESH PALLET FOR REMOTE SWAP";
+        return true;
+    }
     public String deliveryStatus(){return deliveryFailure;}
     /** A durable order; the crew retains its cargo until it reaches home. */
     public String returnToWarehouse(ServerLevel level,BlockPos computer){
@@ -345,6 +371,39 @@ public final class MovingPallet extends PathfinderMob {
      * and only then a front-accessible rack slot. Unwrap AFTER successful
      * PTP commit. A blocked destination is a persistent WAIT, not deletion.
      */
+    private void tickRemoteExchange(ServerLevel level){
+        BlockPos target=deliveryPosition;
+        var old=StorageGroundPalletTransfer.wrappedController(level,target);
+        if(old==null){
+            deliveryFailure="WAITING: REMOTE WRAPPED PALLET MISSING OR UNLOADED";
+            getNavigation().stop();return;
+        }
+        BlockPos best=null;
+        double bestDistance=Double.POSITIVE_INFINITY;
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            for(int steps=3;steps<=4;steps++){
+                BlockPos trial=target.relative(side,steps);
+                if(!safePlatformFloor(level,trial))continue;
+                double d=trial.distSqr(blockPosition());
+                if(d<bestDistance){bestDistance=d;best=trial;}
+            }
+        }
+        if(best==null){
+            deliveryFailure="WAITING: NO CLEAR REMOTE LOADING AISLE";
+            getNavigation().stop();return;
+        }
+        double dx=best.getX()+.5-getX(),dz=best.getZ()+.5-getZ();
+        if(dx*dx+dz*dz>2.25||Math.abs(best.getY()-getY())>.8){
+            deliveryFailure="CARRYING FRESH PALLET TO REMOTE PICKUP";
+            if(tickCount%12==0)getNavigation().moveTo(
+                    best.getX()+.5,best.getY(),best.getZ()+.5,1.0);
+            return;
+        }
+        getNavigation().stop();
+        if(!StorageGroundPalletTransfer.exchange(level,target,this)){
+            deliveryFailure="WAITING: REMOTE EXCHANGE COULD NOT COMPLETE";
+        }
+    }
     private void tickWarehouseReturn(ServerLevel level){
         BlockPos computer=deliveryPosition;
         if(!level.hasChunkAt(computer)){
@@ -435,6 +494,7 @@ public final class MovingPallet extends PathfinderMob {
 
     private void tickDelivery(ServerLevel level){
         if(deliveryMode==3){tickWarehouseReturn(level);return;}
+        if(deliveryMode==4){tickRemoteExchange(level);return;}
         if(!level.hasChunkAt(deliveryPosition))return;
         BlockPos target=deliveryPosition;
         double targetX,targetZ;
@@ -761,8 +821,9 @@ public final class MovingPallet extends PathfinderMob {
 
     private void updateCrewLabel(){
         String text=delivered?"4 GOLEMS | UNLOADING"
-                :isDelivering()?(deliveryMode==3
-                    ?"4 GOLEMS | RETURNING TO WAREHOUSE"
+                :isDelivering()?(deliveryMode==4
+                    ?"4 GOLEMS | REMOTE PALLET SWAP"
+                    :deliveryMode==3?"4 GOLEMS | RETURNING TO WAREHOUSE"
                     :deliveryMode==1?"4 GOLEMS | DELIVERING TO RACK"
                     :"4 GOLEMS | PLACING PALLET")
                 :liftTicks<12?"4 GOLEMS | LIFTING"
@@ -825,6 +886,7 @@ public final class MovingPallet extends PathfinderMob {
         out.putInt("delivery_mode",deliveryMode);
         out.putInt("release_ticks",releaseTicks);
         out.store("delivery_position",BlockPos.CODEC,deliveryPosition);
+        out.store("remote_warehouse",BlockPos.CODEC,remoteWarehouse);
         out.putString("delivery_facing",deliveryFacing.getName());
         out.putString("delivery_failure",deliveryFailure);
         for(int i=0;i<4;i++)out.store("shelf_"+i,BlockPos.CODEC,shelves[i]);
@@ -841,9 +903,10 @@ public final class MovingPallet extends PathfinderMob {
         }
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
-        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,3);
+        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,4);
         releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,20);
         deliveryPosition=in.read("delivery_position",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        remoteWarehouse=in.read("remote_warehouse",BlockPos.CODEC).orElse(BlockPos.ZERO);
         try{deliveryFacing=Direction.valueOf(
                 in.getStringOr("delivery_facing","north")
                     .toUpperCase(java.util.Locale.ROOT));}
