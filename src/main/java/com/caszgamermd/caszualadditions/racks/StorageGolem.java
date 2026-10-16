@@ -931,10 +931,13 @@ public final class StorageGolem extends PathfinderMob {
     }
     private boolean atShelfEntrance(ServerLevel level,BlockPos shelfPos){
         BlockPos feet=blockPosition();
-        if(Math.abs(feet.getY()-shelfPos.getY())>1)return false;
-        BlockPos shelfPlane=new BlockPos(shelfPos.getX(),feet.getY(),
-                shelfPos.getZ());
-        return StorageGolemReturnPath.canDockNearby(feet,shelfPlane,
+        if(feet.getY()!=shelfPos.getY())return false;
+        if(!level.hasChunkAt(shelfPos)
+                ||!level.getBlockState(shelfPos).is(RackContent.STORAGE_SHELF))
+            return false;
+        Direction facing=level.getBlockState(shelfPos)
+                .getValue(StorageGolemShelfBlock.FACING);
+        return StorageGolemReturnPath.canDockFrontNearby(feet,shelfPos,facing,
                 p->StorageGolemReturnPath.walkable(level,p));
     }
     /**
@@ -1001,20 +1004,16 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         BlockPos from=blockPosition();
-        if(Math.abs(from.getY()-home.getY())>1){
+        if(from.getY()!=home.getY()){
             // An actual stair/ramp may be necessary when a worker is on a
             // DIFFERENT floor. Only use vanilla elevation navigation here.
             // Never instruct it to climb onto the shelf itself.
             BlockPos closest=null;
             double score=Double.POSITIVE_INFINITY;
-            for(int floorY=home.getY();floorY<=home.getY()+1;floorY++)
-                for(Direction dir:Direction.Plane.HORIZONTAL){
-                    BlockPos access=new BlockPos(home.getX(),floorY,home.getZ())
-                            .relative(dir);
-                    if(!StorageGolemReturnPath.walkable(level,access))continue;
-                    double candidate=access.distSqr(from);
-                    if(candidate<score){closest=access;score=candidate;}
-                }
+            BlockPos front=home.relative(StorageGolemShelfDoor.front(shelf));
+            if(StorageGolemReturnPath.walkable(level,front)){
+                closest=front;
+            }
             if(closest!=null&&tickCount%20==0)
                 getNavigation().moveTo(closest.getX()+.5,
                         closest.getY(),closest.getZ()+.5,1.10);
@@ -1023,7 +1022,7 @@ public final class StorageGolem extends PathfinderMob {
         // Plan around the shelf's X/Z on the GOLEM'S current floor, not the
         // shelf block Y. This fixes a deadlock when the shelf is at ground
         // block height and the Golem walks beside it one block higher.
-        BlockPos shelfPlane=new BlockPos(home.getX(),from.getY(),home.getZ());
+        BlockPos shelfPlane=home;
         if(!lastHomeGoal.equals(shelfPlane)){
             lastHomeGoal=shelfPlane.immutable();
             flatHomeRoute.clear();
@@ -1046,6 +1045,7 @@ public final class StorageGolem extends PathfinderMob {
         if(flatHomeRoute.isEmpty()&&tickCount>=nextHomeReplanTick){
             var occupied=occupiedAisle(level,shelfPlane);
             var planned=StorageGolemReturnPath.stepsHome(from,shelfPlane,
+                    StorageGolemShelfDoor.front(shelf),
                     p->StorageGolemReturnPath.walkable(level,p)
                             &&!occupied.contains(p)
                             &&(tickCount>=avoidHomeUntil
