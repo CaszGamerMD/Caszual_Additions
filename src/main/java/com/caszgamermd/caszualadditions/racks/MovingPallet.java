@@ -371,6 +371,35 @@ public final class MovingPallet extends PathfinderMob {
      * and only then a front-accessible rack slot. Unwrap AFTER successful
      * PTP commit. A blocked destination is a persistent WAIT, not deletion.
      */
+    /** Vanilla pathfinders cannot solve a 200+ block route in one pass.
+     * Walk it in short, loaded, pallet-width-safe stages without teleporting
+     * or climbing warehouse cargo. If a corridor is unloaded, WAIT.
+     */
+    private boolean navigateRemoteFloor(ServerLevel level,BlockPos target){
+        double dx=target.getX()+.5-getX(),dz=target.getZ()+.5-getZ();
+        double span=Math.hypot(dx,dz);
+        BlockPos waypoint=target;
+        if(span>12){
+            waypoint=null;
+            for(int len:new int[]{10,8,6,4}){
+                int x=(int)Math.floor(getX()+dx/span*len);
+                int z=(int)Math.floor(getZ()+dz/span*len);
+                BlockPos forward=new BlockPos(x,blockPosition().getY(),z);
+                if(safePlatformFloor(level,forward)){
+                    waypoint=forward;break;
+                }
+            }
+            if(waypoint==null){
+                deliveryFailure="WAITING: CORRIDOR UNLOADED OR BLOCKED";
+                getNavigation().stop();
+                return false;
+            }
+        }
+        if(tickCount%12==0)getNavigation().moveTo(waypoint.getX()+.5,
+                waypoint.getY(),waypoint.getZ()+.5,1.0);
+        return true;
+    }
+
     private void tickRemoteExchange(ServerLevel level){
         BlockPos target=deliveryPosition;
         var old=StorageGroundPalletTransfer.wrappedController(level,target);
@@ -395,8 +424,7 @@ public final class MovingPallet extends PathfinderMob {
         double dx=best.getX()+.5-getX(),dz=best.getZ()+.5-getZ();
         if(dx*dx+dz*dz>2.25||Math.abs(best.getY()-getY())>.8){
             deliveryFailure="CARRYING FRESH PALLET TO REMOTE PICKUP";
-            if(tickCount%12==0)getNavigation().moveTo(
-                    best.getX()+.5,best.getY(),best.getZ()+.5,1.0);
+            navigateRemoteFloor(level,best);
             return;
         }
         getNavigation().stop();
@@ -454,8 +482,7 @@ public final class MovingPallet extends PathfinderMob {
         double dx=service.getX()+.5-getX(),dz=service.getZ()+.5-getZ();
         if(dx*dx+dz*dz>2.25||Math.abs(service.getY()-getY())>.8){
             deliveryFailure="RETURNING TO "+(point!=null?"INPUT PTP":"RACK");
-            if(tickCount%12==0)getNavigation().moveTo(
-                    service.getX()+.5,service.getY(),service.getZ()+.5,1.0);
+            navigateRemoteFloor(level,service);
             return;
         }
         getNavigation().stop();
