@@ -193,8 +193,8 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
         graphics.fill(x + 116, y + 164, x + IMAGE_W - 116, y + 184, HEADER);
 
         // Clipboard upgrade lives in a SIDE SLOT of the pallet UI.
-        graphics.fill(x+339,y+71,x+366,y+99,0xff716153);
-        drawSlots(graphics,x+344,y+76,1,1);
+        graphics.fill(x+346,y+71,x+366,y+99,0xff716153);
+        drawSlots(graphics,x+348,y+76,1,1);
         if(filterOpen){
             // The sixteen ghost item samples are a FILTER VIEW, not physical
             // inventory: clicks never consume/store real item stacks.
@@ -281,7 +281,7 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
         int x=(int)event.x()-leftPos,y=(int)event.y()-topPos;
         // The slot is still a real upgrade slot; shift-click/right-click
         // can remove its module as usual.
-        if(x>=343&&x<363&&y>=75&&y<96&&menu.hasFilter()
+        if(x>=347&&x<365&&y>=75&&y<96&&menu.hasFilter()
                 &&menu.getCarried().isEmpty()&&event.button()==0){
             filterOpen=!filterOpen;
             ghostPreview=menu.filterTarget();
@@ -301,7 +301,10 @@ public final class PalletScreen extends AbstractContainerScreen<PalletMenu> {
             }
             // Let only the nested filter widgets process clicks. The
             // 108 underlying pallet slots may not be clicked through.
-            if(x<129 || y<78 || y>=210)return true;
+            boolean inWidget=x>=135&&x<343
+                    &&(y>=82&&y<102||y>=133&&y<153
+                        ||y>=163&&y<182||y>=189&&y<208);
+            if(!inWidget)return true; // never click storage through overlay
         }
         return super.mouseClicked(event,doubleClick);
     }
