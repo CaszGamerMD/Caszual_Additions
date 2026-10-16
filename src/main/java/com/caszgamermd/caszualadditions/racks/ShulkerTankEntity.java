@@ -1,6 +1,12 @@
 package com.caszgamermd.caszualadditions.racks;
 
 import net.minecraft.core.BlockPos;
+import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import org.jspecify.annotations.Nullable;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import java.util.ArrayList;
@@ -18,7 +24,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
-public final class ShulkerTankEntity extends BlockEntity implements Container {
+public final class ShulkerTankEntity extends BlockEntity implements Container, ExtendedMenuProvider<BlockPos> {
     public static final int CAPACITY=64;
     private NonNullList<ItemStack> boxes=NonNullList.withSize(CAPACITY,ItemStack.EMPTY);
     // Existing 64-slot empty-box magazine is preserved in saved worlds.
@@ -30,6 +36,16 @@ public final class ShulkerTankEntity extends BlockEntity implements Container {
     private int bufferedItems;
     public ShulkerTankEntity(BlockPos pos,BlockState state){super(RackContent.SHULKER_TANK_ENTITY,pos,state);}
 
+    @Override public Component getDisplayName(){
+        return Component.literal("Shulker Station");
+    }
+    @Override public @Nullable AbstractContainerMenu createMenu(int id,
+            Inventory inventory,Player player){
+        return new ShulkerStationMenu(id,inventory,this);
+    }
+    @Override public BlockPos getScreenOpeningData(ServerPlayer player){
+        return worldPosition;
+    }
     public int activeCount(){
         int count=0;
         for(ItemStack box:working)if(!box.isEmpty())count++;
