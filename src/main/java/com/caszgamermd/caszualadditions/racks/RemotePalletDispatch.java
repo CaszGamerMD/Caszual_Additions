@@ -49,7 +49,7 @@ public final class RemotePalletDispatch {
         for(StorageGolemShelfEntity shelf:shelves){
             BlockPos door=StorageGolemShelfDoor.exit(level,shelf);
             if(door==null)continue;
-            BlockPos candidate=door.relative(StorageGolemShelfDoor.front(shelf),2);
+            BlockPos candidate=door.relative(StorageGolemShelfDoor.front(shelf),1);
             boolean clear=true;
             for(int x=-1;x<=1;x++)for(int z=-1;z<=1;z++)
                 if(!StorageGolemReturnPath.walkable(level,candidate.offset(x,0,z)))
