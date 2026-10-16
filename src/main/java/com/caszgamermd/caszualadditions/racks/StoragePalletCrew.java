@@ -81,6 +81,17 @@ public final class StoragePalletCrew {
         return true;
     }
 
+    /** Shift-use the linked scanner in the air to send its current loaded
+     * crew and their wrapped cargo back to the assigned warehouse. */
+    public static String returnLoadedCrew(ServerLevel level,ServerPlayer player,
+            BlockPos computer){
+        MovingPallet rig=moving(level,player);
+        if(rig==null)return "No loaded pallet crew to send home.";
+        if(!rig.fromWarehouse(WarehouseConnections.shelvesForComputer(level,computer)))
+            return "This crew belongs to a different warehouse.";
+        return rig.returnToWarehouse(level,computer);
+    }
+
     public static String enlist(ServerLevel level,ServerPlayer player,BlockPos computer){
         if(moving(level,player)!=null||!team(level,player).isEmpty())
             return "Four Golems already assigned. Deliver the carried pallet, then dismiss at the warehouse.";
