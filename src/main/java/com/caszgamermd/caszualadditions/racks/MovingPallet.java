@@ -119,7 +119,23 @@ public final class MovingPallet extends PathfinderMob {
     public float rackInsertY(){return entityData.get(RACK_INSERT_Y);}
     public float rackInsertZ(){return entityData.get(RACK_INSERT_Z);}
     public boolean isDelivering(){return deliveryMode!=0;}
+    public boolean returningToWarehouse(){return deliveryMode==3;}
     public String deliveryStatus(){return deliveryFailure;}
+    /** A durable order; the crew retains its cargo until it reaches home. */
+    public String returnToWarehouse(ServerLevel level,BlockPos computer){
+        if(!loaded())return "The crew is not carrying a pallet.";
+        if(level.hasChunkAt(computer)
+                &&!level.getBlockState(computer).is(RackContent.RACK_COMPUTER))
+            return "Linked Rack Computer no longer exists.";
+        deliveryPosition=computer.immutable();
+        deliveryMode=3;
+        releaseTicks=0;
+        entityData.set(RELEASE_TICKS,0);
+        entityData.set(RACK_INSERT_ACTIVE,false);
+        deliveryFailure="RETURNING PALLET TO WAREHOUSE";
+        getNavigation().stop();
+        return "Return assigned: INPUT PTP first, vacant PTP second, then free rack.";
+    }
     public boolean owns(UUID player){return owner.equals(player.toString());}
     public boolean loaded(){return !pallet.isEmpty();}
     public boolean fromWarehouse(List<StorageGolemShelfEntity> group){
@@ -324,6 +340,7 @@ public final class MovingPallet extends PathfinderMob {
                 next.getY(),next.getZ()+.5,1.0);
     }
     private void tickDelivery(ServerLevel level){
+        if(deliveryMode==3){tickWarehouseReturn(level);return;}
         if(!level.hasChunkAt(deliveryPosition))return;
         BlockPos target=deliveryPosition;
         double targetX,targetZ;
@@ -650,8 +667,9 @@ public final class MovingPallet extends PathfinderMob {
 
     private void updateCrewLabel(){
         String text=delivered?"4 GOLEMS | UNLOADING"
-                :isDelivering()?(deliveryMode==1
-                    ?"4 GOLEMS | DELIVERING TO RACK"
+                :isDelivering()?(deliveryMode==3
+                    ?"4 GOLEMS | RETURNING TO WAREHOUSE"
+                    :deliveryMode==1?"4 GOLEMS | DELIVERING TO RACK"
                     :"4 GOLEMS | PLACING PALLET")
                 :liftTicks<12?"4 GOLEMS | LIFTING"
                 :"4 GOLEMS | FOLLOWING PLAYER";
@@ -729,7 +747,7 @@ public final class MovingPallet extends PathfinderMob {
         }
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
-        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,2);
+        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,3);
         releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,20);
         deliveryPosition=in.read("delivery_position",BlockPos.CODEC).orElse(BlockPos.ZERO);
         try{deliveryFacing=Direction.valueOf(
