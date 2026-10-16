@@ -34,7 +34,7 @@ public final class StackOfPalletsItem extends Item {
         var contents=magazine.getOrDefault(DataComponents.CONTAINER,
                 ItemContainerContents.EMPTY);
         List<ItemStack> stored=new ArrayList<>(CAPACITY);
-        contents.stream().filter(s->!s.isEmpty()).limit(CAPACITY).forEach(
+        contents.nonEmptyStream().limit(CAPACITY).forEach(
                 s->stored.add(s.copyWithCount(1)));
         return stored;
     }
