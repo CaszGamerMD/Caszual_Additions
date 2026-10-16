@@ -339,6 +339,100 @@ public final class MovingPallet extends PathfinderMob {
         getMoveControl().setWantedPosition(next.getX()+.5,
                 next.getY(),next.getZ()+.5,1.0);
     }
+    /**
+     * Retain the same wrapped pallet and all 216 slots while the four-Golem
+     * carrier returns. Prefer a vacant INPUT PTP, then any vacant PTP,
+     * and only then a front-accessible rack slot. Unwrap AFTER successful
+     * PTP commit. A blocked destination is a persistent WAIT, not deletion.
+     */
+    private void tickWarehouseReturn(ServerLevel level){
+        BlockPos computer=deliveryPosition;
+        if(!level.hasChunkAt(computer)){
+            deliveryFailure="WAITING FOR WAREHOUSE CHUNK";
+            getNavigation().stop();
+            return;
+        }
+        if(!level.getBlockState(computer).is(RackContent.RACK_COMPUTER)){
+            deliveryFailure="WAITING: HOME COMPUTER MISSING";
+            getNavigation().stop();
+            return;
+        }
+        var warehouse=WarehouseNetwork.fromComputer(level,computer);
+        PtpBlockEntity point=null;
+        for(PtpBlockEntity candidate:warehouse.points()){
+            if(candidate.hasPallet()||candidate.hauling())continue;
+            if(point==null||candidate.input()&&!point.input())point=candidate;
+        }
+        RackBlockEntity rack=null;
+        if(point==null){
+            for(RackBlockEntity candidate:warehouse.racks())
+                if(!candidate.hasPallet()&&candidate.isEmpty()
+                        &&RackPickupPlan.find(level,candidate)!=null){
+                    rack=candidate;break;
+                }
+        }
+        if(point==null&&rack==null){
+            deliveryFailure="WAITING: NO VACANT INPUT PTP OR RACK";
+            getNavigation().stop();return;
+        }
+        BlockPos target=point!=null?point.getBlockPos():rack.getBlockPos();
+        BlockPos service=null;
+        if(rack!=null){
+            RackPickupPlan plan=RackPickupPlan.find(level,rack);
+            if(plan!=null)service=plan.rigCenter();
+        }else{
+            for(Direction face:Direction.Plane.HORIZONTAL){
+                BlockPos candidate=target.relative(face,3);
+                if(safePlatformFloor(level,candidate)){
+                    service=candidate;break;
+                }
+            }
+        }
+        if(service==null){
+            deliveryFailure="WAITING: UNLOADING AISLE BLOCKED";
+            getNavigation().stop();return;
+        }
+        double dx=service.getX()+.5-getX(),dz=service.getZ()+.5-getZ();
+        if(dx*dx+dz*dz>2.25||Math.abs(service.getY()-getY())>.8){
+            deliveryFailure="RETURNING TO "+(point!=null?"INPUT PTP":"RACK");
+            if(tickCount%12==0)getNavigation().moveTo(
+                    service.getX()+.5,service.getY(),service.getZ()+.5,1.0);
+            return;
+        }
+        getNavigation().stop();
+        boolean done=false;
+        if(point!=null){
+            ItemStack unwrapped=com.caszgamermd.caszualadditions.pallet.GlassPalletWrap
+                    .withWrap(pallet.copy(),false);
+            if(point.installPallet(unwrapped)){
+                boolean valid=allFit(point);
+                if(valid){
+                    for(int i=0;i<216;i++)
+                        if(!contents.get(i).isEmpty())
+                            point.setItem(i,contents.get(i).copy());
+                    valid=verify(point);
+                }
+                if(valid){
+                    point.setInput(true);
+                    clearCargo();
+                    done=true;
+                }else{
+                    point.clearContent();
+                    point.dropPallet();
+                }
+            }
+        }else if(rack!=null){
+            done=deliverToRack(rack);
+        }
+        if(!done){
+            deliveryFailure="WAITING: RETURN DESTINATION NOT READY";
+            return;
+        }
+        deliveryMode=0;
+        deliveryFailure="";
+        restoreWorkers(level);
+    }
+
     private void tickDelivery(ServerLevel level){
         if(deliveryMode==3){tickWarehouseReturn(level);return;}
         if(!level.hasChunkAt(deliveryPosition))return;
