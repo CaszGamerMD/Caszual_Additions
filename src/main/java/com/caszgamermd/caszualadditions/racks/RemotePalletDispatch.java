@@ -62,6 +62,29 @@ public final class RemotePalletDispatch {
             if(clear){staging=candidate;break;}
         }
         if(staging==null)return "WAITING: four-Golem departure aisle blocked.";
+        // Reserve four DIFFERENT spawn tiles BEFORE withdrawing a replacement
+        // pallet from stock. Fallback-spawning all three at staging created
+        // overlapping hitboxes and rotating/dancing golems on ice AND stone.
+        BlockPos courierStart=null;
+        List<BlockPos> workerStarts=null;
+        for(int step=2;step<=5&&courierStart==null;step++)
+            for(net.minecraft.core.Direction dir:net.minecraft.core.Direction.Plane.HORIZONTAL){
+                BlockPos trial=staging.relative(dir,step);
+                if(!RemotePalletCourierRoute.clear(level,trial))continue;
+                List<BlockPos> available=new ArrayList<>(9);
+                for(int dz=-1;dz<=1;dz++)for(int dx=-1;dx<=1;dx++){
+                    BlockPos start=staging.offset(dx,0,dz);
+                    if(!StorageGolemReturnPath.walkable(level,start)
+                            ||start.distSqr(trial)<4)continue;
+                    available.add(start);
+                }
+                if(available.size()<3)continue;
+                courierStart=trial;
+                workerStarts=available.subList(0,3);
+                break;
+            }
+        if(courierStart==null)
+            return "WAITING: four non-overlapping dry departure tiles required.";
         // ALL three outbound workers must travel as separate actual mobs.
         // Validate an external 3-wide rally beside the destination BEFORE
         // taking any stock or shelf token from the linked warehouse.
@@ -143,23 +166,8 @@ public final class RemotePalletDispatch {
             return "Unable to prepare remote replacement crew.";
         carrier.setPos(staging.getX()+.5,staging.getY(),staging.getZ()+.5);
         StorageGolem courier=identities.get(3);
-        // The courier pushes a real TWO-WIDE deck. Never spawn it in
-        // a one-cell aisle, then discover every route is blocked and leave
-        // it standing still forever. Its start needs a checked 2x2 clear
-        // passage AND must not overlap the three other actual workers.
-        BlockPos courierStart=null;
-        for(int step=2;step<=4&&courierStart==null;step++)
-            for(net.minecraft.core.Direction dir:net.minecraft.core.Direction.Plane.HORIZONTAL){
-                BlockPos trial=staging.relative(dir,step);
-                if(!RemotePalletCourierRoute.clear(level,trial))continue;
-                boolean crowd=false;
-                for(int index=0;index<3;index++)
-                    if(trial.distSqr(staging.offset(index-1,0,0))<4)
-                        crowd=true;
-                if(!crowd){courierStart=trial;break;}
-            }
-        if(courierStart==null)
-            return "WAITING: separate two-wide courier departure aisle blocked.";
+        // Courier and trio already have checked, disjoint dry-land starts,
+        // reserved before taking pallet stock or removing shelf identities.
         courier.setPos(courierStart.getX()+.5,courierStart.getY(),
                 courierStart.getZ()+.5);
         // The rig is ONLY an unspawned mission/UUID template here.
@@ -175,8 +183,7 @@ public final class RemotePalletDispatch {
             StorageGolem worker=identities.get(i);
             worker.beginRemotePickup(carrier.getUUID(),courier.getUUID(),
                     old.getBlockPos(),computer,rally,homes);
-            BlockPos start=staging.offset(i-1,0,0);
-            if(!StorageGolemReturnPath.walkable(level,start))start=staging;
+            BlockPos start=workerStarts.get(i);
             worker.setPos(start.getX()+.5,start.getY(),start.getZ()+.5);
         }
         if(sourceRack!=null){
