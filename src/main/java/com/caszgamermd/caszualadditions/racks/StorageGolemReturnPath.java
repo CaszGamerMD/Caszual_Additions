@@ -47,7 +47,20 @@ public final class StorageGolemReturnPath {
                 ||below.getBlock() instanceof RackBlock
                 ||feetState.getBlock() instanceof StackOfPalletsBlock
                 ||headState.getBlock() instanceof StackOfPalletsBlock
-                ||below.getBlock() instanceof StackOfPalletsBlock)return false;
+                ||below.getBlock() instanceof StackOfPalletsBlock
+                // A normal 2x2 pallet is only five pixels tall, so the
+                // entity collision below a waypoint is NONEMPTY. The old
+                // code mistook that thin deck for a full supporting floor
+                // and routed carrying Golems ON TOP of adjacent pallets.
+                // Cargo proxies can have similarly partial collision.
+                // Neither is a step, floor or passable waypoint.
+                ||feetState.getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock
+                ||headState.getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock
+                ||below.getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock
+                ||feetState.is(com.caszgamermd.caszualadditions.pallet.PalletContent.PALLET_CARGO_COLLISION)
+                ||headState.is(com.caszgamermd.caszualadditions.pallet.PalletContent.PALLET_CARGO_COLLISION)
+                ||below.is(com.caszgamermd.caszualadditions.pallet.PalletContent.PALLET_CARGO_COLLISION))
+            return false;
         boolean clearBody=feetState.getCollisionShape(level,feet).isEmpty()
                 &&headState.getCollisionShape(level,feet.above()).isEmpty();
         if(!clearBody)return false;
