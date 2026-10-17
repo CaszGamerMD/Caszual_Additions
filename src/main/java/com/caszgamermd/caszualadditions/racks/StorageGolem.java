@@ -702,12 +702,13 @@ public final class StorageGolem extends PathfinderMob {
             // The carrier's CENTER is physically occupied by the loaded
             // 1.85-wide platform. Join from its first clear side aisle, not
             // a goal INSIDE the collision box (which caused 20s stalls).
-            if(distanceToSqr(rig)<7.84){
+            if(distanceToSqr(rig)<9.61
+                    &&Math.abs(getY()-rig.getY())<1.8){
                 if(rig.joinRemoteCourier(getUUID())){
                     remoteCourier=false;remoteFresh=ItemStack.EMPTY;
                     entityData.set(DISPLAY_PALLET,ItemStack.EMPTY);
                     discard(); // The rig already owns all FOUR shelf tokens.
-                }
+                }else routeIssue="WAITING FOR THREE-GOLEM CARRIER TO ACCEPT FOURTH";
                 return;
             }
             if(remoteCourierJoinAisle.equals(BlockPos.ZERO)
@@ -727,7 +728,12 @@ public final class StorageGolem extends PathfinderMob {
                     routeIssue="REJOINING THREE-GOLEM LOADED CARRIER";
                 return;
             }
-            routeIssue="AT LOADED CARRIER; JOINING NEXT TICK";
+            // If the old join point is too far from an off-center rig,
+            // throw away the incorrect stale aim instead of standing
+            // forever at a waypoint which cannot finish the handoff.
+            remoteCourierJoinAisle=BlockPos.ZERO;
+            resetCourierRoute();
+            routeIssue="ADJUSTING TO LOADED CARRIER'S ACTUAL POSITION";
         }
     }
 
