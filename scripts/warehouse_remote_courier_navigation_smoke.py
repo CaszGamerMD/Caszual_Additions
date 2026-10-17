@@ -14,7 +14,8 @@ assert "if(!followCourierRoute(level,remoteCourierAisle,true))" in courier
 assert "if(!followCourierRoute(level,remoteCourierJoinAisle,false))" in courier
 assert "courierBlockedCell=next.immutable();" in courier
 assert "courierAvoidUntil=tickCount+140" in courier
-assert "courierStalls>=3&&pushing" in courier
+assert "if(courierStalls>=3){" in courier
+assert 'pauseRemotePath("COURIER STALLED AT BLOCKED AISLE")' in courier
 assert "remoteCourierRejectedAisle=remoteCourierAisle" in courier
 assert "courierRetargetCooldown=tickCount+60" in courier
 assert "if(tickCount-lastCourierProgress>75)" in courier
