@@ -36,6 +36,6 @@ public final class WarehouseRemoteTickets {
     }
     public static void keep(ServerLevel level,BlockPos pos){
         if(type==null)throw new IllegalStateException("Warehouse remote ticket not registered");
-        level.getChunkSource().addTicketWithRadius(type,new ChunkPos(pos),RADIUS);
+        level.getChunkSource().addTicketWithRadius(type,new ChunkPos(pos.getX() >> 4,pos.getZ() >> 4),RADIUS);
     }
 }
