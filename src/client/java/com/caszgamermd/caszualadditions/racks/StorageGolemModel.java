@@ -64,23 +64,29 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
         rightLeg.xRot=Mth.cos(phase+Mth.PI)*1.1f*amount;
         leftArm.xRot=rightLeg.xRot*.6f;
         rightArm.xRot=leftLeg.xRot*.6f;
-        if(state.heldSlots>0&&!state.carryingPallet){
-            // Load kept up on both forearms, tucked against the chest.
-            leftArm.xRot=-1.05f;
-            rightArm.xRot=-1.05f;
+        if(state.pushingEmptyPallet){
+            // Arms reach forward to physically TOUCH the upright pallet
+            // instead of swinging empty-handed through its surface.
+            leftArm.xRot=-1.55f;
+            rightArm.xRot=-1.55f;
+            leftArm.zRot=-.16f;
+            rightArm.zRot=.16f;
+        }else if(state.heldSlots>0&&!state.carryingPallet){
+            // A one-Golem warehouse runner actually cradles the cargo
+            // tray at its wrists; cartons no longer float above its head.
+            leftArm.xRot=-1.48f;
+            rightArm.xRot=-1.48f;
             leftArm.zRot=-.14f;
             rightArm.zRot=.14f;
-        }else{
-            leftArm.zRot=0;
-            rightArm.zRot=0;
-        }
-        if(state.carryingPallet){
-            // Both hands remain elevated during the loaded walk.
-            // The actual pallet remains escrowed on the source PTP.
+        }else if(state.carryingPallet){
+            // Four manual crew workers hold the SAME real pallet by hand.
             leftArm.xRot=-3.02f;
             rightArm.xRot=-3.02f;
             leftArm.zRot=-.12f;
             rightArm.zRot=.12f;
+        }else{
+            leftArm.zRot=0;
+            rightArm.zRot=0;
         }
     }
 }
