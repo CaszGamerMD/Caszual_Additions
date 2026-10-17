@@ -161,14 +161,35 @@ public final class StoragePalletCrew {
         for(StorageGolem golem:workers)golem.discard();
         for(StorageGolemShelfEntity shelf:shelves)shelf.add();
     }
-    /** In Direct mode, an installed pallet on a PTP is only a source.
-     * Selecting an empty PTP while loaded cannot steal/drop its inventory. */
+    /** PTPs behave like racks: occupied = source; empty = destination
+     * when holding cargo. Both actions use a protected exterior aisle. */
     public static String interactPtp(ServerLevel level,ServerPlayer player,
             PtpBlockEntity point){
-        if(moving(level,player)!=null)return "Crew is carrying a pallet. "
-                +"Click an empty rack or a free ground placement face to deliver it.";
+        MovingPallet carrier=moving(level,player);
+        if(carrier!=null)return carrier.requestPtpDelivery(level,point);
+        List<StorageGolem> workers=team(level,player);
+        if(workers.stream().anyMatch(w->w.escorting(player.getUUID())&&w.holdsPallet()))
+            return deliverPtp(level,player,point);
         return pickup(level,player,point);
     }
+    public static String deliverPtp(ServerLevel level,ServerPlayer player,
+            PtpBlockEntity point){
+        MovingPallet carrier=moving(level,player);
+        if(carrier!=null)return carrier.requestPtpDelivery(level,point);
+        List<StorageGolem> crew=team(level,player);
+        StorageGolem lead=leader(crew,player.getUUID());
+        if(lead==null)return "Wait until all four Golems have lifted the pallet.";
+        if(!point.canInstallPallet())return "PTP occupied, reserved or blocked above; shipment retained.";
+        PtpAccessPlan access=PtpAccessPlan.find(level,point,lead.blockPosition());
+        if(access==null)return "PTP has no clear three-wide external unloading aisle.";
+        if(!assembledNear(crew,access.service()))
+            return "Wait for your four Golems to reach the PTP loading aisle.";
+        if(!lead.placeIntoPtp(point))return "PTP rejected a pallet or cargo item; crew retains everything.";
+        afterDelivery(crew);
+        return "Pallet delivered to PTP "+point.getBlockPos().toShortString()
+                +"; Golems are ready for another assignment.";
+    }
+
 
     public static String pickup(ServerLevel level,ServerPlayer player,PtpBlockEntity source){
         if(moving(level,player)!=null)return "Your four Golems are already carrying a pallet.";
@@ -179,11 +200,15 @@ public final class StoragePalletCrew {
             return "This crew already has an active pallet pickup or delivery.";
         if(!source.hasPallet()||!source.sealed())
             return "Pallet must be plastic-wrapped before lifting (portable wrapper or Wrap Unit).";
+        PtpAccessPlan access=PtpAccessPlan.find(level,source,player.blockPosition());
+        if(access==null)return "PTP pickup requires a clear three-wide aisle "
+                +"outside its 3x3 floor, like the entrance to a rack.";
         int ticket=source.beginPlayerHaul(player.getUUID());
         if(ticket==0)return "PTP cannot reserve pallet; check pending orders or an existing haul.";
-        for(StorageGolem worker:workers)worker.beginPlayerPickup(source.getBlockPos(),ticket);
-        return "Crew lifting sealed pallet. Wait for all four to reach its corners; "
-                +"then they will carry it as they follow you.";
+        for(StorageGolem worker:workers)
+            worker.beginPlayerPickup(source.getBlockPos(),ticket,access.facing());
+        return "Crew approaching PTP from its clear aisle to lift the wrapped pallet. "
+                +"They will carry it as one rig and follow you.";
     }
     /** The warehouse Scanner can dispatch its FOUR real workers to any
      * wrapped 2x2 pallet on the ground, regardless of warehouse membership. */
