@@ -25,6 +25,48 @@ public final class RemotePalletReset {
     private record Confirmation(UUID mission,long expires){}
     private static final Map<UUID,Confirmation> confirmations=new HashMap<>();
 
+    /**
+     * Scanner rescue without having to hit the tiny moving entity. The
+     * server selects an active REMOTE mission exclusively by the player's
+     * saved ownership and rig UUID; proximity or a nearby unrelated
+     * pallet can never change the mission being cancelled.
+     *
+     * Call from sneak-use AIR or a normal ground block. Keep this separate
+     * from DIRECT recall and from merely toggling scanner mode.
+     */
+    public static UUID activeMission(ServerLevel level,ServerPlayer player){
+        UUID found=null;
+        for(var entity:level.getAllEntities()){
+            UUID mission=null;
+            if(entity instanceof MovingPallet rig
+                    &&rig.remoteExchangeActive()&&rig.owns(player.getUUID()))
+                mission=rig.getUUID();
+            else if(entity instanceof StorageGolem worker
+                    &&worker.ownedBy(player.getUUID())){
+                if(worker.remoteCourierActive())
+                    mission=worker.remoteCourierMission();
+                else if(worker.remotePickupActive())
+                    mission=worker.remotePickupMission();
+            }
+            if(mission==null)continue;
+            // A normal mission has up to five world entities but only ONE
+            // rig UUID. Do not arbitrarily select a job if the save is
+            // corrupted or two remote exchanges are active.
+            if(found!=null&&!found.equals(mission))return null;
+            found=mission;
+        }
+        return found;
+    }
+
+    public static String requestActive(ServerLevel level,ServerPlayer player){
+        UUID mission=activeMission(level,player);
+        if(mission==null)
+            return "REMOTE RESET: no unique loaded remote pickup found. "
+                    +"Load the courier and three-worker carrier; if multiple "
+                    +"missions are present, shift-scan the specific Golem.";
+        return request(level,player,mission);
+    }
+
     public static String request(ServerLevel level,ServerPlayer player,UUID mission){
         if(mission==null)return "REMOTE RESET: this Golem has no assigned mission.";
         var current=confirmations.get(player.getUUID());
