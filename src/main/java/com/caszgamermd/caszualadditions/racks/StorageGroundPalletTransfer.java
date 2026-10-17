@@ -79,6 +79,17 @@ public final class StorageGroundPalletTransfer {
                 ||!courier.remoteCourierActive()||fresh.isEmpty()
                 ||!(fresh.getItem() instanceof net.minecraft.world.item.BlockItem item)
                 ||!(item.getBlock() instanceof PalletBlock block))return false;
+        // No more placing a replacement remotely from an unrelated
+        // pallet's service aisle, even if the rig is already clear of the
+        // actual destination. Courier must stand beside its SAVED 2x2
+        // target footprint with a real clear two-wide pushing lane.
+        BlockPos[] assignedFootprint=RemotePalletCourierRoute.targetFootprint(
+                level,root,carrier,fresh);
+        if(!RemotePalletCourierRoute.nearTargetService(
+                    courier.blockPosition(),assignedFootprint)
+                ||!RemotePalletCourierRoute.clear(
+                    level,courier.blockPosition()))
+            return false;
         BlockState placed=block.defaultBlockState()
                 .setValue(PalletBlock.PART,0)
                 .setValue(PalletBlock.FACING,carrier.remoteOldFacing())
