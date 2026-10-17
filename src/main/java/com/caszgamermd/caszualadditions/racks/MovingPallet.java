@@ -200,6 +200,11 @@ public final class MovingPallet extends PathfinderMob {
     public String deliveryStatus(){return deliveryFailure;}
     /** A durable order; the crew retains its cargo until it reaches home. */
     public String returnToWarehouse(ServerLevel level,BlockPos computer){
+        // A RECALL ALL must not abandon the three-person carrier while the
+        // fourth worker still owns the only replacement pallet. Completing
+        // the swap already schedules a physical warehouse return.
+        if(remoteCourierId!=null&&deliveryMode>=4&&deliveryMode<=6)
+            return "Remote exchange still in progress; workers return automatically after the fourth Golem rejoins.";
         if(!loaded())return "The crew is not carrying a pallet.";
         if(level.hasChunkAt(computer)
                 &&!level.getBlockState(computer).is(RackContent.RACK_COMPUTER))
