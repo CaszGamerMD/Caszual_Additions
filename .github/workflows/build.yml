@@ -64,6 +64,8 @@ jobs:
         run: python3 scripts/creative_tab_dedup_smoke.py
       - name: Verify saved order drafts, shelf docking and durable pallet assignments (blocking)
         run: python3 scripts/warehouse_order_draft_delivery_smoke.py
+      - name: Verify transport model bounds, state references and recipes
+        run: python3 scripts/transport_assets_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()
