@@ -17,6 +17,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -83,6 +85,21 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
     @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context){
         return fits(context.getLevel(),context.getClickedPos())
                 ?defaultBlockState():null;
+    }
+    @Override public boolean shouldChangedStateKeepBlockEntity(BlockState oldState){
+        return oldState.getBlock() instanceof StackOfPalletsBlock;
+    }
+    @Override public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(
+            Level level,BlockState state,BlockEntityType<T> type){
+        if(level.isClientSide()||state.getValue(PART)!=0
+                ||state.getValue(LAYER)!=0)return null;
+        return (world,pos,live,be)->{
+            // Upgrade earlier 2x2 saved stacks without players needing to
+            // break and replace a magazine containing twelve pallet items.
+            if(world.getGameTime()%60==0
+                    &&be instanceof StackOfPalletsBlockEntity)
+                repairUpperLayers(world,pos);
+        };
     }
     @Override protected RenderShape getRenderShape(BlockState state){
         // 12 per-slot pallets, drawn full-size from the controller BER.
