@@ -85,31 +85,35 @@ public final class ShulkerTankEntity extends BlockEntity implements Container, E
         setChanged();
         return true;
     }
+    private static NonNullList<ItemStack> boxSlots(ItemStack box){
+        NonNullList<ItemStack> slots=NonNullList.withSize(27,ItemStack.EMPTY);
+        if(!box.isEmpty()){
+            ItemContainerContents content=box.get(DataComponents.CONTAINER);
+            if(content!=null)content.copyInto(slots);
+        }
+        return slots;
+    }
     public ItemStack workingItem(int lane,int slot){
         if(slot<0||slot>=27||lane<0||lane>=STATIONS)return ItemStack.EMPTY;
-        List<ItemStack> contents=StorageGolemPacking.unpack(working.get(lane));
-        return slot<contents.size()?contents.get(slot):ItemStack.EMPTY;
+        return boxSlots(working.get(lane)).get(slot);
     }
     public boolean canEditWorking(int lane,ItemStack item){
         return lane>=0&&lane<STATIONS&&!working.get(lane).isEmpty()
                 &&(item.isEmpty()||item.getItem().canFitInsideContainerItems());
     }
-    /** Repack atomically after a manual slot edit. A last-item removal
-     * restores the original empty shulker without discarding its color/name. */
+    /** Keep the actual 27 Minecraft inventory positions, including holes
+     * created by dragging items out, not only a compact list of nonempties. */
     public void editWorking(int lane,int slot,ItemStack item){
         if(slot<0||slot>=27||!canEditWorking(lane,item))return;
         ItemStack old=working.get(lane);
-        List<ItemStack> values=new ArrayList<>(StorageGolemPacking.unpack(old));
-        if(slot>values.size())return;
-        if(slot==values.size()){
-            if(item.isEmpty())return;
-            values.add(item.copy());
-        }else if(item.isEmpty()){
-            values.remove(slot);
-        }else values.set(slot,item.copy());
-        ItemStack replacement=values.isEmpty()?StorageGolemPacking.emptyVersion(old)
-                :StorageGolemPacking.fill(StorageGolemPacking.emptyVersion(old),values);
-        if(!replacement.isEmpty())setWorkingBox(lane,replacement);
+        NonNullList<ItemStack> values=boxSlots(old);
+        values.set(slot,item.isEmpty()?ItemStack.EMPTY:item.copy());
+        boolean any=false;
+        for(ItemStack stack:values)if(!stack.isEmpty()){any=true;break;}
+        ItemStack replacement=StorageGolemPacking.emptyVersion(old);
+        if(any)replacement.set(DataComponents.CONTAINER,
+                ItemContainerContents.fromItems(values));
+        setWorkingBox(lane,replacement);
     }
     /** Commit only the selected real shulker to the physically adjacent
      * OUTPUT adapter's PTP; failed insertion retains the boxed inventory. */
