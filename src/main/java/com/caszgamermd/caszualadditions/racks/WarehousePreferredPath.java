@@ -29,12 +29,31 @@ public final class WarehousePreferredPath {
     }
     public static java.util.List<BlockPos> leg(BlockPos start,BlockPos target,
             Predicate<BlockPos> passable,BlockPos blocked){
-        // If the job ends on a different level, a flat partial route would
-        // strand the golem at the base of the very last one-block step.
+        // A flat route is cheap and normally ideal, but NOT mandatory:
+        // a giant same-level detour should lose to two short, legal
+        // one-block transitions. Compare its excess distance against the
+        // exact height-change penalty (up + down), rather than forbidding
+        // all climbs merely because a very long flat route exists.
         var flat=start.getY()==target.getY()
                 ?find(start,target,passable,blocked,false):null;
-        if(flat!=null)return flat;
-        return find(start,target,passable,blocked,true);
+        int direct=Math.abs(start.getX()-target.getX())
+                +Math.abs(start.getZ()-target.getZ());
+        if(flat!=null&&flat.size()<=direct+STEP_HEIGHT_COST*2)
+            return flat;
+        var terrain=find(start,target,passable,blocked,true);
+        if(flat==null)return terrain;
+        if(terrain==null)return flat;
+        // A partial forward leg must not outrank an exact 3-D arrival.
+        boolean flatExact=flat.getLast().equals(target);
+        boolean terrainExact=terrain.getLast().equals(target);
+        if(flatExact!=terrainExact)return flatExact?flat:terrain;
+        int terrainCost=terrain.size();
+        BlockPos previous=start;
+        for(BlockPos cell:terrain){
+            terrainCost+=Math.abs(cell.getY()-previous.getY())*STEP_HEIGHT_COST;
+            previous=cell;
+        }
+        return flat.size()<=terrainCost?flat:terrain;
     }
     private static java.util.List<BlockPos> find(BlockPos start,BlockPos target,
             Predicate<BlockPos> passable,BlockPos blocked,boolean allowElevation){
