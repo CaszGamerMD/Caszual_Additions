@@ -27,9 +27,9 @@ import net.minecraft.world.level.block.state.BlockState;
  * wrapping and filter properties) are preserved in CONTAINER components.
  * Never merges pallet variants or destroys a full pallet's inventory.
  */
-public final class StackOfPalletsItem extends Item {
+public final class StackOfPalletsItem extends BlockItem {
     public static final int CAPACITY=12;
-    public StackOfPalletsItem(Properties settings){super(settings);}
+    public StackOfPalletsItem(StackOfPalletsBlock block,Properties settings){super(block,settings);}
 
     public static List<ItemStack> pallets(ItemStack magazine){
         var contents=magazine.getOrDefault(DataComponents.CONTAINER,
@@ -123,7 +123,7 @@ public final class StackOfPalletsItem extends Item {
             }
         }
         BlockState state=level.getBlockState(clicked);
-        if(!(state.getBlock() instanceof PalletBlock))return InteractionResult.PASS;
+        if(!(state.getBlock() instanceof PalletBlock))return super.useOn(context);
         BlockPos root=PalletBlock.rootPos(clicked,state);
         if(!(level.getBlockEntity(root) instanceof PalletBlockEntity pallet))
             return InteractionResult.FAIL;
