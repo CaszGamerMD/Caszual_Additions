@@ -81,6 +81,31 @@ task in WAIT/RETRY instead of forgetting the cargo.
 Existing rack deliveries remain supported. In-progress saved ground
 deliveries migrate automatically to the new aisle-based movement.
 
+## Storage Golem pathfinding around Stack of Pallets
+
+**All Stack of Pallets footprint and tower segments are warehouse navigation
+obstacles, regardless of the current pallet count.** One pallet is only
+5 pixels (0.3125 blocks) high, so ordinary step-up pathfinding formerly
+treated that low deck as a climbable floor or crossed its empty satellites.
+That made workers walk into or across a placed magazine.
+
+`StorageGolemReturnPath.walkable` now checks all three relevant cells
+(feet, head, and the block supporting the feet) for every
+`StackOfPalletsBlock` part, rejecting it **before** testing the physical
+collision shape. The same validator is shared by warehouse order runners,
+manual direct crews, remote empty-deck couriers and the loaded 3x3-clearance
+`MovingPallet` route planner. The block also rejects vanilla
+`isPathfindable` paths, preventing fallback navigation from choosing a
+shortcut over short pallets.
+
+Players still see and collide with the stack's real height: 12 full-width
+pallets occupy a 2x2 footprint and reach 3.75 blocks. An empty magazine now
+has a physical 1-pixel base on all four bottom cells, instead of a visible
+base with no collision. Pathfinding treats the entire magazine as occupied
+even when it is empty, so no job routes through a soon-to-be-refilled slot.
+Jobs retain their destinations and reroute around the obstacle; no pallet
+inventory or warehouse ownership is changed.
+
 ## Scanner interaction modes — Remote / Direct
 
 The scanner is an item-bound, server-validated two-mode tool. **Shift-right-click
