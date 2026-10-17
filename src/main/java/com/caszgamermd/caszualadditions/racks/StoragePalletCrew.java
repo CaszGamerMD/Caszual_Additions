@@ -267,7 +267,7 @@ public final class StoragePalletCrew {
             homes.add(shelf.getBlockPos());
             // A recall is meant to leave the workers IN their shelves;
             // suspend automatic sorting or they would instantly redeploy.
-            shelf.setSortingEnabled(false);
+            shelf.requestRecall();
         }
         if(homes.isEmpty())return "No linked Storage Golem shelves.";
         java.util.ArrayList<StorageGolem> workers=new java.util.ArrayList<>();
