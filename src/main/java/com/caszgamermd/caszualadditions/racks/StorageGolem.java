@@ -254,14 +254,24 @@ public final class StorageGolem extends PathfinderMob {
      * carrier through one-wide gaps or path into the old target blocks. */
     private void tickRemoteCourier(ServerLevel level){
         if(remoteCarrierId==null)return;
+        // The courier cannot rely on the pallet team being loaded to
+        // renew its own tickets. Both independent travellers need their own
+        // rolling simulation corridor, including a point ahead of travel.
+        if(tickCount%40==0){
+            WarehouseRemoteTickets.keep(level,blockPosition());
+            WarehouseRemoteTickets.keep(level,remoteCourierTarget);
+            BlockPos goal=remoteCourierPhase==0?remoteCourierTarget:remoteCourierAisle;
+            double dx=goal.getX()+.5-getX(),dz=goal.getZ()+.5-getZ();
+            double length=Math.hypot(dx,dz);
+            if(length>8)WarehouseRemoteTickets.keep(level,new BlockPos(
+                    (int)Math.floor(getX()+dx/length*16),
+                    blockPosition().getY(),
+                    (int)Math.floor(getZ()+dz/length*16)));
+        }
         var other=level.getEntity(remoteCarrierId);
         if(!(other instanceof MovingPallet rig)){
             routeIssue="WAITING FOR LOADED THREE-GOLEM TEAM TO RELOAD";
             return;
-        }
-        if(tickCount%40==0){
-            WarehouseRemoteTickets.keep(level,blockPosition());
-            WarehouseRemoteTickets.keep(level,remoteCourierTarget);
         }
         if(remoteCourierPhase==0){
             if(remoteCourierAisle.equals(BlockPos.ZERO)
