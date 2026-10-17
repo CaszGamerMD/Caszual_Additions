@@ -248,6 +248,25 @@ public final class StorageGolem extends PathfinderMob {
         return true;
     }
     public boolean remoteCourierActive(){return remoteCourier;}
+    /** If the three-worker cargo rig was destroyed, reclaim the actual
+     * fourth Golem as an independently walking shelf worker. Its original
+     * unwrapped replacement pallet is dropped once for player recovery. */
+    public void remoteCarrierDestroyed(ServerLevel level){
+        if(!remoteCourier)return;
+        if(!remoteFresh.isEmpty()){
+            Containers.dropItemStack(level,getX(),getY(),getZ(),remoteFresh);
+            remoteFresh=ItemStack.EMPTY;
+        }
+        remoteCourier=false;
+        remoteCarrierId=null;
+        entityData.set(DISPLAY_PALLET,ItemStack.EMPTY);
+        stage=2;
+        haulJob=false;playerHaul=false;
+        remoteCourierPhase=0;
+        routeIssue="CARRIER LOST; RETURNING TO SHELF";
+        getNavigation().stop();
+    }
+
     private void syncRemoteFreshVisual(){
         if(remoteCourier)entityData.set(DISPLAY_PALLET,remoteFresh.copy());
     }
