@@ -80,7 +80,9 @@ assert "WarehouseNetwork.fromShelfGroup" in connections
 computer_block=read("src/main/java/com/caszgamermd/caszualadditions/racks/RackComputerBlock.java")
 assert "StorageScannerItem.onComputerClick" in computer_block
 scanner=read("src/main/java/com/caszgamermd/caszualadditions/racks/StorageScannerItem.java")
-assert scanner.index("bind(scanner,level,computer);") < scanner.index("StoragePalletCrew.enlist(level,player,computer)")
+assert "bind(scanner,level,computer);" in scanner
+assert "StoragePalletCrew.enlist(level,player,computer)" not in scanner
+assert "StoragePalletCrew.enlistFromShelf(level,player,home,shelf)" in scanner
 scanner=read("src/main/java/com/caszgamermd/caszualadditions/racks/StorageScannerItem.java")
 assert "extends Item" in scanner and "StoragePalletCrew" in scanner
 assert not (ROOT/"src/main/java/com/caszgamermd/caszualadditions/racks/StorageScannerBlock.java").exists()
