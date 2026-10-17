@@ -56,6 +56,7 @@ public final class RackContent {
                 new BlockItem(block,new Item.Properties().stacksTo(16).setId(key).useBlockDescriptionPrefix()));
     }
     public static void initialize() {
+        WarehouseRemoteTickets.initialize();
         for(String color:java.util.List.of("white","orange","magenta","light_blue",
                 "yellow","lime","pink","gray","light_gray","cyan","purple",
                 "blue","brown","green","red","black")){
