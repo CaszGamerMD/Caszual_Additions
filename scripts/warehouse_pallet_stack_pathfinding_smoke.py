@@ -31,8 +31,8 @@ assert "Block.box(0,0,0,16,Math.min(16,remaining),16)" in stack
 for state in ("feetState", "headState", "below"):
     assert f"{state}.getBlock() instanceof StackOfPalletsBlock" in goals
 assert "&&headState.getCollisionShape(level,feet.above()).isEmpty()" in goals
-assert "if(!below.getCollisionShape(level,ground).isEmpty())return true;" in goals
-assert "level.getFluidState(feet).is(FluidTags.WATER)" in goals
+assert "return !below.getCollisionShape(level,ground).isEmpty();" in goals
+assert "!level.getFluidState(feet).isEmpty()" in goals
 # ALL warehouse path callers must share the same walkability barrier.
 assert "StorageGolemReturnPath.walkable(level,p)" in worker
 assert "StorageGolemReturnPath.walkable(level,cell)" in carrier
