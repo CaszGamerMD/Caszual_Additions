@@ -230,14 +230,14 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             float inset=-.035f,span=2.07f,top=3.04f,edge=.032f;
             for(float xx:new float[]{inset,2.035f})
                 for(float zz:new float[]{inset,2.035f})
-                    board(state.highlightEdge,state,poses,collector,
+                    glowBoard(state.highlightEdge,state,poses,collector,
                             xx,-.02f,zz,edge,top,edge);
             for(float yy:new float[]{-.025f,2.98f}){
                 for(float xx:new float[]{inset,2.035f})
-                    board(state.highlightEdge,state,poses,collector,
+                    glowBoard(state.highlightEdge,state,poses,collector,
                             xx,yy,inset,edge,edge,span);
                 for(float zz:new float[]{inset,2.035f})
-                    board(state.highlightEdge,state,poses,collector,
+                    glowBoard(state.highlightEdge,state,poses,collector,
                             inset,yy,zz,span,edge,edge);
             }
             poses.popPose();
@@ -296,6 +296,16 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
         poses.popPose();
     }
 
+    /** Emissive 10-second shared pallet locator; visible even in unlit racks. */
+    private static void glowBoard(BlockModelRenderState model,RackRenderState state,
+            PoseStack poses,SubmitNodeCollector collector,
+            float x,float y,float z,float width,float height,float depth){
+        poses.pushPose();
+        poses.translate(x,y,z);
+        poses.scale(width,height,depth);
+        model.submit(poses,collector,0xF000F0,OverlayTexture.NO_OVERLAY,0);
+        poses.popPose();
+    }
     private static void board(BlockModelRenderState model,RackRenderState state,
             PoseStack poses,SubmitNodeCollector collector,
             float x,float y,float z,float width,float height,float depth){
