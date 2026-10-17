@@ -612,49 +612,69 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         if(remoteCourierPhase==0){
+            BlockPos trio=BlockPos.ZERO;
+            // Independent lifters retain their reserved rally until pickup.
+            // Don't mistake their work area for the courier's dropoff lane.
+            for(var entity:level.getAllEntities()){
+                if(entity instanceof StorageGolem worker
+                        &&worker.remotePickupActive()
+                        &&remoteCarrierId.equals(worker.remotePickupMission())){
+                    trio=worker.remotePickupRally();
+                    break;
+                }
+            }
+            BlockPos[] assignedFootprint=RemotePalletCourierRoute.targetFootprint(
+                    level,remoteCourierTarget,rig,remoteFresh);
+            if(assignedFootprint==null){
+                routeIssue="WAITING FOR SAVED TARGET PALLET FOOTPRINT";
+                getNavigation().stop();
+                return;
+            }
+            // A golem already next to the correct pallet must NEVER run
+            // 4-7 blocks away toward an obsolete chosen service aisle.
+            // This also repairs persisted pre-fix courier missions without
+            // changing their target UUID or moving the carried pallet item.
+            if(RemotePalletCourierRoute.validServiceAisle(
+                    level,blockPosition(),assignedFootprint,trio)
+                    &&!blockPosition().equals(remoteCourierAisle)){
+                remoteCourierAisle=blockPosition().immutable();
+                remoteCourierRejectedAisle=BlockPos.ZERO;
+                resetCourierRoute();
+            }
             if(!remoteCourierAisle.equals(BlockPos.ZERO)
-                    &&!RemotePalletCourierRoute.clear(level,remoteCourierAisle)){
-                // A new rack or pallet blocked the cached side. Mark it
-                // unavailable rather than recalculating a nearest goal
-                // every tick and orbiting the target.
+                    &&!RemotePalletCourierRoute.validServiceAisle(
+                            level,remoteCourierAisle,assignedFootprint,trio)){
+                // Old builds cached a point 4-7 blocks from the TARGET
+                // CORNER, sometimes beside a completely different pallet.
+                // Retire any such obsolete or newly obstructed aisle.
                 remoteCourierRejectedAisle=remoteCourierAisle;
                 remoteCourierAisle=BlockPos.ZERO;
                 resetCourierRoute();
             }
             if(remoteCourierAisle.equals(BlockPos.ZERO)){
                 if(tickCount<courierRetargetCooldown){
-                    routeIssue="WAITING FOR PALLET COURIER AISLE RETRY";
+                    routeIssue="WAITING FOR TARGET-PERIMETER RETRY";
                     getNavigation().stop();
                     return;
                 }
-                BlockPos trio=BlockPos.ZERO;
-                // The other THREE are separate real Golems before lift;
-                // there is no shared rig until all of them arrive.
-                for(var entity:level.getAllEntities()){
-                    if(entity instanceof StorageGolem worker
-                            &&worker.remotePickupActive()
-                            &&remoteCarrierId.equals(worker.remotePickupMission())){
-                        trio=worker.remotePickupRally();break;
-                    }
-                }
                 remoteCourierAisle=RemotePalletCourierRoute.chooseServiceAisle(
                         level,blockPosition(),remoteCourierTarget,trio,
-                        remoteCourierRejectedAisle);
+                        remoteCourierRejectedAisle,rig,remoteFresh);
                 if(remoteCourierAisle.equals(BlockPos.ZERO)){
                     remoteCourierRejectedAisle=BlockPos.ZERO;
                     courierRetargetCooldown=tickCount+60;
                     if(++remoteUnreachableAttempts>=3)
-                        pauseRemotePath("NO CLEAR COURIER AISLE AWAY FROM PICKUP CREW");
-                    else routeIssue="WAITING FOR REACHABLE TWO-WIDE PUSH AISLE";
+                        pauseRemotePath("NO CLEAR SERVICE AISLE AT ASSIGNED PALLET");
+                    else routeIssue="WAITING FOR CLEAR AISLE AT ASSIGNED PALLET";
                     getNavigation().stop();return;
                 }
                 remoteUnreachableAttempts=0;
                 resetCourierRoute();
             }
             if(!followCourierRoute(level,remoteCourierAisle,true)){
-                if(!routeIssue.startsWith("WAITING")
+                if(!remotePathPaused&&!routeIssue.startsWith("WAITING")
                         &&!routeIssue.startsWith("REROUTING"))
-                    routeIssue="PUSHING FULL-SIZE PALLET ALONG CHECKED AISLE";
+                    routeIssue="PUSHING FULL-SIZE PALLET TO ASSIGNED TARGET AISLE";
                 return;
             }
             getNavigation().stop();
