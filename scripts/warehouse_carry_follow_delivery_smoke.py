@@ -29,8 +29,8 @@ assert "MovingPalletFloorPath.route(" in rig_follow
 assert "player.getY()>getY()+.8" in rig_follow
 assert "getNavigation().stop()" in rig_follow
 
-assert "rightArm[i].xRot=-3.02f*state.liftProgress" in rig_model
-assert "leftArm[i].xRot=-3.02f*state.liftProgress" in rig_model
+assert "rightArm[i].xRot=-3.02f*grip" in rig_model
+assert "leftArm[i].xRot=-3.02f*grip" in rig_model
 assert "leftArm.xRot=-3.02f" in golem_model
 assert "corners[i].yRot=" not in rig_model
 assert "state.releaseProgress=entity.releaseProgress()" in rig_renderer
