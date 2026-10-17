@@ -130,6 +130,12 @@ public final class RemotePalletDispatch {
                 ||!carrier.beginRemoteExchange(old.getBlockPos(),computer))
             return "Unable to prepare remote replacement crew.";
         carrier.setPos(staging.getX()+.5,staging.getY(),staging.getZ()+.5);
+        StorageGolem courier=identities.get(3);
+        courier.setPos(staging.getX()+1.5,staging.getY(),staging.getZ()+.5);
+        // Before withdrawing from a magazine, move ownership to the one
+        // actual Golem entity. The other three are only rendered on the rig.
+        if(!carrier.splitRemoteCourier(courier))
+            return "Unable to split the three-Golem lift crew from the empty-pallet courier.";
         if(sourceRack!=null){
             sourceRack.setItem(sourceSlot,updated);
             if(!ItemStack.matches(sourceRack.getItem(sourceSlot),updated)){
@@ -166,9 +172,17 @@ public final class RemotePalletDispatch {
             if(!shelf.take())break;
             consumed++;
         }
-        if(consumed==4&&level.addFreshEntity(carrier))
-            return "Four Golems dispatched with a fresh pallet to "
-                    +old.getBlockPos().toShortString()+". Recovery returns to this warehouse.";
+        if(consumed==4&&level.addFreshEntity(carrier)){
+            if(level.addFreshEntity(courier))
+                return "Three Golems dispatched to lift the wrapped target while "
+                        +"a fourth pushes the unwrapped empty pallet to "
+                        +old.getBlockPos().toShortString()
+                        +". The loaded team will step aside, wait for placement, "
+                        +"rejoin, and return together.";
+            // Spawning is synchronous on the server thread. Both entities
+            // must exist, otherwise restore stock and shelf token counts.
+            carrier.discard();
+        }
         for(int i=0;i<consumed;i++)shelves.get(i).add();
         // Roll back the warehouse's ONE withdrawn empty pallet on failure.
         if(sourceRack!=null)sourceRack.setItem(sourceSlot,previous);
