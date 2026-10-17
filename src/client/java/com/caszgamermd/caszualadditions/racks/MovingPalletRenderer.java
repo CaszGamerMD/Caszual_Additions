@@ -46,7 +46,7 @@ public final class MovingPalletRenderer extends MobRenderer<
         ItemStack stack=entity.displayPallet();
         state.visible=!stack.isEmpty();
         state.crewSize=entity.displayedCrewSize();
-        state.liftProgress=entity.liftProgress();
+        state.liftProgress=state.visible?entity.liftProgress():0f;
         state.releaseProgress=entity.releaseProgress();
         state.rackInsertProgress=entity.rackInsertProgress();
         state.rackInsertX=entity.rackInsertX();
