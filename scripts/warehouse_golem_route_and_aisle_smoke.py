@@ -19,7 +19,7 @@ assert "getMoveControl().setWantedPosition" in g
 assert "occupiedAisle(level,target)" in g
 assert "occupiedAisle(level,shelfPlane)" in g
 assert "routeIssue=\"REROUTING\"" in g
-assert "routeIssue=\"NO WALKABLE ROUTE\"" in g
+assert "routeIssue=\"WAITING FOR SAFE WALKABLE ROUTE\"" in g
 assert "private void updateTaskLabel()" in g
 assert 'label="PALLET "+(haulIndex+1)+"/4 | "' in g
 assert "setCustomNameVisible(true)" in g
