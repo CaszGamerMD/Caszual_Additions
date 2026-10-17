@@ -80,7 +80,12 @@ public final class RemotePalletDispatch {
         if(fresh.isEmpty()){
             for(PtpBlockEntity ptp:network.points()){
                 if(ptp.input()&&ptp.hasPallet()&&!ptp.sealed()&&ptp.emptyCargo()){
-                    ItemStack candidate=ptp.palletStack();
+                    // removePallet() returns the effective item with its
+                    // live PTP filter data. Prepare the rig with that same
+                    // canonical stack or component comparison will reject
+                    // every upgraded pallet and leave the job queued.
+                    ItemStack candidate=com.caszgamermd.caszualadditions.pallet.PalletData
+                            .applyFilterSettings(ptp.palletStack(),ptp);
                     if(StackOfPalletsItem.isPallet(candidate)){
                         sourcePtp=ptp;
                         fresh=candidate.copyWithCount(1);
