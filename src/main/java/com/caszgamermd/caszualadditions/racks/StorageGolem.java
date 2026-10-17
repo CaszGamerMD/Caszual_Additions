@@ -182,6 +182,9 @@ public final class StorageGolem extends PathfinderMob {
     private boolean playerHaul;
     private boolean groundPickup;
     private boolean rackPickup;
+    // Fixed physical service face for Direct pickup; DO NOT reselect the
+    // nearest side each tick, which previously made workers spin/freeze.
+    private Direction playerPtpFace=Direction.NORTH;
     private int rackFloorY;
     private String haulOwner="";
     private ItemStack carryingPallet=ItemStack.EMPTY;
@@ -587,10 +590,11 @@ public final class StorageGolem extends PathfinderMob {
         return id.isBlank()?"STOCK":id.length()>15?id.substring(0,15):id;
     }
     public int crewIndex(){return haulIndex;}
-    public void beginPlayerPickup(BlockPos ptp,int ticket){
+    public void beginPlayerPickup(BlockPos ptp,int ticket,Direction accessFace){
         if(playerHaul&&stage==4){
             source=ptp.immutable();destination=ptp.immutable();
             haulTicket=ticket;groundPickup=false;rackPickup=false;stage=0;
+            playerPtpFace=accessFace;
             setCustomName(Component.literal("RALLY "+(haulIndex+1)+"/4"));
         }
     }
@@ -1063,6 +1067,13 @@ public final class StorageGolem extends PathfinderMob {
             }
         }
         BlockEntity be=level.hasChunkAt(place)?level.getBlockEntity(place):null;
+        if(playerHaul&&stage==0&&be instanceof PtpBlockEntity){
+            // Same aisle throughout the job, just like rack pickup.
+            // Each worker gets one standable cell OUTSIDE the 3x3 platform.
+            // Never path to the actual PTP controller or cut across modules.
+            return place.relative(playerPtpFace,2+haulIndex/2)
+                    .relative(playerPtpFace.getClockWise(),haulIndex%2);
+        }
         if(be instanceof PtpBlockEntity || be instanceof ShulkerTankEntity){
             // A scanner, linked shelf or Hopper Adapter can occupy the old
             // hard-coded SOUTH entrance. Find a clear outer approach without
@@ -1798,6 +1809,7 @@ public final class StorageGolem extends PathfinderMob {
         out.putBoolean("player_haul",playerHaul);
         out.putBoolean("ground_pickup",groundPickup);
         out.putBoolean("rack_pickup",rackPickup);
+        out.putString("player_ptp_face",playerPtpFace.getName());
         out.putInt("rack_floor_y",rackFloorY);
         out.putString("haul_owner",haulOwner);
         if(!carryingPallet.isEmpty())out.store("carried_pallet",ItemStack.CODEC,carryingPallet);
@@ -1841,6 +1853,9 @@ public final class StorageGolem extends PathfinderMob {
         playerHaul=in.getBooleanOr("player_haul",false);
         groundPickup=in.getBooleanOr("ground_pickup",false);
         rackPickup=in.getBooleanOr("rack_pickup",false);
+        try{playerPtpFace=Direction.valueOf(in.getStringOr("player_ptp_face","north")
+                .toUpperCase(java.util.Locale.ROOT));}
+        catch(IllegalArgumentException ex){playerPtpFace=Direction.NORTH;}
         rackFloorY=in.getIntOr("rack_floor_y",source.getY());
         haulOwner=in.getStringOr("haul_owner","");
         carryingPallet=in.read("carried_pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
