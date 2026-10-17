@@ -127,6 +127,16 @@ public final class ShulkerStationMenu extends AbstractContainerMenu {
         Slot slot=slots.get(slotIndex);
         if(!slot.hasItem())return ItemStack.EMPTY;
         ItemStack original=slot.getItem(),result=original.copy();
+        // Shulker contents are decoded from a data component on every read.
+        // Their ItemStacks are snapshots, not mutable Container references:
+        // explicitly write the remaining count back after shift-extraction.
+        if(slotIndex>=CONTENT_START&&slotIndex<PLAYER_START){
+            ItemStack remainder=original.copy();
+            if(!moveItemStackTo(remainder,PLAYER_START,slots.size(),true))
+                return ItemStack.EMPTY;
+            slot.setByPlayer(remainder);
+            return result;
+        }
         boolean moved;
         if(slotIndex<PLAYER_START){
             moved=moveItemStackTo(original,PLAYER_START,slots.size(),true);
@@ -134,7 +144,10 @@ public final class ShulkerStationMenu extends AbstractContainerMenu {
             moved=moveItemStackTo(original,0,STOCK,false);
             if(!moved)moved=moveItemStackTo(original,WORK_START,READY_START,false);
         }else{
-            moved=moveItemStackTo(original,CONTENT_START,PLAYER_START,false);
+            // Prevent silent loss: a generic vanilla shift-merge into a
+            // component-backed box would only mutate a temporary snapshot.
+            // Players may drag items directly to its 27 live editable slots.
+            moved=false;
         }
         if(!moved)return ItemStack.EMPTY;
         if(original.isEmpty())slot.setByPlayer(ItemStack.EMPTY);
