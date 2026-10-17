@@ -11,6 +11,7 @@ import com.caszgamermd.caszualadditions.racks.PtpRenderer;
 import com.caszgamermd.caszualadditions.racks.RackComputerClient;
 import com.caszgamermd.caszualadditions.racks.StorageGolemRenderer;
 import com.caszgamermd.caszualadditions.racks.StorageGolemShelfRenderer;
+import com.caszgamermd.caszualadditions.racks.StackOfPalletsRenderer;
 import com.caszgamermd.caszualadditions.racks.StorageGolemModel;
 import com.caszgamermd.caszualadditions.racks.MovingPalletRenderer;
 import com.caszgamermd.caszualadditions.racks.MovingPalletModel;
@@ -66,6 +67,7 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         BlockEntityRenderers.register(RackContent.RACK_ENTITY,RackBlockEntityRenderer::new);
         BlockEntityRenderers.register(RackContent.PTP_ENTITY,PtpRenderer::new);
         BlockEntityRenderers.register(RackContent.STORAGE_SHELF_ENTITY,StorageGolemShelfRenderer::new);
+        BlockEntityRenderers.register(RackContent.PALLET_STACK_ENTITY,StackOfPalletsRenderer::new);
 
         MenuScreens.register(PalletContent.PALLET_MENU, PalletScreen::new);
         MenuScreens.register(RackContent.SHULKER_STATION_MENU, ShulkerStationScreen::new);

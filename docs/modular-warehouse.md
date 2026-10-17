@@ -6,17 +6,27 @@ of each system, see [Warehouse integrated test plan](warehouse-test-plan.md).
 
 ## Placeable Stack of Pallets and persistent Golem routes
 
-- **Stack of Pallets is now a physical block:** place the existing item on
-  the floor to create one linked warehouse pallet magazine. Each block holds
-  up to **12 independent empty pallets**, preserving each stored pallet's
-  material, dyes and components. It visually grows from zero through four
-  stacked pallet layers as it fills. Right-click while holding an empty pallet
-  to deposit it; sneak-right-click with an empty hand to retrieve one.
+- **Stack of Pallets occupies an actual 2×2 footprint:** placement requires
+  all four ground cells to be clear. All four parts share ONE saved 12-slot
+  controller inventory (no duplicate inventories or pallet items). The
+  block entity renders **every one of the 12 pallets separately** in four
+  positions per tier across three tiers. Each miniature has its real mixed
+  wood-plank textures, material (plastic, iron or copper age), plastic tint
+  and glass-wrap appearance, reflecting the corresponding saved slot. Click
+  any quarter to interact; breaking any quarter in survival retrieves one
+  magazine containing the entire inventory. Right-click with a pallet to
+  deposit it; sneak-right-click with an empty hand to retrieve one.
   Right-click with an empty hand to open its dedicated 12-slot inventory
   alongside the player's inventory (no overlapping filter controls).
   Breaking the magazine normally drops a single Stack of Pallets item with
   its contents, not twelve scattered pallet items. The item can still be used
   as an older handheld/rack magazine for existing worlds.
+- **Empty pallet removal from PTPs:** sneak-right-click any connected PTP
+  cell with an empty hand while a pallet is installed to collect it, provided
+  the pallet is empty, unwrapped and has no pending output reservations or
+  warehouse orders. If not allowed, the PTP explains why. With no pallet
+  installed, sneak-right-click still toggles PTP input/output mode; an active
+  PTP can also have its mode managed from the Rack Computer.
 - **Golem supply:** sorting Golems can bring empty pallets from INPUT PTPs
   to these placeable magazines. Remote exchanges prefer a placed stocked
   magazine, then a legacy magazine item in a rack, then an empty INPUT PTP.

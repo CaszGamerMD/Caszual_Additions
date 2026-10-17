@@ -137,6 +137,22 @@ public final class PtpBlock extends Block implements EntityBlock {
             player.getInventory().placeItemBackInInventory(new ItemStack(this));
         }
     }
+    /** Sneak-right-click with an empty hand to reclaim an empty pallet.
+     * Preserve item components/filter/material and never void rejected items. */
+    private static void retrieveEmptyPallet(PtpBlockEntity ptp,Player player){
+        ItemStack recovered=ptp.removePallet();
+        if(!recovered.isEmpty()){
+            player.getInventory().placeItemBackInInventory(recovered);
+            player.sendSystemMessage(Component.literal("Removed empty pallet from transfer point."));
+        }else if(ptp.sealed())
+            player.sendSystemMessage(Component.literal(
+                    "Unwrap the pallet with shears before removing it."));
+        else if(!ptp.emptyCargo())
+            player.sendSystemMessage(Component.literal(
+                    "Empty the pallet inventory before removing it."));
+        else player.sendSystemMessage(Component.literal(
+                    "Pallet is reserved by the warehouse or has pending orders."));
+    }
     @Override protected InteractionResult useItemOn(ItemStack held,BlockState state,Level level,
             BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit){
         if(held.is(RackContent.STORAGE_SCANNER_ITEM)
@@ -163,8 +179,8 @@ public final class PtpBlock extends Block implements EntityBlock {
         if(held.getItem() instanceof BlockItem bi && bi.getBlock() instanceof PalletBlock) {
             if(!level.isClientSide()) {
                 if(ptp.hasPallet()) {
-                    if(player.isShiftKeyDown()&&ptp.emptyCargo()) {
-                        player.getInventory().placeItemBackInInventory(ptp.removePallet());
+                    if(player.isShiftKeyDown()) {
+                        retrieveEmptyPallet(ptp,player);
                     }else if(player instanceof ServerPlayer server&&!ptp.sealed())
                         server.openMenu(ptp);
                 }else if(ptp.installPallet(held.copyWithCount(1))) {
@@ -192,7 +208,10 @@ public final class PtpBlock extends Block implements EntityBlock {
                             "Pallet sealed. Only shears can unwrap it."));
                 } else player.sendSystemMessage(Component.literal(
                         "Pallet is sealed. Use shears to unwrap."));
+            } else if(player.isShiftKeyDown()&&ptp.hasPallet()){
+                retrieveEmptyPallet(ptp,player);
             } else if(player.isShiftKeyDown()){
+                // Existing mode toggle remains available when the PTP is vacant.
                 ptp.setInput(!ptp.input());
                 player.sendSystemMessage(Component.literal(
                         "Transfer Point: "+(ptp.input()?"INPUT":"OUTPUT")));
