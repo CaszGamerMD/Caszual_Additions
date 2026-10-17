@@ -398,6 +398,7 @@ public final class StorageGolem extends PathfinderMob {
                 courierRoute.removeFirst();
                 courierProgressDistance=Double.POSITIVE_INFINITY;
                 lastCourierProgress=tickCount;
+                courierStalls=0;
             }else break;
         }
         if(courierRoute.isEmpty()&&tickCount>=nextCourierReplan){
@@ -407,8 +408,17 @@ public final class StorageGolem extends PathfinderMob {
                     goal,avoid,pushing);
             nextCourierReplan=tickCount+25;
             if(route==null||route.isEmpty()){
-                routeIssue="WAITING FOR "+(pushing?"WIDE PALLET":"GOLEM")
-                        +" CORRIDOR; RETRYING";
+                courierStalls++;
+                // An unreachable final destination is itself a blocked
+                // service side. Don't wait forever replaying partial routes
+                // against the same wall or spinning toward its corners.
+                if(pushing&&courierStalls>=3){
+                    courierRejectedAisleFromStall();
+                    routeIssue="REROUTING: PALLET SERVICE SIDE UNREACHABLE";
+                }else{
+                    routeIssue="WAITING FOR "+(pushing?"WIDE PALLET":"GOLEM")
+                            +" CORRIDOR; RETRYING";
+                }
                 getNavigation().stop();
                 return false;
             }
@@ -450,6 +460,8 @@ public final class StorageGolem extends PathfinderMob {
             steerOnFloor(next,1.06);
         else if(tickCount%8==0)getNavigation().moveTo(
                 next.getX()+.5,next.getY(),next.getZ()+.5,1.06);
+        routeIssue=pushing?"PUSHING PALLET THROUGH CLEAR AISLE"
+                :"WALKING TO THREE-GOLEM LOADED TEAM";
         return false;
     }
     private void courierRejectedAisleFromStall(){
