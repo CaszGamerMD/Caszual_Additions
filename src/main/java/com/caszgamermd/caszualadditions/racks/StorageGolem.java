@@ -1596,16 +1596,13 @@ public final class StorageGolem extends PathfinderMob {
                     StorageGolemReturnPath.walkable(level,p)
                     &&!occupied.contains(p)
                     &&(tickCount>=avoidWorkUntil||!p.equals(blockedWorkCell));
-            // First take a genuine entirely-flat corridor if it exists.
-            // If terrain divides the dry level corridor, the weighted 3-D
-            // search is now allowed even for NEARBY targets. Only cardinal
-            // steps and up/down ONE block are legal; the full nearby goal
-            // must actually be reachable (never circle partial waypoints).
-            List<BlockPos> route=feet.getY()==target.getY()
-                    ?StorageGolemReturnPath.steps(feet,target,available):null;
-            if(route==null)
-                route=WarehousePreferredPath.leg(feet,target,available,
-                        tickCount<avoidWorkUntil?blockedWorkCell:BlockPos.ZERO);
+            // The shared weighted router considers level routes FIRST but
+            // permits a short stepped path when going around the hill would
+            // be excessively long or impossible. Nearby goals still demand
+            // a COMPLETE checked dry route, never a partial loop.
+            List<BlockPos> route=WarehousePreferredPath.leg(feet,target,
+                    available,tickCount<avoidWorkUntil
+                            ?blockedWorkCell:BlockPos.ZERO);
             nextWorkPlan=tickCount+20;
             if(route!=null){
                 flatWorkRoute.addAll(route);
