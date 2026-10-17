@@ -46,6 +46,109 @@ public final class ShulkerTankEntity extends BlockEntity implements Container, E
     @Override public BlockPos getScreenOpeningData(ServerPlayer player){
         return worldPosition;
     }
+
+    /** These lanes are the real saved ItemStacks; the screen never copies
+     * goods into a client-only fake inventory. */
+    public ItemStack workingBox(int lane){
+        return lane>=0&&lane<STATIONS?working.get(lane):ItemStack.EMPTY;
+    }
+    public ItemStack readyBox(int lane){
+        return lane>=0&&lane<STATIONS?finished.get(lane):ItemStack.EMPTY;
+    }
+    private static boolean validBox(ItemStack stack){
+        return stack.isEmpty()||(stack.is(ItemTags.SHULKER_BOXES)
+                &&!stack.has(DataComponents.CONTAINER_LOOT)&&stack.getCount()==1);
+    }
+    public void setWorkingBox(int lane,ItemStack item){
+        if(lane<0||lane>=STATIONS||!validBox(item))return;
+        bufferedItems=Math.max(0,bufferedItems
+                -StorageGolemPacking.itemCount(working.get(lane))
+                +StorageGolemPacking.itemCount(item));
+        working.set(lane,item.isEmpty()?ItemStack.EMPTY:item.copyWithCount(1));
+        setChanged();
+    }
+    public void setReadyBox(int lane,ItemStack item){
+        if(lane<0||lane>=STATIONS||!validBox(item))return;
+        bufferedItems=Math.max(0,bufferedItems
+                -StorageGolemPacking.itemCount(finished.get(lane))
+                +StorageGolemPacking.itemCount(item));
+        finished.set(lane,item.isEmpty()?ItemStack.EMPTY:item.copyWithCount(1));
+        setChanged();
+    }
+    /** Take one physical empty box from the magazine into a chosen idle lane. */
+    public boolean loadEmptyIntoLane(int lane){
+        if(lane<0||lane>=STATIONS||!working.get(lane).isEmpty()
+                ||!finished.get(lane).isEmpty())return false;
+        ItemStack next=take();
+        if(next.isEmpty())return false;
+        working.set(lane,next.copyWithCount(1));
+        setChanged();
+        return true;
+    }
+    private static NonNullList<ItemStack> boxSlots(ItemStack box){
+        NonNullList<ItemStack> slots=NonNullList.withSize(27,ItemStack.EMPTY);
+        if(!box.isEmpty()){
+            ItemContainerContents content=box.get(DataComponents.CONTAINER);
+            if(content!=null)content.copyInto(slots);
+        }
+        return slots;
+    }
+    public ItemStack workingItem(int lane,int slot){
+        if(slot<0||slot>=27||lane<0||lane>=STATIONS)return ItemStack.EMPTY;
+        return boxSlots(working.get(lane)).get(slot);
+    }
+    public boolean canEditWorking(int lane,ItemStack item){
+        return lane>=0&&lane<STATIONS&&!working.get(lane).isEmpty()
+                &&(item.isEmpty()||item.getItem().canFitInsideContainerItems());
+    }
+    /** Keep the actual 27 Minecraft inventory positions, including holes
+     * created by dragging items out, not only a compact list of nonempties. */
+    public void editWorking(int lane,int slot,ItemStack item){
+        if(slot<0||slot>=27||!canEditWorking(lane,item))return;
+        ItemStack old=working.get(lane);
+        NonNullList<ItemStack> values=boxSlots(old);
+        values.set(slot,item.isEmpty()?ItemStack.EMPTY:item.copy());
+        boolean any=false;
+        for(ItemStack stack:values)if(!stack.isEmpty()){any=true;break;}
+        ItemStack replacement=StorageGolemPacking.emptyVersion(old);
+        if(any)replacement.set(DataComponents.CONTAINER,
+                ItemContainerContents.fromItems(values));
+        setWorkingBox(lane,replacement);
+    }
+    public void replaceWorkingContents(int lane,List<ItemStack> values){
+        if(lane<0||lane>=STATIONS||values.size()!=27
+                ||working.get(lane).isEmpty())return;
+        for(ItemStack value:values)
+            if(!value.isEmpty()&&!value.getItem().canFitInsideContainerItems())
+                return;
+        ItemStack updated=StorageGolemPacking.emptyVersion(working.get(lane));
+        if(values.stream().anyMatch(item->!item.isEmpty()))
+            updated.set(DataComponents.CONTAINER,
+                    ItemContainerContents.fromItems(values));
+        setWorkingBox(lane,updated);
+    }
+    /** Commit only the selected real shulker to the physically adjacent
+     * OUTPUT adapter's PTP; failed insertion retains the boxed inventory. */
+    public boolean sendSelected(ServerLevel level,int lane){
+        if(lane<0||lane>=STATIONS)return false;
+        PtpBlockEntity output=attachedOutput(level);
+        if(output==null)return false;
+        if(!working.get(lane).isEmpty()){
+            if(!finished.get(lane).isEmpty())return false;
+            finished.set(lane,working.get(lane));
+            working.set(lane,ItemStack.EMPTY);
+            setChanged();
+        }
+        ItemStack box=finished.get(lane);
+        if(box.isEmpty())return false;
+        ItemStack moving=box.copy();
+        if(StorageGolemDispatch.insert(level,output.getBlockPos(),moving)!=1
+                ||!moving.isEmpty())return false;
+        bufferedItems=Math.max(0,bufferedItems-StorageGolemPacking.itemCount(box));
+        finished.set(lane,ItemStack.EMPTY);
+        setChanged();
+        return true;
+    }
     public int activeCount(){
         int count=0;
         for(ItemStack box:working)if(!box.isEmpty())count++;

@@ -151,6 +151,7 @@ public final class StorageGolem extends PathfinderMob {
         entityData.set(DISPLAY_CARGO,Math.min(27,filled));
     }
     private BlockPos home=BlockPos.ZERO, source=BlockPos.ZERO,destination=BlockPos.ZERO;
+    private long observedRecallSerial;
     private ItemStack cargo=ItemStack.EMPTY;
     private String itemId="";
     // 0 source, 1 destination, 2 home, 3 return source,
@@ -206,8 +207,23 @@ public final class StorageGolem extends PathfinderMob {
         // Jobs choose destinations server-side. Random strolling would
         // interfere with deliberate pallet-to-rack navigation.
     }
+    /** New workers inherit their shelf's current persisted recall epoch,
+     * so yesterday's RECALL ALL never cancels brand-new sorting jobs. */
+    private void markCurrentRecall(){
+        if(level() instanceof ServerLevel server&&server.hasChunkAt(home)
+                &&server.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf)
+            observedRecallSerial=shelf.recallSerial();
+    }
+    private void checkPendingRecall(ServerLevel server){
+        if(tickCount%20!=0||!server.hasChunkAt(home))return;
+        if(server.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf
+                &&shelf.recallSerial()>observedRecallSerial){
+            observedRecallSerial=shelf.recallSerial();
+            recallToShelf(server);
+        }
+    }
     public void assign(BlockPos home,BlockPos source,BlockPos dest,ItemStack sample){
-        this.home=home.immutable();
+        this.home=home.immutable();markCurrentRecall();
         this.source=source.immutable();
         this.destination=dest.immutable();
         this.itemId=net.minecraft.core.registries.BuiltInRegistries.ITEM
@@ -262,7 +278,7 @@ public final class StorageGolem extends PathfinderMob {
     }
     public void assignHaul(BlockPos shelf,BlockPos transfer,BlockPos rack,
             int ticket,int index){
-        home=shelf.immutable();source=transfer.immutable();destination=rack.immutable();
+        home=shelf.immutable();markCurrentRecall();source=transfer.immutable();destination=rack.immutable();
         cargo=ItemStack.EMPTY;emptyBox=ItemStack.EMPTY;requestedSample=ItemStack.EMPTY;
         outputJob=false;outputTicket=0;packedJob=false;packedItemCount=0;
         haulJob=true;haulTicket=ticket;haulIndex=index;stage=0;waitTicks=0;
@@ -433,6 +449,21 @@ public final class StorageGolem extends PathfinderMob {
     }
     public void dismissCrew(){
         if(playerHaul&&stage==4){stage=2;setCustomNameVisible(false);}
+    }
+    /** Warehouse console recall applies to ALL unshelved workers, including
+     * active sorting and order runners. Live cargo remains on its worker
+     * until normal shelf-return recovery, never teleports to inventory. */
+    public boolean recallToShelf(ServerLevel level){
+        if(stage==2||holdsPallet())return false;
+        if(playerHaul)cancelPendingPickup(level);
+        if(haulJob&&!playerHaul)cancelHaul(level);
+        if(outputJob)releaseOutput(level);
+        stage=2;
+        routeIssue="RECALLED TO SHELF";
+        getNavigation().stop();
+        flatHomeRoute.clear();
+        nextHomeReplanTick=0;
+        return true;
     }
     public boolean loadPallet(ItemStack stack,NonNullList<ItemStack> stock){
         if(!playerHaul||haulIndex!=0||!carryingPallet.isEmpty()
@@ -1261,6 +1292,7 @@ public final class StorageGolem extends PathfinderMob {
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel level))return;
+        checkPendingRecall(level);
         if(tickCount%10==0)updateTaskLabel();
         syncHeldVisual();
         // Movement controls expire after each mob AI tick. Drive the next
@@ -1564,6 +1596,7 @@ public final class StorageGolem extends PathfinderMob {
     @Override protected void addAdditionalSaveData(ValueOutput out){
         super.addAdditionalSaveData(out);
         out.store("home",BlockPos.CODEC,home);
+        out.putLong("observed_recall_serial",observedRecallSerial);
         out.store("source",BlockPos.CODEC,source);
         out.store("destination",BlockPos.CODEC,destination);
         if(!cargo.isEmpty())out.store("cargo",ItemStack.CODEC,cargo);
@@ -1595,6 +1628,7 @@ public final class StorageGolem extends PathfinderMob {
     @Override protected void readAdditionalSaveData(ValueInput in){
         super.readAdditionalSaveData(in);
         home=in.read("home",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        observedRecallSerial=Math.max(0,in.getLongOr("observed_recall_serial",0L));
         source=in.read("source",BlockPos.CODEC).orElse(BlockPos.ZERO);
         destination=in.read("destination",BlockPos.CODEC).orElse(BlockPos.ZERO);
         cargo=in.read("cargo",ItemStack.CODEC).orElse(ItemStack.EMPTY);

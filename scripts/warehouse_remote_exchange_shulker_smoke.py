@@ -77,6 +77,6 @@ assert "SHULKER_STATION_MENU=Registry.register" in registration
 assert "ShulkerStationScreen::new" in clientReg
 assert "ExtendedMenuProvider<BlockPos>" in station
 assert "serverPlayer.openMenu(tank)" in stationBlock
-assert "public static final int COLS=8,ROWS=8,STOCK=64;" in stationMenu
+assert "public static final int COLS=8,ROWS=8,STOCK=64,LANES=3,BOX_SLOTS=27;" in stationMenu
 assert "outputConnected()" in stationScreen
 print("PASS: remote 216-slot escrow, scanner requests, PTP return, Golem pallet magazine and Shulker Station GUI")

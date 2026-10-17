@@ -83,7 +83,7 @@ public final class RackComputerScreen extends Screen {
     private JsonArray racks=new JsonArray(), contents=new JsonArray(),
             ptps=new JsonArray(), stations=new JsonArray();
     private int selectedPtpIndex;
-    private Button ptpNextButton,ptpModeButton,ptpWrapButton;
+    private Button ptpNextButton,ptpModeButton,ptpWrapButton,highlightButton;
     private int selectedX=Integer.MIN_VALUE, selectedY,selectedZ;
     private int totalRacks, totalItems, scroll;
     private String status="Connecting to racks...";
@@ -149,6 +149,9 @@ public final class RackComputerScreen extends Screen {
                         Math.max(60,width-orderButtonX-20),22).build());
         addRack(Button.builder(Component.literal("Close"),
                 b->onClose()).bounds(width-99,height-34,80,22).build());
+        highlightButton=addRack(Button.builder(Component.literal("HIGHLIGHT • 10s"),
+                button->highlightSelected()).bounds(90,height-34,155,22).build());
+        highlightButton.active=false;
         addRack(Button.builder(Component.literal("▲"),
                 b->{scroll=Math.max(0,scroll-1);})
                 .bounds(22,height-34,26,22).build());
@@ -164,7 +167,7 @@ public final class RackComputerScreen extends Screen {
                 b->requestGolem(2)).bounds(26+column,72,column,23).build());
         addWorkers(Button.builder(Component.literal("ENLIST 4"),
                 b->requestGolem(0)).bounds(30+2*column,72,column,23).build());
-        addWorkers(Button.builder(Component.literal("DISMISS CREW"),
+        addWorkers(Button.builder(Component.literal("RECALL ALL"),
                 b->requestGolem(1)).bounds(34+3*column,72,column,23).build());
         addWorkers(Button.builder(Component.literal("REFRESH TASKS"),
                 b->sendQuery()).bounds(22,103,122,22).build());
@@ -197,6 +200,13 @@ public final class RackComputerScreen extends Screen {
                 search.getValue().strip(),
                 selectedX==Integer.MIN_VALUE?BlockPos.ZERO
                         :new BlockPos(selectedX,selectedY,selectedZ)));
+    }
+
+    private void highlightSelected(){
+        if(selectedX==Integer.MIN_VALUE)return;
+        ClientPlayNetworking.send(new RackComputerNet.HighlightRequest(
+                computer,new BlockPos(selectedX,selectedY,selectedZ)));
+        status="Requested 10-second glow for the selected pallet (all players).";
     }
 
     private void requestGolem(int action){
@@ -293,6 +303,17 @@ public final class RackComputerScreen extends Screen {
                     ?obj.get("industrialConcrete").getAsInt():0;
             updatePtpControls();
             contents=obj.has("contents")?obj.getAsJsonArray("contents"):new JsonArray();
+            if(highlightButton!=null){
+                boolean loaded=false;
+                for(var row:racks){
+                    JsonObject rack=row.getAsJsonObject();
+                    if(rack.get("x").getAsInt()==selectedX
+                            &&rack.get("y").getAsInt()==selectedY
+                            &&rack.get("z").getAsInt()==selectedZ
+                            &&rack.get("pallet").getAsBoolean()){loaded=true;break;}
+                }
+                highlightButton.active=loaded;
+            }
             totalRacks=obj.get("networkSize").getAsInt();
             totalItems=obj.get("totalItems").getAsInt();
             shelfCount=obj.has("shelfCount")?obj.get("shelfCount").getAsInt():0;
@@ -339,7 +360,8 @@ public final class RackComputerScreen extends Screen {
             drawOrderList(graphics);
             return;
         }
-        graphics.text(font,Component.literal(status),22,77,0xff9fedaf,false);
+        graphics.text(font,Component.literal(compact(status,
+                Math.max(8,(width-250)/6))),22,77,0xff9fedaf,false);
         graphics.text(font,Component.literal("Total stored: "+totalItems+" items"),
                 width-197,77,0xffa4d5b7,false);
         if(!transferPointStatus.isBlank())
@@ -364,7 +386,7 @@ public final class RackComputerScreen extends Screen {
         graphics.fill(splitter,160,width-20,height-45,0xff22382f);
         graphics.text(font,Component.literal("AISLES / RACKS"),29,167,0xffb3f9c1,false);
         graphics.text(font,Component.literal("SELECTED RACK • CONTENTS"),splitter+11,167,0xffb3f9c1,false);
-        int rows=Math.max(0,(height-236)/25);
+        int rows=Math.max(0,(height-253)/25);
         for(int i=scroll;i<racks.size()&&i<scroll+rows;i++){
             JsonObject rack=racks.get(i).getAsJsonObject();
             int y=183+(i-scroll)*25;
@@ -395,8 +417,7 @@ public final class RackComputerScreen extends Screen {
             String count="x"+item.get("count").getAsInt();
             graphics.text(font,Component.literal(count),width-74,y,0xffa8e4c5,false);
         }
-        graphics.text(font,Component.literal("Click rack to inspect  •  Search outlines matching racks for 10 seconds"),
-                99,height-27,0xff91c3a1,false);
+
     }
 
     private void drawOrderList(GuiGraphicsExtractor graphics){
@@ -448,7 +469,7 @@ public final class RackComputerScreen extends Screen {
         graphics.fill(20,151,width-20,height-45,0xff21392e);
         graphics.text(font,Component.literal("DEPLOYED WORKERS • LIVE TASK TRACKER"),
                 29,159,0xffb3f9c1,false);
-        int rows=Math.max(0,(height-238)/31);
+        int rows=Math.max(0,(height-258)/31);
         if(workers.isEmpty())
             graphics.text(font,Component.literal(
                     "No active workers loaded. Docked Golems remain on shelves."),
@@ -468,9 +489,7 @@ public final class RackComputerScreen extends Screen {
             graphics.text(font,Component.literal(compact(line,
                     Math.max(14,(width-58)/6))),32,y+16,0xff99cbb2,false);
         }
-        graphics.text(font,Component.literal(
-                "ENLIST: 4 to follow you  •  RUN QUEUE: dispatch sorting/orders  •  DISMISS: return empty crew"),
-                22,height-42,0xffa3d1ae,false);
+
     }
 
     @Override public void tick(){

@@ -257,6 +257,54 @@ public final class StoragePalletCrew {
         }
         return "Need a clear loaded 2x2 space for a pallet; crew retains its cargo.";
     }
+    /** Operator recall covers EVERY loaded worker whose home is a linked
+     * warehouse shelf, regardless of its player owner or current task.
+     * Rigs retain their 216 real cargo slots until they physically unload. */
+    public static String dismissWarehouse(ServerLevel level,BlockPos computer){
+        var network=WarehouseNetwork.fromComputer(level,computer);
+        java.util.Set<BlockPos> homes=new java.util.HashSet<>();
+        for(StorageGolemShelfEntity shelf:network.shelves()){
+            homes.add(shelf.getBlockPos());
+            // A recall is meant to leave the workers IN their shelves;
+            // suspend automatic sorting or they would instantly redeploy.
+            shelf.requestRecall();
+        }
+        if(homes.isEmpty())return "No linked Storage Golem shelves.";
+        java.util.ArrayList<StorageGolem> workers=new java.util.ArrayList<>();
+        java.util.ArrayList<MovingPallet> rigs=new java.util.ArrayList<>();
+        for(var entity:level.getAllEntities()){
+            if(entity instanceof StorageGolem worker&&homes.contains(worker.shelfHome()))
+                workers.add(worker);
+            if(entity instanceof MovingPallet carrier
+                    &&carrier.fromWarehouse(network.shelves()))
+                rigs.add(carrier);
+        }
+        // A leader currently owns a partially assembled manual pallet; do
+        // not recall its escorts and leave the 216-slot pallet orphaned.
+        java.util.Set<String> carryingOwners=new java.util.HashSet<>();
+        for(StorageGolem worker:workers)
+            if(worker.holdsPallet()&&!worker.assignedOwner().isBlank())
+                carryingOwners.add(worker.assignedOwner());
+        int recalled=0,protectedCargo=0;
+        for(StorageGolem worker:workers){
+            if(!worker.assignedOwner().isBlank()
+                    &&carryingOwners.contains(worker.assignedOwner())){
+                protectedCargo++;continue;
+            }
+            if(worker.recallToShelf(level))recalled++;
+        }
+        for(MovingPallet rig:rigs){
+            if(rig.loaded()){
+                rig.returnToWarehouse(level,computer);
+                protectedCargo+=4;
+            }
+        }
+        return "Warehouse recall: "+recalled+" workers returning to shelves; "
+                +rigs.size()+" pallet team(s) routed home; "
+                +protectedCargo+" workers protected until their cargo is unloaded. "
+                +"Unloaded chunks resume when their workers load.";
+    }
+
     public static String dismiss(ServerLevel level,ServerPlayer player,BlockPos computer){
         if(player.distanceToSqr(computer.getX()+.5,computer.getY()+.5,
                 computer.getZ()+.5)>64)

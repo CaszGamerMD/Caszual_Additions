@@ -102,6 +102,26 @@ public final class RackComputerNet {
                         ByteBufCodecs.INT,PtpControl::action,PtpControl::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
+    /** Exactly one server-authorized pallet highlight across all viewers.
+     * The renderer uses the existing sea-lantern-style emissive rack edges. */
+    public record HighlightRequest(BlockPos computer,BlockPos rack)
+            implements CustomPacketPayload {
+        public static final Type<HighlightRequest> TYPE=new Type<>(
+                CaszualAdditions.id("warehouse_highlight_request"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,HighlightRequest> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,HighlightRequest::computer,
+                        BlockPos.STREAM_CODEC,HighlightRequest::rack,HighlightRequest::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
+    public record HighlightChanged(BlockPos rack,int ticks) implements CustomPacketPayload {
+        public static final Type<HighlightChanged> TYPE=new Type<>(
+                CaszualAdditions.id("warehouse_highlight_changed"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,HighlightChanged> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,HighlightChanged::rack,
+                        ByteBufCodecs.INT,HighlightChanged::ticks,HighlightChanged::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
+
     // Highlight roots are returned to the requesting client in Snapshot,
     // rather than sending particles to every player on the server.
     private RackComputerNet() {}
@@ -116,6 +136,8 @@ public final class RackComputerNet {
         PayloadTypeRegistry.serverboundPlay().register(GolemControl.TYPE,GolemControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(PtpControl.TYPE,PtpControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GolemWork.TYPE,GolemWork.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(HighlightRequest.TYPE,HighlightRequest.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(HighlightChanged.TYPE,HighlightChanged.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(Query.TYPE,(payload,context)->
                 context.server().execute(()->answer(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(OrderRequest.TYPE,(payload,context)->
@@ -128,6 +150,8 @@ public final class RackComputerNet {
                 context.server().execute(()->controlPtp(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(GolemWork.TYPE,(payload,context)->
                 context.server().execute(()->requestGolemWork(context.player(),payload)));
+        ServerPlayNetworking.registerGlobalReceiver(HighlightRequest.TYPE,(payload,context)->
+                context.server().execute(()->requestHighlight(context.player(),payload)));
 
     }
 
@@ -161,6 +185,34 @@ public final class RackComputerNet {
                 :"PTP operation blocked: check pallet, Wrap Unit, pending orders or active haul.");
     }
 
+    private static void requestHighlight(ServerPlayer player,HighlightRequest request){
+        ServerLevel level=player.level();
+        BlockPos computer=request.computer();
+        if(!level.hasChunkAt(computer)
+                ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER)
+                ||player.distanceToSqr(computer.getX()+.5,computer.getY()+.5,
+                        computer.getZ()+.5)>100)return;
+        RackBlockEntity selection=null;
+        for(RackBlockEntity rack:WarehouseNetwork.fromComputer(level,computer).racks()){
+            if(rack.getBlockPos().equals(request.rack())&&rack.hasPallet()){
+                selection=rack;break;
+            }
+        }
+        if(selection==null){
+            reply(player,"Highlight needs a loaded pallet in this connected warehouse.");
+            return;
+        }
+        // Send one replacement to EVERY online viewer, even viewers at other
+        // computers. Other dimensions receive 0 ticks to clear old selections.
+        for(ServerPlayer online:level.getServer().getPlayerList().getPlayers()){
+            int ticks=online.level()==level?200:0;
+            ServerPlayNetworking.send(online,
+                    new HighlightChanged(selection.getBlockPos(),ticks));
+        }
+        reply(player,"Pallet "+selection.getBlockPos().toShortString()
+                +" highlighted for all players for 10 seconds.");
+    }
+
     private static void requestGolemWork(ServerPlayer player,GolemWork request){
         ServerLevel level=player.level();
         BlockPos computer=request.computer();
@@ -171,7 +223,7 @@ public final class RackComputerNet {
         String result;
         switch(request.action()){
             case 0 -> result=StoragePalletCrew.enlist(level,player,computer);
-            case 1 -> result=StoragePalletCrew.dismiss(level,player,computer);
+            case 1 -> result=StoragePalletCrew.dismissWarehouse(level,computer);
             case 2 -> {
                 int deployed=0;
                 for(StorageGolemShelfEntity shelf:nearbyShelves(level,computer)){
