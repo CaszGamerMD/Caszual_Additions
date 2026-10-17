@@ -34,6 +34,22 @@ empty-hand handler, double-take protection and full slot-data preservation.
 CI/compile cannot prove live movement or mouse routing: verify in a backed-up
 world after upgrading.
 
+## Pallet and warehouse cargo hand-contact animation
+
+- The remote pickup team's visible deck is driven by a synchronized **real
+  lifted/carrying** flag, not a replacement pallet assigned for future use.
+  All three walk naturally with empty swinging hands until the wrapped
+  target is physically transferred; they only raise their hands afterwards.
+- The moving pallet carrier shifts each worker's **two actual hands under
+  its 2x2 deck edge**. The previous outer wrists sat beyond the model's
+  rim, making the load appear to float even during travel.
+- The fourth Golem extends both arms so its palms reach the full-size
+  upright replacement pallet, moving and rocking with its walk.
+- Individual warehouse sorting/order runners (PTP to rack, rack to PTP,
+  shulker station) now keep a physical dark-metal tray at wrist height.
+  Their nine cargo previews are drawn on that tray instead of floating
+  above their outstretched hands. All items stay on the real server Golem.
+
 ## Direct Scanner: PTPs behave as pallet racks
 
 PTPs are now **both pickup and delivery stations** for a Direct crew, just
