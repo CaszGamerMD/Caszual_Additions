@@ -1267,6 +1267,14 @@ public final class StorageGolem extends PathfinderMob {
         if(cargo.isEmpty()){
             stage=2;return;
         }
+        if(level.getBlockEntity(destination) instanceof StackOfPalletsBlockEntity magazine){
+            if(magazine.put(cargo.copyWithCount(1))){
+                cargo=ItemStack.EMPTY;
+                stage=2;
+                routeIssue="";
+            }else routeIssue="WAITING FOR FREE PALLET STACK SLOT";
+            return;
+        }
         RackBlockEntity rack=level.getBlockEntity(destination)
                 instanceof RackBlockEntity r?r:null;
         if(rack==null||!rack.hasPallet()){
