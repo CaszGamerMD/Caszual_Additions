@@ -148,6 +148,44 @@ controls for running the sorting queue and recalling workers. Those
 controls are **separate from Scanner interactions**, ensuring remote swaps
 can find all four docked workers without accidental manual dispatch.
 
+## Three independent remote pickup Golems — no empty cargo rig
+
+The three REMOTE pickup Golems now leave the warehouse as **three real,
+independent StorageGolem entities**. They each receive a saved mission UUID,
+home-shelf identity, warehouse computer, wrapped target position, and a
+distinct rendezvous square in a checked outside three-wide aisle. Each walks
+there independently with the normal empty-handed robot model and its own
+flat-first route. **There is no MovingPallet entity, no invisible deck, and
+no rigid/shared model holding the three together on the outbound journey.**
+The fourth Golem simultaneously pushes the one actual unwrapped replacement
+pallet, independently of whether the eventual loaded carrier exists yet.
+
+After all three walkers reach their separate rendezvous squares and the
+target's wrapped 2×2 pallet is still intact, the team creates exactly ONE
+shared MovingPallet entity with its saved mission UUID. Only then does
+the existing lift transaction copy the real target deck and 216 item slots
+into that carrier, remove the old ground pallet, and retire the three
+independent worker entities. This is the **only** time the three Golems
+physically join and grip the loaded pallet. They move it aside, the fourth
+Golem places the empty replacement, physically rejoins the carrier, and all
+four return home with the original wrapped pallet.
+
+Mission IDs, four home-shelf positions, courier ID, assigned individual
+waypoints and remote computer/target are saved on every outbound worker so
+unloaded chunks or a server restart do not erase their tasks. A pending
+exchange never makes additional warehouse withdrawals when resumed. An
+already-running rigid, empty remote rig from an older JAR is converted
+in-place into the three genuine individual walkers, without taking more
+shelf tokens or fresh pallets. Existing rigs that have **already picked up**
+their wrapped target remain loaded and continue the original swap/return.
+
+Testing in a **backed-up live world** should inspect the trio during
+warehouse departure and midway to the target, after unloading/reloading
+their chunks, while independently assembling at the three-wide aisle, at
+the first actual lift, and after the fourth worker rejoins. CI validates
+compile/state/escrow/source invariants, but cannot guarantee in-world AI
+pathfinding and animation correctness.
+
 ## Two-party remote pallet swap
 
 A remote Scanner swap now has **two real travelling bodies**, not one four-worker
