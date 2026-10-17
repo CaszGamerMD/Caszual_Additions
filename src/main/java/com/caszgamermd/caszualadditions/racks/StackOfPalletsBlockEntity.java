@@ -1,6 +1,12 @@
 package com.caszgamermd.caszualadditions.racks;
 
 import net.minecraft.core.BlockPos;
+import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import org.jspecify.annotations.Nullable;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -17,11 +23,16 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
 /** Actual floor magazine: twelve independent intact empty pallet items. */
-public final class StackOfPalletsBlockEntity extends BlockEntity implements Container {
+public final class StackOfPalletsBlockEntity extends BlockEntity implements Container,ExtendedMenuProvider<BlockPos> {
     private NonNullList<ItemStack> pallets=NonNullList.withSize(12,ItemStack.EMPTY);
     public StackOfPalletsBlockEntity(BlockPos pos,BlockState state){
         super(RackContent.PALLET_STACK_ENTITY,pos,state);
     }
+    @Override public Component getDisplayName(){return Component.literal("Stack of Pallets");}
+    @Override public @Nullable AbstractContainerMenu createMenu(int id,Inventory inventory,Player player){
+        return new StackOfPalletsMenu(id,inventory,this);
+    }
+    @Override public BlockPos getScreenOpeningData(ServerPlayer player){return worldPosition;}
     public void loadMagazine(ItemStack magazine){
         NonNullList<ItemStack> unpacked=NonNullList.withSize(12,ItemStack.EMPTY);
         magazine.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY).copyInto(unpacked);
