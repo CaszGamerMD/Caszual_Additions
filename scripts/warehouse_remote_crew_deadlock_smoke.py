@@ -34,10 +34,10 @@ assert "level.addFreshEntity(carrier)" not in dispatch
 assert "remoteCourierPhase==0" in worker
 assert "if(!followCourierRoute(level,remoteCourierAisle,true))" in worker
 
-# A real Golem shelf exit frequently has a shelf wall just behind it.
-# A full 3x3 footprint wrongly considers that unwalkable even though
-# the Golem with its side-on pallet has two unobstructed rows ahead.
-blocked={(x,-1) for x in range(-5,6)}
+# The actual physical aisle is two blocks wide, bounded on both
+# sides by racks. A full 3x3 neighborhood can never pass through it,
+# but the real upright 2x2 pushed pallet can.
+blocked={(x,z) for x in (-1,2) for z in range(-2,10)}
 def clear3(x,z):
     return all((x+dx,z+dz) not in blocked
                for dx in (-1,0,1) for dz in (-1,0,1))
