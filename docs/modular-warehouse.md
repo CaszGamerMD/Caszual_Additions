@@ -412,9 +412,11 @@ crew then follows the player until dismissed at the original
 warehouse Computer. Death of a loaded moving pallet drops its actual
 one pallet, all stored items, and four recoverable Golem tokens.
 
-Pallet movement still uses Minecraft ground navigation, not
-teleportation or forced chunk-loading. A narrow aisle that cannot
-physically admit the wide pallet may stop the group. Validate uneven
+Manual pallet movement still uses Minecraft ground navigation,
+not teleportation. Automatic remote swaps additionally use expiring
+simulation tickets near the physical carrier, rather than permanent
+forceload settings. A narrow aisle that cannot physically admit the
+wide pallet may stop the group. Validate uneven
 terrain, obstacles, cargo integrity and saving in a backed-up test
 world; passing CI does not prove perfect client animation.
 
@@ -450,13 +452,15 @@ dimension. **Linking and deploying a crew are separate operations**.
    with **WAITING** when dispatch is blocked; the original pallet is not
    consumed while queued.
 
-**Important unloaded-chunk limitation:** The physical carrier does **not**
-teleport or force-load distant terrain. Its warehouse, off-site target and
-walking corridor need active loaded chunks, including during the return.
-When the warehouse is outside simulation range, the Scanner keeps the
-request queued rather than launching workers invisibly. For reliably
-unattended long-distance runs, a separate safe chunk-ticket system is still
-needed; this is not yet a guaranteed cross-unloaded-chunk transfer.
+**Unloaded chunks:** The Scanner now opens short-lived, renewable
+warehouse chunk tickets while its request is pending. Once dispatched, the
+single physical carrier keeps its own surrounding walking chunks and
+current destination ticking so it can travel outside the player's simulation
+distance. Unlike permanent /forceload settings, these tickets expire
+automatically if the request or carrier stops renewing them. The carrier
+still walks through the world; blocked terrain and nontraversable elevations
+are real obstacles. Do an in-game test for long routes, world restart
+and a shared server before relying on unattended cargo delivery.
 
 **Do not use the manual haul click before a remote job.** The most common
 failed dispatch on a four-Golem warehouse was the old Scanner-link behavior,
