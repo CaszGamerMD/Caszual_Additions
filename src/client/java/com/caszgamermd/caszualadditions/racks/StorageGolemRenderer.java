@@ -73,6 +73,19 @@ public final class StorageGolemRenderer
             blocks.update(state.palletDeck,material.defaultBlockState(),DISPLAY);
             state.palletDeck.tintLayers().clear();
             if(plastic)state.palletDeck.tintLayers().add(PalletData.plasticColor(carried));
+            if(state.pushingEmptyPallet){
+                for(int i=0;i<4;i++){
+                    Block board=material;
+                    if(carried.getItem() instanceof BlockItem wood
+                            &&wood.getBlock() instanceof PalletBlock pallet
+                            &&pallet.kind()==PalletKind.WOOD)
+                        board=PalletData.wood(carried).get(i);
+                    blocks.update(state.courierBoards[i],board.defaultBlockState(),DISPLAY);
+                    state.courierBoards[i].tintLayers().clear();
+                    if(plastic)
+                        state.courierBoards[i].tintLayers().add(PalletData.plasticColor(carried));
+                }
+            }
             blocks.update(state.palletSupport,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
             blocks.update(state.crate,
                     PalletContent.CARDBOARD_RENDER_PROXY.defaultBlockState(),DISPLAY);
@@ -101,9 +114,9 @@ public final class StorageGolemRenderer
         if(state.pushingEmptyPallet){
             // A single Golem pushes the replacement vertically on its edge.
             pose.pushPose();
-            for(float y:new float[]{.23f,.58f,.91f})
-                piece(state.palletDeck,state,pose,collector,
-                        -.54f,y,-.77f,1.08f,.13f,.13f);
+            for(int board=0;board<4;board++)
+                piece(state.courierBoards[board],state,pose,collector,
+                        -.54f,.21f+board*.245f,-.77f,1.08f,.13f,.13f);
             for(float x:new float[]{-.42f,.33f})
                 piece(state.palletSupport,state,pose,collector,
                         x,.18f,-.82f,.11f,.89f,.13f);
