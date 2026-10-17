@@ -16,7 +16,8 @@ assert "StorageGolemReturnPath.stepsHome(from,shelfPlane," in home
 assert "StorageGolemShelfDoor.front(shelf)" in home
 assert "followTerrainStep(next,1.08)" in home
 assert "StorageGolemReturnPath.walkable(level,p)" in home
-assert "A same-level corridor is preferable, not mandatory." in home\nassert "walkTo(level,entrance,1.08)" in home
+assert "A same-level corridor is preferable, not mandatory." in home
+assert "walkTo(level,entrance,1.08)" in home
 assert "StorageGolemReturnPath.canDockFrontNearby(feet,shelfPos,facing," in s
 assert "feet.getY()!=shelfPos.getY()" in s
 assert "StorageGolemReturnPath.walkable(level,p)" in home
