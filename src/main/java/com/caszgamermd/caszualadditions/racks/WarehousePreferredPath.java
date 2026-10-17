@@ -10,9 +10,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 
 /**
- * Safe, finite physical warehouse routes. Flat cardinal aisles ALWAYS win:
- * try an all-same-Y path first, then stairs/slopes only when no flat leg
- * exists (or when the actual destination is on another floor).
+ * Safe, finite physical warehouse routes. Prefer a same-height path; allow
+ * occasional, collision-checked one-block climbs/drops only when no level
+ * route reaches the requested goal. Each height change has a large penalty.
  *
  * Long-distance carriers compute 36-block legs in currently loaded chunks,
  * keeping the SAME persisted job and recomputing on obstruction/reload.
@@ -20,6 +20,7 @@ import net.minecraft.core.Direction;
 public final class WarehousePreferredPath {
     private WarehousePreferredPath(){}
     public static final int RADIUS=36,MAX_CELLS=6500;
+    private static final int STEP_HEIGHT_COST=14,MAX_ELEVATION_FROM_START=12;
     private record Node(BlockPos pos,int cost,int estimate){}
     private static int heuristic(BlockPos p,BlockPos target){
         return Math.abs(p.getX()-target.getX())
@@ -28,7 +29,10 @@ public final class WarehousePreferredPath {
     }
     public static java.util.List<BlockPos> leg(BlockPos start,BlockPos target,
             Predicate<BlockPos> passable,BlockPos blocked){
-        var flat=find(start,target,passable,blocked,false);
+        // If the job ends on a different level, a flat partial route would
+        // strand the golem at the base of the very last one-block step.
+        var flat=start.getY()==target.getY()
+                ?find(start,target,passable,blocked,false):null;
         if(flat!=null)return flat;
         return find(start,target,passable,blocked,true);
     }
@@ -68,10 +72,12 @@ public final class WarehousePreferredPath {
                     BlockPos next=across.offset(0,delta,0);
                     if(Math.abs(next.getX()-start.getX())>RADIUS
                             ||Math.abs(next.getZ()-start.getZ())>RADIUS
-                            ||Math.abs(next.getY()-floor)>3
+                            ||Math.abs(next.getY()-floor)>MAX_ELEVATION_FROM_START
                             ||next.equals(blocked)
                             ||!passable.test(next))continue;
-                    int cost=node.cost()+1+(delta==0?0:18);
+                    // Multiple changes cost more than a level detour.
+                    // Still allow +1 or -1 where terrain actually requires it.
+                    int cost=node.cost()+1+(delta==0?0:STEP_HEIGHT_COST);
                     if(cost>=costs.getOrDefault(next,Integer.MAX_VALUE))continue;
                     costs.put(next,cost);
                     parent.put(next,here);
@@ -82,7 +88,12 @@ public final class WarehousePreferredPath {
         }
         // If the actual nearby target cannot be reached on this floor, do
         // not treat a stuck partial leg as a valid alternative repeatedly.
-        if(best==null||best.equals(start)||exact&&bestScore>=heuristic(start,target))
+        // For nearby goals a partial approach is NOT success: it sends a
+        // robot to the same impassable hillside on every replan. The full
+        // 3-D search must reach the real destination, otherwise wait.
+        if(best==null||best.equals(start)
+                ||exact&&!best.equals(target)
+                ||!exact&&bestScore>=heuristic(start,target))
             return null;
         var steps=new ArrayList<BlockPos>();
         for(BlockPos at=best;!at.equals(start);at=parent.get(at))steps.add(at);
