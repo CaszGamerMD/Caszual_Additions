@@ -25,12 +25,16 @@ assert 'in.read("remote_courier_join_aisle",BlockPos.CODEC)' in courier
 assert "WarehouseRemoteTickets.keep(level,goal)" in courier
 assert "StorageGolemReturnPath.walkable(level,remoteCourierAisle)" not in courier
 assert "walkTo(level,remoteCourierAisle,1.12)" not in courier
-assert "candidate.distSqr(trioRally)<36" in router
+assert "validServiceAisle(level,candidate,footprint,trioRally)" in router
 assert "if(!excluded.equals(BlockPos.ZERO)" in router
 assert "&&candidate.distSqr(excluded)<9" in router
-assert "if(!clear(level,candidate))continue;" in router
+assert "nearTargetService(candidate,footprint)" in router
 assert "path=route(level,from,candidate," in router
 assert "BlockPos.ZERO,true,trioRally)" in router
+assert "targetFootprint(level,pallet,rig,replacement)" in router
+assert "for(int distance=2;distance<=3;distance++)" in router
+assert "RemotePalletCourierRoute.validServiceAisle(" in courier
+assert "remoteCourierRejectedAisle,rig,remoteFresh" in courier
 assert "pos.distSqr(crewRally)>=9" in router
 assert "StorageGolemReturnPath.steps(start,destination,passable)" in router
 assert "WarehousePreferredPath.leg(start,destination,passable,avoid)" in router
