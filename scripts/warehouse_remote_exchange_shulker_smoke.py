@@ -19,6 +19,14 @@ stationBlock=read(main/"ShulkerTankBlock.java")
 registration=read(main/"RackContent.java")
 clientReg=read(client/"CaszualAdditionsClient.java")
 assert 'tag.putBoolean("remote_pickup_pending",true)' in scanner
+# Linking must NOT call enlist: that would drain the four shelf Golems
+# which the remote dispatch transaction needs for its own pallet rig.
+assert "if(sameWarehouse){" in scanner
+assert scanner.index("if(sameWarehouse){") < scanner.index("StoragePalletCrew.enlist(level,player,computer)")
+assert 'Golems remain docked for remote pickup' in scanner
+assert 'Wrap it with the portable wrapper before requesting pickup.' in scanner
+# PTP dropPallet applies live filters; compare that exact canonical stack.
+assert '.applyFilterSettings(ptp.palletStack(),ptp)' in dispatch
 assert "RemotePalletDispatch.request(world,player,computer,target)" in scanner
 assert "ServerTickEvents.END_SERVER_TICK" in scanner
 assert "StorageScannerItem.initialize();" in registration
