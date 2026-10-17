@@ -538,7 +538,7 @@ public final class MovingPallet extends PathfinderMob {
     private void tickRemoteStepAside(ServerLevel level){
         if(remoteMoveAside.equals(BlockPos.ZERO)
                 ||!safePlatformFloor(level,remoteMoveAside)){
-            remoteMoveAside=remoteAisle(level,deliveryPosition,6,9);
+            remoteMoveAside=remoteAisle(level,deliveryPosition,5,7);
             remoteFloorRoute.clear();nextRemotePlan=0;
         }
         if(remoteMoveAside.equals(BlockPos.ZERO)){
