@@ -20,6 +20,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.BlockItem;
@@ -183,7 +184,36 @@ public final class MovingPallet extends PathfinderMob {
         deliveryFailure="THREE GOLEMS LIFTED TARGET; MOVING ASIDE";
         return true;
     }
-    public boolean readyForCourierPlacement(){return deliveryMode==6&&!remoteReplacementPlaced;}
+    /** The recovered pallet cannot occupy its former 2x2 ground cells.
+     * Compare REAL footprint geometry, not a guessed root+1 midpoint:
+     * EAST/WEST/NORTH/SOUTH orientations have different signed cells.
+     * Existing loaded carriers are allowed to hand off as soon as their
+     * entire collision box is clear, without waiting for a remote 7-block
+     * staging waypoint that the AI cannot always reach. */
+    public boolean remoteFootprintClear(){
+        if(!loaded()||deliveryMode<5||deliveryMode>6)return false;
+        if(!(pallet.getItem() instanceof BlockItem item)
+                ||!(item.getBlock() instanceof PalletBlock block))return false;
+        BlockState state=block.defaultBlockState()
+                .setValue(PalletBlock.PART,0)
+                .setValue(PalletBlock.FACING,remoteOldFacing)
+                .setValue(PalletBlock.LEGACY,remoteOldLegacy);
+        int minX=Integer.MAX_VALUE,maxX=Integer.MIN_VALUE;
+        int minZ=Integer.MAX_VALUE,maxZ=Integer.MIN_VALUE;
+        for(int i=0;i<4;i++){
+            BlockPos cell=PalletBlock.partPos(deliveryPosition,i,state);
+            minX=Math.min(minX,cell.getX());maxX=Math.max(maxX,cell.getX());
+            minZ=Math.min(minZ,cell.getZ());maxZ=Math.max(maxZ,cell.getZ());
+        }
+        // A modest clearance beyond the pallet walls leaves room for
+        // placement animation without routing the three bots too far away.
+        AABB footprint=new AABB(minX-.5,deliveryPosition.getY()-.5,
+                minZ-.5,maxX+1.5,deliveryPosition.getY()+2.6,maxZ+1.5);
+        return !getBoundingBox().intersects(footprint);
+    }
+    public boolean readyForCourierPlacement(){
+        return deliveryMode==6&&!remoteReplacementPlaced&&remoteFootprintClear();
+    }
     public Direction remoteOldFacing(){return remoteOldFacing;}
     public boolean remoteOldLegacy(){return remoteOldLegacy;}
     public boolean confirmCourierPlacement(UUID courier){
@@ -781,6 +811,16 @@ public final class MovingPallet extends PathfinderMob {
             deliveryFailure="WAITING FOR TARGET PALLET LIFT";
     }
     private void tickRemoteStepAside(ServerLevel level){
+        // Release the courier AS SOON AS the old footprint is physically
+        // unobstructed. Previously the loaded three-person rig froze at a
+        // cached 5-7 block waypoint despite already making room.
+        if(remoteFootprintClear()){
+            getNavigation().stop();
+            remoteFloorRoute.clear();
+            deliveryMode=6;
+            deliveryFailure="OLD PALLET CLEAR; COURIER MAY PLACE REPLACEMENT";
+            return;
+        }
         if(remoteMoveAside.equals(BlockPos.ZERO)
                 ||!safePlatformFloor(level,remoteMoveAside)){
             remoteMoveAside=remoteAisle(level,deliveryPosition,5,7);
@@ -793,9 +833,16 @@ public final class MovingPallet extends PathfinderMob {
             deliveryFailure="THREE GOLEMS MOVING TARGET ASIDE";
             navigateRemoteFloor(level,remoteMoveAside);return;
         }
+        // A planned aisle can be reached while the bounding box still
+        // overlaps the old deck. Never claim placement-ready prematurely.
         getNavigation().stop();
-        deliveryMode=6;
-        deliveryFailure="FOOTPRINT CLEARED; WAITING FOR EMPTY COURIER";
+        if(remoteFootprintClear()){
+            deliveryMode=6;
+            deliveryFailure="FOOTPRINT CLEARED; WAITING FOR EMPTY COURIER";
+        }else{
+            remoteMoveAside=BlockPos.ZERO;
+            deliveryFailure="RESELECTING CLEAR LIFT-TEAM PARKING";
+        }
     }
     private void tickRemoteRendezvous(ServerLevel level){
         getNavigation().stop();
