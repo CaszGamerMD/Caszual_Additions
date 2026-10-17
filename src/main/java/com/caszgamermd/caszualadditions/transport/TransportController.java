@@ -36,9 +36,9 @@ public final class TransportController extends Item {
             if(ok){t.remove("pallet");save(stack,t);}return InteractionResult.SUCCESS;
         }
         TransportVehicle previous=selected(l,t);
-        if(previous!=null&&previous!=v){message(player,v.couple(previous));t.remove("vehicle");save(stack,t);return InteractionResult.SUCCESS;}
+        if(previous!=null&&previous!=v){message(player,previous.hasCargo()&&!player.isShiftKeyDown()?(previous.transferTo(v)?"Pallet transferred.":"Pause both carriers; target needs a free pallet slot within 12 blocks."):v.couple(previous));t.remove("vehicle");save(stack,t);return InteractionResult.SUCCESS;}
         t.remove("pallet");t.putString("vehicle",v.getStringUUID());t.putString("dimension",dimension(l));save(stack,t);
-        message(player,"Carrier selected. Click ground to unload, a bay to link a drone, or another car to couple. Sneak-click a block to clear.");return InteractionResult.SUCCESS;
+        message(player,"Carrier selected. Click ground to unload, a bay to link a drone, or another carrier to transfer cargo. Sneak-click another car to couple. Sneak-click a block to clear.");return InteractionResult.SUCCESS;
     }
     @Override public InteractionResult useOn(UseOnContext c){
         if(!(c.getLevel() instanceof ServerLevel l))return InteractionResult.SUCCESS;

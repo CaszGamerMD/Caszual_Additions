@@ -22,13 +22,13 @@ public final class TransportContent {
     public static void initialize(){
         for(String name:List.of("conveyor_straight","conveyor_left","conveyor_right","conveyor_up","conveyor_down","pallet_rail","pallet_rail_left","pallet_rail_right")){
             var key=ResourceKey.create(Registries.BLOCK,CaszualAdditions.id(name));
-            var block=new GuidewayBlock(name,BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(4).noOcclusion().setId(key));
+            var block=new GuidewayBlock(name,BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(4).pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK).noOcclusion().setId(key));
             Registry.register(BuiltInRegistries.BLOCK,key,block); WAYS.put(name,block);
             var ik=ResourceKey.create(Registries.ITEM,CaszualAdditions.id(name));
             ITEMS.put(name,Registry.register(BuiltInRegistries.ITEM,ik,new BlockItem(block,new Item.Properties().setId(ik).useBlockDescriptionPrefix())));
         }
         var bayKey=ResourceKey.create(Registries.BLOCK,CaszualAdditions.id("drone_parking_bay"));
-        BAY=Registry.register(BuiltInRegistries.BLOCK,bayKey,new GuidewayBlock("drone_parking_bay",BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(4).noOcclusion().setId(bayKey)));
+        BAY=Registry.register(BuiltInRegistries.BLOCK,bayKey,new GuidewayBlock("drone_parking_bay",BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(4).pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK).noOcclusion().setId(bayKey)));
         var bik=ResourceKey.create(Registries.ITEM,CaszualAdditions.id("drone_parking_bay"));
         ITEMS.put("drone_parking_bay",Registry.register(BuiltInRegistries.ITEM,bik,new BlockItem(BAY,new Item.Properties().setId(bik).useBlockDescriptionPrefix())));
         for(int k=1;k<VEHICLES.length;k++){

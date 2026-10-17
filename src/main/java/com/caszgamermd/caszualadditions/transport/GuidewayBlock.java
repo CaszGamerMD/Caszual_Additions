@@ -51,14 +51,27 @@ public final class GuidewayBlock extends Block {
         super.setPlacedBy(l,p,s,e,stack);
         if(!l.isClientSide())for(int i=0;i<9;i++)if(i!=4)l.setBlock(cell(p,s.getValue(FACING),i),s.setValue(PART,i),3);
     }
-    @Override protected void affectNeighborsAfterRemoval(BlockState s,ServerLevel l,BlockPos p,boolean moved){
-        if(!removing){removing=true;try{
+    private void removeModule(ServerLevel l,BlockPos p,BlockState s,boolean drop){
+        if(removing)return;
+        removing=true;
+        try{
             BlockPos r=root(p,s);
-            for(int i=0;i<9;i++){BlockPos q=cell(r,s.getValue(FACING),i);if(l.getBlockState(q).is(this))l.removeBlock(q,false);}
-        }finally{removing=false;}}
+            for(int i=0;i<9;i++){
+                BlockPos q=cell(r,s.getValue(FACING),i);BlockState actual=l.getBlockState(q);
+                if(actual.is(this)&&actual.getValue(PART)==i&&actual.getValue(FACING)==s.getValue(FACING))l.removeBlock(q,false);
+            }
+            if(drop)Block.popResource(l,r,new ItemStack(this));
+        }finally{removing=false;}
+    }
+    @Override public BlockState playerWillDestroy(Level l,BlockPos p,BlockState s,net.minecraft.world.entity.player.Player player){
+        if(l instanceof ServerLevel server)removeModule(server,p,s,!player.getAbilities().instabuild);
+        return super.playerWillDestroy(l,p,s,player);
+    }
+    @Override protected void affectNeighborsAfterRemoval(BlockState s,ServerLevel l,BlockPos p,boolean moved){
+        if(!removing)removeModule(l,p,s,!moved);
         super.affectNeighborsAfterRemoval(s,l,p,moved);
     }
-    @Override protected List<ItemStack> getDrops(BlockState s,LootParams.Builder loot){return List.of(new ItemStack(this));}
+    @Override protected List<ItemStack> getDrops(BlockState s,LootParams.Builder loot){return List.of();}
     @Override protected VoxelShape getShape(BlockState s,BlockGetter l,BlockPos p,CollisionContext c){
         // Five small treads approximate the continuous 1:3 ramp surface.
         if(rise()==0)return Block.box(0,0,0,16,4,16);

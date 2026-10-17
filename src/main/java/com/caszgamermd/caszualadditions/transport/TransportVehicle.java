@@ -64,6 +64,16 @@ public final class TransportVehicle extends PathfinderMob {
     }
     public boolean load(ServerLevel l,BlockPos p){if(kind()!=0&&!stationary())return false;for(int i=0;i<capacity();i++)if(cargo[i].empty()&&cargo[i].lift(l,p)){sync();return true;}return false;}
     public boolean unload(ServerLevel l,BlockPos p,Direction d){if(!stationary())return false;for(int i=0;i<capacity();i++)if(!cargo[i].empty()){boolean ok=cargo[i].place(l,p,d);sync();return ok;}return false;}
+    public boolean transferTo(TransportVehicle other){
+        if(other==this||!stationary()||!other.stationary()||distanceToSqr(other)>144)return false;
+        for(int source=0;source<capacity();source++)if(!cargo[source].empty()){
+            for(int dest=0;dest<other.capacity();dest++)if(other.cargo[dest].empty()){
+                other.cargo[dest]=cargo[source];cargo[source]=new PalletCargo();sync();other.sync();return true;
+            }
+        }
+        return false;
+    }
+    public boolean hasCargo(){return Arrays.stream(cargo).anyMatch(c->!c.empty());}
     public boolean linkBay(BlockPos p){if(kind()!=4||!stationary()||p.equals(home)||p.distSqr(home)>128*128)return false;destination=p;linkedBay=true;flightStage=0;returning=false;return true;}
     public String couple(TransportVehicle leader){
         if(kind()!=2&&kind()!=3)return "Select a pallet or passenger car as the rear car.";
@@ -140,8 +150,6 @@ public final class TransportVehicle extends PathfinderMob {
         if(goal==null){status="Taking up coupling slack";return;}
         BlockPos floor=BlockPos.containing(goal.x,goal.y-.26,goal.z);
         if(!l.hasChunkAt(floor)||!(l.getBlockState(floor).getBlock() instanceof GuidewayBlock way)||!way.rail()){status="Trailing rail missing";return;}
-        BlockPos floor=BlockPos.containing(goal.x,goal.y-.26,goal.z);
-        if(!l.hasChunkAt(floor)||!(l.getBlockState(floor).getBlock() instanceof GuidewayBlock way)||!way.rail()){status="Trailing rail missing";return;}
         // Rejoining a train never teleports through walls or unloaded chunks.
         step(l,goal,.11);running=false;
     }
@@ -155,11 +163,11 @@ public final class TransportVehicle extends PathfinderMob {
         double ez=Math.abs(Math.sin(yaw))*halfWidth+Math.abs(Math.cos(yaw))*halfLength;
         AABB next=new AABB(getX()-ex,getY(),getZ()-ez,getX()+ex,getY()+2.8,getZ()+ez).move(change);
         BlockPos min=BlockPos.containing(next.minX,next.minY,next.minZ),max=BlockPos.containing(next.maxX,next.maxY,next.maxZ);
-        if(!l.hasChunksAt(min,max)||!l.getWorldBorder().isWithinBounds(min)||!l.getWorldBorder().isWithinBounds(max)){status="Waiting for loaded route";return false;}
+        if(l.isOutsideBuildHeight(min)||l.isOutsideBuildHeight(max)||!l.hasChunksAt(min,max)||!l.getWorldBorder().isWithinBounds(min)||!l.getWorldBorder().isWithinBounds(max)){status="Waiting for loaded route";return false;}
         // Guideways form the supporting floor; all other collision must remain clear.
         for(BlockPos p:BlockPos.betweenClosed(min,max)){
             var s=l.getBlockState(p);
-            if(s.getBlock() instanceof GuidewayBlock)continue;
+            if(s.getBlock() instanceof GuidewayBlock&&p.getY()<=getY()+.5)continue;
             var shape=s.getCollisionShape(l,p);
             if(!shape.isEmpty()&&shape.toAabbs().stream().anyMatch(b->b.move(p).intersects(next))){status="Obstructed";return false;}
         }
@@ -169,7 +177,7 @@ public final class TransportVehicle extends PathfinderMob {
         }
         setPos(getX()+change.x,getY()+change.y,getZ()+change.z);
         if(change.horizontalDistanceSqr()>.00001){setYRot((float)Math.toDegrees(Math.atan2(-change.x,change.z)));setYBodyRot(getYRot());}
-        lastMoveTick=tickCount;lastMoveTick=tickCount;record();status="Moving";return distance<=speed;
+        lastMoveTick=tickCount;record();status="Moving";return distance<=speed;
     }
     private void fly(ServerLevel l){
         if(!linkedBay){status="Link a destination parking bay";return;}
@@ -192,7 +200,6 @@ public final class TransportVehicle extends PathfinderMob {
         if(player.getItemInHand(hand).is(TransportContent.CONTROLLER))return TransportController.useVehicle(player,hand,this);
         if(!player.getItemInHand(hand).isEmpty())return InteractionResult.PASS;
         if(player.isShiftKeyDown()){
-            if(!ahead.isEmpty()&&!stationary()){player.sendSystemMessage(Component.literal("Stop the engine before uncoupling."));return InteractionResult.SUCCESS;}
             if(!ahead.isEmpty()&&!stationary()){player.sendSystemMessage(Component.literal("Stop the engine before uncoupling."));return InteractionResult.SUCCESS;}
             if(running||traveling){running=false;traveling=false;status="Stopped";}
             else if(!ahead.isEmpty()||!behind.isEmpty()){
