@@ -154,7 +154,7 @@ public final class StorageGolem extends PathfinderMob {
     private long observedRecallSerial;
     private boolean remoteCourier;
     private UUID remoteCarrierId;
-    private BlockPos remoteCourierTarget=BlockPos.ZERO,remoteCourierAisle=BlockPos.ZERO;
+    private BlockPos remoteCourierTarget=BlockPos.ZERO,remoteCourierAisle=BlockPos.ZERO,remoteRigLastKnown=BlockPos.ZERO;
     private ItemStack remoteFresh=ItemStack.EMPTY;
     private int remoteCourierPhase;
     private ItemStack cargo=ItemStack.EMPTY;
@@ -237,6 +237,7 @@ public final class StorageGolem extends PathfinderMob {
         remoteCarrierId=rig;
         remoteCourierTarget=target.immutable();
         remoteCourierAisle=BlockPos.ZERO;
+        remoteRigLastKnown=blockPosition().immutable();
         remoteFresh=com.caszgamermd.caszualadditions.pallet.GlassPalletWrap
                 .withWrap(empty.copyWithCount(1),false);
         remoteCourierPhase=0;
@@ -260,6 +261,8 @@ public final class StorageGolem extends PathfinderMob {
         if(tickCount%40==0){
             WarehouseRemoteTickets.keep(level,blockPosition());
             WarehouseRemoteTickets.keep(level,remoteCourierTarget);
+            if(!remoteRigLastKnown.equals(BlockPos.ZERO))
+                WarehouseRemoteTickets.keep(level,remoteRigLastKnown);
             BlockPos goal=remoteCourierPhase==0?remoteCourierTarget:remoteCourierAisle;
             double dx=goal.getX()+.5-getX(),dz=goal.getZ()+.5-getZ();
             double length=Math.hypot(dx,dz);
@@ -273,6 +276,7 @@ public final class StorageGolem extends PathfinderMob {
             routeIssue="WAITING FOR LOADED THREE-GOLEM TEAM TO RELOAD";
             return;
         }
+        remoteRigLastKnown=rig.blockPosition().immutable();
         if(remoteCourierPhase==0){
             if(remoteCourierAisle.equals(BlockPos.ZERO)
                     ||!StorageGolemReturnPath.walkable(level,remoteCourierAisle)){
@@ -1756,6 +1760,7 @@ public final class StorageGolem extends PathfinderMob {
         if(remoteCarrierId!=null)out.putString("remote_courier_rig",remoteCarrierId.toString());
         out.store("remote_courier_target",BlockPos.CODEC,remoteCourierTarget);
         out.store("remote_courier_aisle",BlockPos.CODEC,remoteCourierAisle);
+        out.store("remote_rig_last_known",BlockPos.CODEC,remoteRigLastKnown);
         if(!remoteFresh.isEmpty())out.store("remote_empty_pallet",ItemStack.CODEC,remoteFresh);
         out.putBoolean("player_haul",playerHaul);
         out.putBoolean("ground_pickup",groundPickup);
@@ -1796,6 +1801,7 @@ public final class StorageGolem extends PathfinderMob {
         remoteCourierPhase=Math.clamp(in.getIntOr("remote_courier_phase",0),0,1);
         remoteCourierTarget=in.read("remote_courier_target",BlockPos.CODEC).orElse(BlockPos.ZERO);
         remoteCourierAisle=in.read("remote_courier_aisle",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        remoteRigLastKnown=in.read("remote_rig_last_known",BlockPos.CODEC).orElse(BlockPos.ZERO);
         remoteFresh=in.read("remote_empty_pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
         try{remoteCarrierId=UUID.fromString(in.getStringOr("remote_courier_rig",""));}
         catch(IllegalArgumentException ex){remoteCarrierId=null;}
