@@ -55,6 +55,12 @@ public final class StorageGolemShelfBlock extends Block implements EntityBlock {
     }
     @Override protected InteractionResult useItemOn(ItemStack held,BlockState state,
             Level level,BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit){
+        if(held.is(RackContent.STORAGE_SCANNER_ITEM)){
+            if(level instanceof net.minecraft.server.level.ServerLevel server
+                    &&player instanceof net.minecraft.server.level.ServerPlayer user)
+                StorageScannerItem.onShelfClick(server,user,held,pos);
+            return InteractionResult.SUCCESS;
+        }
         if(!held.is(RackContent.STORAGE_GOLEM_ITEM))return InteractionResult.PASS;
         if(level.isClientSide())return InteractionResult.SUCCESS;
         if(level.getBlockEntity(pos) instanceof StorageGolemShelfEntity be){

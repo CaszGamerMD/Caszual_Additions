@@ -5,8 +5,8 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 
-/** Loaded-only, read-only audit invoked by sneak-using the handheld scanner
- * on the Rack Computer. Never moves stock or forces chunk loading. */
+/** Loaded-only, read-only audit invoked by the Rack Computer Diagnostics
+ * button. Never moves stock or forces chunk loading. */
 public final class WarehouseDiagnostics {
     private WarehouseDiagnostics(){}
 
@@ -15,7 +15,7 @@ public final class WarehouseDiagnostics {
         results.add("=== WAREHOUSE DIAGNOSTICS ===");
         if(!level.hasChunkAt(computer)
                 ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER)){
-            results.add("[BLOCKED] Target a Rack Computer with the handheld scanner.");
+            results.add("[BLOCKED] Rack Computer is not present in this loaded chunk.");
             return results;
         }
         List<RackBlockEntity> racks=RackNetwork.fromComputer(level,computer);
@@ -57,8 +57,9 @@ public final class WarehouseDiagnostics {
         if(shelves.isEmpty())results.add("[BLOCKED] Attach Storage Golem Shelves.");
         if(docked<4)results.add("[CREW] Need 4 free docked Golems to enlist.");
         if(points.isEmpty())results.add("[ORDER] Attach an OUTPUT PTP to computer or shelves.");
-        results.add("Right-click computer to enlist/return crew; right-click sealed "
-                +"PTP pallet to lift; rack or ground to deliver.");
+        results.add("Scanner: shift-click computer to link; shift-click air "
+                +"to switch REMOTE / DIRECT. DIRECT: shelf to summon, wrapped "
+                +"pallet to lift, then rack or block face to deliver.");
         return results;
     }
 }

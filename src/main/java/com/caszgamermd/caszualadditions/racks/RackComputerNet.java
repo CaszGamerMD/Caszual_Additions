@@ -222,8 +222,18 @@ public final class RackComputerNet {
                         computer.getZ()+.5)>100)return;
         String result;
         switch(request.action()){
-            case 0 -> result=StoragePalletCrew.enlist(level,player,computer);
+            case 0 -> result="DIRECT Scanner: right-click a Golem Shelf linked "
+                    +"to this warehouse to call your four Golems. "
+                    +"Computer clicks no longer consume docked workers.";
             case 1 -> result=StoragePalletCrew.dismissWarehouse(level,computer);
+            case 3 -> {
+                // Diagnostics are a computer action now, NOT a shift-scanner
+                // shortcut. Every line is server-authoritative and read-only.
+                for(String row:WarehouseDiagnostics.audit(level,computer))
+                    player.sendSystemMessage(
+                            net.minecraft.network.chat.Component.literal(row));
+                result="Warehouse diagnostics sent to chat.";
+            }
             case 2 -> {
                 int deployed=0;
                 for(StorageGolemShelfEntity shelf:nearbyShelves(level,computer)){

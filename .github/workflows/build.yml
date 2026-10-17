@@ -78,6 +78,8 @@ jobs:
         run: python3 scripts/warehouse_remote_two_party_smoke.py
       - name: Verify full-size 12-pallet tower, height collision and hand retrieval
         run: python3 scripts/warehouse_fullsize_pallet_stack_regression.py
+      - name: Verify Scanner Remote/Direct mode isolation and computer diagnostics
+        run: python3 scripts/warehouse_scanner_mode_interactions_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()
