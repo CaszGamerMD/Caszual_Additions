@@ -863,6 +863,12 @@ public final class MovingPallet extends PathfinderMob {
         super.tick();
         if(!(level() instanceof ServerLevel server))return;
         if(tickCount%10==0)updateCrewLabel();
+        if((deliveryMode==3||deliveryMode==4)&&tickCount%40==0){
+            // Keep a short, expiring simulation corridor around the actual
+            // walking platform, plus its next destination. No teleportation.
+            WarehouseRemoteTickets.keep(server,blockPosition());
+            WarehouseRemoteTickets.keep(server,deliveryPosition);
+        }
         if(delivered){
             if(tickCount%20==0)restoreWorkers(server);
             return;
