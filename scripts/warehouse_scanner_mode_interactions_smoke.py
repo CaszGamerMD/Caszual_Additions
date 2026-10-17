@@ -38,7 +38,9 @@ assert "List<StorageGolemShelfEntity> connected=RackComputerNet.nearbyShelves(le
 assert "shelf->shelf.getBlockPos().equals(selectedShelf)" in crew
 assert "if(!valid)return" in crew
 assert "private static String enlistAt(" in crew
-assert "StoragePalletCrew.enlist(level,player,computer)" in net # computer GOLEM tab keeps prior explicit controls
+assert "StoragePalletCrew.enlist(level,player,computer)" not in net
+assert 'case 0 -> result="DIRECT Scanner:' in net
+assert 'Component.literal("SCANNER HELP")' in screen
 assert "case 3 -> {" in net and "WarehouseDiagnostics.audit(level,computer)" in net
 assert 'Component.literal("DIAGNOSTICS")' in screen
 assert "requestGolem(3)" in screen
