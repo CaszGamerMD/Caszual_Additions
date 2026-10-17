@@ -28,7 +28,9 @@ assert "candidate.distSqr(trioRally)<36" in router
 assert "if(!excluded.equals(BlockPos.ZERO)" in router
 assert "&&candidate.distSqr(excluded)<9" in router
 assert "if(!clear(level,candidate))continue;" in router
-assert "path=route(level,from,candidate,BlockPos.ZERO,true)" in router
+assert "path=route(level,from,candidate," in router
+assert "BlockPos.ZERO,true,trioRally)" in router
+assert "pos.distSqr(crewRally)>=9" in router
 assert "StorageGolemReturnPath.steps(start,destination,passable)" in router
 assert "WarehousePreferredPath.leg(start,destination,passable,avoid)" in router
 assert "StorageGolemReturnPath.walkable(level,center.offset(xSide,0,zSide))" in router
