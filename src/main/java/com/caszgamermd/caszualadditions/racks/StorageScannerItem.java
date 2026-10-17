@@ -73,6 +73,7 @@ public final class StorageScannerItem extends Item {
         if(!tag.getBooleanOr("remote_pickup_pending",false))return "";
         BlockPos computer=linkedComputer(scanner,world);
         if(computer==null)return "INVALID: scanner link lost.";
+        WarehouseRemoteTickets.keep(world,computer);
         BlockPos target=new BlockPos(tag.getIntOr("remote_pickup_x",0),
                 tag.getIntOr("remote_pickup_y",0),tag.getIntOr("remote_pickup_z",0));
         return RemotePalletDispatch.request(world,player,computer,target);
