@@ -26,10 +26,10 @@ assert 'Unwrap the pallet with shears before removing it.' in ptp
 assert "ptp.setInput(!ptp.input());" in ptp
 
 assert "IntegerProperty.create(\"part\",0,3)" in stack
-assert "level.getWorldBorder().isWithinBounds(cell)" in stack
+assert "level.getWorldBorder().isWithinBounds(pos)" in stack
 assert "for(int part=0;part<4;part++)" in stack
 assert "new StackOfPalletsBlockEntity(pos,state):null" in stack
-assert "magazine.loadMagazine(stack)" in stack
+assert "be.loadMagazine(stack)" in stack
 assert "public static @Nullable StackOfPalletsBlockEntity controller" in stack
 assert "Block.popResource(level,origin,magazine.asItem())" in stack
 assert "level.removeBlock(other,false)" in stack
@@ -45,9 +45,10 @@ assert "GlassPalletWrap.wrapped(palletItem)" in renderer
 assert "PalletData.wood(palletItem)" in renderer
 assert "PalletData.plasticColor(palletItem)" in renderer
 assert "PalletContent.copperTextureBlock(pallet.copperAge())" in renderer
-assert "int layer=i/4,slot=i%4;" in renderer
+assert "float py=i*(StackOfPalletsBlock.PALLET_THICKNESS_PIXELS/16f)" in renderer
 assert "if(!state.occupied[i])continue;" in renderer
 variants=json.loads((assets/"blockstates/stack_of_pallets.json").read_text())["variants"]
-assert len(variants)==20 and all(
-    f"height={h},part={part}" in variants for part in range(4) for h in range(5))
+assert len(variants)==80 and all(
+    f"height={h},layer={layer},part={part}" in variants
+    for layer in range(4) for part in range(4) for h in range(5))
 print("PASS: PTP empty-pallet removal with escrow safety; real 2x2 pallet magazine, 12 per-slot dynamic renders and saved contents")

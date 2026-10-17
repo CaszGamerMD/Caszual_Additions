@@ -21,9 +21,9 @@ assert "StackOfPalletsBlockEntity::new" in registration
 assert "pallets=NonNullList.withSize(12,ItemStack.EMPTY)" in be
 assert "ContainerHelper.saveAllItems(output,pallets)" in be
 assert "ContainerHelper.loadAllItems(input,pallets)" in be
-assert "magazine.loadMagazine(stack)" in blocks
+assert "be.loadMagazine(stack)" in blocks
 assert "ExtendedMenuProvider<BlockPos>" in be
-assert "server.openMenu(magazine);" in blocks
+assert "server.openMenu(magazine)" in blocks
 assert "PALLET_STACK_MENU=Registry.register" in registration
 stack_menu=read("StackOfPalletsMenu.java")
 assert "CAPACITY=12" in stack_menu

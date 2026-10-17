@@ -22,7 +22,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * One controller renders the EXACT twelve saved pallet ItemStacks as a
- * 2-by-2 array of mini pallet decks in each of 3 tiers: 4 x 3 = 12.
+ * ONE full-width 2x2 pallet per tier, stacked 12 decks high (3.75 blocks).
  * Material for each deck board is derived from that particular saved item:
  * mixed plank selections, plastic dye tint, iron, copper ageing and wrap.
  */
@@ -41,11 +41,16 @@ public final class StackOfPalletsRenderer implements
             ModelFeatureRenderer.@org.jspecify.annotations.Nullable CrumblingOverlay cracks){
         BlockEntityRenderer.super.extractRenderState(magazine,state,partial,camera,cracks);
         blocks.update(state.glass,Blocks.GLASS.defaultBlockState(),DISPLAY);
+        int displaySlot=0;
         for(int slot=0;slot<12;slot++){
             ItemStack palletItem=magazine.getItem(slot);
-            state.occupied[slot]=StackOfPalletsItem.isPallet(palletItem);
-            state.wrapped[slot]=state.occupied[slot]&&GlassPalletWrap.wrapped(palletItem);
-            if(!state.occupied[slot])continue;
+            if(!StackOfPalletsItem.isPallet(palletItem))continue;
+            // Inventory slots may have gaps after GUI transfers. Display
+            // contents are COMPACT from bottom to top, so all full-size
+            // decks really support each other and their collision matches.
+            int index=displaySlot++;
+            state.occupied[index]=true;
+            state.wrapped[index]=GlassPalletWrap.wrapped(palletItem);
             Block[] deck={Blocks.OAK_PLANKS,Blocks.OAK_PLANKS,
                     Blocks.OAK_PLANKS,Blocks.OAK_PLANKS};
             boolean plastic=false;
@@ -64,12 +69,16 @@ public final class StackOfPalletsRenderer implements
                 }
             }
             for(int i=0;i<4;i++){
-                blocks.update(state.boards[slot][i],deck[i].defaultBlockState(),DISPLAY);
+                blocks.update(state.boards[index][i],deck[i].defaultBlockState(),DISPLAY);
                 state.boards[slot][i].tintLayers().clear();
                 if(plastic)
                     state.boards[slot][i].tintLayers().add(
                             PalletData.plasticColor(palletItem));
             }
+        }
+        for(int i=displaySlot;i<12;i++){
+            state.occupied[i]=false;
+            state.wrapped[i]=false;
         }
     }
     private static void cube(net.minecraft.client.renderer.block.BlockModelRenderState model,
@@ -85,15 +94,12 @@ public final class StackOfPalletsRenderer implements
             SubmitNodeCollector collector,CameraRenderState camera){
         for(int i=0;i<12;i++){
             if(!state.occupied[i])continue;
-            int layer=i/4,slot=i%4;
-            // The real pallet spans 2x2 blocks. Here its EXACT deck mesh
-            // is uniformly scaled to .46, so four fit within the 2x2 crate.
-            float px=(slot%2)*1.0f+.04f;
-            float pz=(slot/2)*1.0f+.04f;
-            float py=.04f+layer*.275f;
+            // Each individual real pallet fills the ENTIRE 2x2 footprint.
+            // PalletBlock collision is 5 pixels high (5/16 blocks): the
+            // 12th deck sits 3.4375 blocks up and finishes at y=3.75.
+            float py=i*(StackOfPalletsBlock.PALLET_THICKNESS_PIXELS/16f);
             poses.pushPose();
-            poses.translate(px,py,pz);
-            poses.scale(.46f,.46f,.46f);
+            poses.translate(0f,py,0f);
             for(int board=0;board<4;board++){
                 float x=.04f+board*.49f;
                 cube(state.boards[i][board],state,poses,collector,
