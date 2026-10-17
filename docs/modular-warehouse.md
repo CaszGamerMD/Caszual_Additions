@@ -4,6 +4,48 @@ Target: Minecraft Java **26.2 Fabric**. This document covers the current
 implementation on the main branch. For a step-by-step end-to-end regression
 of each system, see [Warehouse integrated test plan](warehouse-test-plan.md).
 
+## Scanner interaction modes — Remote / Direct
+
+The scanner is an item-bound, server-validated two-mode tool. **Shift-right-click
+the Rack Computer** to link the scanner to that specific warehouse/computer.
+Re-linking cancels any previously queued (not yet dispatched) remote pickup
+instead of accidentally dispatching workers from the wrong warehouse. A
+**normal right-click on the computer opens its UI**, including while holding
+the scanner. The full, read-only **DIAGNOSTICS** button now lives on the
+computer's **STORAGE GOLEMS** page and prints the full warehouse audit in
+chat. Scanner shift-click no longer runs diagnostics.
+
+**Shift-right-click in AIR** while holding the scanner to toggle between
+**REMOTE** and **DIRECT**. The mode is saved on the actual Scanner ItemStack
+(default: REMOTE), and right-clicking air normally reports its mode, link
+and the current direct crew status.
+
+- **REMOTE:** right-click a fully glass-wrapped, freestanding 2x2 ground
+  pallet. It queues a physically transported automatic warehouse exchange
+  (one empty-pallet courier + three loaded carriers). Remote does not
+  enlist manual workers, pick pallets up to follow the player or place
+  pallets. The queue retries until dispatch confirms, including the
+  three-Golem status; switching to Direct cancels only undispached queued
+  requests, not actual transport already on the road.
+- **DIRECT:** right-click a **Golem Shelf connected to the linked
+  computer**. Four workers are taken first from the selected shelf and
+  then from its linked shelves, dispatched into their physical front
+  aisle. There must be four free docked workers; a shelf outside the
+  linked warehouse is refused. Next right-click a wrapped pallet
+  (PTP, freestanding ground, or rack) to command all four to pick it up.
+  After the lift they follow the player as one physical carrier until
+  the scanner is right-clicked on an **empty rack** or an **ordinary
+  ground block's face**, which requests a safe 2x2 placement at that
+  clicked face. The carrier retains every one of its 216 items and
+  continues pathfinding to the physical destination, never teleporting
+  the cargo. To reuse the crew, collect another pallet from the same
+  linked team; send them to shelves via the warehouse's recall control.
+
+The computer's Storage Golems page still has its independent operator
+controls for running the sorting queue and recalling workers. Those
+controls are **separate from Scanner interactions**, ensuring remote swaps
+can find all four docked workers without accidental manual dispatch.
+
 ## Two-party remote pallet swap
 
 A remote Scanner swap now has **two real travelling bodies**, not one four-worker
