@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 public final class StorageGolemRenderState extends LivingEntityRenderState {
     public boolean carryingPallet;
     public boolean showSharedPallet;
+    public boolean pushingEmptyPallet;
     public int visibleCargo;
     public int heldSlots;
     public final BlockModelRenderState[] held=new BlockModelRenderState[9];
