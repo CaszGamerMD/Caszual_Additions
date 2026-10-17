@@ -4,6 +4,48 @@ Target: Minecraft Java **26.2 Fabric**. This document covers the current
 implementation on the main branch. For a step-by-step end-to-end regression
 of each system, see [Warehouse integrated test plan](warehouse-test-plan.md).
 
+## Warehouse GUI update — pallet, rack computer and Shulker Station
+
+- **Pallet/rack/PTP storage:** The 216 real storage slots use two pages of
+  18×6; the player's inventory stays below. The clipboard module has its own
+  real slot beside the pallet, not over the last storage column. Only while
+  a filter module is installed does a separate right-hand editor show 16
+  non-consuming sample slots and whitelist/blacklist, target scope and
+  apply/clear controls. No filter widget overlaps storage or the hotbar.
+- **Rack Computer:** Select a rack in **RACKS & PTPs** to inspect its contents.
+  The **HIGHLIGHT • 10s** button lights the loaded pallet with a bright
+  rack perimeter visible to *every player* in the same dimension. Each new
+  highlight replaces the previous one: there is only ONE at a time.
+  Searching the network no longer highlights every search result.
+  PTP controls remain on the rack page.
+- **STORAGE GOLEMS:** **RECALL ALL** applies to every currently loaded
+  walking Storage Golem assigned to the connected shelves, including manual
+  escorts, sorting workers and order runners. Inventory travels back with
+  the actual worker; loaded four-Golem pallet carriers receive a warehouse
+  unloading order first rather than dropping their 216-slot load. Workers
+  in unloaded chunks will need those chunks to load before they can receive
+  the console command.
+- **Shelf placement:** A Storage Golem Shelf's opening/spawn/check-in side is
+  the face TOWARD the placing player (opposite the player's look direction).
+  No worker should appear through its roof or rear.
+- **Shulker Station:** Right-click the station to open its 64 individual
+  empty-Shulker slots. It also displays three **ACTIVE** boxes and their
+  three corresponding **READY** output buffers. Select **LANE 1/2/3** to
+  inspect that working shulker's complete 27 inventory cells. Use
+  **LOAD EMPTY** to move one physical box from the magazine to an empty lane.
+  Drag items into/out of those cells as with a real container. Remove a
+  finished box directly from its READY slot if desired. **SEND TO PALLET**
+  sends the chosen working/finished box to a touching Hopper Adapter on
+  an available OUTPUT PTP, retaining it in the READY buffer if placement
+  is blocked. The selected box does not get duplicated into temporary UI
+  storage.
+- **PTP Hopper Adapter:** Hoppers whose output spout points into an adapter
+  insert items into the actual pallet (including filtered pallets). A hopper
+  **below** the adapter extracts items from that same pallet. This behavior
+  is determined by the hopper's face, independently of the PTP's warehouse
+  INPUT / OUTPUT sorting mode. Both directions reject sealed pallets; item
+  filter restrictions still apply on insertion.
+
 ## Blocks and dimensions
 
 | Block | Occupied space | Function |
