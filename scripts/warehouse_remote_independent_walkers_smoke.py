@@ -30,7 +30,7 @@ assert 'out.putBoolean("remote_pickup_worker",remotePickup);' in worker
 assert 'remotePickup=in.getBooleanOr("remote_pickup_worker",false)' in worker
 assert "if(remotePickup){tickRemotePickup(level);return;}" in worker
 assert "walkTo(level,goal,1.12)" in worker
-assert "remotePickupIndex()==0" in rally
+assert "leader.remotePickupIndex()!=0" in rally
 assert "threeWideAisle(level,aisle)" in rally
 assert "worker.distanceToSqr(goal.getX()+.5" in rally
 assert "StorageGroundPalletTransfer.wrappedController" in rally
