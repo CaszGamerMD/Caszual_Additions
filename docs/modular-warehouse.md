@@ -23,8 +23,9 @@ of each system, see [Warehouse integrated test plan](warehouse-test-plan.md).
   escorts, sorting workers and order runners. Inventory travels back with
   the actual worker; loaded four-Golem pallet carriers receive a warehouse
   unloading order first rather than dropping their 216-slot load. Workers
-  in unloaded chunks will need those chunks to load before they can receive
-  the console command.
+  in unloaded chunks receive the durable recall from their assigned shelf
+  when they next load (no forced chunk loading). RECALL ALL also pauses
+  AUTO sorting, so newly returned workers stay shelved until resumed.
 - **Shelf placement:** A Storage Golem Shelf's opening/spawn/check-in side is
   the face TOWARD the placing player (opposite the player's look direction).
   No worker should appear through its roof or rear.
