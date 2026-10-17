@@ -19,12 +19,16 @@ stationBlock=read(main/"ShulkerTankBlock.java")
 registration=read(main/"RackContent.java")
 clientReg=read(client/"CaszualAdditionsClient.java")
 assert 'tag.putBoolean("remote_pickup_pending",true)' in scanner
-# Linking must NOT call enlist: that would drain the four shelf Golems
-# which the remote dispatch transaction needs for its own pallet rig.
-assert "if(sameWarehouse){" in scanner
-assert scanner.index("if(sameWarehouse){") < scanner.index("StoragePalletCrew.enlist(level,player,computer)")
-assert 'Golems remain docked for remote pickup' in scanner
-assert 'Wrap it with the portable wrapper before requesting pickup.' in scanner
+# Linking never enlists: Direct now only summons via a linked shelf.
+assert "onComputerClick(ServerLevel level,ServerPlayer player," in scanner
+assert "if(player.isShiftKeyDown())onComputerClick(server,user,scanner,clicked);" in scanner
+assert "onShelfClick(ServerLevel level,ServerPlayer player," in scanner
+assert "StoragePalletCrew.enlistFromShelf(level,player,home,shelf)" in scanner
+assert 'if(mode(scanner)==Mode.REMOTE)' in scanner
+assert 'Shift-right-click AIR for DIRECT' in scanner
+assert 'REMOTE: target must be an intact, glass-wrapped' in scanner
+assert 'return response.startsWith("Three Golems dispatched")' in scanner
+assert 'tag.putString("scanner_mode",next.name())' in scanner
 # PTP dropPallet applies live filters; compare that exact canonical stack.
 assert '.applyFilterSettings(ptp.palletStack(),ptp)' in dispatch
 assert "RemotePalletDispatch.request(world,player,computer,target)" in scanner
