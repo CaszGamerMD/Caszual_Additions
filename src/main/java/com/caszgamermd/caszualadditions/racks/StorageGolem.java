@@ -219,6 +219,12 @@ public final class StorageGolem extends PathfinderMob {
     private int avoidHomeUntil;
     private String routeIssue="";
     private int routeFailures;
+    // A remote mission does not wander forever when a water barrier or
+    // blocked dry corridor makes the destination unreachable. The scanner
+    // deliberately releases this persisted safety pause.
+    private boolean remotePathPaused;
+    private String remotePauseReason="";
+    private int remoteUnreachableAttempts;
     public StorageGolem(EntityType<? extends StorageGolem> type,Level level){
         super(type,level);
         setPersistenceRequired();
@@ -255,6 +261,9 @@ public final class StorageGolem extends PathfinderMob {
         if(rig==null||target==null||!StackOfPalletsItem.isPallet(empty)
                 ||empty.getCount()!=1||remoteCourier)return false;
         remoteCourier=true;
+        remotePathPaused=false;
+        remotePauseReason="";
+        remoteUnreachableAttempts=0;
         remoteCarrierId=rig;
         remoteCourierTarget=target.immutable();
         remoteCourierAisle=BlockPos.ZERO;
@@ -278,6 +287,9 @@ public final class StorageGolem extends PathfinderMob {
         if(mission==null||courier==null||fourHomes.length!=4)
             throw new IllegalArgumentException("Remote pickup needs 4 shelf identities");
         remotePickup=true;
+        remotePathPaused=false;
+        remotePauseReason="";
+        remoteUnreachableAttempts=0;
         remotePickupMission=mission;
         remotePickupCourier=courier;
         remotePickupTarget=target.immutable();
@@ -291,6 +303,38 @@ public final class StorageGolem extends PathfinderMob {
         setCustomNameVisible(true);
     }
     public boolean remotePickupActive(){return remotePickup;}
+    public boolean remotePathPaused(){return remotePathPaused;}
+    private void pauseRemotePath(String reason){
+        remotePathPaused=true;
+        remotePauseReason=reason;
+        routeIssue="WAITING FOR HELP: "+reason+" | RIGHT-CLICK SCANNER";
+        getNavigation().stop();
+        flatWorkRoute.clear();
+        courierRoute.clear();
+        // Ice retains momentum when navigation stops. A genuinely paused
+        // worker must not slide sideways into the other workers or pallet.
+        setDeltaMovement(0,getDeltaMovement().y,0);
+    }
+    /** Scanner interaction: only a deliberate player action retries an
+     * unreachable remote route. Never teleport the worker or reset cargo. */
+    public boolean resumeRemotePath(){
+        if(!(remotePickup||remoteCourier)||!remotePathPaused)return false;
+        remotePathPaused=false;
+        remotePauseReason="";
+        remoteUnreachableAttempts=0;
+        routeIssue="RETRYING DRY-LAND ROUTE";
+        flatWorkRoute.clear();
+        workGoal=BlockPos.ZERO;
+        nextWorkPlan=0;
+        blockedWorkCell=BlockPos.ZERO;
+        avoidWorkUntil=0;
+        remoteCourierAisle=BlockPos.ZERO;
+        remoteCourierRejectedAisle=BlockPos.ZERO;
+        courierRetargetCooldown=0;
+        resetCourierRoute();
+        getNavigation().stop();
+        return true;
+    }
     public int remotePickupIndex(){return haulIndex;}
     public UUID remotePickupMission(){return remotePickupMission;}
     public UUID remotePickupCourier(){return remotePickupCourier;}
@@ -298,11 +342,10 @@ public final class StorageGolem extends PathfinderMob {
     public BlockPos remotePickupWarehouse(){return remotePickupWarehouse;}
     public BlockPos remotePickupRally(){return remotePickupRally;}
     public BlockPos[] remotePickupHomes(){return remotePickupHomes.clone();}
-    /** Physically reached the assigned rally cell, including waterline
-     * bobbing. The assembled rig must not wait forever for a fake exact-Y
-     * distance in the lake when all three robots are already at their slots. */
+    /** Physically reached the assigned dry rally tile (ice is solid floor).
+     * A paused worker never counts as a successfully assembled lift slot. */
     public boolean atRemotePickupGoal(ServerLevel level,BlockPos goal){
-        return routeDistanceSq(level,goal)<1.30;
+        return !remotePathPaused&&routeDistanceSq(level,goal)<1.30;
     }
     public UUID remotePickupOwner(){
         try{return UUID.fromString(haulOwner);}
@@ -322,6 +365,11 @@ public final class StorageGolem extends PathfinderMob {
                     blockPosition().getY(),
                     (int)Math.floor(getZ()+dz/length*16)));
         }
+        if(remotePathPaused){
+            routeIssue="WAITING FOR HELP: "+remotePauseReason+" | RIGHT-CLICK SCANNER";
+            getNavigation().stop();
+            return;
+        }
         // No rigid carrier exists on the outbound journey. Each mob has
         // its own saved target, waypoint, AI, walking animation, and route.
         if(!level.hasChunkAt(remotePickupTarget)
@@ -340,13 +388,15 @@ public final class StorageGolem extends PathfinderMob {
             // Preserve real route diagnostics (blocked chunks, no path)
             // instead of hiding every failure under a "walking" label.
             if(routeIssue.isBlank())
-                routeIssue=isSwimmingRoute(level)
-                        ?"SWIMMING EMPTY HANDED TO REMOTE TARGET"
-                        :"WALKING EMPTY HANDED TO REMOTE TARGET";
+                routeIssue="WALKING EMPTY HANDED TO REMOTE TARGET";
             return;
         }
         getNavigation().stop();
+        // Prevent slippery ice from drifting an already arrived worker
+        // back across its partner's assigned rally cell.
+        setDeltaMovement(0,getDeltaMovement().y,0);
         flatWorkRoute.clear();
+        remoteUnreachableAttempts=0;
         routeIssue="READY TO LIFT; WAITING FOR TEAM";
         if(haulIndex==0)RemotePalletPickupCrew.tryLift(level,this);
     }
@@ -387,7 +437,7 @@ public final class StorageGolem extends PathfinderMob {
      * and can walk through regular one-wide worker corridors to rejoin. */
     private boolean followCourierRoute(ServerLevel level,BlockPos goal,
             boolean pushing){
-        if(goal.equals(BlockPos.ZERO))return false;
+        if(remotePathPaused||goal.equals(BlockPos.ZERO))return false;
         if(!goal.equals(courierRouteGoal)){
             resetCourierRoute();
             courierRouteGoal=goal.immutable();
@@ -421,6 +471,10 @@ public final class StorageGolem extends PathfinderMob {
             nextCourierReplan=tickCount+25;
             if(route==null||route.isEmpty()){
                 courierStalls++;
+                if(courierStalls>=3){
+                    pauseRemotePath("NO SAFE DRY CORRIDOR FOR COURIER");
+                    return false;
+                }
                 // An unreachable final destination is itself a blocked
                 // service side. Don't wait forever replaying partial routes
                 // against the same wall or spinning toward its corners.
@@ -435,6 +489,7 @@ public final class StorageGolem extends PathfinderMob {
                 return false;
             }
             courierRoute.addAll(route);
+            remoteUnreachableAttempts=0;
             courierProgressDistance=Double.POSITIVE_INFINITY;
             lastCourierProgress=tickCount;
         }
@@ -461,8 +516,8 @@ public final class StorageGolem extends PathfinderMob {
             courierStalls++;
             routeIssue="REROUTING AROUND BLOCKED PALLET AISLE";
             getNavigation().stop();
-            if(courierStalls>=3&&pushing){
-                courierRejectedAisleFromStall();
+            if(courierStalls>=3){
+                pauseRemotePath("COURIER STALLED AT BLOCKED AISLE");
             }
             return false;
         }
@@ -488,6 +543,11 @@ public final class StorageGolem extends PathfinderMob {
      * carrier through one-wide gaps or path into the old target blocks. */
     private void tickRemoteCourier(ServerLevel level){
         if(remoteCarrierId==null)return;
+        if(remotePathPaused){
+            routeIssue="WAITING FOR HELP: "+remotePauseReason+" | RIGHT-CLICK SCANNER";
+            getNavigation().stop();
+            return;
+        }
         // The courier cannot rely on the pallet team being loaded to
         // renew its own tickets. Both independent travellers need their own
         // rolling simulation corridor, including a point ahead of travel.
@@ -1510,6 +1570,22 @@ public final class StorageGolem extends PathfinderMob {
                     next.getZ()+.5,speed);
             return;
         }
+        // On ice vanilla friction is tiny: full-speed steering overshoots
+        // adjacent waypoint centers and leaves golems dancing in circles.
+        // Ease down during final approach without teleporting or flying.
+        BlockState floor=level().getBlockState(blockPosition().below());
+        boolean ice=floor.is(net.minecraft.world.level.block.Blocks.ICE)
+                ||floor.is(net.minecraft.world.level.block.Blocks.PACKED_ICE)
+                ||floor.is(net.minecraft.world.level.block.Blocks.BLUE_ICE)
+                ||floor.is(net.minecraft.world.level.block.Blocks.FROSTED_ICE);
+        if(ice){
+            double dx=next.getX()+.5-getX(),dz=next.getZ()+.5-getZ();
+            if(dx*dx+dz*dz<1.1){
+                var motion=getDeltaMovement();
+                setDeltaMovement(motion.x*.58,motion.y,motion.z*.58);
+            }
+            speed=Math.min(speed,.72);
+        }
         getMoveControl().setWantedPosition(next.getX()+.5,next.getY(),
                 next.getZ()+.5,speed);
     }
@@ -1528,6 +1604,7 @@ public final class StorageGolem extends PathfinderMob {
             flatWorkRoute.removeFirst();
             lastWorkDistance=Double.POSITIVE_INFINITY;
             lastWorkProgress=tickCount;
+            remoteUnreachableAttempts=0;
         }
         if(flatWorkRoute.isEmpty()&&tickCount>=nextWorkPlan){
             var occupied=occupiedAisle(level,target);
@@ -1540,15 +1617,23 @@ public final class StorageGolem extends PathfinderMob {
             // change; it never silently replaces the saved job assignment.
             List<BlockPos> route=feet.getY()==target.getY()
                     ?StorageGolemReturnPath.steps(feet,target,available):null;
-            if(route==null)
+            // Close dry-floor destinations require a COMPLETE checked path.
+            // A partial A* leg toward an unreachable lake shore is what
+            // produced the endless reroute/spin loop in remote pickup.
+            boolean nearby=feet.getY()==target.getY()
+                    &&Math.abs(feet.getX()-target.getX())<=36
+                    &&Math.abs(feet.getZ()-target.getZ())<=36;
+            if(route==null&&!nearby)
                 route=WarehousePreferredPath.leg(feet,target,available,
                         tickCount<avoidWorkUntil?blockedWorkCell:BlockPos.ZERO);
             nextWorkPlan=tickCount+20;
             if(route!=null){
                 flatWorkRoute.addAll(route);
                 routeIssue="";
+            }else if(remotePickup&&++remoteUnreachableAttempts>=3){
+                pauseRemotePath("NO SAFE DRY PATH (WATER OR OBSTRUCTION)");
             }else{
-                routeIssue="NO WALKABLE ROUTE";
+                routeIssue="WAITING FOR SAFE WALKABLE ROUTE";
             }
         }
         if(flatWorkRoute.isEmpty())return;
@@ -1566,6 +1651,8 @@ public final class StorageGolem extends PathfinderMob {
             getNavigation().stop();
             lastWorkProgress=tickCount;
             lastWorkDistance=Double.POSITIVE_INFINITY;
+            if(remotePickup&&++remoteUnreachableAttempts>=3)
+                pauseRemotePath("WORKER STALLED AT DRY-LAND WAYPOINT");
             return;
         }
         if(next.getY()!=feet.getY()&&!isSwimmingRoute(level)){
@@ -2155,6 +2242,8 @@ public final class StorageGolem extends PathfinderMob {
         out.putInt("haul_ticket",haulTicket);
         out.putInt("haul_worker_index",haulIndex);
         out.putBoolean("remote_pickup_worker",remotePickup);
+        out.putBoolean("remote_path_paused",remotePathPaused);
+        out.putString("remote_pause_reason",remotePauseReason);
         if(remotePickupMission!=null)out.putString(
                 "remote_pickup_mission",remotePickupMission.toString());
         if(remotePickupCourier!=null)out.putString(
@@ -2210,6 +2299,8 @@ public final class StorageGolem extends PathfinderMob {
         haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
         haulIndex=Math.clamp(in.getIntOr("haul_worker_index",0),0,3);
         remotePickup=in.getBooleanOr("remote_pickup_worker",false);
+        remotePathPaused=in.getBooleanOr("remote_path_paused",false);
+        remotePauseReason=in.getStringOr("remote_pause_reason","PATH BLOCKED");
         try{remotePickupMission=UUID.fromString(in.getStringOr("remote_pickup_mission",""));}
         catch(IllegalArgumentException ex){remotePickupMission=null;}
         try{remotePickupCourier=UUID.fromString(in.getStringOr("remote_pickup_courier",""));}
@@ -2277,6 +2368,16 @@ public final class StorageGolem extends PathfinderMob {
     }
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(level().isClientSide())return InteractionResult.SUCCESS;
+        if(player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
+                &&(remotePickup||remoteCourier)){
+            if(resumeRemotePath())
+                player.sendSystemMessage(Component.literal(
+                        "Scanner: Golem resumed dry-land pathfinding. "
+                        +"If water still blocks the route, it will pause again."));
+            else player.sendSystemMessage(Component.literal(
+                    "Scanner: this remote Golem is not paused."));
+            return InteractionResult.SUCCESS;
+        }
         if(!player.isShiftKeyDown())return InteractionResult.PASS;
         if(remotePickup||remoteCourier){
             player.sendSystemMessage(Component.literal(
