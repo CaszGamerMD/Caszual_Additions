@@ -27,6 +27,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -248,10 +249,24 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
                 (origin.getX()-pos.getX()+2)*16,Math.min(16,remaining),
                 (origin.getZ()-pos.getZ()+2)*16);
     }
+    @Override protected boolean isPathfindable(BlockState state,
+            PathComputationType type){
+        // Short stacks are deliberately thin and legitimate for players to
+        // step on. They are NEVER a navigation surface for warehouse robots
+        // or vanilla mobs, including the empty magazine and upper satellites.
+        // Coupled with StorageGolemReturnPath.walkable's identity check this
+        // prevents vanilla A* and the flat warehouse router from disagreeing.
+        return false;
+    }
     @Override protected VoxelShape getCollisionShape(BlockState state,BlockGetter world,
             BlockPos pos,CollisionContext context){
         int remaining=heightAt(world,pos)-state.getValue(LAYER)*16;
-        return remaining<=0?Shapes.empty()
-                :Block.box(0,0,0,16,Math.min(16,remaining),16);
+        // Even an empty 2x2 pallet magazine has a physical 1px base rim.
+        // Without this, its texture/selection outline exists while the
+        // whole ground footprint is non-collidable to an approaching Golem.
+        if(remaining<=0)
+            return state.getValue(LAYER)==0
+                    ?Block.box(0,0,0,16,1,16):Shapes.empty();
+        return Block.box(0,0,0,16,Math.min(16,remaining),16);
     }
 }
