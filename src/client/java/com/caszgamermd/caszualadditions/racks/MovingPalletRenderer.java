@@ -44,7 +44,7 @@ public final class MovingPalletRenderer extends MobRenderer<
         // of letting them act like a single neck joint.
         state.bodyRot=180.0f;
         ItemStack stack=entity.displayPallet();
-        state.visible=!stack.isEmpty();
+        state.visible=entity.handsActuallyCarryingPallet()&&!stack.isEmpty();
         state.crewSize=entity.displayedCrewSize();
         state.liftProgress=state.visible?entity.liftProgress():0f;
         state.releaseProgress=entity.releaseProgress();

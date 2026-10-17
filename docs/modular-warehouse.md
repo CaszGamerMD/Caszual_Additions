@@ -34,6 +34,53 @@ empty-hand handler, double-take protection and full slot-data preservation.
 CI/compile cannot prove live movement or mouse routing: verify in a backed-up
 world after upgrading.
 
+## Pallet and warehouse cargo hand-contact animation
+
+- The remote pickup team's visible deck is driven by a synchronized **real
+  lifted/carrying** flag, not a replacement pallet assigned for future use.
+  All three walk naturally with empty swinging hands until the wrapped
+  target is physically transferred; they only raise their hands afterwards.
+- The moving pallet carrier shifts each worker's **two actual hands under
+  its 2x2 deck edge**. The previous outer wrists sat beyond the model's
+  rim, making the load appear to float even during travel.
+- The fourth Golem extends both arms so its palms reach the full-size
+  upright replacement pallet, moving and rocking with its walk.
+- Individual warehouse sorting/order runners (PTP to rack, rack to PTP,
+  shulker station) now keep a physical dark-metal tray at wrist height.
+  Their nine cargo previews are drawn on that tray instead of floating
+  above their outstretched hands. All items stay on the real server Golem.
+
+## Direct Scanner: PTPs behave as pallet racks
+
+PTPs are now **both pickup and delivery stations** for a Direct crew, just
+like rack slots. Right-click a PTP with a **wrapped pallet** while the four
+summoned workers are empty-handed: they choose a collision-checked outer
+service aisle around its **entire 3x3 platform**, occupy four fixed 2x2
+rally positions outside the station, then lift the original wrapped pallet.
+The crew's selected side is saved with the task and will not recalculate
+or drift when pathfinding stalls, workers reposition or chunks reload.
+
+With cargo already lifted, right-click an **empty, unreserved PTP** to send
+the loaded rig to a safe 3x3 unloading aisle OUTSIDE the station. The
+station is treated as a destination, NOT a waypoint: Golems never attempt
+to stand inside a pallet-bearing PTP. Once the rig arrives in the aisle,
+it deposits the pallet and all **216 real cargo slots** onto the PTP in one
+verified transaction, retaining the original wrap state. A blocked or
+reserved PTP is refused; a failed commit resets the PTP and leaves the
+pallet plus its items on the moving crew without item loss.
+
+**Direct ground deliveries also use the same external-aisle approach.**
+Previously their navigation target was the precise center of the 2x2
+pallet to be placed, where the wide moving rig could freeze despite
+having reached the destination. The new saved service waypoint is outside
+the actual rotated 2x2 placement footprint. Only after physically reaching
+that waypoint and validating all four placement cells do the four Golems
+lower and place the pallet. A blocked aisle or destination retains the
+task in WAIT/RETRY instead of forgetting the cargo.
+
+Existing rack deliveries remain supported. In-progress saved ground
+deliveries migrate automatically to the new aisle-based movement.
+
 ## Scanner interaction modes — Remote / Direct
 
 The scanner is an item-bound, server-validated two-mode tool. **Shift-right-click

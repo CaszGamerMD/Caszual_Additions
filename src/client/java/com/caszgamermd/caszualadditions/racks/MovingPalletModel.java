@@ -75,15 +75,31 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             // pallet is actually lifted. Swing their arms naturally while
             // walking; supporting arms only rise once the pallet exists.
             if(!state.visible){
+                // No phantom load: reset shoulder attachment points so
+                // outbound Golems walk with empty swinging hands.
+                leftArm[i].x=7f;
+                rightArm[i].x=-7f;
+                leftArm[i].z=0f;
+                rightArm[i].z=0f;
                 leftArm[i].xRot=Mth.cos(phase+offset+Mth.PI)*.7f*amount;
                 rightArm[i].xRot=Mth.cos(phase+offset)*.7f*amount;
-                leftArm[i].zRot=0;
-                rightArm[i].zRot=0;
+                leftArm[i].zRot=0f;
+                rightArm[i].zRot=0f;
             }else{
-                leftArm[i].xRot=-3.02f*state.liftProgress;
-                rightArm[i].xRot=-3.02f*state.liftProgress;
-                leftArm[i].zRot=-.12f*state.liftProgress;
-                rightArm[i].zRot=.12f*state.liftProgress;
+                // The 2x2 deck spans just 14.4 model pixels from its
+                // center, while the old arms had wrists as far out as
+                // 21px! Move both hands INWARD to the actual deck corners
+                // and up to the underside. They genuinely support it.
+                boolean leftSide=i%2==0;
+                leftArm[i].x=leftSide?6f:-2.5f;
+                rightArm[i].x=leftSide?2.5f:-6f;
+                leftArm[i].z=i<2?1.5f:-1.5f;
+                rightArm[i].z=i<2?1.5f:-1.5f;
+                float grip=Mth.clamp(state.liftProgress,0f,1f);
+                leftArm[i].xRot=-3.02f*grip;
+                rightArm[i].xRot=-3.02f*grip;
+                leftArm[i].zRot=-.08f*grip;
+                rightArm[i].zRot=.08f*grip;
             }
         }
     }

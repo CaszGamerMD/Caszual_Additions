@@ -55,6 +55,9 @@ public final class StorageGolemRenderer
                 material=blockItem.getBlock();
             blocks.update(state.held[i],material.defaultBlockState(),DISPLAY);
         }
+        if(state.heldSlots>0&&!state.carryingPallet&&!state.pushingEmptyPallet){
+            blocks.update(state.heldTray,Blocks.POLISHED_DEEPSLATE.defaultBlockState(),DISPLAY);
+        }
         if(state.showSharedPallet||state.pushingEmptyPallet){
             Block material=Blocks.OAK_PLANKS;
             ItemStack carried=golem.displayPallet();
@@ -99,16 +102,18 @@ public final class StorageGolemRenderer
     @Override public void submit(StorageGolemRenderState state,PoseStack pose,
             SubmitNodeCollector collector,CameraRenderState camera){
         super.submit(state,pose,collector,camera);
-        if(state.heldSlots>0&&!state.carryingPallet){
-            // Nine real cargo slots become a visible tray of matching
-            // block textures or cardboard cartons for non-solid items.
-            // This is a rendering preview ONLY; no stacks are spawned.
+        if(state.heldSlots>0&&!state.carryingPallet&&!state.pushingEmptyPallet){
+            // Physically hold the loaded tray at both extended wrists.
+            // Previously the cartons hovered far above the arms and it
+            // looked as though warehouse Golems never touched their load.
             pose.pushPose();
+            piece(state.heldTray,state,pose,collector,
+                    -.45f,.675f,-.86f,.90f,.065f,.51f);
             for(int i=0;i<state.heldSlots&&i<9;i++){
-                int col=i%3, row=i/3;
+                int col=i%3,row=i/3;
                 piece(state.held[i],state,pose,collector,
-                        -.37f+col*.255f,.90f+row*.23f,-.68f,
-                        .23f,.21f,.23f);
+                        -.37f+col*.255f,.75f+row*.205f,-.80f,
+                        .23f,.205f,.23f);
             }
             pose.popPose();
         }
@@ -123,7 +128,8 @@ public final class StorageGolemRenderer
             float motion=Math.min(1f,state.walkAnimationSpeed*2.6f);
             float bob=(float)Math.abs(Math.sin(walk))*.038f*motion;
             float tilt=(float)Math.sin(walk)*2.5f*motion;
-            pose.translate(0,1.01f+bob,-1.11f);
+            // Surface of upright deck sits just ahead of outstretched hands.
+            pose.translate(0,1.01f+bob,-.80f);
             pose.mulPose(Axis.ZP.rotationDegrees(tilt));
             pose.mulPose(Axis.XP.rotationDegrees(-2.0f
                     +(float)Math.cos(walk)*1.8f*motion));
