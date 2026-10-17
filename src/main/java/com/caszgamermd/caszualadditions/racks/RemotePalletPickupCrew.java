@@ -38,7 +38,7 @@ public final class RemotePalletPickupCrew {
         }
         BlockPos best=BlockPos.ZERO;
         double score=Double.POSITIVE_INFINITY;
-        for(int gap=2;gap<=5;gap++){
+        for(int gap=2;gap<=6;gap++){
             BlockPos[] candidates={
                     new BlockPos(minX,target.getY(),minZ-gap),
                     new BlockPos(maxX+gap,target.getY(),minZ),
@@ -47,7 +47,27 @@ public final class RemotePalletPickupCrew {
             };
             for(BlockPos center:candidates){
                 if(!threeWideAisle(level,center))continue;
+                // All three independent destinations must stay inside
+                // the checked aisle on the correct side of the pallet.
+                boolean good=true;
+                for(int index=0;index<3;index++)
+                    if(!StorageGolemReturnPath.walkable(level,
+                            individualGoal(center,target,index))){
+                        good=false;break;
+                    }
+                if(!good)continue;
+                // Straight distance may select a staging area on the
+                // wrong side of a solid rack. Prefer a REAL walking route
+                // whenever the warehouse/source is in loaded range.
                 double distance=center.distSqr(from);
+                if(from.getY()==center.getY()
+                        &&Math.abs(from.getX()-center.getX())<=36
+                        &&Math.abs(from.getZ()-center.getZ())<=36){
+                    var route=StorageGolemReturnPath.steps(from,center,
+                            pos->StorageGolemReturnPath.walkable(level,pos));
+                    if(route==null)continue;
+                    distance=route.size()*route.size();
+                }
                 if(distance<score){score=distance;best=center;}
             }
         }
@@ -61,9 +81,18 @@ public final class RemotePalletPickupCrew {
         return true;
     }
 
-    public static BlockPos individualGoal(BlockPos rally,int workerIndex){
-        // Single-file front edge, separated by one full walking cell.
-        return rally.offset(workerIndex-1,0,0);
+    public static BlockPos individualGoal(BlockPos rally,BlockPos target,
+            int workerIndex){
+        // Each worker gets a distinct, FIXED floor tile across the outer
+        // pallet aisle, perpendicular to the target-facing direction.
+        // The old unconditional X offset placed east/west teams in a
+        // single-file line, sometimes pushing the nearest worker into
+        // the wrapped 2x2 pallet or another worker's route.
+        int lane=workerIndex-1;
+        if(Math.abs(rally.getX()-target.getX())
+                >Math.abs(rally.getZ()-target.getZ()))
+            return rally.offset(0,0,lane);
+        return rally.offset(lane,0,0);
     }
 
     /** Called by worker zero after all THREE independently walking workers
@@ -99,7 +128,7 @@ public final class RemotePalletPickupCrew {
             StorageGolem worker=trio.stream()
                     .filter(w->w.remotePickupIndex()==slot).findFirst().orElse(null);
             if(worker==null)return;
-            BlockPos goal=individualGoal(aisle,index);
+            BlockPos goal=individualGoal(aisle,leader.remotePickupTarget(),index);
             if(worker.distanceToSqr(goal.getX()+.5,goal.getY(),
                     goal.getZ()+.5)>1.65)return;
         }
