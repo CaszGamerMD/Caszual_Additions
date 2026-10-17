@@ -48,7 +48,8 @@ assert "if(!StorageGroundPalletTransfer.liftForRemoteExchange(" in rally
 # Courier MOVES during the trio's outbound walk, even if rig isn't born.
 assert "MovingPallet rig=other instanceof MovingPallet carrier?carrier:null;" in worker
 assert "if(rig==null||!rig.readyForCourierPlacement())" in worker
-assert "walkTo(level,remoteCourierAisle,1.12)" in worker
+assert "followCourierRoute(level,remoteCourierAisle,true)" in worker
+assert "RemotePalletCourierRoute.chooseServiceAisle(" in worker
 # Saved older rigid pickup rigs are split into three individual workers.
 assert "RemotePalletPickupCrew.splitLegacyRig(" in rig
 assert "golem.beginRemotePickup(rig.getUUID(),courier" in rally
