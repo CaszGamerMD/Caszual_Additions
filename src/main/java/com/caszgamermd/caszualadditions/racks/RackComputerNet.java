@@ -223,7 +223,7 @@ public final class RackComputerNet {
         String result;
         switch(request.action()){
             case 0 -> result=StoragePalletCrew.enlist(level,player,computer);
-            case 1 -> result=StoragePalletCrew.dismiss(level,player,computer);
+            case 1 -> result=StoragePalletCrew.dismissWarehouse(level,computer);
             case 2 -> {
                 int deployed=0;
                 for(StorageGolemShelfEntity shelf:nearbyShelves(level,computer)){
