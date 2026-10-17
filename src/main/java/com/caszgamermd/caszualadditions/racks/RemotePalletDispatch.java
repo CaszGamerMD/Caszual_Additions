@@ -33,9 +33,14 @@ public final class RemotePalletDispatch {
         if(old==null)return "WAITING: target is no longer a wrapped ground pallet.";
         // Across the loaded dimension, do not spawn a second crew with the
         // same owner while another delivery/recovery rig exists.
-        for(var entity:level.getAllEntities())
+        for(var entity:level.getAllEntities()){
             if(entity instanceof MovingPallet rig&&rig.owns(player.getUUID()))
-                return "WAITING: existing four-Golem crew already assigned.";
+                return "WAITING: existing remote or direct carrier already assigned.";
+            if(entity instanceof StorageGolem worker
+                    &&worker.ownedBy(player.getUUID())
+                    &&(worker.remotePickupActive()||worker.remoteCourierActive()))
+                return "WAITING: existing independent remote pickup crew assigned.";
+        }
 
         var network=WarehouseNetwork.fromComputer(level,computer);
         List<StorageGolemShelfEntity> shelves=new ArrayList<>(4);
@@ -57,6 +62,13 @@ public final class RemotePalletDispatch {
             if(clear){staging=candidate;break;}
         }
         if(staging==null)return "WAITING: four-Golem departure aisle blocked.";
+        // ALL three outbound workers must travel as separate actual mobs.
+        // Validate an external 3-wide rally beside the destination BEFORE
+        // taking any stock or shelf token from the linked warehouse.
+        BlockPos rally=RemotePalletPickupCrew.rally(
+                level,old.getBlockPos(),staging);
+        if(rally.equals(BlockPos.ZERO))
+            return "WAITING: no safe three-Golem rally aisle near target.";
 
         RackBlockEntity sourceRack=null;
         int sourceSlot=-1;
@@ -145,10 +157,23 @@ public final class RemotePalletDispatch {
                 net.minecraft.core.Direction.EAST);
         courier.setPos(courierStart.getX()+.5,courierStart.getY(),
                 courierStart.getZ()+.5);
-        // Before withdrawing from a magazine, move ownership to the one
-        // actual Golem entity. The other three are only rendered on the rig.
+        // The rig is ONLY an unspawned mission/UUID template here.
+        // The THREE outbound workers are independent live StorageGolem
+        // entities; there is no linked platform or shared hitbox until they
+        // arrive, lift the target and merge at the remote service aisle.
         if(!carrier.splitRemoteCourier(courier))
-            return "Unable to split the three-Golem lift crew from the empty-pallet courier.";
+            return "Unable to assign the independent empty-pallet courier.";
+        BlockPos[] homes={
+                shelves.get(0).getBlockPos(),shelves.get(1).getBlockPos(),
+                shelves.get(2).getBlockPos(),shelves.get(3).getBlockPos()};
+        for(int i=0;i<3;i++){
+            StorageGolem worker=identities.get(i);
+            worker.beginRemotePickup(carrier.getUUID(),courier.getUUID(),
+                    old.getBlockPos(),computer,rally,homes);
+            BlockPos start=staging.offset(i-1,0,0);
+            if(!StorageGolemReturnPath.walkable(level,start))start=staging;
+            worker.setPos(start.getX()+.5,start.getY(),start.getZ()+.5);
+        }
         if(sourceRack!=null){
             sourceRack.setItem(sourceSlot,updated);
             if(!ItemStack.matches(sourceRack.getItem(sourceSlot),updated)){
@@ -185,17 +210,28 @@ public final class RemotePalletDispatch {
             if(!shelf.take())break;
             consumed++;
         }
-        if(consumed==4&&level.addFreshEntity(carrier)){
-            if(level.addFreshEntity(courier))
-                return "Three Golems dispatched to lift the wrapped target while "
-                        +"a fourth pushes the unwrapped empty pallet to "
+        java.util.ArrayList<StorageGolem> spawned=new java.util.ArrayList<>(4);
+        if(consumed==4){
+            boolean accepted=true;
+            for(int i=0;i<3;i++){
+                StorageGolem worker=identities.get(i);
+                if(!level.addFreshEntity(worker)){accepted=false;break;}
+                spawned.add(worker);
+            }
+            if(accepted&&level.addFreshEntity(courier)){
+                // The empty carrier template is never added to the world.
+                // Its saved future UUID is used exactly once when these
+                // three physical Golems reach the actual target pallet.
+                return "Three Golems dispatched INDEPENDENTLY, empty-handed, to "
                         +old.getBlockPos().toShortString()
-                        +". The loaded team will step aside, wait for placement, "
-                        +"rejoin, and return together.";
-            // Spawning is synchronous on the server thread. Both entities
-            // must exist, otherwise restore stock and shelf token counts.
-            carrier.discard();
+                        +"; the fourth is pushing the unwrapped fresh pallet. "
+                        +"The three will link ONLY once they lift the target.";
+            }
         }
+        for(StorageGolem worker:spawned)worker.discard();
+        // If the courier was spawned but another entity failed, it would
+        // have been last; there is no partially committed four-worker party.
+
         for(int i=0;i<consumed;i++)shelves.get(i).add();
         // Roll back the warehouse's ONE withdrawn empty pallet on failure.
         if(sourceRack!=null)sourceRack.setItem(sourceSlot,previous);
