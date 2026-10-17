@@ -13,8 +13,13 @@ model=(client/"MovingPalletModel.java").read_text()
 rigview=(client/"MovingPalletRenderer.java").read_text()
 golemview=(client/"StorageGolemRenderer.java").read_text()
 assert "carrier.splitRemoteCourier(courier)" in dispatch
-assert "if(level.addFreshEntity(courier))" in dispatch
-assert "carrier.discard();" in dispatch
+assert "if(accepted&&level.addFreshEntity(courier))" in dispatch
+assert "for(int i=0;i<3;i++)" in dispatch
+assert "level.addFreshEntity(worker)" in dispatch
+assert "level.addFreshEntity(carrier)" not in dispatch
+assert "worker.beginRemotePickup(carrier.getUUID(),courier.getUUID()," in dispatch
+assert "RemotePalletPickupCrew.rally(" in dispatch
+assert "for(StorageGolem worker:spawned)worker.discard();" in dispatch
 assert "sourceMagazine.put(fresh)" in dispatch
 assert "for(int i=0;i<consumed;i++)shelves.get(i).add();" in dispatch
 assert "remoteCourierId=worker.getUUID()" in carrier
@@ -30,6 +35,9 @@ assert "remoteReplacementPlaced=true;" in carrier
 assert "remoteAisle=remoteAisle(level,target,3,5)" in carrier
 assert "remoteMoveAside=remoteAisle(level,deliveryPosition,5,7)" in carrier
 assert "liftForRemoteExchange(level,target,this)" in carrier
+assert "RemotePalletPickupCrew.splitLegacyRig(" in carrier
+assert "public boolean prepareRecoveredRemote(" in carrier
+assert "remotePickupActive()" in courier
 assert "acceptRemoteLift(root,previous,oldDeck,stock)" in swap
 assert "source.clearContent();" in swap
 assert "PalletCargoCollisionBlock.clear(level,root,previous)" in swap

@@ -52,7 +52,10 @@ assert "sourcePtp.removePallet()" in dispatch
 assert 'sourceRack.setItem(sourceSlot,previous);\n                return "WAITING: pallet magazine' in dispatch
 assert "if(!removed.isEmpty()&&!sourcePtp.installPallet(removed))" in dispatch
 assert "drop.getX()+.5,drop.getY()+.5,drop.getZ()+.5,removed" in dispatch
-assert "if(consumed==4&&level.addFreshEntity(carrier))" in dispatch
+assert "if(consumed==4){" in dispatch
+assert "level.addFreshEntity(carrier)" not in dispatch
+assert "level.addFreshEntity(worker)" in dispatch
+assert "worker.beginRemotePickup(" in dispatch
 assert "level.addFreshEntity(courier)" in dispatch
 assert "carrier.splitRemoteCourier(courier)" in dispatch
 assert "for(int i=0;i<consumed;i++)shelves.get(i).add();" in dispatch

@@ -203,6 +203,24 @@ public final class MovingPallet extends PathfinderMob {
         deliveryFailure="FOUR GOLEMS RETURNING RECOVERED PALLET";
         return true;
     }
+    /** The 3/4 shared rig is created ONLY at the moment of lifting the
+     * original wrapped pallet. Before this call the three identities exist
+     * exclusively as three independent, individually walking Golems. */
+    public boolean prepareRecoveredRemote(UUID player,BlockPos[] homes,
+            UUID courierId,BlockPos target,BlockPos computer){
+        if(player==null||courierId==null||homes.length!=4
+                ||!pallet.isEmpty()||deliveryMode!=0)return false;
+        owner=player.toString();
+        for(int i=0;i<4;i++)shelves[i]=homes[i].immutable();
+        remoteCourierId=courierId;
+        remoteWarehouse=computer.immutable();
+        deliveryPosition=target.immutable();
+        deliveryMode=4;
+        entityData.set(CREW_SIZE,3);
+        liftTicks=0;entityData.set(LIFT_TICKS,0);
+        syncDisplay();
+        return true;
+    }
     public boolean beginRemoteExchange(BlockPos target,BlockPos computer){
         if(!freshPalletOnly()||deliveryMode!=0)return false;
         remoteWarehouse=computer.immutable();
@@ -719,6 +737,19 @@ public final class MovingPallet extends PathfinderMob {
 
     private void tickRemoteExchange(ServerLevel level){
         if(!ensureRemoteCourier(level))return;
+        // Old saves may contain a single rigid 3-model carrier already
+        // walking OUTBOUND. Convert it to three real unlinked Golems on its
+        // current floor. The rig is only valid AFTER lifting the pallet.
+        if(pallet.isEmpty()&&remoteCourierId!=null){
+            try{
+                RemotePalletPickupCrew.splitLegacyRig(level,this,
+                        UUID.fromString(owner),shelves.clone(),remoteCourierId,
+                        deliveryPosition,remoteWarehouse);
+            }catch(IllegalArgumentException ignored){
+                deliveryFailure="WAITING: LEGACY REMOTE CREW OWNER INVALID";
+            }
+            return;
+        }
         BlockPos target=deliveryPosition;
         if(StorageGroundPalletTransfer.wrappedController(level,target)==null){
             deliveryFailure="WAITING FOR WRAPPED TARGET PALLET";return;
