@@ -18,6 +18,8 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -117,6 +119,15 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
     public void initialize(BlockPos root, int part, ItemStack stack) {
         this.rootPos = root.immutable();
         this.part = part;
+        // A carrier killed where there is no safe 2x2 ground area drops
+        // ONE intact packed pallet. Rehydrate the exact same 216 slot
+        // indices when that item is placed; otherwise empty slots would
+        // shift and the stored cargo would appear lost.
+        if(isRoot()){
+            items=NonNullList.withSize(SLOTS,ItemStack.EMPTY);
+            stack.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY)
+                    .copyInto(items);
+        }
         this.filterItem=PalletData.filter(stack);
         if(isRoot())glassWrapped=GlassPalletWrap.wrapped(stack);
         if(isRoot()){
@@ -140,6 +151,19 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         }
 
         sync();
+    }
+
+    /** Preserve all slot indices of a loaded carrier in ONE pallet item.
+     * The CONTAINER component is read on placement by initialize(). */
+    public static ItemStack packedCarrierDrop(ItemStack pallet,
+            NonNullList<ItemStack> savedContents){
+        ItemStack packed=pallet.copyWithCount(1);
+        if(packed.isEmpty())return ItemStack.EMPTY;
+        NonNullList<ItemStack> items=NonNullList.withSize(SLOTS,ItemStack.EMPTY);
+        for(int i=0;i<SLOTS&&i<savedContents.size();i++)
+            items.set(i,savedContents.get(i).copy());
+        packed.set(DataComponents.CONTAINER,ItemContainerContents.fromItems(items));
+        return packed;
     }
 
     public ItemStack createDropStack() {
