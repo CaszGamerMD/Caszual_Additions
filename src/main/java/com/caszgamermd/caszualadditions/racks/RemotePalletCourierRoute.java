@@ -216,13 +216,25 @@ public final class RemotePalletCourierRoute {
             BlockPos rig){
         BlockPos chosen=BlockPos.ZERO;
         double score=Double.POSITIVE_INFINITY;
-        for(Direction face:Direction.Plane.HORIZONTAL){
-            BlockPos cell=rig.relative(face,2);
-            if(!StorageGolemReturnPath.walkable(level,cell))continue;
-            List<BlockPos> path=route(level,from,cell,BlockPos.ZERO,false);
-            if(path==null)continue;
-            double value=path.size();
-            if(value<score){score=value;chosen=cell;}
+        // A loaded team may have moved ONE block up or down while
+        // clearing the old pallet. A fixed same-Y join cell can leave
+        // the courier standing just below it forever. Evaluate genuinely
+        // reachable neighbor cells at the rig's height and +/- one step.
+        for(int dy:new int[]{0,-1,1}){
+            for(Direction face:Direction.Plane.HORIZONTAL){
+                BlockPos cell=rig.relative(face,2).offset(0,dy,0);
+                if(!StorageGolemReturnPath.walkable(level,cell))continue;
+                // Every candidate must actually be within the rig's join
+                // distance. Never plan a route to a waypoint that cannot
+                // trigger the final ownership handoff.
+                double dx=cell.getX()+.5-(rig.getX()+.5);
+                double dz=cell.getZ()+.5-(rig.getZ()+.5);
+                if(dx*dx+dz*dz+dy*dy>9.0)continue;
+                List<BlockPos> path=route(level,from,cell,BlockPos.ZERO,false);
+                if(path==null)continue;
+                double value=path.size()+Math.abs(dy)*2;
+                if(value<score){score=value;chosen=cell;}
+            }
         }
         return chosen;
     }
