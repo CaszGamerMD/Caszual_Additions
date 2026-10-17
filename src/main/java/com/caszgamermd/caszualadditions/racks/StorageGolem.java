@@ -323,19 +323,23 @@ public final class StorageGolem extends PathfinderMob {
             routeIssue="WAITING FOR WRAPPED TARGET PALLET";return;
         }
         BlockPos goal=RemotePalletPickupCrew.individualGoal(
-                remotePickupRally,haulIndex);
+                remotePickupRally,remotePickupTarget,haulIndex);
         if(!StorageGolemReturnPath.walkable(level,goal)){
             routeIssue="WAITING FOR CLEAR THREE-GOLEM SERVICE AISLE";
             getNavigation().stop();return;
         }
         if(distanceToSqr(goal.getX()+.5,goal.getY(),
-                goal.getZ()+.5)>1.65){
-            walkTo(level,goal,1.12);
-            routeIssue="WALKING EMPTY HANDED TO REMOTE TARGET";
+                goal.getZ()+.5)>1.30){
+            walkTo(level,goal,1.05);
+            // Preserve real route diagnostics (blocked chunks, no path)
+            // instead of hiding every failure under a "walking" label.
+            if(routeIssue.isBlank())
+                routeIssue="WALKING EMPTY HANDED TO REMOTE TARGET";
             return;
         }
         getNavigation().stop();
-        routeIssue="WAITING FOR OTHER EMPTY-HANDED GOLEMS";
+        flatWorkRoute.clear();
+        routeIssue="READY TO LIFT; WAITING FOR TEAM";
         if(haulIndex==0)RemotePalletPickupCrew.tryLift(level,this);
     }
 
@@ -1416,6 +1420,22 @@ public final class StorageGolem extends PathfinderMob {
                         midX-range,getY()-1,midZ-range,
                         midX+range,getY()+2,midZ+range),
                 g->g!=this&&!g.isRemoved())){
+            // Each member of the same 3-Golem remote squad walks to its
+            // OWN fixed slot. Marking each other as dynamically BLOCKED
+            // caused them to plan around each other's current square,
+            // exchange planned sides every 20 ticks and dance indefinitely.
+            // Entity collision still handles temporary close passing.
+            if(remotePickup&&other.remotePickup
+                    &&remotePickupMission!=null
+                    &&remotePickupMission.equals(other.remotePickupMission))
+                continue;
+            // Likewise the full-width courier is moving to a separate
+            // destination: don't replan a route around its moving feet
+            // on every step of the same shared remote mission.
+            if(remotePickup&&other.remoteCourier
+                    &&remotePickupMission!=null
+                    &&remotePickupMission.equals(other.remoteCarrierId))
+                continue;
             positions.add(other.blockPosition());
         }
         positions.remove(blockPosition());
