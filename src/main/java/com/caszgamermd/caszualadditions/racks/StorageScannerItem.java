@@ -91,24 +91,6 @@ public final class StorageScannerItem extends Item {
         tag.remove("remote_pickup_z");
         scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
     }
-    /** Removing an old queued retry is part of a committed remote reset:
-     * otherwise a second scanner might silently redispatch the same pallet
-     * as soon as the original was returned to its floor footprint. */
-    public static void cancelQueuedForTarget(ServerPlayer player,BlockPos target){
-        var inventory=player.getInventory();
-        for(int i=0;i<inventory.getContainerSize();i++){
-            ItemStack item=inventory.getItem(i);
-            if(!item.is(RackContent.STORAGE_SCANNER_ITEM))continue;
-            CustomData data=item.get(DataComponents.CUSTOM_DATA);
-            if(data==null)continue;
-            CompoundTag tag=data.copyTag();
-            if(tag.getBooleanOr("remote_pickup_pending",false)
-                    &&tag.getIntOr("remote_pickup_x",Integer.MIN_VALUE)==target.getX()
-                    &&tag.getIntOr("remote_pickup_y",Integer.MIN_VALUE)==target.getY()
-                    &&tag.getIntOr("remote_pickup_z",Integer.MIN_VALUE)==target.getZ())
-                clearPickup(item);
-        }
-    }
     private static String pendingPickup(ItemStack scanner,ServerLevel world,
             ServerPlayer player){
         CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
@@ -209,16 +191,6 @@ public final class StorageScannerItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
-        // Reliable emergency reset even when a moving Golem's hitbox is
-        // hidden behind the full-size pallet it is holding. A crouched
-        // scanner click on ANY ordinary block selects the player's saved
-        // active remote mission; two clicks within 10 seconds are needed.
-        // The Rack Computer's shift-click remains reserved for binding.
-        if(player.isShiftKeyDown()
-                &&RemotePalletReset.activeMission(server,user)!=null){
-            message(user,RemotePalletReset.requestActive(server,user));
-            return InteractionResult.SUCCESS;
-        }
         BlockPos home=linkedComputer(scanner,server);
         if(home==null){
             message(user,"Scanner not linked. Shift-right-click a Rack Computer to link.");
@@ -285,12 +257,7 @@ public final class StorageScannerItem extends Item {
         if(level instanceof ServerLevel server&&player instanceof ServerPlayer user){
             ItemStack scanner=player.getItemInHand(hand);
             BlockPos home=linkedComputer(scanner,server);
-            if(player.isShiftKeyDown()&&RemotePalletReset.activeMission(server,user)!=null){
-                // Sneak-clicking AIR used to toggle REMOTE/DIRECT even when
-                // the player was trying to cancel a blocked 3+1 mission.
-                // Prefer an explicit two-click recovery when one exists.
-                message(user,RemotePalletReset.requestActive(server,user));
-            }else if(player.isShiftKeyDown()){
+            if(player.isShiftKeyDown()){
                 Mode next=toggleMode(scanner);
                 message(user,"Scanner mode: "+next.name()+". "
                         +(next==Mode.REMOTE
