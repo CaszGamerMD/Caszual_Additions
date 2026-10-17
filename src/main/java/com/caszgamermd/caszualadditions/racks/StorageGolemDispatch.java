@@ -212,7 +212,16 @@ public final class StorageGolemDispatch {
             }
             if(target!=null)break;
         }
-        if(target==null)return false;
+        // A physical Stack of Pallets block is preferred if it has space;
+        // old magazine items in racks remain compatible with saved worlds.
+        StackOfPalletsBlockEntity placed=null;
+        for(StackOfPalletsBlockEntity magazine:
+                WarehouseNetwork.fromComputer(level,terminal).magazines())
+            if(magazine.count()<StackOfPalletsItem.CAPACITY){
+                placed=magazine;break;
+            }
+        if(target==null&&placed==null)return false;
+        BlockPos stockDestination=placed!=null?placed.getBlockPos():target.getBlockPos();
         for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,terminal).points()){
             if(!ptp.input()||!ptp.hasPallet()||ptp.sealed()
                     ||!ptp.emptyCargo()||!StackOfPalletsItem.isPallet(ptp.palletStack()))
@@ -229,7 +238,7 @@ public final class StorageGolemDispatch {
             StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(level,
                     net.minecraft.world.entity.EntitySpawnReason.EVENT);
             if(worker==null)return false;
-            worker.assignPalletStack(shelf.getBlockPos(),source,target.getBlockPos());
+            worker.assignPalletStack(shelf.getBlockPos(),source,stockDestination);
             StorageGolemShelfDoor.emerge(worker,door,
                     StorageGolemShelfDoor.front(shelf));
             if(!shelf.take())return false;
