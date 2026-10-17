@@ -25,11 +25,18 @@ public final class StorageGolemShelfEntity extends BlockEntity {
     private static final int MAX_LINKED=128;
     private int docked;
     private boolean sortingEnabled=true;
+    private long recallSerial;
     public StorageGolemShelfEntity(BlockPos pos,BlockState state){
         super(RackContent.STORAGE_SHELF_ENTITY,pos,state);
     }
     public int docked(){return docked;}
     public boolean sortingEnabled(){return sortingEnabled;}
+    public long recallSerial(){return recallSerial;}
+    public void requestRecall(){
+        recallSerial=recallSerial==Long.MAX_VALUE?1:recallSerial+1;
+        sortingEnabled=false;
+        setChanged();
+    }
     public void setSortingEnabled(boolean enabled){sortingEnabled=enabled;setChanged();}
     public boolean add(){if(docked>=2)return false;docked++;setChanged();return true;}
     public boolean take(){if(docked<=0)return false;docked--;setChanged();return true;}
@@ -59,10 +66,12 @@ public final class StorageGolemShelfEntity extends BlockEntity {
     @Override protected void saveAdditional(ValueOutput out){
         super.saveAdditional(out);out.putInt("docked_golems",docked);
         out.putBoolean("sorting_enabled",sortingEnabled);
+        out.putLong("warehouse_recall_serial",recallSerial);
     }
     @Override protected void loadAdditional(ValueInput in){
         super.loadAdditional(in);docked=Math.clamp(in.getIntOr("docked_golems",0),0,2);
         sortingEnabled=in.getBooleanOr("sorting_enabled",true);
+        recallSerial=Math.max(0,in.getLongOr("warehouse_recall_serial",0L));
     }
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider p){
         return saveWithoutMetadata(p);
