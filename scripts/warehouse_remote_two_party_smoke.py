@@ -39,6 +39,10 @@ assert "remoteFresh=ItemStack.EMPTY;" in courier
 assert "remoteCourierPhase=1;" in courier
 assert "rig.joinRemoteCourier(getUUID())" in courier
 assert "discard(); // The rig already owns all FOUR shelf tokens." in courier
+assert "int workerDrops=remoteCourierId==null?4:3;" in carrier
+assert "courier.remoteCarrierDestroyed(level)" in carrier
+assert "public void remoteCarrierDestroyed(ServerLevel level)" in courier
+assert "if(!remoteFresh.isEmpty())" in courier
 assert "remote_courier_rig" in courier and "remote_empty_pallet" in courier
 assert "remote_courier_uuid" in carrier and "remote_replacement_placed" in carrier
 assert "walkTo(level,remoteCourierAisle,1.12)" in courier
