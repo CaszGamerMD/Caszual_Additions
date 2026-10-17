@@ -19,10 +19,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -150,21 +146,6 @@ public final class MovingPallet extends PathfinderMob {
     public boolean isDelivering(){return deliveryMode!=0;}
     public boolean returningToWarehouse(){return deliveryMode==3;}
     public boolean remoteExchangeActive(){return deliveryMode>=4&&deliveryMode<=6;}
-    public UUID remoteCourierId(){return remoteCourierId;}
-    public BlockPos remoteOriginalTarget(){return deliveryPosition;}
-    public BlockPos[] remoteShelfHomes(){return shelves.clone();}
-    public boolean remoteReplacementAlreadyPlaced(){return remoteReplacementPlaced;}
-    public boolean remoteLoadedForReset(){
-        return (deliveryMode==5||deliveryMode==6)
-                &&!remoteReplacementPlaced&&loaded();
-    }
-    /** Emergency rollback is allowed only while the old, wrapped pallet
-     * and its exact 216 slots still belong to this one physical rig.
-     * Never overwrite an already installed replacement or another pallet. */
-    public boolean restoreRemoteOriginal(ServerLevel level){
-        if(!remoteLoadedForReset())return false;
-        return deliverToGround(level,deliveryPosition,remoteOldFacing,remoteOldLegacy);
-    }
     public boolean freshPalletOnly(){
         if(pallet.isEmpty())return false;
         for(ItemStack content:contents)if(!content.isEmpty())return false;
@@ -1306,23 +1287,15 @@ public final class MovingPallet extends PathfinderMob {
     }
     private void dropCargo(ServerLevel level){
         if(pallet.isEmpty())return;
-        Containers.dropItemStack(level,getX(),getY(),getZ(),pallet.copy());
-        for(ItemStack contentsItem:contents)
-            if(!contentsItem.isEmpty())
-                Containers.dropItemStack(level,getX(),getY(),getZ(),contentsItem.copy());
+        // The one physical carrier holds ONE real pallet and all 216
+        // indexed slots. Death places it intact on nearby safe ground,
+        // or drops a single self-contained item if no 2x2 area is open.
+        boolean preserveOldFacing=remoteExchangeActive()&&loaded();
+        PalletDeathRecovery.release(level,blockPosition(),getX(),getY(),getZ(),
+                pallet,contents,
+                preserveOldFacing?remoteOldFacing:Direction.fromYRot(getYRot()),
+                preserveOldFacing&&remoteOldLegacy);
         clearCargo();
-    }
-    /** Deliberate two-click scanner reset also works directly on the
-     * shared 3-Golem rig; its fourth worker is a separate mob. */
-    @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
-        if(!player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
-                ||!player.isShiftKeyDown())return InteractionResult.PASS;
-        if(level().isClientSide())return InteractionResult.SUCCESS;
-        if(player instanceof ServerPlayer user&&level() instanceof ServerLevel server){
-            user.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                    RemotePalletReset.request(server,user,getUUID())));
-        }
-        return InteractionResult.SUCCESS;
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource cause){
         if(level() instanceof ServerLevel level&&!deathDropsReleased){
