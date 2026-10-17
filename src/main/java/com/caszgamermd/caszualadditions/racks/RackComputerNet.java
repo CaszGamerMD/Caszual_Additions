@@ -204,7 +204,7 @@ public final class RackComputerNet {
         }
         // Send one replacement to EVERY online viewer, even viewers at other
         // computers. Other dimensions receive 0 ticks to clear old selections.
-        for(ServerPlayer online:player.getServer().getPlayerList().getPlayers()){
+        for(ServerPlayer online:level.getServer().getPlayerList().getPlayers()){
             int ticks=online.level()==level?200:0;
             ServerPlayNetworking.send(online,
                     new HighlightChanged(selection.getBlockPos(),ticks));
