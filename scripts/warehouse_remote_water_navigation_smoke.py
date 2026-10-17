@@ -20,7 +20,7 @@ assert "List<BlockPos> route=WarehousePreferredPath.leg(feet,target," in worker
 assert "if(route==null&&!nearby)" not in worker
 assert "getJumpControl().jump();" in worker
 assert "pauseRemotePath(\"NO SAFE DRY PATH (WATER OR OBSTRUCTION)\")" in worker
-assert "pauseRemotePath(\"NO CLEAR COURIER AISLE AWAY FROM PICKUP CREW\")" in worker
+assert "pauseRemotePath(\"NO CLEAR SERVICE AISLE AT ASSIGNED PALLET\")" in worker
 assert "private boolean remotePathPaused;" in worker
 assert 'out.putBoolean("remote_path_paused",remotePathPaused)' in worker
 assert 'remotePathPaused=in.getBooleanOr("remote_path_paused",false)' in worker
