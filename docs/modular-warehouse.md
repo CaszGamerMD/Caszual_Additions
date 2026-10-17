@@ -4,6 +4,39 @@ Target: Minecraft Java **26.2 Fabric**. This document covers the current
 implementation on the main branch. For a step-by-step end-to-end regression
 of each system, see [Warehouse integrated test plan](warehouse-test-plan.md).
 
+## Placeable Stack of Pallets and persistent Golem routes
+
+- **Stack of Pallets is now a physical block:** place the existing item on
+  the floor to create one linked warehouse pallet magazine. Each block holds
+  up to **12 independent empty pallets**, preserving each stored pallet's
+  material, dyes and components. It visually grows from zero through four
+  stacked pallet layers as it fills. Right-click while holding an empty pallet
+  to deposit it; sneak-right-click with an empty hand to retrieve one.
+  Right-click with an empty hand to open its dedicated 12-slot inventory
+  alongside the player's inventory (no overlapping filter controls).
+  Breaking the magazine normally drops a single Stack of Pallets item with
+  its contents, not twelve scattered pallet items. The item can still be used
+  as an older handheld/rack magazine for existing worlds.
+- **Golem supply:** sorting Golems can bring empty pallets from INPUT PTPs
+  to these placeable magazines. Remote exchanges prefer a placed stocked
+  magazine, then a legacy magazine item in a rack, then an empty INPUT PTP.
+  Item ownership rolls back on failed withdrawal or dispatch.
+- **No more 20-second forgetting:** manual/sorting/order worker tasks keep
+  their saved source, destination, phase and cargo when a path fails.
+  Four-Golem remote carriers also keep their pickup/return assignment across
+  a waypoint stall or world save/reload; the blocked waypoint is marked for
+  a temporary detour, not used to cancel cargo custody. A physical blocked
+  path still causes a WAIT message and automatic retries.
+- **Y-level path priority:** Golems and their pallet platforms search a
+  flat, cardinal warehouse aisle first. Only if a safe same-Y route cannot
+  be found may an actual stair/ramp ascent or descent be chosen.
+  They do not voluntarily climb over a rack/pallet shortcut.
+  Long-distance carriers route in checked local 36-block legs and renew
+  expiring chunk tickets ahead of their walking corridor.
+- **Testing:** Verify travel around walls, chunk boundaries, different
+  elevations with ramps, world reload during pickup/return, and that the
+  exact cargo survives. Back up your world before first trying long trips.
+
 ## Warehouse GUI update — pallet, rack computer and Shulker Station
 
 - **Pallet/rack/PTP storage:** The 216 real storage slots use two pages of

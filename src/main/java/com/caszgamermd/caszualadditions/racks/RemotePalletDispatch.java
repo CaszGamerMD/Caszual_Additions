@@ -62,6 +62,24 @@ public final class RemotePalletDispatch {
         int sourceSlot=-1;
         ItemStack previous=ItemStack.EMPTY,fresh=ItemStack.EMPTY;
         ItemStack updated=ItemStack.EMPTY;
+        // Placed magazines are first-class warehouse storage, not merely
+        // decorations or items hidden inside another pallet.
+        StackOfPalletsBlockEntity sourceMagazine=null;
+        if(fresh.isEmpty()){
+            for(StackOfPalletsBlockEntity magazine:network.magazines()){
+                if(magazine.count()==0)continue;
+                for(int slot=magazine.getContainerSize()-1;slot>=0;slot--){
+                    ItemStack candidate=magazine.getItem(slot);
+                    if(StackOfPalletsItem.isPallet(candidate)){
+                        sourceMagazine=magazine;
+                        fresh=candidate.copyWithCount(1);
+                        break;
+                    }
+                }
+                if(sourceMagazine!=null)break;
+            }
+        }
+        if(fresh.isEmpty()){
         for(RackBlockEntity rack:network.racks()){
             for(int i=0;i<rack.getContainerSize();i++){
                 ItemStack item=rack.getItem(i);
@@ -75,6 +93,7 @@ public final class RemotePalletDispatch {
                 break;
             }
             if(sourceRack!=null)break;
+        }
         }
         PtpBlockEntity sourcePtp=null;
         if(fresh.isEmpty()){
@@ -119,6 +138,16 @@ public final class RemotePalletDispatch {
                 sourceRack.setItem(sourceSlot,previous);
                 return "WAITING: pallet magazine could not withdraw a fresh pallet.";
             }
+        }else if(sourceMagazine!=null){
+            ItemStack removed=sourceMagazine.take();
+            if(!ItemStack.matches(removed,fresh)){
+                if(!removed.isEmpty()&&!sourceMagazine.put(removed)){
+                    BlockPos drop=sourceMagazine.getBlockPos();
+                    net.minecraft.world.Containers.dropItemStack(level,
+                            drop.getX()+.5,drop.getY()+.5,drop.getZ()+.5,removed);
+                }
+                return "WAITING: placed pallet stack contents changed during withdrawal.";
+            }
         }else{
             ItemStack removed=sourcePtp.removePallet();
             if(!ItemStack.matches(removed,fresh)){
@@ -143,6 +172,11 @@ public final class RemotePalletDispatch {
         for(int i=0;i<consumed;i++)shelves.get(i).add();
         // Roll back the warehouse's ONE withdrawn empty pallet on failure.
         if(sourceRack!=null)sourceRack.setItem(sourceSlot,previous);
+        else if(sourceMagazine!=null&&!sourceMagazine.put(fresh)){
+            BlockPos drop=sourceMagazine.getBlockPos();
+            net.minecraft.world.Containers.dropItemStack(level,
+                    drop.getX()+.5,drop.getY()+.5,drop.getZ()+.5,fresh);
+        }
         else if(sourcePtp!=null&&!sourcePtp.installPallet(fresh))
             net.minecraft.world.Containers.dropItemStack(level,
                     staging.getX()+.5,staging.getY()+.5,staging.getZ()+.5,fresh);

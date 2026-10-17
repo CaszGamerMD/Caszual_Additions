@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "height=0": {
+      "model": "caszual_additions:block/stack_of_pallets_0"
+    },
+    "height=1": {
+      "model": "caszual_additions:block/stack_of_pallets_1"
+    },
+    "height=2": {
+      "model": "caszual_additions:block/stack_of_pallets_2"
+    },
+    "height=3": {
+      "model": "caszual_additions:block/stack_of_pallets_3"
+    },
+    "height=4": {
+      "model": "caszual_additions:block/stack_of_pallets_4"
+    }
+  }
+}

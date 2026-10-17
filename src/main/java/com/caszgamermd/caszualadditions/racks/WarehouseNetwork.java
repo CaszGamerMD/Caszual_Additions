@@ -46,6 +46,7 @@ public final class WarehouseNetwork {
             List<StorageGolemShelfEntity> shelves,
             List<PtpBlockEntity> points,
             List<ShulkerTankEntity> tanks,
+            List<StackOfPalletsBlockEntity> magazines,
             List<BlockPos> computers,int concreteBlocks){}
 
     private static boolean member(BlockState state){
@@ -55,6 +56,7 @@ public final class WarehouseNetwork {
                 ||state.getBlock() instanceof RackConnectorBlock
                 ||state.getBlock() instanceof PtpBlock
                 ||state.getBlock() instanceof StorageGolemShelfBlock
+                ||state.getBlock() instanceof StackOfPalletsBlock
                 ||state.getBlock() instanceof ShulkerTankBlock
                 ||state.is(RackContent.RACK_COMPUTER);
     }
@@ -72,7 +74,7 @@ public final class WarehouseNetwork {
         return origins.isEmpty()?empty():cached(level,origins.getFirst(),origins);
     }
     private static Result empty(){
-        return new Result(List.of(),List.of(),List.of(),List.of(),List.of(),0);
+        return new Result(List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),0);
     }
     private static Result traverse(ServerLevel level,List<BlockPos> origins){
         ArrayDeque<BlockPos> queue=new ArrayDeque<>(origins);
@@ -82,6 +84,7 @@ public final class WarehouseNetwork {
         Map<BlockPos,StorageGolemShelfEntity> shelves=new LinkedHashMap<>();
         Map<BlockPos,PtpBlockEntity> points=new LinkedHashMap<>();
         Map<BlockPos,ShulkerTankEntity> tanks=new LinkedHashMap<>();
+        Map<BlockPos,StackOfPalletsBlockEntity> magazines=new LinkedHashMap<>();
         Set<BlockPos> computers=new java.util.LinkedHashSet<>();
         int concrete=0;
         while(!queue.isEmpty()&&seen.size()<MAX_CELLS){
@@ -117,6 +120,9 @@ public final class WarehouseNetwork {
                         points.putIfAbsent(center,ptp);
                 }
             }
+            if(state.getBlock() instanceof StackOfPalletsBlock
+                    &&level.getBlockEntity(pos) instanceof StackOfPalletsBlockEntity stack)
+                magazines.putIfAbsent(pos,stack);
             if(state.getBlock() instanceof ShulkerTankBlock){
                 ShulkerTankEntity tank=ShulkerTankBlock.controller(level,pos);
                 if(tank!=null)tanks.putIfAbsent(tank.getBlockPos(),tank);
@@ -129,6 +135,7 @@ public final class WarehouseNetwork {
         }
         return new Result(new ArrayList<>(racks.values()),
                 new ArrayList<>(shelves.values()),new ArrayList<>(points.values()),
-                new ArrayList<>(tanks.values()),new ArrayList<>(computers),concrete);
+                new ArrayList<>(tanks.values()),new ArrayList<>(magazines.values()),
+                new ArrayList<>(computers),concrete);
     }
 }

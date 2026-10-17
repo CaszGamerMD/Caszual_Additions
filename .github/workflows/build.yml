@@ -70,6 +70,8 @@ jobs:
         run: python3 scripts/warehouse_remote_exchange_shulker_smoke.py
       - name: Verify warehouse UI, global highlight, recall and Hopper Adapter direction (blocking)
         run: python3 scripts/warehouse_ui_hopper_regression.py
+      - name: Verify placeable pallet magazine, job persistence and flat-first Golem paths (blocking)
+        run: python3 scripts/warehouse_pallet_stacks_navigation_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()

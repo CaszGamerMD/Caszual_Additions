@@ -998,11 +998,6 @@ public final class StorageGolem extends PathfinderMob {
             lastWorkProgress=tickCount;
             routeIssue="";
         }
-        if(feet.getY()!=target.getY()){
-            if(tickCount%10==0)getNavigation().moveTo(
-                    target.getX()+.5,target.getY(),target.getZ()+.5,speed);
-            return;
-        }
         while(!flatWorkRoute.isEmpty()
                 &&distanceToSqr(flatWorkRoute.peekFirst().getX()+.5,
                         target.getY(),flatWorkRoute.peekFirst().getZ()+.5)<.32){
@@ -1012,11 +1007,18 @@ public final class StorageGolem extends PathfinderMob {
         }
         if(flatWorkRoute.isEmpty()&&tickCount>=nextWorkPlan){
             var occupied=occupiedAisle(level,target);
-            List<BlockPos> route=StorageGolemReturnPath.steps(feet,target,
-                    p->StorageGolemReturnPath.walkable(level,p)
-                            &&!occupied.contains(p)
-                            &&(tickCount>=avoidWorkUntil
-                                ||!p.equals(blockedWorkCell)));
+            java.util.function.Predicate<BlockPos> available=p->
+                    StorageGolemReturnPath.walkable(level,p)
+                    &&!occupied.contains(p)
+                    &&(tickCount>=avoidWorkUntil||!p.equals(blockedWorkCell));
+            // First find the entire same-floor route. The 36-block rolling
+            // planner takes over for distant targets or a genuine elevation
+            // change; it never silently replaces the saved job assignment.
+            List<BlockPos> route=feet.getY()==target.getY()
+                    ?StorageGolemReturnPath.steps(feet,target,available):null;
+            if(route==null)
+                route=WarehousePreferredPath.leg(feet,target,available,
+                        tickCount<avoidWorkUntil?blockedWorkCell:BlockPos.ZERO);
             nextWorkPlan=tickCount+20;
             if(route!=null){
                 flatWorkRoute.addAll(route);
@@ -1042,7 +1044,12 @@ public final class StorageGolem extends PathfinderMob {
             lastWorkDistance=Double.POSITIVE_INFINITY;
             return;
         }
-        steerOnFloor(next,speed);
+        if(next.getY()!=feet.getY()){
+            // The flat plan did not reach the actual destination; only then
+            // allow a checked one-block stair transition.
+            if(tickCount%8==0)getNavigation().moveTo(
+                    next.getX()+.5,next.getY(),next.getZ()+.5,speed);
+        }else steerOnFloor(next,speed);
     }
     private final ArrayDeque<BlockPos> flatWorkRoute=new ArrayDeque<>();
 
@@ -1137,18 +1144,13 @@ public final class StorageGolem extends PathfinderMob {
         }
         BlockPos from=blockPosition();
         if(from.getY()!=home.getY()){
-            // An actual stair/ramp may be necessary when a worker is on a
-            // DIFFERENT floor. Only use vanilla elevation navigation here.
-            // Never instruct it to climb onto the shelf itself.
-            BlockPos closest=null;
-            double score=Double.POSITIVE_INFINITY;
-            BlockPos front=home.relative(StorageGolemShelfDoor.front(shelf));
-            if(StorageGolemReturnPath.walkable(level,front)){
-                closest=front;
-            }
-            if(closest!=null&&tickCount%20==0)
-                getNavigation().moveTo(closest.getX()+.5,
-                        closest.getY(),closest.getZ()+.5,1.10);
+            // HOME is still the assigned shelf across reloads. Avoid a
+            // straight-line vanilla climb onto nearby blocks: use the same
+            // checked flat-first corridor planner for changing floors.
+            BlockPos entrance=home.relative(StorageGolemShelfDoor.front(shelf));
+            if(StorageGolemReturnPath.walkable(level,entrance))
+                walkTo(level,entrance,1.10);
+            else routeIssue="WAITING FOR SAFE SHELF ENTRANCE";
             return;
         }
         // Plan around the shelf's X/Z on the GOLEM'S current floor, not the
@@ -1266,6 +1268,14 @@ public final class StorageGolem extends PathfinderMob {
         }
         if(cargo.isEmpty()){
             stage=2;return;
+        }
+        if(level.getBlockEntity(destination) instanceof StackOfPalletsBlockEntity magazine){
+            if(magazine.put(cargo.copyWithCount(1))){
+                cargo=ItemStack.EMPTY;
+                stage=2;
+                routeIssue="";
+            }else routeIssue="WAITING FOR FREE PALLET STACK SLOT";
+            return;
         }
         RackBlockEntity rack=level.getBlockEntity(destination)
                 instanceof RackBlockEntity r?r:null;
