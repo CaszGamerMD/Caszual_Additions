@@ -670,6 +670,30 @@ public final class StorageGolem extends PathfinderMob {
         releaseCarriedPallet();
         return true;
     }
+    /** Fallback while the team is still four separate physical workers:
+     * an empty PTP receives the same full pallet/216 slots as a rack.
+     * The old single leader does not relinquish cargo until verification. */
+    public boolean placeIntoPtp(PtpBlockEntity point){
+        if(!playerHaul||stage!=1||carryingPallet.isEmpty()
+                ||point==null||!point.canInstallPallet())return false;
+        if(!point.installPallet(carryingPallet.copyWithCount(1)))return false;
+        boolean valid=allCargoFits(point);
+        if(valid){
+            for(int i=0;i<216;i++)
+                if(!palletContents.get(i).isEmpty())
+                    point.setItem(i,palletContents.get(i).copy());
+            valid=verifyCargo(point);
+        }
+        if(!valid){
+            point.clearContent();
+            point.dropPallet();
+            return false;
+        }
+        point.setSealed(com.caszgamermd.caszualadditions.pallet.GlassPalletWrap
+                .wrapped(carryingPallet));
+        releaseCarriedPallet();
+        return true;
+    }
     public boolean placeOnGround(ServerLevel level,BlockPos pos,Direction facing){
         if(!playerHaul||stage!=1||carryingPallet.isEmpty()
                 ||!(carryingPallet.getItem() instanceof BlockItem bi)
