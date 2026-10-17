@@ -369,17 +369,17 @@ public final class StorageGolem extends PathfinderMob {
                     blockPosition().getY(),
                     (int)Math.floor(getZ()+dz/length*16)));
         }
+        // The rig deliberately DOES NOT EXIST while the three workers are
+        // still walking independently to the target. The courier must
+        // travel at the same time and wait ONLY at its destination.
         var other=level.getEntity(remoteCarrierId);
-        if(!(other instanceof MovingPallet rig)){
-            routeIssue="WAITING FOR LOADED THREE-GOLEM TEAM TO RELOAD";
-            return;
-        }
-        remoteRigLastKnown=rig.blockPosition().immutable();
+        MovingPallet rig=other instanceof MovingPallet carrier?carrier:null;
+        if(rig!=null)remoteRigLastKnown=rig.blockPosition().immutable();
         // Restart between fourth-worker handoff and courier discard: the
         // recovered carrier already owns the worker identity. Don't run an
         // orphaned fifth Golem or endlessly retry an already-committed join.
         if(remoteCourierPhase==1&&remoteFresh.isEmpty()
-                &&rig.returningToWarehouse()){
+                &&rig!=null&&rig.returningToWarehouse()){
             remoteCourier=false;
             discard();
             return;
@@ -408,8 +408,8 @@ public final class StorageGolem extends PathfinderMob {
                 return;
             }
             getNavigation().stop();
-            if(!rig.readyForCourierPlacement()){
-                routeIssue="WAITING FOR THREE GOLEMS TO MOVE TARGET ASIDE";
+            if(rig==null||!rig.readyForCourierPlacement()){
+                routeIssue="WAITING FOR THREE INDIVIDUAL GOLEMS TO LIFT AND MOVE ASIDE";
                 return;
             }
             if(StorageGroundPalletTransfer.placeRemoteReplacement(level,
@@ -423,6 +423,10 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         if(remoteCourierPhase==1){
+            if(rig==null){
+                routeIssue="WAITING FOR LOADED PALLET TEAM TO RELOAD";
+                return;
+            }
             // The carrier's CENTER is physically occupied by the loaded
             // 1.85-wide platform. Join from its first clear side aisle, not
             // a goal INSIDE the collision box (which caused 20s stalls).
