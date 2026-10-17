@@ -17,7 +17,8 @@ for name in ("ICE","PACKED_ICE","BLUE_ICE","FROSTED_ICE"):
     assert f"net.minecraft.world.level.block.Blocks.{name}" in worker
 assert "setDeltaMovement(motion.x*.58,motion.y,motion.z*.58);" in worker
 assert "List<BlockPos> route=WarehousePreferredPath.leg(feet,target," in worker
-assert "if(route==null&&!nearby)" not in worker\nassert "getJumpControl().jump();" in worker
+assert "if(route==null&&!nearby)" not in worker
+assert "getJumpControl().jump();" in worker
 assert "pauseRemotePath(\"NO SAFE DRY PATH (WATER OR OBSTRUCTION)\")" in worker
 assert "pauseRemotePath(\"NO CLEAR COURIER AISLE AWAY FROM PICKUP CREW\")" in worker
 assert "private boolean remotePathPaused;" in worker
