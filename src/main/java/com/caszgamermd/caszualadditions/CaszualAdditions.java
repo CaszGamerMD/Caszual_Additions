@@ -36,6 +36,7 @@ public final class CaszualAdditions implements ModInitializer {
         PlayerPlushies.initialize();
         PalletContent.initialize();
         RackContent.initialize();
+        com.caszgamermd.caszualadditions.transport.TransportContent.initialize();
         HeadVendingContent.initialize();
         FunBarrelContent.initialize();
 

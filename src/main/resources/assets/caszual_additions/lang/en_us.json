@@ -121,5 +121,20 @@
   "item.caszual_additions.portable_pallet_wrapper": "Portable Pallet Wrapper",
   "item.caszual_additions.wool_helmet": "Wool Hood",
   "item.caszual_additions.wool_boots": "Silent Wool Boots",
-  "block.caszual_additions.warden_trap": "Warden Snare Trap"
+  "block.caszual_additions.warden_trap": "Warden Snare Trap",
+  "block.caszual_additions.conveyor_straight": "Pallet Conveyor — Straight",
+  "block.caszual_additions.conveyor_left": "Pallet Conveyor — Left Turn",
+  "block.caszual_additions.conveyor_right": "Pallet Conveyor — Right Turn",
+  "block.caszual_additions.conveyor_up": "Pallet Conveyor — Ramp Up",
+  "block.caszual_additions.conveyor_down": "Pallet Conveyor — Ramp Down",
+  "block.caszual_additions.pallet_rail": "Warehouse Rail — Straight",
+  "block.caszual_additions.pallet_rail_left": "Warehouse Rail — Left Turn",
+  "block.caszual_additions.pallet_rail_right": "Warehouse Rail — Right Turn",
+  "block.caszual_additions.drone_parking_bay": "Drone Parking Bay",
+  "item.caszual_additions.pallet_engine": "Pallet Train Engine",
+  "item.caszual_additions.pallet_car": "Three-Pallet Flatbed Car",
+  "item.caszual_additions.passenger_car": "Passenger Car",
+  "item.caszual_additions.pallet_drone": "Pallet Drone",
+  "item.caszual_additions.transport_controller": "Pallet Transport Controller",
+  "entity.caszual_additions.pallet_transport": "Pallet Transport"
 }

@@ -54,6 +54,7 @@ public final class CaszualItemGroups {
                                     RackContent.PTP_WRAP_ITEM,
                                     RackContent.STORAGE_SHELF_ITEM,RackContent.STORAGE_GOLEM_ITEM))
                                 add.accept(item);
+                            com.caszgamermd.caszualadditions.transport.TransportContent.ITEMS.values().forEach(add);
                             add.accept(RackContent.PORTABLE_WRAPPER);
                             add.accept(AntiWardenContent.WOOL_HELMET);
                             add.accept(AntiWardenContent.WOOL_BOOTS);

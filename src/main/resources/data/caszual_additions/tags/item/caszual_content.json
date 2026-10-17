@@ -72,6 +72,20 @@
     "caszual_additions:boinkr",
     "caszual_additions:wool_helmet",
     "caszual_additions:wool_boots",
-    "caszual_additions:warden_trap"
+    "caszual_additions:warden_trap",
+    "caszual_additions:conveyor_straight",
+    "caszual_additions:conveyor_left",
+    "caszual_additions:conveyor_right",
+    "caszual_additions:conveyor_up",
+    "caszual_additions:conveyor_down",
+    "caszual_additions:pallet_rail",
+    "caszual_additions:pallet_rail_left",
+    "caszual_additions:pallet_rail_right",
+    "caszual_additions:drone_parking_bay",
+    "caszual_additions:pallet_engine",
+    "caszual_additions:pallet_car",
+    "caszual_additions:passenger_car",
+    "caszual_additions:pallet_drone",
+    "caszual_additions:transport_controller"
   ]
 }

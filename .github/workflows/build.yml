@@ -5,7 +5,7 @@ permissions:
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/pallet-transport ]
   pull_request:
 
 jobs:
