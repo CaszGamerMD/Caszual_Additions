@@ -151,6 +151,7 @@ public final class MovingPallet extends PathfinderMob {
     public boolean returningToWarehouse(){return deliveryMode==3;}
     public boolean remoteExchangeActive(){return deliveryMode>=4&&deliveryMode<=6;}
     public UUID remoteCourierId(){return remoteCourierId;}
+    public BlockPos remoteOriginalTarget(){return deliveryPosition;}
     public BlockPos[] remoteShelfHomes(){return shelves.clone();}
     public boolean remoteReplacementAlreadyPlaced(){return remoteReplacementPlaced;}
     public boolean remoteLoadedForReset(){
