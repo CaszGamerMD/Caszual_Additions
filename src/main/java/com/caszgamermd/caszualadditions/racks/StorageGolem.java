@@ -163,6 +163,15 @@ public final class StorageGolem extends PathfinderMob {
     private final BlockPos[] remotePickupHomes={
             BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO};
     private BlockPos remoteCourierTarget=BlockPos.ZERO,remoteCourierAisle=BlockPos.ZERO,remoteRigLastKnown=BlockPos.ZERO;
+    private BlockPos remoteCourierJoinAisle=BlockPos.ZERO,remoteCourierRejectedAisle=BlockPos.ZERO;
+    // A single, persistent choice of service side and a checked cached
+    // cardinal route. Replanning it on every tick made the pushed 2x2
+    // pallet circle between competing "nearest" aisles.
+    private final ArrayDeque<BlockPos> courierRoute=new ArrayDeque<>();
+    private BlockPos courierRouteGoal=BlockPos.ZERO,courierBlockedCell=BlockPos.ZERO;
+    private int nextCourierReplan,lastCourierProgress,courierAvoidUntil;
+    private int courierStalls,courierRetargetCooldown;
+    private double courierProgressDistance=Double.POSITIVE_INFINITY;
     private ItemStack remoteFresh=ItemStack.EMPTY;
     private int remoteCourierPhase;
     private ItemStack cargo=ItemStack.EMPTY;
@@ -248,6 +257,9 @@ public final class StorageGolem extends PathfinderMob {
         remoteCarrierId=rig;
         remoteCourierTarget=target.immutable();
         remoteCourierAisle=BlockPos.ZERO;
+        remoteCourierJoinAisle=BlockPos.ZERO;
+        remoteCourierRejectedAisle=BlockPos.ZERO;
+        resetCourierRoute();
         remoteRigLastKnown=blockPosition().immutable();
         remoteFresh=com.caszgamermd.caszualadditions.pallet.GlassPalletWrap
                 .withWrap(empty.copyWithCount(1),false);
@@ -348,6 +360,105 @@ public final class StorageGolem extends PathfinderMob {
 
     private void syncRemoteFreshVisual(){
         if(remoteCourier)entityData.set(DISPLAY_PALLET,remoteFresh.copy());
+    }
+    private void resetCourierRoute(){
+        courierRoute.clear();
+        courierRouteGoal=BlockPos.ZERO;
+        courierBlockedCell=BlockPos.ZERO;
+        nextCourierReplan=0;
+        lastCourierProgress=tickCount;
+        courierAvoidUntil=0;
+        courierProgressDistance=Double.POSITIVE_INFINITY;
+    }
+    /** The physical replacement deck is two blocks wide; only its push
+     * route needs a three-wide aisle. AFTER placement the worker is empty
+     * and can walk through regular one-wide worker corridors to rejoin. */
+    private boolean followCourierRoute(ServerLevel level,BlockPos goal,
+            boolean pushing){
+        if(goal.equals(BlockPos.ZERO))return false;
+        if(!goal.equals(courierRouteGoal)){
+            resetCourierRoute();
+            courierRouteGoal=goal.immutable();
+        }
+        double finalDistance=distanceToSqr(goal.getX()+.5,goal.getY(),
+                goal.getZ()+.5);
+        if(finalDistance<1.15){
+            getNavigation().stop();
+            courierRoute.clear();
+            courierStalls=0;
+            return true;
+        }
+        while(!courierRoute.isEmpty()){
+            BlockPos cell=courierRoute.peekFirst();
+            if(!(pushing?RemotePalletCourierRoute.clear(level,cell)
+                    :StorageGolemReturnPath.walkable(level,cell))){
+                courierRoute.clear();nextCourierReplan=0;break;
+            }
+            if(distanceToSqr(cell.getX()+.5,cell.getY(),cell.getZ()+.5)<.38){
+                courierRoute.removeFirst();
+                courierProgressDistance=Double.POSITIVE_INFINITY;
+                lastCourierProgress=tickCount;
+            }else break;
+        }
+        if(courierRoute.isEmpty()&&tickCount>=nextCourierReplan){
+            BlockPos avoid=tickCount<courierAvoidUntil
+                    ?courierBlockedCell:BlockPos.ZERO;
+            var route=RemotePalletCourierRoute.route(level,blockPosition(),
+                    goal,avoid,pushing);
+            nextCourierReplan=tickCount+25;
+            if(route==null||route.isEmpty()){
+                routeIssue="WAITING FOR "+(pushing?"WIDE PALLET":"GOLEM")
+                        +" CORRIDOR; RETRYING";
+                getNavigation().stop();
+                return false;
+            }
+            courierRoute.addAll(route);
+            courierProgressDistance=Double.POSITIVE_INFINITY;
+            lastCourierProgress=tickCount;
+        }
+        if(courierRoute.isEmpty()){
+            getNavigation().stop();
+            return false;
+        }
+        BlockPos next=courierRoute.peekFirst();
+        double distance=distanceToSqr(next.getX()+.5,next.getY(),
+                next.getZ()+.5);
+        if(distance+.10<courierProgressDistance){
+            courierProgressDistance=distance;
+            lastCourierProgress=tickCount;
+        }else if(tickCount-lastCourierProgress>75){
+            // Never return to a guessed opposite side or orbit the pallet.
+            // Save the job/goal, temporarily avoid the blocked aisle cell
+            // and search for a DIFFERENT checked cardinal corridor.
+            courierBlockedCell=next.immutable();
+            courierAvoidUntil=tickCount+140;
+            courierRoute.clear();
+            nextCourierReplan=tickCount+12;
+            lastCourierProgress=tickCount;
+            courierProgressDistance=Double.POSITIVE_INFINITY;
+            courierStalls++;
+            routeIssue="REROUTING AROUND BLOCKED PALLET AISLE";
+            getNavigation().stop();
+            if(courierStalls>=3&&pushing){
+                courierRejectedAisleFromStall();
+            }
+            return false;
+        }
+        // Don't send a new vanilla A* destination on every tick. Steer
+        // toward the stable next cell like other warehouse Golems.
+        if(next.getY()==blockPosition().getY())
+            steerOnFloor(next,1.06);
+        else if(tickCount%8==0)getNavigation().moveTo(
+                next.getX()+.5,next.getY(),next.getZ()+.5,1.06);
+        return false;
+    }
+    private void courierRejectedAisleFromStall(){
+        remoteCourierRejectedAisle=remoteCourierAisle;
+        remoteCourierAisle=BlockPos.ZERO;
+        courierRoute.clear();
+        courierRouteGoal=BlockPos.ZERO;
+        courierStalls=0;
+        courierRetargetCooldown=tickCount+50;
     }
     /** Flat-first single-worker path; never tries to squeeze the 2x2
      * carrier through one-wide gaps or path into the old target blocks. */
