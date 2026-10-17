@@ -72,6 +72,8 @@ jobs:
         run: python3 scripts/warehouse_ui_hopper_regression.py
       - name: Verify placeable pallet magazine, job persistence and flat-first Golem paths (blocking)
         run: python3 scripts/warehouse_pallet_stacks_navigation_smoke.py
+      - name: Verify PTP pallet pickup and physical 2x2 magazine (blocking)
+        run: python3 scripts/warehouse_ptp_pickup_2x2_magazine_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()
