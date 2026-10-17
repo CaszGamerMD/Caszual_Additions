@@ -331,8 +331,15 @@ public final class PtpBlockEntity extends BlockEntity
                 ?new ItemStack(RackContent.PALLET_FILTER):ItemStack.EMPTY;
         setChanged();return true;
     }
+    /** A player may reclaim an EMPTY pallet only if no items, Golem
+     * reservation, or queued output order still belongs to this PTP. */
+    public boolean canRemoveEmptyPallet(){
+        expireTicket();
+        return hasPallet()&&!sealed&&emptyCargo()&&!hauling()
+                &&activeTicket==0&&pendingOutputOrders()==0;
+    }
     public ItemStack removePallet(){
-        return !sealed&&emptyCargo()?dropPallet():ItemStack.EMPTY;
+        return canRemoveEmptyPallet()?dropPallet():ItemStack.EMPTY;
     }
     public ItemStack dropPallet(){
         if(!hasPallet()||hauling())return ItemStack.EMPTY;
