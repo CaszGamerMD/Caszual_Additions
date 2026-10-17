@@ -35,12 +35,19 @@ public final class StorageGolemReturnPath {
         BlockState headState=level.getBlockState(feet.above());
         BlockPos ground=feet.below();
         BlockState below=level.getBlockState(ground);
-        // Don't treat the empty-looking interior of the rack as traversable,
-        // and never take a "shortcut" across the upper steel frame.
-        // All rack segments count as full obstacles for warehouse paths.
+        // Rack frames and the ENTIRE 2x2x4 Stack of Pallets footprint
+        // are NO-GO navigation cells, not stairs or supporting floor.
+        // A low/empty magazine can have only 1-5 pixels of collision:
+        // the old collision-only check allowed robots to plan a step ONTO
+        // it, then vanilla navigation tried to walk across the top.
+        // Check the block identity at feet, head AND ground regardless of
+        // which individual multiblock part is occupied/rendered.
         if(feetState.getBlock() instanceof RackBlock
                 ||headState.getBlock() instanceof RackBlock
-                ||below.getBlock() instanceof RackBlock)return false;
+                ||below.getBlock() instanceof RackBlock
+                ||feetState.getBlock() instanceof StackOfPalletsBlock
+                ||headState.getBlock() instanceof StackOfPalletsBlock
+                ||below.getBlock() instanceof StackOfPalletsBlock)return false;
         return feetState.getCollisionShape(level,feet).isEmpty()
                 &&headState.getCollisionShape(level,feet.above()).isEmpty()
                 &&!below.getCollisionShape(level,ground).isEmpty();
