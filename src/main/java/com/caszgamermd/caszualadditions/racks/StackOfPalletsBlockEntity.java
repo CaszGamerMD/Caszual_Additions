@@ -43,9 +43,9 @@ public final class StackOfPalletsBlockEntity extends BlockEntity implements Cont
     }
     public ItemStack asItem(){
         ItemStack stack=new ItemStack(RackContent.STACK_OF_PALLETS);
-        java.util.List<ItemStack> stored=new java.util.ArrayList<>();
-        for(ItemStack pallet:pallets)if(!pallet.isEmpty())stored.add(pallet.copyWithCount(1));
-        StackOfPalletsItem.setContents(stack,stored);
+        // Save all twelve slots INCLUDING empty positions, so breaking
+        // and replacing the multiblock reproduces its exact visual layout.
+        stack.set(DataComponents.CONTAINER,ItemContainerContents.fromItems(pallets));
         return stack;
     }
     public int count(){
