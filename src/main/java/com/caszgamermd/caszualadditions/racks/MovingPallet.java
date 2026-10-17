@@ -40,6 +40,11 @@ public final class MovingPallet extends PathfinderMob {
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Integer> DISPLAY_CARGO=
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
+    /** True ONLY when the Golems physically have a deck in their hands.
+     * This is independent of owning an undispatched replacement pallet
+     * and remains correct on both clients after chunk/reload transitions. */
+    private static final EntityDataAccessor<Boolean> HOLDING_DECK=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> LIFT_TICKS=
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> RELEASE_TICKS=
@@ -114,6 +119,7 @@ public final class MovingPallet extends PathfinderMob {
         super.defineSynchedData(builder);
         builder.define(DISPLAY_PALLET,ItemStack.EMPTY);
         builder.define(DISPLAY_CARGO,0);
+        builder.define(HOLDING_DECK,false);
         builder.define(CREW_SIZE,4);
         builder.define(LIFT_TICKS,0);
         builder.define(RELEASE_TICKS,0);
@@ -124,6 +130,7 @@ public final class MovingPallet extends PathfinderMob {
     }
     public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
     public int visibleCargo(){return entityData.get(DISPLAY_CARGO);}
+    public boolean handsActuallyCarryingPallet(){return entityData.get(HOLDING_DECK);}
     public int displayedCrewSize(){return entityData.get(CREW_SIZE);}
     public float liftProgress(){return entityData.get(LIFT_TICKS)/12.0f;}
     public float releaseProgress(){return entityData.get(RELEASE_TICKS)/20.0f;}
@@ -201,6 +208,9 @@ public final class MovingPallet extends PathfinderMob {
         remoteWarehouse=computer.immutable();
         deliveryPosition=target.immutable();
         deliveryMode=4;
+        // An in-flight pre-dispatch replacement pallet must NEVER appear
+        // in any of the three pickup Golems' raised hands.
+        syncDisplay();
         deliveryFailure="DISPATCHING THREE GOLEMS PLUS ONE PALLET COURIER";
         return true;
     }
@@ -257,7 +267,9 @@ public final class MovingPallet extends PathfinderMob {
         return true;
     }
     private void syncDisplay(){
-        entityData.set(DISPLAY_PALLET,pallet.copy());
+        boolean holding=!delivered&&!pallet.isEmpty()&&deliveryMode!=4;
+        entityData.set(HOLDING_DECK,holding);
+        entityData.set(DISPLAY_PALLET,holding?pallet.copy():ItemStack.EMPTY);
         int used=0;
         for(ItemStack item:contents)if(!item.isEmpty())used++;
         entityData.set(DISPLAY_CARGO,Math.min(27,used));
