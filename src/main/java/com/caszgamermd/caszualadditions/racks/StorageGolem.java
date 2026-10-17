@@ -998,11 +998,6 @@ public final class StorageGolem extends PathfinderMob {
             lastWorkProgress=tickCount;
             routeIssue="";
         }
-        if(feet.getY()!=target.getY()){
-            if(tickCount%10==0)getNavigation().moveTo(
-                    target.getX()+.5,target.getY(),target.getZ()+.5,speed);
-            return;
-        }
         while(!flatWorkRoute.isEmpty()
                 &&distanceToSqr(flatWorkRoute.peekFirst().getX()+.5,
                         target.getY(),flatWorkRoute.peekFirst().getZ()+.5)<.32){
@@ -1012,11 +1007,18 @@ public final class StorageGolem extends PathfinderMob {
         }
         if(flatWorkRoute.isEmpty()&&tickCount>=nextWorkPlan){
             var occupied=occupiedAisle(level,target);
-            List<BlockPos> route=StorageGolemReturnPath.steps(feet,target,
-                    p->StorageGolemReturnPath.walkable(level,p)
-                            &&!occupied.contains(p)
-                            &&(tickCount>=avoidWorkUntil
-                                ||!p.equals(blockedWorkCell)));
+            java.util.function.Predicate<BlockPos> available=p->
+                    StorageGolemReturnPath.walkable(level,p)
+                    &&!occupied.contains(p)
+                    &&(tickCount>=avoidWorkUntil||!p.equals(blockedWorkCell));
+            // First find the entire same-floor route. The 36-block rolling
+            // planner takes over for distant targets or a genuine elevation
+            // change; it never silently replaces the saved job assignment.
+            List<BlockPos> route=feet.getY()==target.getY()
+                    ?StorageGolemReturnPath.steps(feet,target,available):null;
+            if(route==null)
+                route=WarehousePreferredPath.leg(feet,target,available,
+                        tickCount<avoidWorkUntil?blockedWorkCell:BlockPos.ZERO);
             nextWorkPlan=tickCount+20;
             if(route!=null){
                 flatWorkRoute.addAll(route);
@@ -1042,7 +1044,12 @@ public final class StorageGolem extends PathfinderMob {
             lastWorkDistance=Double.POSITIVE_INFINITY;
             return;
         }
-        steerOnFloor(next,speed);
+        if(next.getY()!=feet.getY()){
+            // The flat plan did not reach the actual destination; only then
+            // allow a checked one-block stair transition.
+            if(tickCount%8==0)getNavigation().moveTo(
+                    next.getX()+.5,next.getY(),next.getZ()+.5,speed);
+        }else steerOnFloor(next,speed);
     }
     private final ArrayDeque<BlockPos> flatWorkRoute=new ArrayDeque<>();
 
