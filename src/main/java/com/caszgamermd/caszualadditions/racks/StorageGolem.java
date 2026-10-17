@@ -466,8 +466,18 @@ public final class StorageGolem extends PathfinderMob {
         if(courierRoute.isEmpty()&&tickCount>=nextCourierReplan){
             BlockPos avoid=tickCount<courierAvoidUntil
                     ?courierBlockedCell:BlockPos.ZERO;
+            BlockPos crewRally=BlockPos.ZERO;
+            if(pushing)for(var entity:level.getAllEntities()){
+                if(entity instanceof StorageGolem worker
+                        &&worker.remotePickupActive()
+                        &&remoteCarrierId!=null
+                        &&remoteCarrierId.equals(worker.remotePickupMission())){
+                    crewRally=worker.remotePickupRally();
+                    break;
+                }
+            }
             var route=RemotePalletCourierRoute.route(level,blockPosition(),
-                    goal,avoid,pushing);
+                    goal,avoid,pushing,crewRally);
             nextCourierReplan=tickCount+25;
             if(route==null||route.isEmpty()){
                 courierStalls++;
@@ -618,9 +628,12 @@ public final class StorageGolem extends PathfinderMob {
                 if(remoteCourierAisle.equals(BlockPos.ZERO)){
                     remoteCourierRejectedAisle=BlockPos.ZERO;
                     courierRetargetCooldown=tickCount+60;
-                    routeIssue="WAITING FOR REACHABLE THREE-WIDE PUSH AISLE";
+                    if(++remoteUnreachableAttempts>=3)
+                        pauseRemotePath("NO CLEAR COURIER AISLE AWAY FROM PICKUP CREW");
+                    else routeIssue="WAITING FOR REACHABLE TWO-WIDE PUSH AISLE";
                     getNavigation().stop();return;
                 }
+                remoteUnreachableAttempts=0;
                 resetCourierRoute();
             }
             if(!followCourierRoute(level,remoteCourierAisle,true)){
