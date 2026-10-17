@@ -669,7 +669,9 @@ public final class MovingPallet extends PathfinderMob {
                 break;
             }
             double dx=next.getX()+.5-getX(),dz=next.getZ()+.5-getZ();
-            if(dx*dx+dz*dz>.30||Math.abs(next.getY()-getY())>.65)break;
+            // Allow a 1.85-wide rig to finish a waypoint without trying
+            // to pin its center to within half a block indefinitely.
+            if(dx*dx+dz*dz>.72||Math.abs(next.getY()-getY())>.80)break;
             remoteFloorRoute.removeFirst();
             lastRemoteProgress=Double.POSITIVE_INFINITY;
             remoteProgressTick=tickCount;
@@ -823,7 +825,10 @@ public final class MovingPallet extends PathfinderMob {
         }
         if(remoteMoveAside.equals(BlockPos.ZERO)
                 ||!safePlatformFloor(level,remoteMoveAside)){
-            remoteMoveAside=remoteAisle(level,deliveryPosition,5,7);
+            // No need to travel seven blocks from the arbitrary ROOT.
+            // Select the closest wide, level ground that clears the
+            // actual old footprint and frees the courier to place.
+            remoteMoveAside=remoteAisle(level,deliveryPosition,4,7);
             remoteFloorRoute.clear();nextRemotePlan=0;
         }
         if(remoteMoveAside.equals(BlockPos.ZERO)){
