@@ -2,6 +2,9 @@ package com.caszgamermd.caszualadditions.racks;
 
 import com.mojang.serialization.MapCodec;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -43,6 +46,30 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
     public static final IntegerProperty LAYER=IntegerProperty.create("layer",0,3);
     public static final int MAX_PALLETS=12;
     public static final int PALLET_THICKNESS_PIXELS=5; // actual pallet block is 5/16 high
+    // Vanilla 26.2 may try both block interaction paths, including the
+    // secondary hand. One player click must take EXACTLY one pallet.
+    private static final Map<UUID,Long> lastPickupTick=new HashMap<>();
+    private static boolean removeTopPallet(Level level,BlockPos clicked,Player player){
+        if(level.isClientSide())return true;
+        StackOfPalletsBlockEntity magazine=controller(level,clicked);
+        if(magazine==null)return false;
+        long tick=level.getGameTime();
+        Long previous=lastPickupTick.get(player.getUUID());
+        if(previous!=null&&previous==tick)return true;
+        lastPickupTick.put(player.getUUID(),tick);
+        ItemStack taken=magazine.take();
+        if(taken.isEmpty()){
+            player.sendSystemMessage(Component.literal("No pallets in this stack."));
+            return true;
+        }
+        // Never destroy the actual pallet on full inventory. Vanilla
+        // placeItemBackInInventory hands it back or drops it near the player.
+        player.getInventory().placeItemBackInInventory(taken);
+        player.sendSystemMessage(Component.literal(
+                "Removed top pallet ("+magazine.count()+"/12 remaining)."));
+        return true;
+    }
+
     private final MapCodec<StackOfPalletsBlock> codec=MapCodec.unit(this);
 
     public StackOfPalletsBlock(BlockBehaviour.Properties properties){
@@ -145,6 +172,12 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
     }
     @Override protected InteractionResult useItemOn(ItemStack held,BlockState state,
             Level level,BlockPos pos,Player player,InteractionHand hand,BlockHitResult hit){
+        // Empty-hand use isn't guaranteed to reach useWithoutItem on all
+        // interaction paths; explicitly support the empty ItemStack path.
+        // Guard against a duplicate second-hand event in the same tick.
+        if(held.isEmpty()&&!player.isShiftKeyDown())
+            return removeTopPallet(level,pos,player)
+                    ?InteractionResult.SUCCESS:InteractionResult.PASS;
         if(!StackOfPalletsItem.isPallet(held))return InteractionResult.PASS;
         if(level.isClientSide())return InteractionResult.SUCCESS;
         StackOfPalletsBlockEntity magazine=controller(level,pos);
@@ -169,14 +202,7 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
             // empty-hand pickup. Any of the 2x2x4 pieces can open it.
             if(player instanceof ServerPlayer server)server.openMenu(magazine);
         }else{
-            ItemStack taken=magazine.take();
-            if(!taken.isEmpty()){
-                // Vanilla places it in inventory, or safely drops it next
-                // to the player when their inventory is full.
-                player.getInventory().placeItemBackInInventory(taken);
-                player.sendSystemMessage(Component.literal(
-                        "Removed top pallet ("+magazine.count()+"/12 remain)."));
-            }else player.sendSystemMessage(Component.literal("No pallets in this stack."));
+            removeTopPallet(level,pos,player);
         }
         return InteractionResult.SUCCESS;
     }

@@ -4,6 +4,36 @@ Target: Minecraft Java **26.2 Fabric**. This document covers the current
 implementation on the main branch. For a step-by-step end-to-end regression
 of each system, see [Warehouse integrated test plan](warehouse-test-plan.md).
 
+## Scanner Direct recall and Remote courier appearance fixes
+
+- **Direct crew immediately returning to shelves fixed:** workers dispatched
+  after RECALL ALL inherit the shelf's present saved recall serial. A
+  PREVIOUS console recall no longer cancels a brand-new Scanner call. A
+  fresh recall still works and returns the four real workers.
+- **Three-Golem REMOTE pickup team stays empty-handed:** they walk to the
+  wrapped target with their arms swinging normally and no fake pallet,
+  carton, or raising animation. The lift animation begins ONLY after the
+  original pallet's complete 216 slots transfer into the carrier.
+- **Fourth Golem pushes a FULL-SIZE upright pallet:** almost 2 blocks
+  wide and tall, 2x2 pallet shown vertically on its edge ahead of the
+  actual moving robot. The slats use the actual saved wood combinations,
+  colored plastic/copper/iron material, and sway/rock/bob with walking
+  instead of hovering as a static miniature attached to its chest.
+- **Stack of Pallets right-click withdrawal:** ordinary empty-hand clicks
+  on any part of the 2x2x4 block now take the uppermost pallet into player
+  inventory. Both 26.2 block interaction hooks are recognized, with a
+  same-server-tick guard against taking two pallet items from one click.
+  Crouch + empty-hand remains the 12-slot GUI; using a pallet item on the
+  block still inserts it. A full player inventory safely drops the item
+  nearby rather than voiding it.
+
+### Regression test
+`scripts/warehouse_scanner_motion_stack_smoke.py` checks epoch assignment,
+pre-lift posture, full-size animated courier, per-board materials, shared
+empty-hand handler, double-take protection and full slot-data preservation.
+CI/compile cannot prove live movement or mouse routing: verify in a backed-up
+world after upgrading.
+
 ## Scanner interaction modes — Remote / Direct
 
 The scanner is an item-bound, server-validated two-mode tool. **Shift-right-click

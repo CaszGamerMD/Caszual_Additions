@@ -80,6 +80,8 @@ jobs:
         run: python3 scripts/warehouse_fullsize_pallet_stack_regression.py
       - name: Verify Scanner Remote/Direct mode isolation and computer diagnostics
         run: python3 scripts/warehouse_scanner_mode_interactions_smoke.py
+      - name: Verify Direct crew recall, remote transport visuals and stack pickup
+        run: python3 scripts/warehouse_scanner_motion_stack_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()

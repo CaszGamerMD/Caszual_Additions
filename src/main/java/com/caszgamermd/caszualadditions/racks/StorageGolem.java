@@ -438,6 +438,11 @@ public final class StorageGolem extends PathfinderMob {
         outputJob=false;outputTicket=0;packedJob=false;
         haulJob=true;playerHaul=true;haulOwner=owner.toString();
         haulTicket=0;haulIndex=index;stage=4;waitTicks=0;
+        // RECALL ALL persists as a serial number on the shelf. Workers
+        // deployed AFTER that command must inherit the current serial or
+        // they immediately interpret the OLD recall as a NEW instruction
+        // and turn around on their very first task tick.
+        markCurrentRecall();
         setCustomName(Component.literal("CREW "+(index+1)+"/4"));
         setCustomNameVisible(true);
     }

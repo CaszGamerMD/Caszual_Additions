@@ -164,6 +164,10 @@ public final class MovingPallet extends PathfinderMob {
         remoteOldLegacy=oldState.getValue(PalletBlock.LEGACY);
         remoteMoveAside=BlockPos.ZERO;
         deliveryMode=5;remoteAisle=BlockPos.ZERO;
+        // The OUTBOUND three-worker party travelled empty-handed. Only
+        // NOW animate raising the REAL target pallet from the ground.
+        liftTicks=0;
+        entityData.set(LIFT_TICKS,0);
         syncDisplay();
         deliveryFailure="THREE GOLEMS LIFTED TARGET; MOVING ASIDE";
         return true;
