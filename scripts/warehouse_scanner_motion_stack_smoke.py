@@ -31,7 +31,7 @@ assert "deliveryMode!=4" in rig
 assert "state.liftProgress=state.visible?entity.liftProgress():0f;" in rig_render
 assert "if(!state.visible)" in model
 assert "Mth.cos(phase+offset)" in model
-assert "leftArm[i].xRot=-3.02f*state.liftProgress" in model
+assert "leftArm[i].xRot=-3.02f*grip" in model
 assert "if(!carrier.acceptRemoteLift" not in rig
 assert "liftTicks=0;" in rig
 assert "entityData.set(LIFT_TICKS,0);" in rig
