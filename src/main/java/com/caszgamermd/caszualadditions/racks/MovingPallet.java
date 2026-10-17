@@ -535,7 +535,7 @@ public final class MovingPallet extends PathfinderMob {
         if(!(pallet.getItem() instanceof BlockItem bi)
                 ||!(bi.getBlock() instanceof PalletBlock block))return false;
         BlockState state=block.defaultBlockState().setValue(PalletBlock.PART,0)
-                .setValue(PalletBlock.FACING,facing).setValue(PalletBlock.LEGACY,legacy);
+                .setValue(PalletBlock.FACING,facing).setValue(PalletBlock.LEGACY,false);
         for(int i=0;i<4;i++){
             BlockPos cell=PalletBlock.partPos(pos,i,state);
             if(level.isOutsideBuildHeight(cell)||!level.hasChunkAt(cell)
@@ -1057,7 +1057,7 @@ public final class MovingPallet extends PathfinderMob {
         if(!loaded()||!(pallet.getItem() instanceof BlockItem item)
                 ||!(item.getBlock() instanceof PalletBlock block))return false;
         BlockState root=block.defaultBlockState().setValue(PalletBlock.PART,0)
-                .setValue(PalletBlock.FACING,facing).setValue(PalletBlock.LEGACY,false);
+                .setValue(PalletBlock.FACING,facing).setValue(PalletBlock.LEGACY,legacy);
         for(int i=0;i<4;i++){
             BlockPos piece=PalletBlock.partPos(pos,i,root);
             if(level.isOutsideBuildHeight(piece)
