@@ -434,6 +434,21 @@ public final class StorageGolem extends PathfinderMob {
     public void dismissCrew(){
         if(playerHaul&&stage==4){stage=2;setCustomNameVisible(false);}
     }
+    /** Warehouse console recall applies to ALL unshelved workers, including
+     * active sorting and order runners. Live cargo remains on its worker
+     * until normal shelf-return recovery, never teleports to inventory. */
+    public boolean recallToShelf(ServerLevel level){
+        if(stage==2||holdsPallet())return false;
+        if(playerHaul)cancelPendingPickup(level);
+        if(haulJob&&!playerHaul)cancelHaul(level);
+        if(outputJob)releaseOutput(level);
+        stage=2;
+        routeIssue="RECALLED TO SHELF";
+        getNavigation().stop();
+        flatHomeRoute.clear();
+        nextHomeReplanTick=0;
+        return true;
+    }
     public boolean loadPallet(ItemStack stack,NonNullList<ItemStack> stock){
         if(!playerHaul||haulIndex!=0||!carryingPallet.isEmpty()
                 ||stack.isEmpty()||stock.size()!=216)return false;
