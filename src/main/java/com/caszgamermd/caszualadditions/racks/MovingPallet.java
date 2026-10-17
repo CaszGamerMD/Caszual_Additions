@@ -62,6 +62,9 @@ public final class MovingPallet extends PathfinderMob {
     private int liftTicks;
     private int deliveryMode,releaseTicks;
     private BlockPos deliveryPosition=BlockPos.ZERO;
+    // Cached service aisle for BOTH ground and PTP drop-offs. Never navigate
+    // the wide cargo entity into the 2x2 load or 3x3 PTP floor itself.
+    private BlockPos deliveryService=BlockPos.ZERO;
     private BlockPos remoteWarehouse=BlockPos.ZERO;
     private UUID remoteCourierId;
     private boolean remoteReplacementPlaced,remoteOldLegacy;
@@ -295,6 +298,7 @@ public final class MovingPallet extends PathfinderMob {
         deliveryPosition=rack.getBlockPos().immutable();
         deliveryFacing=rack.facing();
         deliveryMode=1;
+        deliveryService=BlockPos.ZERO;
         rackFrontRoute.clear();
         lastRackFront=BlockPos.ZERO;
         nextRackFrontPlan=0;
@@ -315,6 +319,8 @@ public final class MovingPallet extends PathfinderMob {
         deliveryPosition=location.immutable();
         deliveryFacing=facing;
         deliveryMode=2;
+        deliveryService=BlockPos.ZERO;
+        remoteFloorRoute.clear();
         rackFrontRoute.clear();
         nextRackFrontPlan=0;
         entityData.set(RACK_INSERT_ACTIVE,false);
@@ -326,6 +332,155 @@ public final class MovingPallet extends PathfinderMob {
         return "Golems carrying pallet to "+location.toShortString()
                 +"; they will release it only after positioning.";
     }
+    /** Treat a PTP like a rack, with an EXTERNAL three-wide service aisle.
+     * The clicked location is the installed 3x3 station controller, never a
+     * target tile for a 1.85-wide moving pallet rig to stand ON. */
+    public String requestPtpDelivery(ServerLevel level,PtpBlockEntity point){
+        if(!loaded()||delivered)return "No pallet ready to deliver.";
+        if(!point.canInstallPallet())
+            return "Destination PTP needs to be empty, not reserved and have clear space above it.";
+        BlockPos center=point.getBlockPos();
+        BlockPos service=serviceAisle(level,center,3,5);
+        if(service.equals(BlockPos.ZERO))
+            return "PTP needs a clear three-wide ground aisle outside its 3x3 platform.";
+        deliveryPosition=center.immutable();
+        deliveryService=service;
+        deliveryMode=7;
+        remoteFloorRoute.clear();
+        nextRemotePlan=0;
+        entityData.set(RACK_INSERT_ACTIVE,false);
+        releaseTicks=0;entityData.set(RELEASE_TICKS,0);
+        deliveryFailure="TRAVELLING TO PTP UNLOADING AISLE";
+        return "Golems delivering pallet to PTP "+center.toShortString()
+                +" from its clear access aisle. Cargo stays aboard until arrival.";
+    }
+
+    /** Identical rack/PTP service semantics: safe 3x3 support without
+     * collision and Y-level preference, but never step into the pallet. */
+    private BlockPos serviceAisle(ServerLevel level,BlockPos station,int min,int max){
+        BlockPos best=BlockPos.ZERO;
+        double nearest=Double.POSITIVE_INFINITY;
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            for(int length=min;length<=max;length++){
+                BlockPos trial=station.relative(side,length);
+                if(!safePlatformFloor(level,trial))continue;
+                double distance=trial.distSqr(blockPosition());
+                if(distance<nearest){nearest=distance;best=trial;}
+            }
+        }
+        return best;
+    }
+    /** Ground pallets are 2x2 and may rotate with the player. Find an aisle
+     * outside the REAL oriented footprint, instead of targeting its center,
+     * which previously made the carrier freeze trying to stand inside cargo. */
+    private BlockPos groundDeliveryAisle(ServerLevel level,BlockPos root,Direction facing){
+        if(!(pallet.getItem() instanceof BlockItem item)
+                ||!(item.getBlock() instanceof PalletBlock block))return BlockPos.ZERO;
+        BlockState model=block.defaultBlockState()
+                .setValue(PalletBlock.PART,0)
+                .setValue(PalletBlock.FACING,facing)
+                .setValue(PalletBlock.LEGACY,false);
+        int minX=Integer.MAX_VALUE,minZ=Integer.MAX_VALUE;
+        int maxX=Integer.MIN_VALUE,maxZ=Integer.MIN_VALUE;
+        for(int part=0;part<4;part++){
+            BlockPos cell=PalletBlock.partPos(root,part,model);
+            minX=Math.min(minX,cell.getX());maxX=Math.max(maxX,cell.getX());
+            minZ=Math.min(minZ,cell.getZ());maxZ=Math.max(maxZ,cell.getZ());
+        }
+        BlockPos best=BlockPos.ZERO;
+        double nearest=Double.POSITIVE_INFINITY;
+        for(int step=2;step<=4;step++){
+            BlockPos[] candidates={
+                    new BlockPos(minX,root.getY(),minZ-step),
+                    new BlockPos(maxX+step,root.getY(),minZ),
+                    new BlockPos(minX,root.getY(),maxZ+step),
+                    new BlockPos(minX-step,root.getY(),minZ)
+            };
+            for(BlockPos corner:candidates){
+                // The rig's waypoint is centered on its own 3x3 walkable
+                // corridor and must not intersect the delivered pallet.
+                if(!safePlatformFloor(level,corner))continue;
+                double dist=corner.distSqr(blockPosition());
+                if(dist<nearest){nearest=dist;best=corner;}
+            }
+        }
+        return best;
+    }
+    private void tickAisleDelivery(ServerLevel level){
+        BlockPos target=deliveryPosition;
+        PtpBlockEntity point=deliveryMode==7
+                &&level.getBlockEntity(target) instanceof PtpBlockEntity p?p:null;
+        if(deliveryMode==7){
+            if(point==null||!point.canInstallPallet()){
+                waitForDelivery("WAITING: PTP OCCUPIED OR RESERVED; DELIVERY SAVED");return;
+            }
+        }else if(!groundClear(level,target,deliveryFacing)){
+            waitForDelivery("WAITING: GROUND 2x2 FOOTPRINT BLOCKED; DELIVERY SAVED");
+            return;
+        }
+        if(deliveryService.equals(BlockPos.ZERO)
+                ||!safePlatformFloor(level,deliveryService)){
+            deliveryService=deliveryMode==7?serviceAisle(level,target,3,5)
+                    :groundDeliveryAisle(level,target,deliveryFacing);
+            remoteFloorRoute.clear();nextRemotePlan=0;
+        }
+        if(deliveryService.equals(BlockPos.ZERO)){
+            waitForDelivery("WAITING: NO ACCESSIBLE 3-WIDE UNLOADING AISLE; DELIVERY SAVED");
+            return;
+        }
+        if(!nearRemoteGoal(deliveryService)){
+            if(releaseTicks!=0){releaseTicks=0;entityData.set(RELEASE_TICKS,0);}
+            navigateRemoteFloor(level,deliveryService);
+            // A failed waypoint only retries the route; the original
+            // destination and all 216 slots remain on this loaded rig.
+            if(!deliveryFailure.startsWith("WAITING:")
+                    &&!deliveryFailure.startsWith("REROUTING"))
+                deliveryFailure="MOVING TO "+(deliveryMode==7?"PTP":"GROUND")
+                        +" SERVICE AISLE";
+            return;
+        }
+        getNavigation().stop();
+        deliveryFailure="PLACING PALLET AT "+(deliveryMode==7?"PTP":"GROUND");
+        if(releaseTicks<20){
+            entityData.set(RELEASE_TICKS,++releaseTicks);
+            return;
+        }
+        boolean placed=deliveryMode==7
+                ?deliverToPtp(point)
+                :deliverToGround(level,target,deliveryFacing);
+        if(!placed){
+            waitForDelivery("WAITING: DESTINATION REJECTED PALLET; ORDER SAVED");
+            return;
+        }
+        deliveryMode=0;
+        deliveryService=BlockPos.ZERO;
+        deliveryFailure="";
+        entityData.set(RACK_INSERT_ACTIVE,false);
+        restoreWorkers(level);
+    }
+    /** Transfers the same pallet and exact 216 stacks to a vacant PTP as
+     * a rack would. Only clear the rig AFTER item-by-item verification;
+     * failures roll back the station, preserving the moving shipment. */
+    public boolean deliverToPtp(PtpBlockEntity point){
+        if(!loaded()||point==null||!point.canInstallPallet())return false;
+        if(!point.installPallet(pallet.copyWithCount(1)))return false;
+        boolean valid=allFit(point);
+        if(valid){
+            for(int i=0;i<216;i++)
+                if(!contents.get(i).isEmpty())point.setItem(i,contents.get(i).copy());
+            valid=verify(point);
+        }
+        if(!valid){
+            point.clearContent();
+            point.dropPallet();
+            return false;
+        }
+        point.setSealed(com.caszgamermd.caszualadditions.pallet.GlassPalletWrap
+                .wrapped(pallet));
+        clearCargo();
+        return true;
+    }
+
     private boolean groundClear(ServerLevel level,BlockPos pos,Direction facing){
         if(!(pallet.getItem() instanceof BlockItem bi)
                 ||!(bi.getBlock() instanceof PalletBlock block))return false;
@@ -684,6 +839,7 @@ public final class MovingPallet extends PathfinderMob {
 
     private void tickDelivery(ServerLevel level){
         if(deliveryMode==3){tickWarehouseReturn(level);return;}
+        if(deliveryMode==2||deliveryMode==7){tickAisleDelivery(level);return;}
         if(deliveryMode==4){tickRemoteExchange(level);return;}
         if(deliveryMode==5){tickRemoteStepAside(level);return;}
         if(deliveryMode==6){tickRemoteRendezvous(level);return;}
@@ -1106,6 +1262,7 @@ public final class MovingPallet extends PathfinderMob {
         out.putInt("delivery_mode",deliveryMode);
         out.putInt("release_ticks",releaseTicks);
         out.store("delivery_position",BlockPos.CODEC,deliveryPosition);
+        out.store("delivery_service",BlockPos.CODEC,deliveryService);
         out.store("remote_warehouse",BlockPos.CODEC,remoteWarehouse);
         out.putString("delivery_facing",deliveryFacing.getName());
         out.putString("delivery_failure",deliveryFailure);
@@ -1130,9 +1287,10 @@ public final class MovingPallet extends PathfinderMob {
         }
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
-        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,6);
+        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,7);
         releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,20);
         deliveryPosition=in.read("delivery_position",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        deliveryService=in.read("delivery_service",BlockPos.CODEC).orElse(BlockPos.ZERO);
         remoteWarehouse=in.read("remote_warehouse",BlockPos.CODEC).orElse(BlockPos.ZERO);
         try{deliveryFacing=Direction.valueOf(
                 in.getStringOr("delivery_facing","north")
