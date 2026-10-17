@@ -62,20 +62,6 @@ public final class RemotePalletDispatch {
         int sourceSlot=-1;
         ItemStack previous=ItemStack.EMPTY,fresh=ItemStack.EMPTY;
         ItemStack updated=ItemStack.EMPTY;
-        for(RackBlockEntity rack:network.racks()){
-            for(int i=0;i<rack.getContainerSize();i++){
-                ItemStack item=rack.getItem(i);
-                if(!item.is(RackContent.STACK_OF_PALLETS)
-                        ||StackOfPalletsItem.count(item)==0)continue;
-                ItemStack change=item.copy();
-                ItemStack extracted=StackOfPalletsItem.take(change);
-                if(extracted.isEmpty()||!rack.canPlaceItem(i,change))continue;
-                sourceRack=rack;sourceSlot=i;
-                previous=item.copy();updated=change;fresh=extracted;
-                break;
-            }
-            if(sourceRack!=null)break;
-        }
         // Placed magazines are first-class warehouse storage, not merely
         // decorations or items hidden inside another pallet.
         StackOfPalletsBlockEntity sourceMagazine=null;
@@ -92,6 +78,22 @@ public final class RemotePalletDispatch {
                 }
                 if(sourceMagazine!=null)break;
             }
+        }
+        if(fresh.isEmpty()){
+        for(RackBlockEntity rack:network.racks()){
+            for(int i=0;i<rack.getContainerSize();i++){
+                ItemStack item=rack.getItem(i);
+                if(!item.is(RackContent.STACK_OF_PALLETS)
+                        ||StackOfPalletsItem.count(item)==0)continue;
+                ItemStack change=item.copy();
+                ItemStack extracted=StackOfPalletsItem.take(change);
+                if(extracted.isEmpty()||!rack.canPlaceItem(i,change))continue;
+                sourceRack=rack;sourceSlot=i;
+                previous=item.copy();updated=change;fresh=extracted;
+                break;
+            }
+            if(sourceRack!=null)break;
+        }
         }
         PtpBlockEntity sourcePtp=null;
         if(fresh.isEmpty()){
