@@ -171,6 +171,8 @@ public final class RackComputerScreen extends Screen {
                 b->requestGolem(1)).bounds(34+3*column,72,column,23).build());
         addWorkers(Button.builder(Component.literal("REFRESH TASKS"),
                 b->sendQuery()).bounds(22,103,122,22).build());
+        addWorkers(Button.builder(Component.literal("DIAGNOSTICS"),
+                b->requestGolem(3)).bounds(150,103,126,22).build());
         addWorkers(Button.builder(Component.literal("▲"),
                 b->workerScroll=Math.max(0,workerScroll-1))
                 .bounds(width-80,height-34,25,22).build());
