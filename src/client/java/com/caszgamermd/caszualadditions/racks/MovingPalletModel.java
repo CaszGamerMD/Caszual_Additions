@@ -16,11 +16,13 @@ import net.minecraft.util.Mth;
  */
 public final class MovingPalletModel extends EntityModel<MovingPalletRenderState> {
     private final ModelPart[] leftLeg=new ModelPart[4],rightLeg=new ModelPart[4];
+    private final ModelPart[] corner=new ModelPart[4];
     private final ModelPart[] leftArm=new ModelPart[4],rightArm=new ModelPart[4];
     public MovingPalletModel(ModelPart root){
         super(root);
         for(int i=0;i<4;i++){
             ModelPart corner=root.getChild("corner_"+i);
+            this.corner[i]=corner;
             leftLeg[i]=corner.getChild("left_leg");
             rightLeg[i]=corner.getChild("right_leg");
             leftArm[i]=corner.getChild("left_arm");
@@ -63,6 +65,7 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
         float phase=state.walkAnimationPos*.55f;
         float amount=state.walkAnimationSpeed;
         for(int i=0;i<4;i++){
+            corner[i].visible=i<state.crewSize;
             // Alternating diagonal steps; all four animate from identical
             // entity velocity, while each remains fixed to its corner.
             float offset=(i==0||i==3)?0:Mth.PI;
