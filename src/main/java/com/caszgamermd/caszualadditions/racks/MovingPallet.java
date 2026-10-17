@@ -84,6 +84,12 @@ public final class MovingPallet extends PathfinderMob {
     private BlockPos lastRackFront=BlockPos.ZERO;
     private int nextRackFrontPlan,lastRackProgressTick;
     private double lastRackWaypointDistance=Double.POSITIVE_INFINITY;
+    // The order and the route are different: these ephemeral waypoints may
+    // be thrown away at any time without discarding deliveryMode/position.
+    private final ArrayDeque<BlockPos> remoteFloorRoute=new ArrayDeque<>();
+    private BlockPos remoteRouteGoal=BlockPos.ZERO,blockedRemoteCell=BlockPos.ZERO;
+    private int nextRemotePlan,remoteAvoidUntil,remoteProgressTick;
+    private double lastRemoteProgress=Double.POSITIVE_INFINITY;
 
     public MovingPallet(EntityType<? extends MovingPallet> type,Level level){
         super(type,level);
@@ -373,32 +379,76 @@ public final class MovingPallet extends PathfinderMob {
      * and only then a front-accessible rack slot. Unwrap AFTER successful
      * PTP commit. A blocked destination is a persistent WAIT, not deletion.
      */
-    /** Vanilla pathfinders cannot solve a 200+ block route in one pass.
-     * Walk it in short, loaded, pallet-width-safe stages without teleporting
-     * or climbing warehouse cargo. If a corridor is unloaded, WAIT.
-     */
+    /** Maintain the same durable warehouse task while incrementally routing.
+     * Unlike repeatedly targeting a point in a straight line with vanilla
+     * pathfinding, every step was checked for the FULL 3x3 cargo corridor.
+     * Routes use flat Y first and stairs only as a genuine fallback. */
     private boolean navigateRemoteFloor(ServerLevel level,BlockPos target){
-        double dx=target.getX()+.5-getX(),dz=target.getZ()+.5-getZ();
-        double span=Math.hypot(dx,dz);
-        BlockPos waypoint=target;
-        if(span>12){
-            waypoint=null;
-            for(int len:new int[]{10,8,6,4}){
-                int x=(int)Math.floor(getX()+dx/span*len);
-                int z=(int)Math.floor(getZ()+dz/span*len);
-                BlockPos forward=new BlockPos(x,blockPosition().getY(),z);
-                if(safePlatformFloor(level,forward)){
-                    waypoint=forward;break;
-                }
+        BlockPos here=blockPosition();
+        if(!target.equals(remoteRouteGoal)){
+            remoteRouteGoal=target.immutable();
+            remoteFloorRoute.clear();
+            nextRemotePlan=0;
+            lastRemoteProgress=Double.POSITIVE_INFINITY;
+            remoteProgressTick=tickCount;
+        }
+        while(!remoteFloorRoute.isEmpty()){
+            BlockPos next=remoteFloorRoute.peekFirst();
+            if(!safePlatformFloor(level,next)){
+                remoteFloorRoute.clear();
+                nextRemotePlan=tickCount+15;
+                break;
             }
-            if(waypoint==null){
-                deliveryFailure="WAITING: CORRIDOR UNLOADED OR BLOCKED";
+            double dx=next.getX()+.5-getX(),dz=next.getZ()+.5-getZ();
+            if(dx*dx+dz*dz>.30||Math.abs(next.getY()-getY())>.65)break;
+            remoteFloorRoute.removeFirst();
+            lastRemoteProgress=Double.POSITIVE_INFINITY;
+            remoteProgressTick=tickCount;
+        }
+        if(remoteFloorRoute.isEmpty()&&tickCount>=nextRemotePlan){
+            var path=WarehousePreferredPath.leg(here,target,
+                    p->safePlatformFloor(level,p)
+                            &&(tickCount>=remoteAvoidUntil
+                                ||!p.equals(blockedRemoteCell)),BlockPos.ZERO);
+            nextRemotePlan=tickCount+30;
+            if(path==null){
+                deliveryFailure="WAITING: SAFE ROUTE BLOCKED, RETRYING";
                 getNavigation().stop();
                 return false;
             }
+            remoteFloorRoute.addAll(path);
+            lastRemoteProgress=Double.POSITIVE_INFINITY;
+            remoteProgressTick=tickCount;
         }
-        if(tickCount%12==0)getNavigation().moveTo(waypoint.getX()+.5,
-                waypoint.getY(),waypoint.getZ()+.5,1.0);
+        if(remoteFloorRoute.isEmpty())return false;
+        BlockPos next=remoteFloorRoute.peekFirst();
+        double dx=next.getX()+.5-getX(),dz=next.getZ()+.5-getZ();
+        double distance=dx*dx+dz*dz;
+        if(distance+.05<lastRemoteProgress){
+            lastRemoteProgress=distance;
+            remoteProgressTick=tickCount;
+        }else if(tickCount-remoteProgressTick>60){
+            // Three seconds of no physical progress: mark the bad waypoint,
+            // take a different aisle and KEEP the original pickup/order.
+            blockedRemoteCell=next.immutable();
+            remoteAvoidUntil=tickCount+160;
+            remoteFloorRoute.clear();
+            nextRemotePlan=tickCount+10;
+            lastRemoteProgress=Double.POSITIVE_INFINITY;
+            remoteProgressTick=tickCount;
+            deliveryFailure="REROUTING AROUND BLOCKED AISLE";
+            getNavigation().stop();
+            return false;
+        }
+        if(next.getY()!=here.getY()){
+            // Stairs/ramp only after all-flat A* reports no full-width route.
+            if(tickCount%8==0)getNavigation().moveTo(next.getX()+.5,
+                    next.getY(),next.getZ()+.5,1.0);
+        }else{
+            getNavigation().stop();
+            getMoveControl().setWantedPosition(next.getX()+.5,
+                    next.getY(),next.getZ()+.5,1.0);
+        }
         return true;
     }
 
@@ -872,6 +922,16 @@ public final class MovingPallet extends PathfinderMob {
             // walking platform, plus its next destination. No teleportation.
             WarehouseRemoteTickets.keep(server,blockPosition());
             WarehouseRemoteTickets.keep(server,deliveryPosition);
+            // Lease the NEXT portion of the walking corridor as well. A
+            // distant endpoint ticket does not load the terrain BETWEEN.
+            double vx=deliveryPosition.getX()+.5-getX();
+            double vz=deliveryPosition.getZ()+.5-getZ();
+            double length=Math.hypot(vx,vz);
+            if(length>8)
+                WarehouseRemoteTickets.keep(server,new BlockPos(
+                        (int)Math.floor(getX()+vx/length*18),
+                        blockPosition().getY(),
+                        (int)Math.floor(getZ()+vz/length*18)));
         }
         if(delivered){
             if(tickCount%20==0)restoreWorkers(server);
