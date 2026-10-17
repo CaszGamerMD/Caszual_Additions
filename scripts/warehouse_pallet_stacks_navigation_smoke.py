@@ -48,6 +48,6 @@ assert "out.putInt(\"delivery_mode\",deliveryMode);" in carrier
 assert 'out.store("delivery_position",BlockPos.CODEC,deliveryPosition)' in carrier
 assert "new int[]{0,-1,1}" in route
 assert "if(flat!=null)return flat;" in route
-assert "if(route==null)" in worker
+assert "if(route==null&&!nearby)" in worker
 print("PASS: placeable saved 12-pallet magazine, loss-safe physical supply,"
       " persistent remote assignments and flat-first Golem routes")
