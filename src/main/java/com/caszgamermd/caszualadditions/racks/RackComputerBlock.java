@@ -52,8 +52,8 @@ public final class RackComputerBlock extends Block {
         // click before the handheld tool creates its warehouse link.
         if(level instanceof net.minecraft.server.level.ServerLevel server
                 &&player instanceof ServerPlayer user){
-            if(held.is(RackContent.STORAGE_SCANNER_ITEM))
-                StorageScannerItem.onComputerClick(server,user,held,pos,player.isShiftKeyDown());
+            if(held.is(RackContent.STORAGE_SCANNER_ITEM)&&player.isShiftKeyDown())
+                StorageScannerItem.onComputerClick(server,user,held,pos);
             else ServerPlayNetworking.send(user,new RackComputerNet.Open(pos));
         }
         // Both occupied and empty hands activate this terminal. The Scanner
