@@ -20,15 +20,23 @@ public final class RemotePalletCourierRoute {
     private RemotePalletCourierRoute(){}
     private static final int SEARCH_RADIUS=56;
 
-    /** Conservatively reserve one full block on either side of the robot.
-     * The real pushed pallet is nearly 2 blocks wide. No shortcuts between
-     * racks, through stacked pallets or across partly filled PTPs. */
+    /** The pushed pallet is TWO blocks across, not three. Checking an
+     * entire 3x3 neighborhood around EVERY center cell prevented the
+     * courier from even leaving a normal Golem-shelf doorway. An actual
+     * 2x2 clear quadrant is enough to orient the upright pallet to either
+     * side of its pushing Golem; all four constituent tiles must have
+     * valid floor and two-block headroom. The center must be valid too.
+     * This retains rack, stack and PTP collision protection without
+     * inventing a third-block-wide invisible wall around the courier. */
     public static boolean clear(ServerLevel level,BlockPos center){
         if(!StorageGolemReturnPath.walkable(level,center))return false;
-        for(int x=-1;x<=1;x++)for(int z=-1;z<=1;z++)
-            if(!StorageGolemReturnPath.walkable(level,center.offset(x,0,z)))
-                return false;
-        return true;
+        for(int xSide:new int[]{-1,1})for(int zSide:new int[]{-1,1}){
+            if(StorageGolemReturnPath.walkable(level,center.offset(xSide,0,0))
+                    &&StorageGolemReturnPath.walkable(level,center.offset(0,0,zSide))
+                    &&StorageGolemReturnPath.walkable(level,center.offset(xSide,0,zSide)))
+                return true;
+        }
+        return false;
     }
 
     /** Follow checked cardinal cells on the SAME Y whenever possible.
