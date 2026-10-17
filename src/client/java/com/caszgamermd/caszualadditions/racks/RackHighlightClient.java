@@ -1,8 +1,5 @@
 package com.caszgamermd.caszualadditions.racks;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
 import net.minecraft.client.Minecraft;
@@ -10,38 +7,32 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 
-/** Search outlines are private to the player operating this terminal.
- *  Client worlds are weakly referenced; no particles or server-wide effects. */
+/**
+ * Exactly ONE globally broadcast pallet glow, expiring 200 ticks after
+ * selection. Never highlight every rack returned by a search result.
+ */
 public final class RackHighlightClient {
-    private static final Map<ClientLevel,Map<BlockPos,Long>> ACTIVE=new WeakHashMap<>();
+    private record Glow(BlockPos rack,long expires){}
+    private static final Map<ClientLevel,Glow> ACTIVE=new WeakHashMap<>();
     private RackHighlightClient(){}
-    public static void accept(String snapshot){
+    public static void accept(String ignoredSnapshot){
+        // Search provides results, not world glowing. Only the server-side
+        // Highlight button can select a pallet for all players.
+    }
+    public static void select(BlockPos rack,int ticks){
         ClientLevel level=Minecraft.getInstance().level;
         if(level==null)return;
-        JsonObject root;
-        try{root=JsonParser.parseString(snapshot).getAsJsonObject();}
-        catch(RuntimeException ignored){return;}
-        if(!root.has("query")||root.get("query").getAsString().isBlank()
-                ||!root.has("highlights"))return;
-        Map<BlockPos,Long> map=ACTIVE.computeIfAbsent(level,l->new HashMap<>());
-        map.clear(); // a new search replaces the previous highlight selection
-        long until=level.getGameTime()+200;
-        for(var value:root.getAsJsonArray("highlights")){
-            JsonObject p=value.getAsJsonObject();
-            map.put(new BlockPos(p.get("x").getAsInt(),p.get("y").getAsInt(),
-                    p.get("z").getAsInt()),until);
-        }
+        if(ticks<=0)ACTIVE.remove(level);
+        else ACTIVE.put(level,new Glow(rack.immutable(),level.getGameTime()+ticks));
     }
     public static boolean highlighted(Level level,BlockPos position){
         if(!(level instanceof ClientLevel client))return false;
-        Map<BlockPos,Long> map=ACTIVE.get(client);
-        if(map==null)return false;
-        Long expires=map.get(position);
-        if(expires==null)return false;
-        if(expires<=level.getGameTime()){
-            map.remove(position);
+        Glow glow=ACTIVE.get(client);
+        if(glow==null)return false;
+        if(glow.expires()<=level.getGameTime()){
+            ACTIVE.remove(client);
             return false;
         }
-        return true;
+        return glow.rack().equals(position);
     }
 }
