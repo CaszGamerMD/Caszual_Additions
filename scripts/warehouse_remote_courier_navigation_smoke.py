@@ -31,11 +31,12 @@ assert "if(!clear(level,candidate))continue;" in router
 assert "path=route(level,from,candidate,BlockPos.ZERO,true)" in router
 assert "StorageGolemReturnPath.steps(start,destination,passable)" in router
 assert "WarehousePreferredPath.leg(start,destination,passable,avoid)" in router
-assert "if(!StorageGolemReturnPath.walkable(level,center.offset(x,0,z)))" in router
+assert "StorageGolemReturnPath.walkable(level,center.offset(xSide,0,zSide))" in router
+assert "for(int xSide:new int[]{-1,1})" in router
 assert "public static BlockPos chooseJoinAisle" in router
 
 # Pure 2D corridor fixture: closest-by-distance destination is blocked
-# by racks; the courier must choose the alternative with actual 3-wide
+# by racks; the courier must choose the alternative with actual 2-wide
 # clearance and a connected path, not endlessly orbit between faces.
 obstacles={(x,z) for x in range(3,9) for z in range(-2,3)}
 # Face NEAR the target is barricaded with solid 2x2 racks.
@@ -58,5 +59,5 @@ def reachable(src,dest):
 assert not openwide((8,0))
 assert not reachable(start,(8,0))
 assert reachable(start,(8,7))
-print("PASS: full-size pallet courier chooses reachable 3-wide aisle, persists goal,"
+print("PASS: full-size pallet courier chooses reachable 2x2 corridor, persists goal,"
       " reroutes stalled waypoints, avoids trio and returns with narrow rejoin route")

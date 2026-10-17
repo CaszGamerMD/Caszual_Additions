@@ -82,6 +82,8 @@ jobs:
         run: python3 scripts/warehouse_remote_independent_walkers_smoke.py
       - name: Verify courier's reachable full-width pallet route and anti-orbit waypoint persistence
         run: python3 scripts/warehouse_remote_courier_navigation_smoke.py
+      - name: Verify courier departure clearance and no dancing pickup trio
+        run: python3 scripts/warehouse_remote_crew_deadlock_smoke.py
       - name: Verify full-size 12-pallet tower, height collision and hand retrieval
         run: python3 scripts/warehouse_fullsize_pallet_stack_regression.py
       - name: Verify Scanner Remote/Direct mode isolation and computer diagnostics

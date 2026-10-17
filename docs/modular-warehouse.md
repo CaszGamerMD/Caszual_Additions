@@ -148,6 +148,31 @@ controls for running the sorting queue and recalling workers. Those
 controls are **separate from Scanner interactions**, ensuring remote swaps
 can find all four docked workers without accidental manual dispatch.
 
+## Remote exchange: stuck courier and circling trio follow-up
+
+The outbound fourth Golem's pushed pallet occupies an actual **2x2**
+clearance area, not a 3x3 moving obstacle. An old 3x3-is-clear-at-EVERY-
+waypoint test could reject a typical two-wide aisle at the warehouse
+shelf and leave the Golem standing motionless. The route now checks a
+valid two-by-two orientation at each step. The warehouse will also
+refuse to dispatch unless the courier can start in a verified 2x2
+space away from the other three Golems, **before** consuming shelf
+workers or a replacement pallet.
+
+The three real, empty-handed pickup workers no longer mark each other
+as dynamic route obstacles within the same assigned mission. Previously,
+their route planner recomputed detours around each other's constantly
+moving positions and they appeared to dance around in circles. Each
+receives a distinct saved rendezvous tile across the correct outer
+face of the wrapped pallet (X for north/south access; Z for east/west).
+The rendezvous chooser validates all three tiles and checks actual
+walking reachability before picking a nearby approach.
+
+These fixes preserve the existing remote job UUID, wrapping and the
+216-slot cargo. No pallet or Golem is teleported. Obstacles still
+block travel, and if no clearance exists the workers wait with
+their original job rather than switching targets or discarding stock.
+
 ## Remote empty-pallet courier: pathfinding and circling fix
 
 The fourth remote Golem **pushes a full-width pallet**, so its floor

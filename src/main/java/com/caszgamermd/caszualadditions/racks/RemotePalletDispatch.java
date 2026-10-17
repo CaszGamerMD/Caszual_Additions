@@ -143,18 +143,23 @@ public final class RemotePalletDispatch {
             return "Unable to prepare remote replacement crew.";
         carrier.setPos(staging.getX()+.5,staging.getY(),staging.getZ()+.5);
         StorageGolem courier=identities.get(3);
-        // The courier is a separate physical entity. Stage it TWO blocks
-        // away wherever a clear aisle exists, not inside the 1.85-wide
-        // three-Golem platform's collision box.
+        // The courier pushes a real TWO-WIDE deck. Never spawn it in
+        // a one-cell aisle, then discover every route is blocked and leave
+        // it standing still forever. Its start needs a checked 2x2 clear
+        // passage AND must not overlap the three other actual workers.
         BlockPos courierStart=null;
-        for(net.minecraft.core.Direction dir:net.minecraft.core.Direction.Plane.HORIZONTAL){
-            BlockPos trial=staging.relative(dir,2);
-            if(StorageGolemReturnPath.walkable(level,trial)){
-                courierStart=trial;break;
+        for(int step=2;step<=4&&courierStart==null;step++)
+            for(net.minecraft.core.Direction dir:net.minecraft.core.Direction.Plane.HORIZONTAL){
+                BlockPos trial=staging.relative(dir,step);
+                if(!RemotePalletCourierRoute.clear(level,trial))continue;
+                boolean crowd=false;
+                for(int index=0;index<3;index++)
+                    if(trial.distSqr(staging.offset(index-1,0,0))<4)
+                        crowd=true;
+                if(!crowd){courierStart=trial;break;}
             }
-        }
-        if(courierStart==null)courierStart=staging.relative(
-                net.minecraft.core.Direction.EAST);
+        if(courierStart==null)
+            return "WAITING: separate two-wide courier departure aisle blocked.";
         courier.setPos(courierStart.getX()+.5,courierStart.getY(),
                 courierStart.getZ()+.5);
         // The rig is ONLY an unspawned mission/UUID template here.
