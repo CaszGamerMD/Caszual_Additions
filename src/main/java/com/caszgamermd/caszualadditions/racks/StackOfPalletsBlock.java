@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -64,9 +65,9 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
                 ItemStack next=magazine.take();
                 if(!next.isEmpty())player.getInventory().placeItemBackInInventory(next);
                 player.sendSystemMessage(Component.literal("Pallet stack: "+magazine.count()+"/12 remaining."));
-            }else player.sendSystemMessage(Component.literal(
-                    "Pallet stack: "+magazine.count()+"/12. Use an empty pallet on it to load; "
-                    +"sneak-right-click with an empty hand to take a pallet."));
+            }else if(player instanceof ServerPlayer server){
+                server.openMenu(magazine);
+            }
         }
         return InteractionResult.SUCCESS;
     }
