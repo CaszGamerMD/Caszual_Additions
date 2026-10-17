@@ -36,8 +36,9 @@ public final class RemotePalletCourierRoute {
      * gives a forward leg; never replace a failed path with an unverified
      * straight-line instruction or a random walk around the target. */
     public static List<BlockPos> route(ServerLevel level,BlockPos start,
-            BlockPos destination,BlockPos avoid){
-        Predicate<BlockPos> passable=pos->clear(level,pos)
+            BlockPos destination,BlockPos avoid,boolean pushing){
+        Predicate<BlockPos> passable=pos->(pushing?clear(level,pos)
+                :StorageGolemReturnPath.walkable(level,pos))
                 &&(avoid.equals(BlockPos.ZERO)||!pos.equals(avoid));
         List<BlockPos> exact=null;
         if(start.getY()==destination.getY()
@@ -64,7 +65,7 @@ public final class RemotePalletCourierRoute {
                 // remain clear. Don't try to push a 2-wide deck through it.
                 if(!trioRally.equals(BlockPos.ZERO)
                         &&candidate.distSqr(trioRally)<36)continue;
-                List<BlockPos> path=route(level,from,candidate,BlockPos.ZERO);
+                List<BlockPos> path=route(level,from,candidate,BlockPos.ZERO,true);
                 if(path==null)continue;
                 // A rolling route may not terminate at a distant target.
                 // Keep a single service goal after choosing it, and then
@@ -75,6 +76,23 @@ public final class RemotePalletCourierRoute {
                         +distance*.2;
                 if(cost<score){chosen=candidate;score=cost;}
             }
+        return chosen;
+    }
+    /** After installing the replacement the courier is empty handed.
+     * Join from a reachable cell beside the loaded rig, not inside it.
+     * Keep this side fixed while walking to avoid endlessly orbiting. */
+    public static BlockPos chooseJoinAisle(ServerLevel level,BlockPos from,
+            BlockPos rig){
+        BlockPos chosen=BlockPos.ZERO;
+        double score=Double.POSITIVE_INFINITY;
+        for(Direction face:Direction.Plane.HORIZONTAL){
+            BlockPos cell=rig.relative(face,2);
+            if(!StorageGolemReturnPath.walkable(level,cell))continue;
+            List<BlockPos> path=route(level,from,cell,BlockPos.ZERO,false);
+            if(path==null)continue;
+            double value=path.size();
+            if(value<score){score=value;chosen=cell;}
+        }
         return chosen;
     }
 }
