@@ -14,8 +14,8 @@ is rendered upright on its side, pushed ahead of the worker.
 
 The **other three Golems** travel as a single shared moving carrier without
 replacement cargo. They approach the existing glass-wrapped freestanding pallet,
-lift the target with its full saved 216-slot inventory, then move at least six
-blocks away toward a validated three-wide aisle before stopping. The courier
+lift the target with its full saved 216-slot inventory, then move just far enough away (a safe aisle around five to seven
+blocks from the original root) to clear the footprint before stopping. The courier
 waits for a positive clearance signal, places its empty, unwrapped 2×2 pallet
 into the exact original footprint/orientation, and then walks to the loaded
 three-Golem carrier. Only when physically nearby does the courier join the
