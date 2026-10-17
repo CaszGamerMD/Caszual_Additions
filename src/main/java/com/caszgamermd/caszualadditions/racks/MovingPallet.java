@@ -103,6 +103,7 @@ public final class MovingPallet extends PathfinderMob {
     private BlockPos remoteRouteGoal=BlockPos.ZERO,blockedRemoteCell=BlockPos.ZERO;
     private int nextRemotePlan,remoteAvoidUntil,remoteProgressTick;
     private double lastRemoteProgress=Double.POSITIVE_INFINITY;
+    private int nextRemoteTerrainJump;
 
     public MovingPallet(EntityType<? extends MovingPallet> type,Level level){
         super(type,level);
@@ -678,14 +679,23 @@ public final class MovingPallet extends PathfinderMob {
             getNavigation().stop();
             return false;
         }
-        if(next.getY()!=here.getY()){
-            // Stairs/ramp only after all-flat A* reports no full-width route.
-            if(tickCount%8==0)getNavigation().moveTo(next.getX()+.5,
-                    next.getY(),next.getZ()+.5,1.0);
-        }else{
+        // The loaded pallet follows the SAME checked three-wide terrain
+        // waypoints. Re-asking vanilla A* for a different path on a single
+        // rise caused the entire carrying team to turn in place. Rise by
+        // at most one block and descend under normal collision and gravity.
+        int rise=next.getY()-here.getY();
+        if(rise>1||rise< -1){
+            deliveryFailure="WAITING: UNSAFE PALLET HEIGHT CHANGE";
             getNavigation().stop();
-            getMoveControl().setWantedPosition(next.getX()+.5,
-                    next.getY(),next.getZ()+.5,1.0);
+            return false;
+        }
+        getNavigation().stop();
+        getMoveControl().setWantedPosition(next.getX()+.5,
+                next.getY(),next.getZ()+.5,rise==0?1.0:.85);
+        if(rise==1&&onGround()&&tickCount>=nextRemoteTerrainJump
+                &&distance<2.8){
+            getJumpControl().jump();
+            nextRemoteTerrainJump=tickCount+10;
         }
         return true;
     }
