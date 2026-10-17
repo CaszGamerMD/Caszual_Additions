@@ -472,7 +472,14 @@ public final class StorageGolem extends PathfinderMob {
             WarehouseRemoteTickets.keep(level,remoteCourierTarget);
             if(!remoteRigLastKnown.equals(BlockPos.ZERO))
                 WarehouseRemoteTickets.keep(level,remoteRigLastKnown);
-            BlockPos goal=remoteCourierPhase==0?remoteCourierTarget:remoteCourierAisle;
+            // Load the ACTUAL planned waypoint, not the target's solid
+            // pallet footprint. Direct-line guesses stalled through racks.
+            BlockPos goal=!courierRoute.isEmpty()?courierRoute.peekFirst()
+                    :remoteCourierPhase==0&&!remoteCourierAisle.equals(BlockPos.ZERO)
+                        ?remoteCourierAisle
+                        :remoteCourierPhase==1&&!remoteCourierJoinAisle.equals(BlockPos.ZERO)
+                            ?remoteCourierJoinAisle:remoteCourierTarget;
+            WarehouseRemoteTickets.keep(level,goal);
             double dx=goal.getX()+.5-getX(),dz=goal.getZ()+.5-getZ();
             double length=Math.hypot(dx,dz);
             if(length>8)WarehouseRemoteTickets.keep(level,new BlockPos(
@@ -496,26 +503,46 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         if(remoteCourierPhase==0){
-            if(remoteCourierAisle.equals(BlockPos.ZERO)
-                    ||!StorageGolemReturnPath.walkable(level,remoteCourierAisle)){
-                BlockPos closest=BlockPos.ZERO;
-                double dist=Double.POSITIVE_INFINITY;
-                for(Direction side:Direction.Plane.HORIZONTAL)
-                    for(int step=3;step<=5;step++){
-                        BlockPos candidate=remoteCourierTarget.relative(side,step);
-                        if(!StorageGolemReturnPath.walkable(level,candidate))continue;
-                        double score=candidate.distSqr(blockPosition());
-                        if(score<dist){closest=candidate;dist=score;}
-                    }
-                remoteCourierAisle=closest;
+            if(!remoteCourierAisle.equals(BlockPos.ZERO)
+                    &&!RemotePalletCourierRoute.clear(level,remoteCourierAisle)){
+                // A new rack or pallet blocked the cached side. Mark it
+                // unavailable rather than recalculating a nearest goal
+                // every tick and orbiting the target.
+                remoteCourierRejectedAisle=remoteCourierAisle;
+                remoteCourierAisle=BlockPos.ZERO;
+                resetCourierRoute();
             }
             if(remoteCourierAisle.equals(BlockPos.ZERO)){
-                routeIssue="WAITING FOR SIDE ACCESS TO TARGET";return;
+                if(tickCount<courierRetargetCooldown){
+                    routeIssue="WAITING FOR PALLET COURIER AISLE RETRY";
+                    getNavigation().stop();
+                    return;
+                }
+                BlockPos trio=BlockPos.ZERO;
+                // The other THREE are separate real Golems before lift;
+                // there is no shared rig until all of them arrive.
+                for(var entity:level.getAllEntities()){
+                    if(entity instanceof StorageGolem worker
+                            &&worker.remotePickupActive()
+                            &&remoteCarrierId.equals(worker.remotePickupMission())){
+                        trio=worker.remotePickupRally();break;
+                    }
+                }
+                remoteCourierAisle=RemotePalletCourierRoute.chooseServiceAisle(
+                        level,blockPosition(),remoteCourierTarget,trio,
+                        remoteCourierRejectedAisle);
+                if(remoteCourierAisle.equals(BlockPos.ZERO)){
+                    remoteCourierRejectedAisle=BlockPos.ZERO;
+                    courierRetargetCooldown=tickCount+60;
+                    routeIssue="WAITING FOR REACHABLE THREE-WIDE PUSH AISLE";
+                    getNavigation().stop();return;
+                }
+                resetCourierRoute();
             }
-            if(distanceToSqr(remoteCourierAisle.getX()+.5,
-                    remoteCourierAisle.getY(),remoteCourierAisle.getZ()+.5)>1.2){
-                walkTo(level,remoteCourierAisle,1.12);
-                routeIssue="PUSHING EMPTY PALLET TO TARGET";
+            if(!followCourierRoute(level,remoteCourierAisle,true)){
+                if(!routeIssue.startsWith("WAITING")
+                        &&!routeIssue.startsWith("REROUTING"))
+                    routeIssue="PUSHING FULL-SIZE PALLET ALONG CHECKED AISLE";
                 return;
             }
             getNavigation().stop();
@@ -528,6 +555,8 @@ public final class StorageGolem extends PathfinderMob {
                 remoteFresh=ItemStack.EMPTY;
                 remoteCourierPhase=1;
                 remoteCourierAisle=BlockPos.ZERO;
+                remoteCourierJoinAisle=BlockPos.ZERO;
+                resetCourierRoute();
                 syncRemoteFreshVisual();
                 routeIssue="EMPTY PALLET INSTALLED; JOINING CARRY PARTY";
             }else routeIssue="WAITING FOR CLEAR 2x2 PLACEMENT FOOTPRINT";
@@ -549,17 +578,24 @@ public final class StorageGolem extends PathfinderMob {
                 }
                 return;
             }
-            BlockPos join=BlockPos.ZERO;
-            double nearest=Double.POSITIVE_INFINITY;
-            for(Direction side:Direction.Plane.HORIZONTAL){
-                BlockPos candidate=rig.blockPosition().relative(side,2);
-                if(!StorageGolemReturnPath.walkable(level,candidate))continue;
-                double score=candidate.distSqr(blockPosition());
-                if(score<nearest){join=candidate;nearest=score;}
+            if(remoteCourierJoinAisle.equals(BlockPos.ZERO)
+                    ||!StorageGolemReturnPath.walkable(level,remoteCourierJoinAisle)){
+                remoteCourierJoinAisle=RemotePalletCourierRoute.chooseJoinAisle(
+                        level,blockPosition(),rig.blockPosition());
+                resetCourierRoute();
             }
-            if(!join.equals(BlockPos.ZERO))walkTo(level,join,1.12);
-            else routeIssue="WAITING FOR CLEAR APPROACH TO LOADED TEAM";
-            routeIssue="REJOINING THREE-GOLEM LOADED CARRIER";
+            if(remoteCourierJoinAisle.equals(BlockPos.ZERO)){
+                routeIssue="WAITING FOR CLEAR APPROACH TO LOADED TEAM";
+                getNavigation().stop();
+                return;
+            }
+            if(!followCourierRoute(level,remoteCourierJoinAisle,false)){
+                if(!routeIssue.startsWith("WAITING")
+                        &&!routeIssue.startsWith("REROUTING"))
+                    routeIssue="REJOINING THREE-GOLEM LOADED CARRIER";
+                return;
+            }
+            routeIssue="AT LOADED CARRIER; JOINING NEXT TICK";
         }
     }
 
@@ -2038,6 +2074,8 @@ public final class StorageGolem extends PathfinderMob {
         if(remoteCarrierId!=null)out.putString("remote_courier_rig",remoteCarrierId.toString());
         out.store("remote_courier_target",BlockPos.CODEC,remoteCourierTarget);
         out.store("remote_courier_aisle",BlockPos.CODEC,remoteCourierAisle);
+        out.store("remote_courier_join_aisle",BlockPos.CODEC,remoteCourierJoinAisle);
+        out.store("remote_courier_rejected_aisle",BlockPos.CODEC,remoteCourierRejectedAisle);
         out.store("remote_rig_last_known",BlockPos.CODEC,remoteRigLastKnown);
         if(!remoteFresh.isEmpty())out.store("remote_empty_pallet",ItemStack.CODEC,remoteFresh);
         out.putBoolean("player_haul",playerHaul);
@@ -2093,6 +2131,10 @@ public final class StorageGolem extends PathfinderMob {
         remoteCourierPhase=Math.clamp(in.getIntOr("remote_courier_phase",0),0,1);
         remoteCourierTarget=in.read("remote_courier_target",BlockPos.CODEC).orElse(BlockPos.ZERO);
         remoteCourierAisle=in.read("remote_courier_aisle",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        remoteCourierJoinAisle=in.read("remote_courier_join_aisle",BlockPos.CODEC)
+                .orElse(BlockPos.ZERO);
+        remoteCourierRejectedAisle=in.read("remote_courier_rejected_aisle",BlockPos.CODEC)
+                .orElse(BlockPos.ZERO);
         remoteRigLastKnown=in.read("remote_rig_last_known",BlockPos.CODEC).orElse(BlockPos.ZERO);
         remoteFresh=in.read("remote_empty_pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
         try{remoteCarrierId=UUID.fromString(in.getStringOr("remote_courier_rig",""));}
