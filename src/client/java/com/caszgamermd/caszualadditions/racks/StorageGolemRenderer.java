@@ -6,6 +6,7 @@ import com.caszgamermd.caszualadditions.pallet.PalletData;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
 import com.caszgamermd.caszualadditions.pallet.PalletKind;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelResolver;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
@@ -112,14 +113,36 @@ public final class StorageGolemRenderer
             pose.popPose();
         }
         if(state.pushingEmptyPallet){
-            // A single Golem pushes the replacement vertically on its edge.
+            // The replacement is a FULL-SIZE 2x2 pallet stood on its SIDE:
+            // nearly two blocks wide and two blocks tall, not a 1-block
+            // miniature floating at a fixed location on the robot's chest.
+            // The golem visibly pushes it ahead of its arms. Entity yaw
+            // automatically turns both robot and pallet with the path.
             pose.pushPose();
+            float walk=state.walkAnimationPos*.72f;
+            float motion=Math.min(1f,state.walkAnimationSpeed*2.6f);
+            float bob=(float)Math.abs(Math.sin(walk))*.038f*motion;
+            float tilt=(float)Math.sin(walk)*2.5f*motion;
+            pose.translate(0,1.01f+bob,-1.11f);
+            pose.mulPose(Axis.ZP.rotationDegrees(tilt));
+            pose.mulPose(Axis.XP.rotationDegrees(-2.0f
+                    +(float)Math.cos(walk)*1.8f*motion));
+            pose.translate(0,-1.01f,0);
+            // Four full-width, physically distinct horizontal deck boards.
+            // Each board has its own saved material, including mixed woods.
             for(int board=0;board<4;board++)
                 piece(state.courierBoards[board],state,pose,collector,
-                        -.54f,.21f+board*.245f,-.77f,1.08f,.13f,.13f);
-            for(float x:new float[]{-.42f,.33f})
-                piece(state.palletSupport,state,pose,collector,
-                        x,.18f,-.82f,.11f,.89f,.13f);
+                        -.94f,.085f+board*.49f,-.04f,1.88f,.255f,.185f);
+            // Side runners/feet seen on edge. Reuse the pallet's ACTUAL
+            // material rather than rendering unrelated solid iron bars.
+            for(float x:new float[]{-.80f,.65f})
+                piece(state.courierBoards[0],state,pose,collector,
+                        x,.035f,.075f,.15f,1.83f,.185f);
+            // Bottom toe and top lip match a real pallet's 2x2 footprint.
+            piece(state.courierBoards[1],state,pose,collector,
+                    -.94f,.035f,.045f,1.88f,.14f,.24f);
+            piece(state.courierBoards[2],state,pose,collector,
+                    -.94f,1.83f,.045f,1.88f,.115f,.22f);
             pose.popPose();
         }
         if(!state.showSharedPallet)return;
