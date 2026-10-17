@@ -59,8 +59,17 @@ public final class RemotePalletCourierRoute {
         // Long trips may still accept rolling 36-cell forward legs.
         if(start.getY()==destination.getY()
                 &&Math.abs(start.getX()-destination.getX())<=36
-                &&Math.abs(start.getZ()-destination.getZ())<=36)
-            return null;
+                &&Math.abs(start.getZ()-destination.getZ())<=36){
+            // Same-Y full path failed: NOW and only now consider a
+            // stair/ramp. Require that this fallback really reaches
+            // the destination; a "best effort" partial route to a
+            // nearby wall is the exact circling bug being fixed.
+            var stairs=WarehousePreferredPath.leg(
+                    start,destination,passable,avoid);
+            return stairs!=null&&!stairs.isEmpty()
+                    &&stairs.get(stairs.size()-1).equals(destination)
+                    ?stairs:null;
+        }
         return WarehousePreferredPath.leg(start,destination,passable,avoid);
     }
 
