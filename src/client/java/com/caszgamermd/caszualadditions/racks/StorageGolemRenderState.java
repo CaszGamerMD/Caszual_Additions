@@ -15,6 +15,7 @@ public final class StorageGolemRenderState extends LivingEntityRenderState {
     public StorageGolemRenderState(){
         for(int i=0;i<held.length;i++)held[i]=new BlockModelRenderState();
     }
+    public final BlockModelRenderState heldTray=new BlockModelRenderState();
     public final BlockModelRenderState palletDeck=new BlockModelRenderState();
     public final BlockModelRenderState[] courierBoards={new BlockModelRenderState(),new BlockModelRenderState(),new BlockModelRenderState(),new BlockModelRenderState()};
     public final BlockModelRenderState palletSupport=new BlockModelRenderState();
