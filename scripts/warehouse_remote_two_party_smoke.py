@@ -28,7 +28,7 @@ assert "deliveryMode=6;" in carrier
 assert "deliveryMode=3;" in carrier
 assert "remoteReplacementPlaced=true;" in carrier
 assert "remoteAisle=remoteAisle(level,target,3,5)" in carrier
-assert "remoteMoveAside=remoteAisle(level,deliveryPosition,6,9)" in carrier
+assert "remoteMoveAside=remoteAisle(level,deliveryPosition,5,7)" in carrier
 assert "liftForRemoteExchange(level,target,this)" in carrier
 assert "acceptRemoteLift(root,previous,oldDeck,stock)" in swap
 assert "source.clearContent();" in swap
