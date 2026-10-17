@@ -43,6 +43,7 @@ public final class RackContent {
     public static BlockEntityType<RackBlockEntity> RACK_ENTITY;
     public static BlockEntityType<ShulkerTankEntity> SHULKER_TANK_ENTITY;
     public static MenuType<ShulkerStationMenu> SHULKER_STATION_MENU;
+    public static MenuType<StackOfPalletsMenu> PALLET_STACK_MENU;
 
     private RackContent() {}
     private static Item item(String name) {
@@ -109,6 +110,11 @@ public final class RackContent {
                 CaszualAdditions.id("stack_of_pallets"),
                 FabricBlockEntityTypeBuilder.create(StackOfPalletsBlockEntity::new,
                         PALLET_STACK_BLOCK).build());
+        PALLET_STACK_MENU=Registry.register(BuiltInRegistries.MENU,
+                CaszualAdditions.id("pallet_stack_menu"),
+                new ExtendedMenuType<>(
+                        (menuId,inventory,pos)->new StackOfPalletsMenu(menuId,inventory,pos),
+                        BlockPos.STREAM_CODEC));
         RACK_TAG=item("rack_tag");
         AISLE_TAG=item("aisle_tag");
         Identifier connectorId=CaszualAdditions.id("rack_connector");
