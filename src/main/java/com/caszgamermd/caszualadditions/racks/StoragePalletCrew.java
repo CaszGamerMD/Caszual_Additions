@@ -263,7 +263,12 @@ public final class StoragePalletCrew {
     public static String dismissWarehouse(ServerLevel level,BlockPos computer){
         var network=WarehouseNetwork.fromComputer(level,computer);
         java.util.Set<BlockPos> homes=new java.util.HashSet<>();
-        for(StorageGolemShelfEntity shelf:network.shelves())homes.add(shelf.getBlockPos());
+        for(StorageGolemShelfEntity shelf:network.shelves()){
+            homes.add(shelf.getBlockPos());
+            // A recall is meant to leave the workers IN their shelves;
+            // suspend automatic sorting or they would instantly redeploy.
+            shelf.setSortingEnabled(false);
+        }
         if(homes.isEmpty())return "No linked Storage Golem shelves.";
         java.util.ArrayList<StorageGolem> workers=new java.util.ArrayList<>();
         java.util.ArrayList<MovingPallet> rigs=new java.util.ArrayList<>();
