@@ -45,11 +45,21 @@ public final class RemotePalletCourierRoute {
      * straight-line instruction or a random walk around the target. */
     public static List<BlockPos> route(ServerLevel level,BlockPos start,
             BlockPos destination,BlockPos avoid,boolean pushing){
+        return route(level,start,destination,avoid,pushing,BlockPos.ZERO);
+    }
+    public static List<BlockPos> route(ServerLevel level,BlockPos start,
+            BlockPos destination,BlockPos avoid,boolean pushing,
+            BlockPos crewRally){
         Predicate<BlockPos> passable=pos->(pushing?clear(level,pos)
                 :StorageGolemReturnPath.walkable(level,pos))
                 // Mark the WHOLE pushed-pallet clearance envelope as
                 // blocked around a stalled waypoint, not just one center
                 // cell that the next plan can graze and collide with.
+                // Don't push a 2-wide pallet through the three independent
+                // lifters' 3x3 assembly. The courier must remain clear until
+                // they physically lift the target and form the shared rig.
+                &&(crewRally.equals(BlockPos.ZERO)||!pushing
+                    ||pos.distSqr(crewRally)>=9)
                 &&(avoid.equals(BlockPos.ZERO)
                     ||!(pushing?Math.abs(pos.getX()-avoid.getX())<=1
                             &&Math.abs(pos.getZ()-avoid.getZ())<=1
@@ -97,27 +107,24 @@ public final class RemotePalletCourierRoute {
             for(int distance=4;distance<=7;distance++)
                 candidates.add(pallet.relative(face,distance));
         candidates.sort(java.util.Comparator.comparingDouble(from::distSqr));
-        for(int pass=0;pass<2;pass++){
-            for(BlockPos candidate:candidates){
+        for(BlockPos candidate:candidates){
                 int distance=(int)Math.round(Math.sqrt(candidate.distSqr(pallet)));
                 if(!excluded.equals(BlockPos.ZERO)
                         &&candidate.distSqr(excluded)<9)continue;
                 if(!clear(level,candidate))continue;
-                // Prefer to stay away from the three-Golem assembly.
-                // However a warehouse with only ONE accessible side must
-                // still be functional: on the second pass, allow its outer
-                // aisle and wait there until the lifters move aside.
-                if(pass==0&&!trioRally.equals(BlockPos.ZERO)
+                // Never fall back to a loading point inside the three-Golem
+                // assembly just because it is the only nearby aisle. Wait
+                // for help rather than physically trapping the courier.
+                if(!trioRally.equals(BlockPos.ZERO)
                         &&candidate.distSqr(trioRally)<36)continue;
-                List<BlockPos> path=route(level,from,candidate,BlockPos.ZERO,true);
+                List<BlockPos> path=route(level,from,candidate,
+                        BlockPos.ZERO,true,trioRally);
                 if(path==null)continue;
                 double cost=path.size()
                         +.018*Math.abs(candidate.getX()-from.getX())
                         +.018*Math.abs(candidate.getZ()-from.getZ())
                         +distance*.2;
                 if(cost<score){chosen=candidate;score=cost;}
-            }
-            if(!chosen.equals(BlockPos.ZERO))break;
         }
         return chosen;
     }
