@@ -28,6 +28,17 @@ assert 'Wrap it with the portable wrapper before requesting pickup.' in scanner
 # PTP dropPallet applies live filters; compare that exact canonical stack.
 assert '.applyFilterSettings(ptp.palletStack(),ptp)' in dispatch
 assert "RemotePalletDispatch.request(world,player,computer,target)" in scanner
+# Real long-distance dispatch uses temporary ticking tickets, not /forceload
+# or a hidden teleport. Both the pending request and travelling entity renew.
+tickets=read(main/"WarehouseRemoteTickets.java")
+assert "Registry.register(BuiltInRegistries.TICKET_TYPE" in tickets
+assert "new TicketType(240," in tickets
+assert "TicketType.FLAG_SIMULATION" in tickets
+assert "addTicketWithRadius(type,new ChunkPos(pos),RADIUS)" in tickets
+assert "WarehouseRemoteTickets.initialize();" in registration
+assert "WarehouseRemoteTickets.keep(world,computer);" in scanner
+assert "WarehouseRemoteTickets.keep(server,blockPosition());" in rig
+assert "WarehouseRemoteTickets.keep(server,deliveryPosition);" in rig
 assert "ServerTickEvents.END_SERVER_TICK" in scanner
 assert "StorageScannerItem.initialize();" in registration
 assert "beginRemoteExchange(old.getBlockPos(),computer)" in dispatch
