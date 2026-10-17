@@ -1079,8 +1079,15 @@ public final class MovingPallet extends PathfinderMob {
     @Override public void die(net.minecraft.world.damagesource.DamageSource cause){
         if(level() instanceof ServerLevel level&&!deathDropsReleased){
             deathDropsReleased=true;
+            // A split remote courier is still a real fourth Golem, not a
+            // model owned twice. Recover its deck and send it to its shelf,
+            // then drop ONLY the three workers bound to this carrier.
+            int workerDrops=remoteCourierId==null?4:3;
+            if(remoteCourierId!=null
+                    &&level.getEntity(remoteCourierId) instanceof StorageGolem courier)
+                courier.remoteCarrierDestroyed(level);
             dropCargo(level);
-            for(int i=0;i<4;i++)
+            for(int i=0;i<workerDrops;i++)
                 Containers.dropItemStack(level,getX(),getY(),getZ(),
                         new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
         }
