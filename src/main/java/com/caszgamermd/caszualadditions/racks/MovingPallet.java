@@ -20,6 +20,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.BlockItem;
@@ -103,6 +104,7 @@ public final class MovingPallet extends PathfinderMob {
     private BlockPos remoteRouteGoal=BlockPos.ZERO,blockedRemoteCell=BlockPos.ZERO;
     private int nextRemotePlan,remoteAvoidUntil,remoteProgressTick;
     private double lastRemoteProgress=Double.POSITIVE_INFINITY;
+    private int nextRemoteTerrainJump;
 
     public MovingPallet(EntityType<? extends MovingPallet> type,Level level){
         super(type,level);
@@ -182,7 +184,36 @@ public final class MovingPallet extends PathfinderMob {
         deliveryFailure="THREE GOLEMS LIFTED TARGET; MOVING ASIDE";
         return true;
     }
-    public boolean readyForCourierPlacement(){return deliveryMode==6&&!remoteReplacementPlaced;}
+    /** The recovered pallet cannot occupy its former 2x2 ground cells.
+     * Compare REAL footprint geometry, not a guessed root+1 midpoint:
+     * EAST/WEST/NORTH/SOUTH orientations have different signed cells.
+     * Existing loaded carriers are allowed to hand off as soon as their
+     * entire collision box is clear, without waiting for a remote 7-block
+     * staging waypoint that the AI cannot always reach. */
+    public boolean remoteFootprintClear(){
+        if(!loaded()||deliveryMode<5||deliveryMode>6)return false;
+        if(!(pallet.getItem() instanceof BlockItem item)
+                ||!(item.getBlock() instanceof PalletBlock block))return false;
+        BlockState state=block.defaultBlockState()
+                .setValue(PalletBlock.PART,0)
+                .setValue(PalletBlock.FACING,remoteOldFacing)
+                .setValue(PalletBlock.LEGACY,remoteOldLegacy);
+        int minX=Integer.MAX_VALUE,maxX=Integer.MIN_VALUE;
+        int minZ=Integer.MAX_VALUE,maxZ=Integer.MIN_VALUE;
+        for(int i=0;i<4;i++){
+            BlockPos cell=PalletBlock.partPos(deliveryPosition,i,state);
+            minX=Math.min(minX,cell.getX());maxX=Math.max(maxX,cell.getX());
+            minZ=Math.min(minZ,cell.getZ());maxZ=Math.max(maxZ,cell.getZ());
+        }
+        // A modest clearance beyond the pallet walls leaves room for
+        // placement animation without routing the three bots too far away.
+        AABB footprint=new AABB(minX-.5,deliveryPosition.getY()-.5,
+                minZ-.5,maxX+1.5,deliveryPosition.getY()+2.6,maxZ+1.5);
+        return !getBoundingBox().intersects(footprint);
+    }
+    public boolean readyForCourierPlacement(){
+        return deliveryMode==6&&!remoteReplacementPlaced&&remoteFootprintClear();
+    }
     public Direction remoteOldFacing(){return remoteOldFacing;}
     public boolean remoteOldLegacy(){return remoteOldLegacy;}
     public boolean confirmCourierPlacement(UUID courier){
@@ -638,7 +669,9 @@ public final class MovingPallet extends PathfinderMob {
                 break;
             }
             double dx=next.getX()+.5-getX(),dz=next.getZ()+.5-getZ();
-            if(dx*dx+dz*dz>.30||Math.abs(next.getY()-getY())>.65)break;
+            // Allow a 1.85-wide rig to finish a waypoint without trying
+            // to pin its center to within half a block indefinitely.
+            if(dx*dx+dz*dz>.72||Math.abs(next.getY()-getY())>.80)break;
             remoteFloorRoute.removeFirst();
             lastRemoteProgress=Double.POSITIVE_INFINITY;
             remoteProgressTick=tickCount;
@@ -678,14 +711,23 @@ public final class MovingPallet extends PathfinderMob {
             getNavigation().stop();
             return false;
         }
-        if(next.getY()!=here.getY()){
-            // Stairs/ramp only after all-flat A* reports no full-width route.
-            if(tickCount%8==0)getNavigation().moveTo(next.getX()+.5,
-                    next.getY(),next.getZ()+.5,1.0);
-        }else{
+        // The loaded pallet follows the SAME checked three-wide terrain
+        // waypoints. Re-asking vanilla A* for a different path on a single
+        // rise caused the entire carrying team to turn in place. Rise by
+        // at most one block and descend under normal collision and gravity.
+        int rise=next.getY()-here.getY();
+        if(rise>1||rise< -1){
+            deliveryFailure="WAITING: UNSAFE PALLET HEIGHT CHANGE";
             getNavigation().stop();
-            getMoveControl().setWantedPosition(next.getX()+.5,
-                    next.getY(),next.getZ()+.5,1.0);
+            return false;
+        }
+        getNavigation().stop();
+        getMoveControl().setWantedPosition(next.getX()+.5,
+                next.getY(),next.getZ()+.5,rise==0?1.0:.85);
+        if(rise==1&&onGround()&&tickCount>=nextRemoteTerrainJump
+                &&distance<2.8){
+            getJumpControl().jump();
+            nextRemoteTerrainJump=tickCount+10;
         }
         return true;
     }
@@ -771,9 +813,22 @@ public final class MovingPallet extends PathfinderMob {
             deliveryFailure="WAITING FOR TARGET PALLET LIFT";
     }
     private void tickRemoteStepAside(ServerLevel level){
+        // Release the courier AS SOON AS the old footprint is physically
+        // unobstructed. Previously the loaded three-person rig froze at a
+        // cached 5-7 block waypoint despite already making room.
+        if(remoteFootprintClear()){
+            getNavigation().stop();
+            remoteFloorRoute.clear();
+            deliveryMode=6;
+            deliveryFailure="OLD PALLET CLEAR; COURIER MAY PLACE REPLACEMENT";
+            return;
+        }
         if(remoteMoveAside.equals(BlockPos.ZERO)
                 ||!safePlatformFloor(level,remoteMoveAside)){
-            remoteMoveAside=remoteAisle(level,deliveryPosition,5,7);
+            // No need to travel seven blocks from the arbitrary ROOT.
+            // Select the closest wide, level ground that clears the
+            // actual old footprint and frees the courier to place.
+            remoteMoveAside=remoteAisle(level,deliveryPosition,4,7);
             remoteFloorRoute.clear();nextRemotePlan=0;
         }
         if(remoteMoveAside.equals(BlockPos.ZERO)){
@@ -783,9 +838,16 @@ public final class MovingPallet extends PathfinderMob {
             deliveryFailure="THREE GOLEMS MOVING TARGET ASIDE";
             navigateRemoteFloor(level,remoteMoveAside);return;
         }
+        // A planned aisle can be reached while the bounding box still
+        // overlaps the old deck. Never claim placement-ready prematurely.
         getNavigation().stop();
-        deliveryMode=6;
-        deliveryFailure="FOOTPRINT CLEARED; WAITING FOR EMPTY COURIER";
+        if(remoteFootprintClear()){
+            deliveryMode=6;
+            deliveryFailure="FOOTPRINT CLEARED; WAITING FOR EMPTY COURIER";
+        }else{
+            remoteMoveAside=BlockPos.ZERO;
+            deliveryFailure="RESELECTING CLEAR LIFT-TEAM PARKING";
+        }
     }
     private void tickRemoteRendezvous(ServerLevel level){
         getNavigation().stop();
@@ -1021,10 +1083,14 @@ public final class MovingPallet extends PathfinderMob {
         return true;
     }
     public boolean deliverToGround(ServerLevel level,BlockPos pos,Direction facing){
+        return deliverToGround(level,pos,facing,false);
+    }
+    private boolean deliverToGround(ServerLevel level,BlockPos pos,Direction facing,
+            boolean legacy){
         if(!loaded()||!(pallet.getItem() instanceof BlockItem item)
                 ||!(item.getBlock() instanceof PalletBlock block))return false;
         BlockState root=block.defaultBlockState().setValue(PalletBlock.PART,0)
-                .setValue(PalletBlock.FACING,facing).setValue(PalletBlock.LEGACY,false);
+                .setValue(PalletBlock.FACING,facing).setValue(PalletBlock.LEGACY,legacy);
         for(int i=0;i<4;i++){
             BlockPos piece=PalletBlock.partPos(pos,i,root);
             if(level.isOutsideBuildHeight(piece)
@@ -1273,10 +1339,14 @@ public final class MovingPallet extends PathfinderMob {
     }
     private void dropCargo(ServerLevel level){
         if(pallet.isEmpty())return;
-        Containers.dropItemStack(level,getX(),getY(),getZ(),pallet.copy());
-        for(ItemStack contentsItem:contents)
-            if(!contentsItem.isEmpty())
-                Containers.dropItemStack(level,getX(),getY(),getZ(),contentsItem.copy());
+        // The one physical carrier holds ONE real pallet and all 216
+        // indexed slots. Death places it intact on nearby safe ground,
+        // or drops a single self-contained item if no 2x2 area is open.
+        boolean preserveOldFacing=remoteExchangeActive()&&loaded();
+        PalletDeathRecovery.release(level,blockPosition(),getX(),getY(),getZ(),
+                pallet,contents,
+                preserveOldFacing?remoteOldFacing:Direction.fromYRot(getYRot()),
+                preserveOldFacing&&remoteOldLegacy);
         clearCargo();
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource cause){

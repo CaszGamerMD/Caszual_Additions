@@ -31,17 +31,17 @@ assert "Block.box(0,0,0,16,Math.min(16,remaining),16)" in stack
 for state in ("feetState", "headState", "below"):
     assert f"{state}.getBlock() instanceof StackOfPalletsBlock" in goals
 assert "&&headState.getCollisionShape(level,feet.above()).isEmpty()" in goals
-assert "if(!below.getCollisionShape(level,ground).isEmpty())return true;" in goals
-assert "level.getFluidState(feet).is(FluidTags.WATER)" in goals
+assert "return !below.getCollisionShape(level,ground).isEmpty();" in goals
+assert "!level.getFluidState(feet).isEmpty()" in goals
 # ALL warehouse path callers must share the same walkability barrier.
 assert "StorageGolemReturnPath.walkable(level,p)" in worker
 assert "StorageGolemReturnPath.walkable(level,cell)" in carrier
-assert "StorageGolemReturnPath.steps(feet,target,available)" in worker
-assert "WarehousePreferredPath.leg(feet,target,available" in worker
+assert "List<BlockPos> route=WarehousePreferredPath.leg(feet,target," in worker
+assert "WarehousePreferredPath.leg(feet,target," in worker
 assert "WarehousePreferredPath.leg(here,target," in carrier
 assert "position->safePlatformFloor(level,position)" in carrier
 assert "no diagonal" in floors.lower() or "Cardinal steps only" in floors
-assert "if(flat!=null)return flat;" in preferred
+assert "int terrainCost=terrain.size();" in preferred
 # Simple 2x2 obstacle regression for four-direction same-Y grid routing.
 blocked={(4,4),(5,4),(4,5),(5,5)}
 def shortest(start,goal):

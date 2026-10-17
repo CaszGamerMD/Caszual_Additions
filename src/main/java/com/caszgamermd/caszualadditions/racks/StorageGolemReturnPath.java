@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -48,20 +47,30 @@ public final class StorageGolemReturnPath {
                 ||below.getBlock() instanceof RackBlock
                 ||feetState.getBlock() instanceof StackOfPalletsBlock
                 ||headState.getBlock() instanceof StackOfPalletsBlock
-                ||below.getBlock() instanceof StackOfPalletsBlock)return false;
+                ||below.getBlock() instanceof StackOfPalletsBlock
+                // A normal 2x2 pallet is only five pixels tall, so the
+                // entity collision below a waypoint is NONEMPTY. The old
+                // code mistook that thin deck for a full supporting floor
+                // and routed carrying Golems ON TOP of adjacent pallets.
+                // Cargo proxies can have similarly partial collision.
+                // Neither is a step, floor or passable waypoint.
+                ||feetState.getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock
+                ||headState.getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock
+                ||below.getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock
+                ||feetState.is(com.caszgamermd.caszualadditions.pallet.PalletContent.PALLET_CARGO_COLLISION)
+                ||headState.is(com.caszgamermd.caszualadditions.pallet.PalletContent.PALLET_CARGO_COLLISION)
+                ||below.is(com.caszgamermd.caszualadditions.pallet.PalletContent.PALLET_CARGO_COLLISION))
+            return false;
         boolean clearBody=feetState.getCollisionShape(level,feet).isEmpty()
                 &&headState.getCollisionShape(level,feet.above()).isEmpty();
         if(!clearBody)return false;
-        if(!below.getCollisionShape(level,ground).isEmpty())return true;
-        // A warehouse built over water can dispatch workers onto an
-        // open lake. Ocean surface water has NO block collision underneath,
-        // so the old floor-only predicate said "no route" despite the
-        // entire screenshot being an open water corridor. Model ONLY the
-        // topmost water block as a traversable swim lane, never underwater
-        // cave/riverbed routes. Keeping solid ground first preserves the
-        // usual flat walking preference.
-        return level.getFluidState(feet).is(FluidTags.WATER)
-                &&!level.getFluidState(feet.above()).is(FluidTags.WATER);
+        // Ice (including packed/blue ice) has a REAL solid collision floor:
+        // it is walkable exactly like stone. Open water is not a substitute
+        // for solid ground, even if it looks similar from a distance.
+        // Reject waterlogged body cells as well: Golems must stay dry.
+        if(!level.getFluidState(feet).isEmpty()
+                ||!level.getFluidState(feet.above()).isEmpty())return false;
+        return !below.getCollisionShape(level,ground).isEmpty();
     }
 
     /**

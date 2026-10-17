@@ -15,12 +15,14 @@ import net.minecraft.util.Mth;
  * Copper Golem or a resized vanilla Iron Golem.
  */
 public final class StorageGolemModel extends EntityModel<StorageGolemRenderState> {
-    private final ModelPart head,leftArm,rightArm,leftLeg,rightLeg;
+    private final ModelPart head,leftArm,rightArm,leftLeg,rightLeg,leftForearm,rightForearm;
     public StorageGolemModel(ModelPart root){
         super(root);
         head=root.getChild("head");
         leftArm=root.getChild("left_arm");
         rightArm=root.getChild("right_arm");
+        leftForearm=leftArm.getChild("forearm");
+        rightForearm=rightArm.getChild("forearm");
         leftLeg=root.getChild("left_leg");
         rightLeg=root.getChild("right_leg");
     }
@@ -37,14 +39,22 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
                 // Head extends from y=1 to y=8; torso starts at y=7.
                 // A one-pixel overlap closes the old floating-head gap.
                 PartPose.offset(0,6,0));
-        root.addOrReplaceChild("left_arm",
+        PartDefinition left=root.addOrReplaceChild("left_arm",
                 CubeListBuilder.create().texOffs(28,20)
-                        .addBox(-2,-1,-2,4,10,4),
+                        .addBox(-2,-1,-2,4,6,4),
                 PartPose.offset(7,11,0));
-        root.addOrReplaceChild("right_arm",
+        left.addOrReplaceChild("forearm",
+                CubeListBuilder.create().texOffs(28,26)
+                        .addBox(-2,-1,-2,4,6,4),
+                PartPose.offset(0,5,0));
+        PartDefinition right=root.addOrReplaceChild("right_arm",
                 CubeListBuilder.create().texOffs(28,20)
-                        .addBox(-2,-1,-2,4,10,4),
+                        .addBox(-2,-1,-2,4,6,4),
                 PartPose.offset(-7,11,0));
+        right.addOrReplaceChild("forearm",
+                CubeListBuilder.create().texOffs(28,26)
+                        .addBox(-2,-1,-2,4,6,4),
+                PartPose.offset(0,5,0));
         root.addOrReplaceChild("left_leg",
                 CubeListBuilder.create().texOffs(44,0)
                         .addBox(-2,0,-2,4,8,4),
@@ -64,24 +74,32 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
         rightLeg.xRot=Mth.cos(phase+Mth.PI)*1.1f*amount;
         leftArm.xRot=rightLeg.xRot*.6f;
         rightArm.xRot=leftLeg.xRot*.6f;
+        leftForearm.xRot=0;
+        rightForearm.xRot=0;
         if(state.pushingEmptyPallet){
             // Arms reach forward to physically TOUCH the upright pallet
             // instead of swinging empty-handed through its surface.
-            leftArm.xRot=-1.55f;
-            rightArm.xRot=-1.55f;
+            leftArm.xRot=-1.45f;
+            rightArm.xRot=-1.45f;
+            leftForearm.xRot=-.12f;
+            rightForearm.xRot=-.12f;
             leftArm.zRot=-.16f;
             rightArm.zRot=.16f;
         }else if(state.heldSlots>0&&!state.carryingPallet){
             // A one-Golem warehouse runner actually cradles the cargo
             // tray at its wrists; cartons no longer float above its head.
-            leftArm.xRot=-1.48f;
-            rightArm.xRot=-1.48f;
+            leftArm.xRot=-1.36f;
+            rightArm.xRot=-1.36f;
+            leftForearm.xRot=-.38f;
+            rightForearm.xRot=-.38f;
             leftArm.zRot=-.14f;
             rightArm.zRot=.14f;
         }else if(state.carryingPallet){
             // Four manual crew workers hold the SAME real pallet by hand.
-            leftArm.xRot=-3.02f;
-            rightArm.xRot=-3.02f;
+            leftArm.xRot=-1.85f;
+            rightArm.xRot=-1.85f;
+            leftForearm.xRot=-.90f;
+            rightForearm.xRot=-.90f;
             leftArm.zRot=-.12f;
             rightArm.zRot=.12f;
         }else{
