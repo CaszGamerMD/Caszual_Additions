@@ -31,6 +31,8 @@ public final class RackContent {
     public static EntityType<MovingPallet> MOVING_PALLET_TYPE;
     public static Block RACK_COMPUTER;
     public static Item STORAGE_SCANNER_ITEM,PORTABLE_WRAPPER,STACK_OF_PALLETS;
+    public static StackOfPalletsBlock PALLET_STACK_BLOCK;
+    public static BlockEntityType<StackOfPalletsBlockEntity> PALLET_STACK_ENTITY;
     public static ShulkerTankBlock SHULKER_TANK;
     public static PtpBlock PTP_TRANSFER,PTP_HOPPER,PTP_WRAP;
     public static Item PTP_TRANSFER_ITEM,PTP_HOPPER_ITEM,PTP_WRAP_ITEM;
@@ -93,11 +95,20 @@ public final class RackContent {
         PORTABLE_WRAPPER=Registry.register(BuiltInRegistries.ITEM,portableWrapKey,
                 new PortablePalletWrapperItem(new Item.Properties()
                         .stacksTo(1).setId(portableWrapKey)));
+        ResourceKey<Block> stackBlockKey=ResourceKey.create(Registries.BLOCK,
+                CaszualAdditions.id("stack_of_pallets"));
+        PALLET_STACK_BLOCK=Registry.register(BuiltInRegistries.BLOCK,stackBlockKey,
+                new StackOfPalletsBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.BARREL)
+                        .strength(3.0f).noOcclusion().setId(stackBlockKey)));
         ResourceKey<Item> stackedPalletKey=ResourceKey.create(Registries.ITEM,
                 CaszualAdditions.id("stack_of_pallets"));
         STACK_OF_PALLETS=Registry.register(BuiltInRegistries.ITEM,stackedPalletKey,
-                new StackOfPalletsItem(new Item.Properties()
-                        .stacksTo(1).setId(stackedPalletKey)));
+                new StackOfPalletsItem(PALLET_STACK_BLOCK,new Item.Properties()
+                        .stacksTo(1).useBlockDescriptionPrefix().setId(stackedPalletKey)));
+        PALLET_STACK_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
+                CaszualAdditions.id("stack_of_pallets"),
+                FabricBlockEntityTypeBuilder.create(StackOfPalletsBlockEntity::new,
+                        PALLET_STACK_BLOCK).build());
         RACK_TAG=item("rack_tag");
         AISLE_TAG=item("aisle_tag");
         Identifier connectorId=CaszualAdditions.id("rack_connector");
