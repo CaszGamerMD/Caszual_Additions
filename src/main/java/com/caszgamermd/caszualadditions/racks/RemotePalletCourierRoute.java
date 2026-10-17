@@ -54,12 +54,16 @@ public final class RemotePalletCourierRoute {
      * courier from the THREE independently arriving pickup Golems.
      * No candidate is selected unless a checked route exists. */
     public static BlockPos chooseServiceAisle(ServerLevel level,
-            BlockPos from,BlockPos pallet,BlockPos trioRally){
+            BlockPos from,BlockPos pallet,BlockPos trioRally,BlockPos excluded){
         BlockPos chosen=BlockPos.ZERO;
         double score=Double.POSITIVE_INFINITY;
         for(Direction face:Direction.Plane.HORIZONTAL)
             for(int distance=4;distance<=7;distance++){
                 BlockPos candidate=pallet.relative(face,distance);
+                // A stalled approach should try ANOTHER service aisle,
+                // not return to the same trapped goal indefinitely.
+                if(!excluded.equals(BlockPos.ZERO)
+                        &&candidate.distSqr(excluded)<9)continue;
                 if(!clear(level,candidate))continue;
                 // The three loaded workers' own 3x3 assembly area must
                 // remain clear. Don't try to push a 2-wide deck through it.
