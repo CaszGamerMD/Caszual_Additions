@@ -115,6 +115,18 @@ public final class ShulkerTankEntity extends BlockEntity implements Container, E
                 ItemContainerContents.fromItems(values));
         setWorkingBox(lane,replacement);
     }
+    public void replaceWorkingContents(int lane,List<ItemStack> values){
+        if(lane<0||lane>=STATIONS||values.size()!=27
+                ||working.get(lane).isEmpty())return;
+        for(ItemStack value:values)
+            if(!value.isEmpty()&&!value.getItem().canFitInsideContainerItems())
+                return;
+        ItemStack updated=StorageGolemPacking.emptyVersion(working.get(lane));
+        if(values.stream().anyMatch(item->!item.isEmpty()))
+            updated.set(DataComponents.CONTAINER,
+                    ItemContainerContents.fromItems(values));
+        setWorkingBox(lane,updated);
+    }
     /** Commit only the selected real shulker to the physically adjacent
      * OUTPUT adapter's PTP; failed insertion retains the boxed inventory. */
     public boolean sendSelected(ServerLevel level,int lane){
