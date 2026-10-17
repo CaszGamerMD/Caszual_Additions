@@ -209,6 +209,16 @@ public final class StorageScannerItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
+        // Reliable emergency reset even when a moving Golem's hitbox is
+        // hidden behind the full-size pallet it is holding. A crouched
+        // scanner click on ANY ordinary block selects the player's saved
+        // active remote mission; two clicks within 10 seconds are needed.
+        // The Rack Computer's shift-click remains reserved for binding.
+        if(player.isShiftKeyDown()
+                &&RemotePalletReset.activeMission(server,user)!=null){
+            message(user,RemotePalletReset.requestActive(server,user));
+            return InteractionResult.SUCCESS;
+        }
         BlockPos home=linkedComputer(scanner,server);
         if(home==null){
             message(user,"Scanner not linked. Shift-right-click a Rack Computer to link.");
@@ -275,7 +285,12 @@ public final class StorageScannerItem extends Item {
         if(level instanceof ServerLevel server&&player instanceof ServerPlayer user){
             ItemStack scanner=player.getItemInHand(hand);
             BlockPos home=linkedComputer(scanner,server);
-            if(player.isShiftKeyDown()){
+            if(player.isShiftKeyDown()&&RemotePalletReset.activeMission(server,user)!=null){
+                // Sneak-clicking AIR used to toggle REMOTE/DIRECT even when
+                // the player was trying to cancel a blocked 3+1 mission.
+                // Prefer an explicit two-click recovery when one exists.
+                message(user,RemotePalletReset.requestActive(server,user));
+            }else if(player.isShiftKeyDown()){
                 Mode next=toggleMode(scanner);
                 message(user,"Scanner mode: "+next.name()+". "
                         +(next==Mode.REMOTE
