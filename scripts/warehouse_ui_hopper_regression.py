@@ -48,6 +48,15 @@ assert "homes.contains(worker.shelfHome())" in crew
 assert "rig.returnToWarehouse(level,computer)" in crew
 assert "recallToShelf(ServerLevel level)" in worker
 assert "cancelPendingPickup(level)" in worker and "stage=2;" in worker
+shelf_entity=file(main+"racks/StorageGolemShelfEntity.java")
+moving=file(main+"racks/MovingPallet.java")
+assert 'out.putLong("warehouse_recall_serial",recallSerial);' in shelf_entity
+assert "shelf.requestRecall();" in crew
+assert "checkPendingRecall(level);" in worker
+assert 'out.putLong("observed_recall_serial",observedRecallSerial);' in worker
+assert "recallAfterDelivery=true;" in moving
+assert 'out.putBoolean("recall_after_delivery",recallAfterDelivery);' in moving
+assert "glowBoard(state.highlightEdge" in file(client+"racks/RackBlockEntityRenderer.java")
 # Front door faces the placer and is the ONLY spawn path.
 assert "context.getHorizontalDirection().getOpposite()" in shelf
 assert "StorageGolemShelfBlock.FACING" in door
