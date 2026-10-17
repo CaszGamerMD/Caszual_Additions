@@ -1144,18 +1144,13 @@ public final class StorageGolem extends PathfinderMob {
         }
         BlockPos from=blockPosition();
         if(from.getY()!=home.getY()){
-            // An actual stair/ramp may be necessary when a worker is on a
-            // DIFFERENT floor. Only use vanilla elevation navigation here.
-            // Never instruct it to climb onto the shelf itself.
-            BlockPos closest=null;
-            double score=Double.POSITIVE_INFINITY;
-            BlockPos front=home.relative(StorageGolemShelfDoor.front(shelf));
-            if(StorageGolemReturnPath.walkable(level,front)){
-                closest=front;
-            }
-            if(closest!=null&&tickCount%20==0)
-                getNavigation().moveTo(closest.getX()+.5,
-                        closest.getY(),closest.getZ()+.5,1.10);
+            // HOME is still the assigned shelf across reloads. Avoid a
+            // straight-line vanilla climb onto nearby blocks: use the same
+            // checked flat-first corridor planner for changing floors.
+            BlockPos entrance=home.relative(StorageGolemShelfDoor.front(shelf));
+            if(StorageGolemReturnPath.walkable(level,entrance))
+                walkTo(level,entrance,1.10);
+            else routeIssue="WAITING FOR SAFE SHELF ENTRANCE";
             return;
         }
         // Plan around the shelf's X/Z on the GOLEM'S current floor, not the
