@@ -537,10 +537,7 @@ public final class StorageGolem extends PathfinderMob {
         }
         // Don't send a new vanilla A* destination on every tick. Steer
         // toward the stable next cell like other warehouse Golems.
-        if(next.getY()==blockPosition().getY())
-            steerOnFloor(next,1.06);
-        else if(tickCount%8==0)getNavigation().moveTo(
-                next.getX()+.5,next.getY(),next.getZ()+.5,1.06);
+        followTerrainStep(next,1.06);
         routeIssue=pushing?"PUSHING PALLET THROUGH CLEAR AISLE"
                 :"WALKING TO THREE-GOLEM LOADED TEAM";
         return false;
@@ -1490,6 +1487,7 @@ public final class StorageGolem extends PathfinderMob {
     private BlockPos blockedWorkCell=BlockPos.ZERO;
     private int avoidWorkUntil;
     private double lastWorkDistance=Double.POSITIVE_INFINITY;
+    private int nextTerrainJumpTick;
 
     /**
      * Prefer a checked level corridor when destination and feet have the
@@ -1558,6 +1556,23 @@ public final class StorageGolem extends PathfinderMob {
         getMoveControl().setWantedPosition(next.getX()+.5,next.getY(),
                 next.getZ()+.5,speed);
     }
+    /** Follow a CHECKED adjacent terrain step without asking vanilla A*
+     * to invent a second route for every tiny one-block ledge. The weighted
+     * planner always prefers level ground and never permits a two-block leap.
+     * Jump only for a genuine single-block ascent; descending uses gravity. */
+    private void followTerrainStep(BlockPos next,double speed){
+        BlockPos feet=blockPosition();
+        int delta=next.getY()-feet.getY();
+        if(delta>1||delta< -1)return;
+        steerOnFloor(next,speed);
+        if(delta==1&&onGround()&&tickCount>=nextTerrainJumpTick){
+            double dx=next.getX()+.5-getX(),dz=next.getZ()+.5-getZ();
+            if(dx*dx+dz*dz<2.6){
+                getJumpControl().jump();
+                nextTerrainJumpTick=tickCount+10;
+            }
+        }
+    }
     private void walkTo(ServerLevel level,BlockPos target,double speed){
         BlockPos feet=blockPosition();
         if(!target.equals(workGoal)){
@@ -1581,18 +1596,14 @@ public final class StorageGolem extends PathfinderMob {
                     StorageGolemReturnPath.walkable(level,p)
                     &&!occupied.contains(p)
                     &&(tickCount>=avoidWorkUntil||!p.equals(blockedWorkCell));
-            // First find the entire same-floor route. The 36-block rolling
-            // planner takes over for distant targets or a genuine elevation
-            // change; it never silently replaces the saved job assignment.
+            // First take a genuine entirely-flat corridor if it exists.
+            // If terrain divides the dry level corridor, the weighted 3-D
+            // search is now allowed even for NEARBY targets. Only cardinal
+            // steps and up/down ONE block are legal; the full nearby goal
+            // must actually be reachable (never circle partial waypoints).
             List<BlockPos> route=feet.getY()==target.getY()
                     ?StorageGolemReturnPath.steps(feet,target,available):null;
-            // Close dry-floor destinations require a COMPLETE checked path.
-            // A partial A* leg toward an unreachable lake shore is what
-            // produced the endless reroute/spin loop in remote pickup.
-            boolean nearby=feet.getY()==target.getY()
-                    &&Math.abs(feet.getX()-target.getX())<=36
-                    &&Math.abs(feet.getZ()-target.getZ())<=36;
-            if(route==null&&!nearby)
+            if(route==null)
                 route=WarehousePreferredPath.leg(feet,target,available,
                         tickCount<avoidWorkUntil?blockedWorkCell:BlockPos.ZERO);
             nextWorkPlan=tickCount+20;
@@ -1624,12 +1635,9 @@ public final class StorageGolem extends PathfinderMob {
                 pauseRemotePath("WORKER STALLED AT DRY-LAND WAYPOINT");
             return;
         }
-        if(next.getY()!=feet.getY()){
-            // Elevation transitions require checked solid stair/ramp cells;
-            // water is never a fallback path.
-            if(tickCount%8==0)getNavigation().moveTo(
-                    next.getX()+.5,next.getY(),next.getZ()+.5,speed);
-        }else steerOnFloor(next,speed);
+        // No second vanilla path search on a terrain transition: it used
+        // to ignore the chosen one-block step and spin along the hillside.
+        followTerrainStep(next,speed);
     }
     private final ArrayDeque<BlockPos> flatWorkRoute=new ArrayDeque<>();
 
@@ -1771,10 +1779,16 @@ public final class StorageGolem extends PathfinderMob {
                 lastHomeProgressTick=tickCount;
                 routeIssue="";
             }else{
-                routeIssue="WAITING FOR AISLE";
-                // No level path? WAIT and retry after changes. Don't
-                // substitute a jump-over-the-obstacle route.
-                getNavigation().stop();
+                // A same-level corridor is preferable, not mandatory.
+                // Go to the dry front-door tile using the shared weighted
+                // single-block-step planner instead of freezing at a hill.
+                BlockPos entrance=home.relative(StorageGolemShelfDoor.front(shelf));
+                if(StorageGolemReturnPath.walkable(level,entrance)){
+                    walkTo(level,entrance,1.08);
+                }else{
+                    routeIssue="WAITING FOR SAFE SHELF ENTRANCE";
+                    getNavigation().stop();
+                }
                 return;
             }
         }
@@ -1808,7 +1822,7 @@ public final class StorageGolem extends PathfinderMob {
         // Never redirect a worker which is already within the docking
         // aisle just because the other worker reached a nearby waypoint.
         if(atShelfEntrance(level))returnToShelf(level);
-        else steerOnFloor(next,1.08);
+        else followTerrainStep(next,1.08);
     }
     private Container loaded(ServerLevel level,BlockPos pos) {
         return level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof Container c
