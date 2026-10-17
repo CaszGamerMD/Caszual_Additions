@@ -34,7 +34,7 @@ assert "drawSlots(graphics,x+PLAYER_X,y+PLAYER_Y" in pallet_ui
 # One pallet per global 10s glow. Search does NOT paint all results.
 assert "HighlightRequest" in computer and "HighlightChanged" in computer
 assert "WarehouseNetwork.fromComputer(level,computer).racks()" in computer
-assert "for(ServerPlayer online:player.getServer().getPlayerList().getPlayers())" in computer
+assert "for(ServerPlayer online:level.getServer().getPlayerList().getPlayers())" in computer
 assert "int ticks=online.level()==level?200:0" in computer
 assert "private record Glow(BlockPos rack,long expires)" in highlight
 assert "return glow.rack().equals(position);" in highlight
