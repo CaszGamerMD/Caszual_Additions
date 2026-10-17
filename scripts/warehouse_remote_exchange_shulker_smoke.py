@@ -34,7 +34,7 @@ tickets=read(main/"WarehouseRemoteTickets.java")
 assert "Registry.register(BuiltInRegistries.TICKET_TYPE" in tickets
 assert "new TicketType(240," in tickets
 assert "TicketType.FLAG_SIMULATION" in tickets
-assert "addTicketWithRadius(type,new ChunkPos(pos),RADIUS)" in tickets
+assert "addTicketWithRadius(type,new ChunkPos(pos.getX() >> 4,pos.getZ() >> 4),RADIUS)" in tickets
 assert "WarehouseRemoteTickets.initialize();" in registration
 assert "WarehouseRemoteTickets.keep(world,computer);" in scanner
 assert "WarehouseRemoteTickets.keep(server,blockPosition());" in rig
