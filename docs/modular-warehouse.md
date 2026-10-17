@@ -12,6 +12,8 @@ of each system, see [Warehouse integrated test plan](warehouse-test-plan.md).
   material, dyes and components. It visually grows from zero through four
   stacked pallet layers as it fills. Right-click while holding an empty pallet
   to deposit it; sneak-right-click with an empty hand to retrieve one.
+  Right-click with an empty hand to open its dedicated 12-slot inventory
+  alongside the player's inventory (no overlapping filter controls).
   Breaking the magazine normally drops a single Stack of Pallets item with
   its contents, not twelve scattered pallet items. The item can still be used
   as an older handheld/rack magazine for existing worlds.
