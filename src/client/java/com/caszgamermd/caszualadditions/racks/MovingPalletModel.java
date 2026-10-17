@@ -71,14 +71,20 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             float offset=(i==0||i==3)?0:Mth.PI;
             leftLeg[i].xRot=Mth.cos(phase+offset)*1.15f*amount;
             rightLeg[i].xRot=Mth.cos(phase+offset+Mth.PI)*1.15f*amount;
-            // Each robot is a permanently attached corner of the ONE rig.
-            // Nothing on its body rotates or translates independently:
-            // only the legs animate. Both arms stay raised supporting the
-            // pallet throughout travel and until the four separate again.
-            leftArm[i].xRot=-3.02f*state.liftProgress;
-            rightArm[i].xRot=-3.02f*state.liftProgress;
-            leftArm[i].zRot=-.12f*state.liftProgress;
-            rightArm[i].zRot=.12f*state.liftProgress;
+            // Three outbound Golems are EMPTY HANDED until the wrapped
+            // pallet is actually lifted. Swing their arms naturally while
+            // walking; supporting arms only rise once the pallet exists.
+            if(!state.visible){
+                leftArm[i].xRot=Mth.cos(phase+offset+Mth.PI)*.7f*amount;
+                rightArm[i].xRot=Mth.cos(phase+offset)*.7f*amount;
+                leftArm[i].zRot=0;
+                rightArm[i].zRot=0;
+            }else{
+                leftArm[i].xRot=-3.02f*state.liftProgress;
+                rightArm[i].xRot=-3.02f*state.liftProgress;
+                leftArm[i].zRot=-.12f*state.liftProgress;
+                rightArm[i].zRot=.12f*state.liftProgress;
+            }
         }
     }
 }
