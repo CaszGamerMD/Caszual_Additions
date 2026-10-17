@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -48,9 +49,19 @@ public final class StorageGolemReturnPath {
                 ||feetState.getBlock() instanceof StackOfPalletsBlock
                 ||headState.getBlock() instanceof StackOfPalletsBlock
                 ||below.getBlock() instanceof StackOfPalletsBlock)return false;
-        return feetState.getCollisionShape(level,feet).isEmpty()
-                &&headState.getCollisionShape(level,feet.above()).isEmpty()
-                &&!below.getCollisionShape(level,ground).isEmpty();
+        boolean clearBody=feetState.getCollisionShape(level,feet).isEmpty()
+                &&headState.getCollisionShape(level,feet.above()).isEmpty();
+        if(!clearBody)return false;
+        if(!below.getCollisionShape(level,ground).isEmpty())return true;
+        // A warehouse built over water can dispatch workers onto an
+        // open lake. Ocean surface water has NO block collision underneath,
+        // so the old floor-only predicate said "no route" despite the
+        // entire screenshot being an open water corridor. Model ONLY the
+        // topmost water block as a traversable swim lane, never underwater
+        // cave/riverbed routes. Keeping solid ground first preserves the
+        // usual flat walking preference.
+        return level.getFluidState(feet).is(FluidTags.WATER)
+                &&!level.getFluidState(feet.above()).is(FluidTags.WATER);
     }
 
     /**

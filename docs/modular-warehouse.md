@@ -148,6 +148,41 @@ controls for running the sorting queue and recalling workers. Those
 controls are **separate from Scanner interactions**, ensuring remote swaps
 can find all four docked workers without accidental manual dispatch.
 
+## Open-water remote pickup: Golems stuck while claiming to walk
+
+A remote swap can cross water next to a frozen shore. The original shared
+warehouse `walkable()` check required collision from a SOLID supporting
+block on every route node; an open water surface instead has an empty
+collision shape below the Golem, so the planner returned no traversable
+surface even when there was an uninterrupted clear passage. Workers would
+stand in place in the lake with a stale `WALKING EMPTY HANDED` label.
+
+Remote Golems and the fourth replacement courier now share a water-capable
+route model: **solid-floor paths stay preferred**, but the topmost WATER
+block below open air is a valid swimming lane (underwater blocks are not
+paths, and rack / magazine collision still wins). For real Golem entities,
+`routeFeet` resolves the current topmost water block when floating or
+partly submerged and the route uses bounded physical swimming velocity
+and buoyancy toward each checked cardinal waypoint; it does NOT teleport
+them, move the cargo or fake an extra support block. It keeps each worker's
+own mission UUID, player/warehouse link and navigation state.
+
+Waterline motion bobs up/down, so the waypoint and the three-worker
+rendezvous checks measure X/Z proximity with up to 1.4 blocks of permitted
+floating height variation. Once all three Golems physically reach the
+wrapped target's outer service aisle, they can still link for the actual
+pickup (216 cargo slots intact). The fourth courier also benefits from
+water-capable clearance checks and the same server-driven physical
+swimming control. In-water route stalls wait longer before rerouting so
+normal buoyant vertical motion isn't mistaken for getting stuck.
+
+This is not a general "walk on water" or teleport feature: movement
+applies actual physics, solid terrain is preferred, and obstacles can
+still make a task wait. Test in a backed-up world across open water, ice,
+a snowy shore, the solid 2x2 wrapped pallet destination, and a route
+with a corner around rack frames. In-game AI testing is still required
+after a successful Java build.
+
 ## Remote exchange: stuck courier and circling trio follow-up
 
 The outbound fourth Golem's pushed pallet occupies an actual **2x2**

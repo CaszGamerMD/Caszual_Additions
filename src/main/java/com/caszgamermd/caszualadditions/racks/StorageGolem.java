@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.core.Direction;
+import net.minecraft.tags.FluidTags;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -297,6 +298,12 @@ public final class StorageGolem extends PathfinderMob {
     public BlockPos remotePickupWarehouse(){return remotePickupWarehouse;}
     public BlockPos remotePickupRally(){return remotePickupRally;}
     public BlockPos[] remotePickupHomes(){return remotePickupHomes.clone();}
+    /** Physically reached the assigned rally cell, including waterline
+     * bobbing. The assembled rig must not wait forever for a fake exact-Y
+     * distance in the lake when all three robots are already at their slots. */
+    public boolean atRemotePickupGoal(ServerLevel level,BlockPos goal){
+        return routeDistanceSq(level,goal)<1.30;
+    }
     public UUID remotePickupOwner(){
         try{return UUID.fromString(haulOwner);}
         catch(IllegalArgumentException ex){return null;}
@@ -328,13 +335,14 @@ public final class StorageGolem extends PathfinderMob {
             routeIssue="WAITING FOR CLEAR THREE-GOLEM SERVICE AISLE";
             getNavigation().stop();return;
         }
-        if(distanceToSqr(goal.getX()+.5,goal.getY(),
-                goal.getZ()+.5)>1.30){
+        if(routeDistanceSq(level,goal)>1.30){
             walkTo(level,goal,1.05);
             // Preserve real route diagnostics (blocked chunks, no path)
             // instead of hiding every failure under a "walking" label.
             if(routeIssue.isBlank())
-                routeIssue="WALKING EMPTY HANDED TO REMOTE TARGET";
+                routeIssue=isSwimmingRoute(level)
+                        ?"SWIMMING EMPTY HANDED TO REMOTE TARGET"
+                        :"WALKING EMPTY HANDED TO REMOTE TARGET";
             return;
         }
         getNavigation().stop();
@@ -1441,17 +1449,72 @@ public final class StorageGolem extends PathfinderMob {
         positions.remove(blockPosition());
         return positions;
     }
+    /** The server Golem may have sunk part of a block below the top of
+     * the water. Route using the actual surface cell, not its submerged
+     * blockPosition (which is NOT a standable path node). Workers do not
+     * fly or teleport: buoyancy moves their body up to the same surface
+     * occupied by real vanilla swimming mobs. */
+    private BlockPos routeFeet(ServerLevel level){
+        BlockPos feet=blockPosition();
+        if(!isInWater()&&!level.getFluidState(feet).is(FluidTags.WATER)
+                &&!level.getFluidState(feet.below()).is(FluidTags.WATER))
+            return feet;
+        for(int dy=-1;dy<=9;dy++){
+            BlockPos candidate=feet.above(dy);
+            if(level.hasChunkAt(candidate)
+                    &&level.getFluidState(candidate).is(FluidTags.WATER)
+                    &&!level.getFluidState(candidate.above()).is(FluidTags.WATER))
+                return candidate;
+        }
+        return feet;
+    }
+    private boolean isSwimmingRoute(ServerLevel level){
+        return isInWater()
+                ||level.getFluidState(blockPosition()).is(FluidTags.WATER)
+                ||level.getFluidState(blockPosition().below()).is(FluidTags.WATER);
+    }
+    private double routeDistanceSq(ServerLevel level,BlockPos position){
+        double dx=position.getX()+.5-getX(),dz=position.getZ()+.5-getZ();
+        double y=position.getY()-getY();
+        // On water the Golem's body bobs around the surface block's upper
+        // face; requiring an exact Y coordinate makes it eternally chase a
+        // waypoint that it has already physically reached horizontally.
+        if(isSwimmingRoute(level)&&Math.abs(y)<1.4)y=0;
+        return dx*dx+dz*dz+y*y;
+    }
     private void steerOnFloor(BlockPos next,double speed){
-        // Vanilla navigation cuts diagonally across blocked rack corners
-        // and keeps trying a stalled endpoint. Instead drive towards the
-        // center of each checked, cardinally-adjacent floor cell. Path search
-        // decides every turn; no path to a solid workstation is ever issued.
+        // The ice/water warehouse needs a real swimming impulse. The
+        // regular PathfinderMob ground move control can rotate toward a
+        // cell in deep water while never producing horizontal progress.
+        // Keep same-Y checked routing, but apply a limited physical swim
+        // velocity while submerged; stop it immediately on dry land.
         if(!getNavigation().isDone())getNavigation().stop();
+        if(level() instanceof ServerLevel server&&isSwimmingRoute(server)){
+            double dx=next.getX()+.5-getX();
+            double dz=next.getZ()+.5-getZ();
+            double distance=Math.hypot(dx,dz);
+            net.minecraft.world.phys.Vec3 movement=getDeltaMovement();
+            BlockPos surface=routeFeet(server);
+            double depth=surface.getY()+.9-getY();
+            double rise=depth>.5?.065:depth>.05?.035:0;
+            if(distance>.05){
+                double thrust=Math.min(.075,speed*.065);
+                setDeltaMovement(movement.x*.78+dx/distance*thrust,
+                        Math.max(movement.y*.72,rise),
+                        movement.z*.78+dz/distance*thrust);
+            }else if(rise>0)
+                setDeltaMovement(movement.x*.7,Math.max(movement.y*.7,rise),
+                        movement.z*.7);
+            getMoveControl().setWantedPosition(next.getX()+.5,
+                    Math.max(next.getY()+.8,surface.getY()+.8),
+                    next.getZ()+.5,speed);
+            return;
+        }
         getMoveControl().setWantedPosition(next.getX()+.5,next.getY(),
                 next.getZ()+.5,speed);
     }
     private void walkTo(ServerLevel level,BlockPos target,double speed){
-        BlockPos feet=blockPosition();
+        BlockPos feet=routeFeet(level);
         if(!target.equals(workGoal)){
             workGoal=target.immutable();
             flatWorkRoute.clear();
@@ -1461,8 +1524,7 @@ public final class StorageGolem extends PathfinderMob {
             routeIssue="";
         }
         while(!flatWorkRoute.isEmpty()
-                &&distanceToSqr(flatWorkRoute.peekFirst().getX()+.5,
-                        target.getY(),flatWorkRoute.peekFirst().getZ()+.5)<.32){
+                &&routeDistanceSq(level,flatWorkRoute.peekFirst())<.50){
             flatWorkRoute.removeFirst();
             lastWorkDistance=Double.POSITIVE_INFINITY;
             lastWorkProgress=tickCount;
@@ -1491,11 +1553,11 @@ public final class StorageGolem extends PathfinderMob {
         }
         if(flatWorkRoute.isEmpty())return;
         BlockPos next=flatWorkRoute.peekFirst();
-        double distance=distanceToSqr(next.getX()+.5,next.getY(),next.getZ()+.5);
-        if(distance+.10<lastWorkDistance){
+        double distance=routeDistanceSq(level,next);
+        if(distance+.02<lastWorkDistance){
             lastWorkDistance=distance;
             lastWorkProgress=tickCount;
-        }else if(tickCount-lastWorkProgress>50){
+        }else if(tickCount-lastWorkProgress>(isSwimmingRoute(level)?100:70)){
             blockedWorkCell=next.immutable();
             avoidWorkUntil=tickCount+60;
             routeIssue="REROUTING";
@@ -1506,9 +1568,10 @@ public final class StorageGolem extends PathfinderMob {
             lastWorkDistance=Double.POSITIVE_INFINITY;
             return;
         }
-        if(next.getY()!=feet.getY()){
-            // The flat plan did not reach the actual destination; only then
-            // allow a checked one-block stair transition.
+        if(next.getY()!=feet.getY()&&!isSwimmingRoute(level)){
+            // Only allow checked stair transitions on ordinary solid
+            // floors. At water/shore boundaries buoyancy and horizontal
+            // steering do the work, not a ground navigator that circles.
             if(tickCount%8==0)getNavigation().moveTo(
                     next.getX()+.5,next.getY(),next.getZ()+.5,speed);
         }else steerOnFloor(next,speed);

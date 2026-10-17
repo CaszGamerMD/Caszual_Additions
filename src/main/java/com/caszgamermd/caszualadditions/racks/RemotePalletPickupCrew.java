@@ -129,8 +129,7 @@ public final class RemotePalletPickupCrew {
                     .filter(w->w.remotePickupIndex()==slot).findFirst().orElse(null);
             if(worker==null)return;
             BlockPos goal=individualGoal(aisle,leader.remotePickupTarget(),index);
-            if(worker.distanceToSqr(goal.getX()+.5,goal.getY(),
-                    goal.getZ()+.5)>1.65)return;
+            if(!worker.atRemotePickupGoal(level,goal))return;
         }
         if(StorageGroundPalletTransfer.wrappedController(level,
                 leader.remotePickupTarget())==null)return;
