@@ -458,7 +458,22 @@ public final class StorageGolem extends PathfinderMob {
             BlockPos cell=courierRoute.peekFirst();
             if(!(pushing?RemotePalletCourierRoute.clear(level,cell)
                     :StorageGolemReturnPath.walkable(level,cell))){
-                courierRoute.clear();nextCourierReplan=0;break;
+                // A pallet may have been placed beside the route after the
+                // courier planned it. Reject the ACTUAL blocked waypoint;
+                // retrying an identical route causes a Golem to spin into
+                // that pallet forever.
+                courierBlockedCell=cell.immutable();
+                courierAvoidUntil=tickCount+140;
+                courierRoute.clear();
+                nextCourierReplan=tickCount+10;
+                courierProgressDistance=Double.POSITIVE_INFINITY;
+                lastCourierProgress=tickCount;
+                courierStalls++;
+                routeIssue="REROUTING AROUND NEARBY PALLET / BLOCKED AISLE";
+                if(courierStalls>=3)
+                    pauseRemotePath("NEARBY PALLET BLOCKS COURIER ROUTE");
+                getNavigation().stop();
+                return false;
             }
             if(distanceToSqr(cell.getX()+.5,cell.getY(),cell.getZ()+.5)<.38){
                 courierRoute.removeFirst();
@@ -492,13 +507,8 @@ public final class StorageGolem extends PathfinderMob {
                 // An unreachable final destination is itself a blocked
                 // service side. Don't wait forever replaying partial routes
                 // against the same wall or spinning toward its corners.
-                if(pushing&&courierStalls>=3){
-                    courierRejectedAisleFromStall();
-                    routeIssue="REROUTING: PALLET SERVICE SIDE UNREACHABLE";
-                }else{
-                    routeIssue="WAITING FOR "+(pushing?"WIDE PALLET":"GOLEM")
-                            +" CORRIDOR; RETRYING";
-                }
+                routeIssue="WAITING FOR "+(pushing?"WIDE PALLET":"GOLEM")
+                        +" CORRIDOR; RETRYING";
                 getNavigation().stop();
                 return false;
             }
@@ -2352,9 +2362,20 @@ public final class StorageGolem extends PathfinderMob {
             if(resumeRemotePath())
                 player.sendSystemMessage(Component.literal(
                         "Scanner: Golem resumed dry-land pathfinding. "
-                        +"If water still blocks the route, it will pause again."));
+                        +"If the obstruction remains, it will pause again."));
+            else if(remoteCourier)
+                player.sendSystemMessage(Component.literal(
+                        "Scanner: courier is locked to pallet at "
+                        +remoteCourierTarget.toShortString()
+                        +" | Service aisle: "+remoteCourierAisle.toShortString()
+                        +" | Waypoint: "+(courierRoute.isEmpty()
+                                ?"NOT PLANNED":courierRoute.peekFirst().toShortString())
+                        +" | "+routeIssue));
             else player.sendSystemMessage(Component.literal(
-                    "Scanner: this remote Golem is not paused."));
+                    "Scanner: pickup worker's target "
+                    +remotePickupTarget.toShortString()
+                    +" | Rally: "+remotePickupRally.toShortString()
+                    +" | "+routeIssue));
             return InteractionResult.SUCCESS;
         }
         if(!player.isShiftKeyDown())return InteractionResult.PASS;
