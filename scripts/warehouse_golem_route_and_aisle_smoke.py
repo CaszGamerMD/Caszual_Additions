@@ -12,9 +12,9 @@ assert "int depth=worker<2 ? 2 : 3;" in r
 assert "accessibleRows(int clearDepth)" in r
 assert "depth<=4" not in r
 assert "StorageGolemReturnPath.stepsHome(" in g
-assert "StorageGolemReturnPath.steps(feet,target" in g
-assert "steerOnFloor(next,1.08)" in g
-assert "steerOnFloor(next,speed)" in g
+assert "WarehousePreferredPath.leg(feet,target," in g
+assert "followTerrainStep(next,1.08)" in g
+assert "steerOnFloor(next,speed)" in g\nassert "getJumpControl().jump();" in g
 assert "getMoveControl().setWantedPosition" in g
 assert "occupiedAisle(level,target)" in g
 assert "occupiedAisle(level,shelfPlane)" in g
