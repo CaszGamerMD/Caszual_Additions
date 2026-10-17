@@ -101,10 +101,11 @@ public final class StorageGroundPalletTransfer {
             if(!level.hasChunkAt(cells[i])
                     ||!level.getBlockState(cells[i]).canBeReplaced())return false;
         }
-        // Sanity check: carrier physically left the pickup area. Do not
-        // place a giant pallet directly through three loaded workers.
-        double x=carrier.getX()-(root.getX()+1),z=carrier.getZ()-(root.getZ()+1);
-        if(x*x+z*z<16)return false;
+        // Geometry checked in the carrier's original-orientation 2x2
+        // footprint (not root+1, which can point in the WRONG direction
+        // on rotated pallets). The coordinator only enables placement
+        // after the three-Golem entity has left the actual volume.
+        if(!carrier.remoteFootprintClear())return false;
         for(int i=0;i<4;i++){
             if(level.setBlock(cells[i],placed.setValue(PalletBlock.PART,i),3))continue;
             for(int j=i-1;j>=0;j--)level.removeBlock(cells[j],false);
