@@ -19,6 +19,10 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -146,6 +150,20 @@ public final class MovingPallet extends PathfinderMob {
     public boolean isDelivering(){return deliveryMode!=0;}
     public boolean returningToWarehouse(){return deliveryMode==3;}
     public boolean remoteExchangeActive(){return deliveryMode>=4&&deliveryMode<=6;}
+    public UUID remoteCourierId(){return remoteCourierId;}
+    public BlockPos[] remoteShelfHomes(){return shelves.clone();}
+    public boolean remoteReplacementAlreadyPlaced(){return remoteReplacementPlaced;}
+    public boolean remoteLoadedForReset(){
+        return (deliveryMode==5||deliveryMode==6)
+                &&!remoteReplacementPlaced&&loaded();
+    }
+    /** Emergency rollback is allowed only while the old, wrapped pallet
+     * and its exact 216 slots still belong to this one physical rig.
+     * Never overwrite an already installed replacement or another pallet. */
+    public boolean restoreRemoteOriginal(ServerLevel level){
+        if(!remoteLoadedForReset())return false;
+        return deliverToGround(level,deliveryPosition,remoteOldFacing,remoteOldLegacy);
+    }
     public boolean freshPalletOnly(){
         if(pallet.isEmpty())return false;
         for(ItemStack content:contents)if(!content.isEmpty())return false;
@@ -516,7 +534,7 @@ public final class MovingPallet extends PathfinderMob {
         if(!(pallet.getItem() instanceof BlockItem bi)
                 ||!(bi.getBlock() instanceof PalletBlock block))return false;
         BlockState state=block.defaultBlockState().setValue(PalletBlock.PART,0)
-                .setValue(PalletBlock.FACING,facing).setValue(PalletBlock.LEGACY,false);
+                .setValue(PalletBlock.FACING,facing).setValue(PalletBlock.LEGACY,legacy);
         for(int i=0;i<4;i++){
             BlockPos cell=PalletBlock.partPos(pos,i,state);
             if(level.isOutsideBuildHeight(cell)||!level.hasChunkAt(cell)
@@ -1031,6 +1049,10 @@ public final class MovingPallet extends PathfinderMob {
         return true;
     }
     public boolean deliverToGround(ServerLevel level,BlockPos pos,Direction facing){
+        return deliverToGround(level,pos,facing,false);
+    }
+    private boolean deliverToGround(ServerLevel level,BlockPos pos,Direction facing,
+            boolean legacy){
         if(!loaded()||!(pallet.getItem() instanceof BlockItem item)
                 ||!(item.getBlock() instanceof PalletBlock block))return false;
         BlockState root=block.defaultBlockState().setValue(PalletBlock.PART,0)
@@ -1288,6 +1310,18 @@ public final class MovingPallet extends PathfinderMob {
             if(!contentsItem.isEmpty())
                 Containers.dropItemStack(level,getX(),getY(),getZ(),contentsItem.copy());
         clearCargo();
+    }
+    /** Deliberate two-click scanner reset also works directly on the
+     * shared 3-Golem rig; its fourth worker is a separate mob. */
+    @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
+        if(!player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
+                ||!player.isShiftKeyDown())return InteractionResult.PASS;
+        if(level().isClientSide())return InteractionResult.SUCCESS;
+        if(player instanceof ServerPlayer user&&level() instanceof ServerLevel server){
+            user.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                    RemotePalletReset.request(server,user,getUUID())));
+        }
+        return InteractionResult.SUCCESS;
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource cause){
         if(level() instanceof ServerLevel level&&!deathDropsReleased){
