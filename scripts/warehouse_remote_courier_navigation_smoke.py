@@ -19,7 +19,7 @@ assert 'pauseRemotePath("COURIER STALLED AT BLOCKED AISLE")' in courier
 assert "remoteCourierRejectedAisle=remoteCourierAisle" in courier
 assert "courierRetargetCooldown=tickCount+60" in courier
 assert "if(tickCount-lastCourierProgress>75)" in courier
-assert "steerOnFloor(next,1.06)" in courier
+assert "followTerrainStep(next,1.06)" in courier
 assert 'out.store("remote_courier_join_aisle",BlockPos.CODEC,remoteCourierJoinAisle)' in courier
 assert 'in.read("remote_courier_join_aisle",BlockPos.CODEC)' in courier
 assert "WarehouseRemoteTickets.keep(level,goal)" in courier
