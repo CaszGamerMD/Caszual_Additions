@@ -152,6 +152,11 @@ public final class StorageGolem extends PathfinderMob {
     }
     private BlockPos home=BlockPos.ZERO, source=BlockPos.ZERO,destination=BlockPos.ZERO;
     private long observedRecallSerial;
+    private boolean remoteCourier;
+    private UUID remoteCarrierId;
+    private BlockPos remoteCourierTarget=BlockPos.ZERO,remoteCourierAisle=BlockPos.ZERO,remoteRigLastKnown=BlockPos.ZERO;
+    private ItemStack remoteFresh=ItemStack.EMPTY;
+    private int remoteCourierPhase;
     private ItemStack cargo=ItemStack.EMPTY;
     private String itemId="";
     // 0 source, 1 destination, 2 home, 3 return source,
@@ -222,6 +227,148 @@ public final class StorageGolem extends PathfinderMob {
             recallToShelf(server);
         }
     }
+    /** One independently pathfinding Golem pushes ONE unwrapped empty deck
+     * while the three-worker MovingPallet rig heads for the wrapped target.
+     * Both reference one UUID, never the player's current position. */
+    public boolean beginRemoteCourier(UUID rig,BlockPos target,ItemStack empty){
+        if(rig==null||target==null||!StackOfPalletsItem.isPallet(empty)
+                ||empty.getCount()!=1||remoteCourier)return false;
+        remoteCourier=true;
+        remoteCarrierId=rig;
+        remoteCourierTarget=target.immutable();
+        remoteCourierAisle=BlockPos.ZERO;
+        remoteRigLastKnown=blockPosition().immutable();
+        remoteFresh=com.caszgamermd.caszualadditions.pallet.GlassPalletWrap
+                .withWrap(empty.copyWithCount(1),false);
+        remoteCourierPhase=0;
+        stage=0;haulJob=false;playerHaul=false;
+        syncRemoteFreshVisual();
+        setCustomName(Component.literal("EMPTY PALLET | 1 GOLEM PUSHING"));
+        setCustomNameVisible(true);
+        return true;
+    }
+    public boolean remoteCourierActive(){return remoteCourier;}
+    /** If the three-worker cargo rig was destroyed, reclaim the actual
+     * fourth Golem as an independently walking shelf worker. Its original
+     * unwrapped replacement pallet is dropped once for player recovery. */
+    public void remoteCarrierDestroyed(ServerLevel level){
+        if(!remoteCourier)return;
+        if(!remoteFresh.isEmpty()){
+            Containers.dropItemStack(level,getX(),getY(),getZ(),remoteFresh);
+            remoteFresh=ItemStack.EMPTY;
+        }
+        remoteCourier=false;
+        remoteCarrierId=null;
+        entityData.set(DISPLAY_PALLET,ItemStack.EMPTY);
+        stage=2;
+        haulJob=false;playerHaul=false;
+        remoteCourierPhase=0;
+        routeIssue="CARRIER LOST; RETURNING TO SHELF";
+        getNavigation().stop();
+    }
+
+    private void syncRemoteFreshVisual(){
+        if(remoteCourier)entityData.set(DISPLAY_PALLET,remoteFresh.copy());
+    }
+    /** Flat-first single-worker path; never tries to squeeze the 2x2
+     * carrier through one-wide gaps or path into the old target blocks. */
+    private void tickRemoteCourier(ServerLevel level){
+        if(remoteCarrierId==null)return;
+        // The courier cannot rely on the pallet team being loaded to
+        // renew its own tickets. Both independent travellers need their own
+        // rolling simulation corridor, including a point ahead of travel.
+        if(tickCount%40==0){
+            WarehouseRemoteTickets.keep(level,blockPosition());
+            WarehouseRemoteTickets.keep(level,remoteCourierTarget);
+            if(!remoteRigLastKnown.equals(BlockPos.ZERO))
+                WarehouseRemoteTickets.keep(level,remoteRigLastKnown);
+            BlockPos goal=remoteCourierPhase==0?remoteCourierTarget:remoteCourierAisle;
+            double dx=goal.getX()+.5-getX(),dz=goal.getZ()+.5-getZ();
+            double length=Math.hypot(dx,dz);
+            if(length>8)WarehouseRemoteTickets.keep(level,new BlockPos(
+                    (int)Math.floor(getX()+dx/length*16),
+                    blockPosition().getY(),
+                    (int)Math.floor(getZ()+dz/length*16)));
+        }
+        var other=level.getEntity(remoteCarrierId);
+        if(!(other instanceof MovingPallet rig)){
+            routeIssue="WAITING FOR LOADED THREE-GOLEM TEAM TO RELOAD";
+            return;
+        }
+        remoteRigLastKnown=rig.blockPosition().immutable();
+        // Restart between fourth-worker handoff and courier discard: the
+        // recovered carrier already owns the worker identity. Don't run an
+        // orphaned fifth Golem or endlessly retry an already-committed join.
+        if(remoteCourierPhase==1&&remoteFresh.isEmpty()
+                &&rig.returningToWarehouse()){
+            remoteCourier=false;
+            discard();
+            return;
+        }
+        if(remoteCourierPhase==0){
+            if(remoteCourierAisle.equals(BlockPos.ZERO)
+                    ||!StorageGolemReturnPath.walkable(level,remoteCourierAisle)){
+                BlockPos closest=BlockPos.ZERO;
+                double dist=Double.POSITIVE_INFINITY;
+                for(Direction side:Direction.Plane.HORIZONTAL)
+                    for(int step=3;step<=5;step++){
+                        BlockPos candidate=remoteCourierTarget.relative(side,step);
+                        if(!StorageGolemReturnPath.walkable(level,candidate))continue;
+                        double score=candidate.distSqr(blockPosition());
+                        if(score<dist){closest=candidate;dist=score;}
+                    }
+                remoteCourierAisle=closest;
+            }
+            if(remoteCourierAisle.equals(BlockPos.ZERO)){
+                routeIssue="WAITING FOR SIDE ACCESS TO TARGET";return;
+            }
+            if(distanceToSqr(remoteCourierAisle.getX()+.5,
+                    remoteCourierAisle.getY(),remoteCourierAisle.getZ()+.5)>1.2){
+                walkTo(level,remoteCourierAisle,1.12);
+                routeIssue="PUSHING EMPTY PALLET TO TARGET";
+                return;
+            }
+            getNavigation().stop();
+            if(!rig.readyForCourierPlacement()){
+                routeIssue="WAITING FOR THREE GOLEMS TO MOVE TARGET ASIDE";
+                return;
+            }
+            if(StorageGroundPalletTransfer.placeRemoteReplacement(level,
+                    remoteCourierTarget,rig,this,remoteFresh)){
+                remoteFresh=ItemStack.EMPTY;
+                remoteCourierPhase=1;
+                remoteCourierAisle=BlockPos.ZERO;
+                syncRemoteFreshVisual();
+                routeIssue="EMPTY PALLET INSTALLED; JOINING CARRY PARTY";
+            }else routeIssue="WAITING FOR CLEAR 2x2 PLACEMENT FOOTPRINT";
+            return;
+        }
+        if(remoteCourierPhase==1){
+            // The carrier's CENTER is physically occupied by the loaded
+            // 1.85-wide platform. Join from its first clear side aisle, not
+            // a goal INSIDE the collision box (which caused 20s stalls).
+            if(distanceToSqr(rig)<7.84){
+                if(rig.joinRemoteCourier(getUUID())){
+                    remoteCourier=false;remoteFresh=ItemStack.EMPTY;
+                    entityData.set(DISPLAY_PALLET,ItemStack.EMPTY);
+                    discard(); // The rig already owns all FOUR shelf tokens.
+                }
+                return;
+            }
+            BlockPos join=BlockPos.ZERO;
+            double nearest=Double.POSITIVE_INFINITY;
+            for(Direction side:Direction.Plane.HORIZONTAL){
+                BlockPos candidate=rig.blockPosition().relative(side,2);
+                if(!StorageGolemReturnPath.walkable(level,candidate))continue;
+                double score=candidate.distSqr(blockPosition());
+                if(score<nearest){join=candidate;nearest=score;}
+            }
+            if(!join.equals(BlockPos.ZERO))walkTo(level,join,1.12);
+            else routeIssue="WAITING FOR CLEAR APPROACH TO LOADED TEAM";
+            routeIssue="REJOINING THREE-GOLEM LOADED CARRIER";
+        }
+    }
+
     public void assign(BlockPos home,BlockPos source,BlockPos dest,ItemStack sample){
         this.home=home.immutable();markCurrentRecall();
         this.source=source.immutable();
@@ -357,6 +504,7 @@ public final class StorageGolem extends PathfinderMob {
     public BlockPos workTarget(){return destination;}
     public String assignedOwner(){return playerHaul?haulOwner:"";}
     public String currentWork(){
+        if(remoteCourier)return remoteCourierPhase==0?"PUSHING UNWRAPPED EMPTY PALLET":"JOINING LOADED THREE-GOLEM TEAM";
         if(palletStackJob)return stage==0?"COLLECTING EMPTY PALLET":stage==1?"STACKING EMPTY PALLET":"RETURNING TO SHELF";
         if(playerHaul)return switch(stage){
             case 0->"LIFTING WRAPPED PALLET";
@@ -397,6 +545,13 @@ public final class StorageGolem extends PathfinderMob {
     /** Every independently walking robot advertises its actual task.
      * The PALLET prefix is preserved for the existing pallet renderer. */
     private void updateTaskLabel(){
+        if(remoteCourier){
+            setCustomName(Component.literal("EMPTY PALLET COURIER | "+
+                    (remoteCourierPhase==0?"PUSHING":"JOINING")+ 
+                    (routeIssue.isBlank()?"":" | "+routeIssue)));
+            setCustomNameVisible(true);
+            return;
+        }
         String label;
         if(playerHaul&&stage!=2){
             label="PALLET "+(haulIndex+1)+"/4 | "
@@ -454,7 +609,7 @@ public final class StorageGolem extends PathfinderMob {
      * active sorting and order runners. Live cargo remains on its worker
      * until normal shelf-return recovery, never teleports to inventory. */
     public boolean recallToShelf(ServerLevel level){
-        if(stage==2||holdsPallet())return false;
+        if(remoteCourier||stage==2||holdsPallet())return false;
         if(playerHaul)cancelPendingPickup(level);
         if(haulJob&&!playerHaul)cancelHaul(level);
         if(outputJob)releaseOutput(level);
@@ -1302,9 +1457,10 @@ public final class StorageGolem extends PathfinderMob {
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel level))return;
-        checkPendingRecall(level);
+        if(!remoteCourier)checkPendingRecall(level);
         if(tickCount%10==0)updateTaskLabel();
         syncHeldVisual();
+        if(remoteCourier){tickRemoteCourier(level);return;}
         // Movement controls expire after each mob AI tick. Drive the next
         // checked aisle cell EVERY server tick; previously the one-shot
         // commands were sent only once per ten ticks, causing stop/go
@@ -1627,6 +1783,13 @@ public final class StorageGolem extends PathfinderMob {
         out.putBoolean("haul_job",haulJob);
         out.putInt("haul_ticket",haulTicket);
         out.putInt("haul_worker_index",haulIndex);
+        out.putBoolean("remote_courier",remoteCourier);
+        out.putInt("remote_courier_phase",remoteCourierPhase);
+        if(remoteCarrierId!=null)out.putString("remote_courier_rig",remoteCarrierId.toString());
+        out.store("remote_courier_target",BlockPos.CODEC,remoteCourierTarget);
+        out.store("remote_courier_aisle",BlockPos.CODEC,remoteCourierAisle);
+        out.store("remote_rig_last_known",BlockPos.CODEC,remoteRigLastKnown);
+        if(!remoteFresh.isEmpty())out.store("remote_empty_pallet",ItemStack.CODEC,remoteFresh);
         out.putBoolean("player_haul",playerHaul);
         out.putBoolean("ground_pickup",groundPickup);
         out.putBoolean("rack_pickup",rackPickup);
@@ -1662,6 +1825,14 @@ public final class StorageGolem extends PathfinderMob {
         haulJob=in.getBooleanOr("haul_job",false);
         haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
         haulIndex=Math.clamp(in.getIntOr("haul_worker_index",0),0,3);
+        remoteCourier=in.getBooleanOr("remote_courier",false);
+        remoteCourierPhase=Math.clamp(in.getIntOr("remote_courier_phase",0),0,1);
+        remoteCourierTarget=in.read("remote_courier_target",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        remoteCourierAisle=in.read("remote_courier_aisle",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        remoteRigLastKnown=in.read("remote_rig_last_known",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        remoteFresh=in.read("remote_empty_pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        try{remoteCarrierId=UUID.fromString(in.getStringOr("remote_courier_rig",""));}
+        catch(IllegalArgumentException ex){remoteCarrierId=null;}
         playerHaul=in.getBooleanOr("player_haul",false);
         groundPickup=in.getBooleanOr("ground_pickup",false);
         rackPickup=in.getBooleanOr("rack_pickup",false);
@@ -1672,6 +1843,7 @@ public final class StorageGolem extends PathfinderMob {
         ContainerHelper.loadAllItems(in,palletContents);
         syncPalletVisual();
         syncHeldVisual();
+        syncRemoteFreshVisual();
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel server &&!deathDropsReleased){
@@ -1679,6 +1851,10 @@ public final class StorageGolem extends PathfinderMob {
             releaseOutput(server);
             cancelHaul(server);
             dropCarriedPallet(server);
+            if(remoteCourier&&!remoteFresh.isEmpty()){
+                Containers.dropItemStack(server,getX(),getY(),getZ(),remoteFresh);
+                remoteFresh=ItemStack.EMPTY;
+            }
             dropOrderCargo(server);
             if(!cargo.isEmpty()){
                 Containers.dropItemStack(server,getX(),getY(),getZ(),cargo);
@@ -1688,7 +1864,9 @@ public final class StorageGolem extends PathfinderMob {
                 Containers.dropItemStack(server,getX(),getY(),getZ(),emptyBox);
                 emptyBox=ItemStack.EMPTY;
             }
-            Containers.dropItemStack(server,getX(),getY(),getZ(),
+            // A remote courier is already one of the four shelf tokens
+            // owned by the moving rig. Never drop a fifth worker.
+            if(!remoteCourier)Containers.dropItemStack(server,getX(),getY(),getZ(),
                     new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
         }
         super.die(source);
@@ -1696,6 +1874,10 @@ public final class StorageGolem extends PathfinderMob {
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(level().isClientSide())return InteractionResult.SUCCESS;
         if(!player.isShiftKeyDown())return InteractionResult.PASS;
+        if(remoteCourier){
+            player.sendSystemMessage(Component.literal("Remote courier is finishing its assigned pallet exchange."));
+            return InteractionResult.SUCCESS;
+        }
         if(level() instanceof ServerLevel server){
             releaseOutput(server);
             cancelHaul(server);

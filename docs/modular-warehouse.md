@@ -4,6 +4,37 @@ Target: Minecraft Java **26.2 Fabric**. This document covers the current
 implementation on the main branch. For a step-by-step end-to-end regression
 of each system, see [Warehouse integrated test plan](warehouse-test-plan.md).
 
+## Two-party remote pallet swap
+
+A remote Scanner swap now has **two real travelling bodies**, not one four-worker
+entity carrying the replacement pallet. The replacement needs no stretch-wrap:
+the warehouse withdraws an EMPTY pallet, removes the wrap if present, and
+assigns the pallet's sole ItemStack to **one Storage Golem courier**. Its deck
+is rendered upright on its side, pushed ahead of the worker.
+
+The **other three Golems** travel as a single shared moving carrier without
+replacement cargo. They approach the existing glass-wrapped freestanding pallet,
+lift the target with its full saved 216-slot inventory, then move just far enough away (a safe aisle around five to seven
+blocks from the original root) to clear the footprint before stopping. The courier
+waits for a positive clearance signal, places its empty, unwrapped 2×2 pallet
+into the exact original footprint/orientation, and then walks to the loaded
+three-Golem carrier. Only when physically nearby does the courier join the
+rig's fourth corner; all four return together, keeping the recovered inventory
+until a real warehouse INPUT PTP or vacant rack accepts it.
+
+The phases, target, courier UUID, original pallet orientation, fourth-worker
+rendezvous and recovered contents are persisted. Failure to find an aisle,
+empty placement obstruction, temporary chunk unload or a blocked worker route
+keeps the task in a **WAIT / RETRY** state rather than forgetting the goal or
+teleporting 216 items. Courier and carrier each renew their own expiring
+chunk corridor tickets. This remote choreography is distinct from the
+separate *manual* four-Golem pickup workflow.
+
+**World QA required:** back up the world, use a long run and a constrained
+aisle, reload midway through each phase, and verify that the target, empty
+replacement, 216-slot cargo, and four docked shelf worker tokens remain
+single-owned from start to finish.
+
 ## Placeable Stack of Pallets and persistent Golem routes
 
 - **Stack of Pallets occupies an actual 2×2 footprint:** placement requires

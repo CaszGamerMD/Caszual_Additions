@@ -6,6 +6,7 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 /** One render state shared by four corner golem models and their pallet. */
 public final class MovingPalletRenderState extends LivingEntityRenderState {
     public int cargo;
+    public int crewSize=4;
     public boolean visible;
     public float liftProgress;
     public float releaseProgress;

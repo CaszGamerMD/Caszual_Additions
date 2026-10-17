@@ -49,16 +49,21 @@ assert 'sourceRack.setItem(sourceSlot,previous);\n                return "WAITIN
 assert "if(!removed.isEmpty()&&!sourcePtp.installPallet(removed))" in dispatch
 assert "drop.getX()+.5,drop.getY()+.5,drop.getZ()+.5,removed" in dispatch
 assert "if(consumed==4&&level.addFreshEntity(carrier))" in dispatch
+assert "level.addFreshEntity(courier)" in dispatch
+assert "carrier.splitRemoteCourier(courier)" in dispatch
 assert "for(int i=0;i<consumed;i++)shelves.get(i).add();" in dispatch
-assert "exchange(ServerLevel level,BlockPos root,MovingPallet carrier)" in swap
+assert "liftForRemoteExchange(ServerLevel level,BlockPos root," in swap
+assert "placeRemoteReplacement(ServerLevel level,BlockPos root," in swap
 assert "NonNullList.withSize(216,ItemStack.EMPTY)" in swap
 assert "PalletCargoCollisionBlock.clear(level,root,previous)" in swap
-assert "carrier.acceptRecoveredPallet(oldDeck,stock)" in swap
-assert "PalletCargoCollisionBlock.refresh(level,root)" in swap
+assert "carrier.acceptRemoteLift(root,previous,oldDeck,stock)" in swap
+assert "carrier.confirmCourierPlacement(courier.getUUID())" in swap
+assert "installed.initialize(root,0,fresh)" in swap
 assert "deliveryMode=3;" in rig and "deliveryMode=4;" in rig
 assert "returnToWarehouse(ServerLevel level,BlockPos computer)" in rig
 assert "navigateRemoteFloor(ServerLevel level,BlockPos target)" in rig
-assert "StorageGroundPalletTransfer.exchange(level,target,this)" in rig
+assert "StorageGroundPalletTransfer.liftForRemoteExchange(level,target,this)" in rig
+assert "deliveryMode=5;" in rig and "deliveryMode=6;" in rig
 assert "out.store(\"remote_warehouse\",BlockPos.CODEC,remoteWarehouse)" in rig
 assert 'in.read("remote_warehouse",BlockPos.CODEC)' in rig
 assert "for(PtpBlockEntity candidate:warehouse.points())" in rig

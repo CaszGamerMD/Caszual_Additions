@@ -42,78 +42,75 @@ public final class StorageGroundPalletTransfer {
         return pallet;
     }
     /**
-     * Remote swap: the moving crew owns one fresh, EMPTY pallet. Capture the
-     * wrapped original + all 216 stacks, put the fresh pallet in its exact
-     * four-block footprint, then exchange the crew's cargo identity. A failed
-     * placement restores the old pallet and inventory, never creating a
-     * duplicate or dropping either payload.
+     * Phase 1: three Golems take the wrapped TARGET pallet into the ONE
+     * MovingPallet entity. The old 216 slots never visit an inventory,
+     * the ground is cleared, and the empty-pallet courier keeps ownership
+     * of its own unwrapped item until the footprint is vacant.
      */
-    public static boolean exchange(ServerLevel level,BlockPos root,MovingPallet carrier){
+    public static boolean liftForRemoteExchange(ServerLevel level,BlockPos root,
+            MovingPallet carrier){
         PalletBlockEntity source=wrappedController(level,root);
         if(source==null||!source.getBlockPos().equals(root)
-                ||!carrier.freshPalletOnly()||!carrier.remoteExchangeActive())
-            return false;
-        ItemStack fresh=carrier.displayPallet();
-        if(!(fresh.getItem() instanceof net.minecraft.world.item.BlockItem blockItem)
-                ||!(blockItem.getBlock() instanceof PalletBlock newBlock))
-            return false;
+                ||!carrier.acceptsRemoteLift(root))return false;
         BlockState previous=level.getBlockState(root);
         ItemStack oldDeck=source.createDropStack();
         NonNullList<ItemStack> stock=NonNullList.withSize(216,ItemStack.EMPTY);
         for(int i=0;i<216;i++)stock.set(i,source.getItem(i).copy());
-        BlockState[] oldStates=new BlockState[4];
-        for(int i=0;i<4;i++){
-            BlockPos position=PalletBlock.partPos(root,i,previous);
-            if(!level.hasChunkAt(position))return false;
-            oldStates[i]=level.getBlockState(position);
-        }
-        BlockState replacement=newBlock.defaultBlockState()
-                .setValue(PalletBlock.PART,0)
-                .setValue(PalletBlock.FACING,previous.getValue(PalletBlock.FACING))
-                .setValue(PalletBlock.LEGACY,previous.getValue(PalletBlock.LEGACY));
-        // Old cargo belongs to the transaction until commit. Clear the
-        // existing inventory before changing its root block entity.
+        if(!carrier.acceptRemoteLift(root,previous,oldDeck,stock))return false;
+        // The client sees only the existing 3-Golem loaded entity once the
+        // ground cargo has been cleared, not duplicate physical inventory.
         source.clearContent();
         PalletCargoCollisionBlock.clear(level,root,previous);
-        boolean success=true;
-        for(int i=0;i<4;i++){
-            BlockPos position=PalletBlock.partPos(root,i,previous);
-            if(!level.setBlock(position,replacement.setValue(PalletBlock.PART,i),3)){
-                success=false;break;
-            }
-        }
-        PalletBlockEntity placed=level.getBlockEntity(root)
-                instanceof PalletBlockEntity p?p:null;
-        if(placed==null)success=false;
-        if(success){
-            placed.initialize(root,0,fresh);
-            success=placed.isEmpty();
-        }
-        if(success&&carrier.acceptRecoveredPallet(oldDeck,stock))return true;
+        for(int i=1;i<4;i++)
+            level.removeBlock(PalletBlock.partPos(root,i,previous),false);
+        level.removeBlock(root,false);
+        return true;
+    }
 
-        // Rebuild the original exactly if even one part of the empty
-        // replacement failed. Ownership has not transferred to the rig.
+    /**
+     * Phase 2: the courier deposits its real empty ItemStack only AFTER the
+     * three loaded Golems are visibly clear of the entire old 2x2 footprint.
+     * A temporary obstruction leaves the empty item in the courier's
+     * persisted cargo; no replacement or original pallet is lost.
+     */
+    public static boolean placeRemoteReplacement(ServerLevel level,BlockPos root,
+            MovingPallet carrier,StorageGolem courier,ItemStack fresh){
+        if(!carrier.readyForCourierPlacement()
+                ||!courier.remoteCourierActive()||fresh.isEmpty()
+                ||!(fresh.getItem() instanceof net.minecraft.world.item.BlockItem item)
+                ||!(item.getBlock() instanceof PalletBlock block))return false;
+        BlockState placed=block.defaultBlockState()
+                .setValue(PalletBlock.PART,0)
+                .setValue(PalletBlock.FACING,carrier.remoteOldFacing())
+                .setValue(PalletBlock.LEGACY,carrier.remoteOldLegacy());
+        // Never overwrite the target or whatever is now occupying its cells.
+        BlockPos[] cells=new BlockPos[4];
         for(int i=0;i<4;i++){
-            BlockPos part=PalletBlock.partPos(root,i,previous);
-            level.setBlock(part,oldStates[i],3);
+            cells[i]=PalletBlock.partPos(root,i,placed);
+            if(!level.hasChunkAt(cells[i])
+                    ||!level.getBlockState(cells[i]).canBeReplaced())return false;
         }
-        PalletBlockEntity restored=level.getBlockEntity(root)
+        // Sanity check: carrier physically left the pickup area. Do not
+        // place a giant pallet directly through three loaded workers.
+        double x=carrier.getX()-(root.getX()+1),z=carrier.getZ()-(root.getZ()+1);
+        if(x*x+z*z<16)return false;
+        for(int i=0;i<4;i++){
+            if(level.setBlock(cells[i],placed.setValue(PalletBlock.PART,i),3))continue;
+            for(int j=i-1;j>=0;j--)level.removeBlock(cells[j],false);
+            return false;
+        }
+        PalletBlockEntity installed=level.getBlockEntity(root)
                 instanceof PalletBlockEntity p?p:null;
-        if(restored!=null){
-            restored.initialize(root,0,oldDeck);
-            for(int i=0;i<216;i++)
-                if(!stock.get(i).isEmpty())restored.setItem(i,stock.get(i).copy());
-            PalletCargoCollisionBlock.refresh(level,root);
-        }else{
-            // A severely damaged world can refuse the old block as well.
-            // Never delete cargo: release recoverable drops at this site.
-            net.minecraft.world.Containers.dropItemStack(level,root.getX()+.5,
-                    root.getY()+.5,root.getZ()+.5,oldDeck);
-            for(ItemStack stack:stock)if(!stack.isEmpty())
-                net.minecraft.world.Containers.dropItemStack(level,root.getX()+.5,
-                        root.getY()+.5,root.getZ()+.5,stack);
+        if(installed==null){
+            for(BlockPos pos:cells)level.removeBlock(pos,false);
+            return false;
         }
-        return false;
+        installed.initialize(root,0,fresh);
+        if(!carrier.confirmCourierPlacement(courier.getUUID())){
+            for(BlockPos pos:cells)level.removeBlock(pos,false);
+            return false;
+        }
+        return true;
     }
 
     public static boolean lift(ServerLevel level,BlockPos root,StorageGolem leader){

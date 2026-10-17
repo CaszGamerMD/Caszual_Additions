@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 public final class StorageGolemRenderState extends LivingEntityRenderState {
     public boolean carryingPallet;
     public boolean showSharedPallet;
+    public boolean pushingEmptyPallet;
     public int visibleCargo;
     public int heldSlots;
     public final BlockModelRenderState[] held=new BlockModelRenderState[9];
@@ -15,6 +16,7 @@ public final class StorageGolemRenderState extends LivingEntityRenderState {
         for(int i=0;i<held.length;i++)held[i]=new BlockModelRenderState();
     }
     public final BlockModelRenderState palletDeck=new BlockModelRenderState();
+    public final BlockModelRenderState[] courierBoards={new BlockModelRenderState(),new BlockModelRenderState(),new BlockModelRenderState(),new BlockModelRenderState()};
     public final BlockModelRenderState palletSupport=new BlockModelRenderState();
     public final BlockModelRenderState crate=new BlockModelRenderState();
     public final BlockModelRenderState glass=new BlockModelRenderState();
