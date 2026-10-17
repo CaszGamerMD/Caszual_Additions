@@ -516,10 +516,38 @@ public final class MovingPallet extends PathfinderMob {
         }
         return choice;
     }
-    private void tickRemoteExchange(ServerLevel level){
-        if(remoteCourierId==null){
-            deliveryFailure="WAITING FOR PALLET COURIER ASSIGNMENT";return;
+    /** Upgrade live saved four-person remote jobs from the previous JAR.
+     * They still own one fresh empty pallet, so the fourth real courier can
+     * be split off without requesting or consuming warehouse stock again. */
+    private boolean ensureRemoteCourier(ServerLevel level){
+        if(remoteCourierId!=null)return true;
+        if(!freshPalletOnly()){
+            deliveryFailure="WAITING: LOST REMOTE COURIER REFERENCE";
+            return false;
         }
+        UUID id;
+        try{id=UUID.fromString(owner);}
+        catch(IllegalArgumentException ex){return false;}
+        StorageGolem courier=RackContent.STORAGE_GOLEM_TYPE.create(level,
+                EntitySpawnReason.EVENT);
+        if(courier==null)return false;
+        courier.assignPlayerCrew(shelves[3],3,id);
+        courier.setPos(getX()+1.4,getY(),getZ()+.3);
+        ItemStack saved=pallet.copy();
+        if(!splitRemoteCourier(courier))return false;
+        if(level.addFreshEntity(courier))return true;
+        // Failed spawn: remain an intact old-style assigned carrier. Never
+        // lose or duplicate the empty replacement on a failed migration.
+        remoteCourierId=null;
+        pallet=saved;
+        syncDisplay();
+        entityData.set(CREW_SIZE,4);
+        deliveryFailure="WAITING: RETRY COURIER SPAWN";
+        return false;
+    }
+
+    private void tickRemoteExchange(ServerLevel level){
+        if(!ensureRemoteCourier(level))return;
         BlockPos target=deliveryPosition;
         if(StorageGroundPalletTransfer.wrappedController(level,target)==null){
             deliveryFailure="WAITING FOR WRAPPED TARGET PALLET";return;
