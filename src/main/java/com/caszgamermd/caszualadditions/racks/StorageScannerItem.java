@@ -91,6 +91,24 @@ public final class StorageScannerItem extends Item {
         tag.remove("remote_pickup_z");
         scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
     }
+    /** Removing an old queued retry is part of a committed remote reset:
+     * otherwise a second scanner might silently redispatch the same pallet
+     * as soon as the original was returned to its floor footprint. */
+    public static void cancelQueuedForTarget(ServerPlayer player,BlockPos target){
+        var inventory=player.getInventory();
+        for(int i=0;i<inventory.getContainerSize();i++){
+            ItemStack item=inventory.getItem(i);
+            if(!item.is(RackContent.STORAGE_SCANNER_ITEM))continue;
+            CustomData data=item.get(DataComponents.CUSTOM_DATA);
+            if(data==null)continue;
+            CompoundTag tag=data.copyTag();
+            if(tag.getBooleanOr("remote_pickup_pending",false)
+                    &&tag.getIntOr("remote_pickup_x",Integer.MIN_VALUE)==target.getX()
+                    &&tag.getIntOr("remote_pickup_y",Integer.MIN_VALUE)==target.getY()
+                    &&tag.getIntOr("remote_pickup_z",Integer.MIN_VALUE)==target.getZ())
+                clearPickup(item);
+        }
+    }
     private static String pendingPickup(ItemStack scanner,ServerLevel world,
             ServerPlayer player){
         CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
