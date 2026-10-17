@@ -154,6 +154,14 @@ public final class StorageGolem extends PathfinderMob {
     private long observedRecallSerial;
     private boolean remoteCourier;
     private UUID remoteCarrierId;
+    // Before pickup, each of the THREE Golems is a real, separately
+    // navigating and saved mob. They have no shared carrier or pallet.
+    private boolean remotePickup;
+    private UUID remotePickupMission,remotePickupCourier;
+    private BlockPos remotePickupTarget=BlockPos.ZERO;
+    private BlockPos remotePickupWarehouse=BlockPos.ZERO,remotePickupRally=BlockPos.ZERO;
+    private final BlockPos[] remotePickupHomes={
+            BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO};
     private BlockPos remoteCourierTarget=BlockPos.ZERO,remoteCourierAisle=BlockPos.ZERO,remoteRigLastKnown=BlockPos.ZERO;
     private ItemStack remoteFresh=ItemStack.EMPTY;
     private int remoteCourierPhase;
@@ -251,6 +259,74 @@ public final class StorageGolem extends PathfinderMob {
         return true;
     }
     public boolean remoteCourierActive(){return remoteCourier;}
+
+    public void beginRemotePickup(UUID mission,UUID courier,BlockPos target,
+            BlockPos warehouse,BlockPos rally,BlockPos[] fourHomes){
+        if(mission==null||courier==null||fourHomes.length!=4)
+            throw new IllegalArgumentException("Remote pickup needs 4 shelf identities");
+        remotePickup=true;
+        remotePickupMission=mission;
+        remotePickupCourier=courier;
+        remotePickupTarget=target.immutable();
+        remotePickupWarehouse=warehouse.immutable();
+        remotePickupRally=rally.immutable();
+        for(int i=0;i<4;i++)remotePickupHomes[i]=fourHomes[i].immutable();
+        stage=0;waitTicks=0;
+        markCurrentRecall();
+        setCustomName(Component.literal("REMOTE PICKUP "+(haulIndex+1)
+                +"/3 | EMPTY HANDED"));
+        setCustomNameVisible(true);
+    }
+    public boolean remotePickupActive(){return remotePickup;}
+    public int remotePickupIndex(){return haulIndex;}
+    public UUID remotePickupMission(){return remotePickupMission;}
+    public UUID remotePickupCourier(){return remotePickupCourier;}
+    public BlockPos remotePickupTarget(){return remotePickupTarget;}
+    public BlockPos remotePickupWarehouse(){return remotePickupWarehouse;}
+    public BlockPos remotePickupRally(){return remotePickupRally;}
+    public BlockPos[] remotePickupHomes(){return remotePickupHomes.clone();}
+    public UUID remotePickupOwner(){
+        try{return UUID.fromString(haulOwner);}
+        catch(IllegalArgumentException ex){return null;}
+    }
+    private void tickRemotePickup(ServerLevel level){
+        if(remotePickupMission==null)return;
+        if(tickCount%40==0){
+            WarehouseRemoteTickets.keep(level,blockPosition());
+            WarehouseRemoteTickets.keep(level,remotePickupTarget);
+            WarehouseRemoteTickets.keep(level,remotePickupRally);
+            double dx=remotePickupRally.getX()+.5-getX();
+            double dz=remotePickupRally.getZ()+.5-getZ();
+            double length=Math.hypot(dx,dz);
+            if(length>8)WarehouseRemoteTickets.keep(level,new BlockPos(
+                    (int)Math.floor(getX()+dx/length*16),
+                    blockPosition().getY(),
+                    (int)Math.floor(getZ()+dz/length*16)));
+        }
+        // No rigid carrier exists on the outbound journey. Each mob has
+        // its own saved target, waypoint, AI, walking animation, and route.
+        if(!level.hasChunkAt(remotePickupTarget)
+                ||StorageGroundPalletTransfer.wrappedController(
+                        level,remotePickupTarget)==null){
+            routeIssue="WAITING FOR WRAPPED TARGET PALLET";return;
+        }
+        BlockPos goal=RemotePalletPickupCrew.individualGoal(
+                remotePickupRally,haulIndex);
+        if(!StorageGolemReturnPath.walkable(level,goal)){
+            routeIssue="WAITING FOR CLEAR THREE-GOLEM SERVICE AISLE";
+            getNavigation().stop();return;
+        }
+        if(distanceToSqr(goal.getX()+.5,goal.getY(),
+                goal.getZ()+.5)>1.65){
+            walkTo(level,goal,1.12);
+            routeIssue="WALKING EMPTY HANDED TO REMOTE TARGET";
+            return;
+        }
+        getNavigation().stop();
+        routeIssue="WAITING FOR OTHER EMPTY-HANDED GOLEMS";
+        if(haulIndex==0)RemotePalletPickupCrew.tryLift(level,this);
+    }
+
     /** If the three-worker cargo rig was destroyed, reclaim the actual
      * fourth Golem as an independently walking shelf worker. Its original
      * unwrapped replacement pallet is dropped once for player recovery. */
@@ -512,6 +588,7 @@ public final class StorageGolem extends PathfinderMob {
     public BlockPos workTarget(){return destination;}
     public String assignedOwner(){return playerHaul?haulOwner:"";}
     public String currentWork(){
+        if(remotePickup)return "WALKING EMPTY HANDED TO WRAPPED REMOTE PALLET";
         if(remoteCourier)return remoteCourierPhase==0?"PUSHING UNWRAPPED EMPTY PALLET":"JOINING LOADED THREE-GOLEM TEAM";
         if(palletStackJob)return stage==0?"COLLECTING EMPTY PALLET":stage==1?"STACKING EMPTY PALLET":"RETURNING TO SHELF";
         if(playerHaul)return switch(stage){
@@ -553,6 +630,13 @@ public final class StorageGolem extends PathfinderMob {
     /** Every independently walking robot advertises its actual task.
      * The PALLET prefix is preserved for the existing pallet renderer. */
     private void updateTaskLabel(){
+        if(remotePickup){
+            setCustomName(Component.literal("REMOTE PICKUP "+(haulIndex+1)
+                    +"/3 | EMPTY HANDED"
+                    +(routeIssue.isBlank()?"":" | "+routeIssue)));
+            setCustomNameVisible(true);
+            return;
+        }
         if(remoteCourier){
             setCustomName(Component.literal("EMPTY PALLET COURIER | "+
                     (remoteCourierPhase==0?"PUSHING":"JOINING")+ 
@@ -1497,9 +1581,10 @@ public final class StorageGolem extends PathfinderMob {
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel level))return;
-        if(!remoteCourier)checkPendingRecall(level);
+        if(!remoteCourier&&!remotePickup)checkPendingRecall(level);
         if(tickCount%10==0)updateTaskLabel();
         syncHeldVisual();
+        if(remotePickup){tickRemotePickup(level);return;}
         if(remoteCourier){tickRemoteCourier(level);return;}
         // Movement controls expire after each mob AI tick. Drive the next
         // checked aisle cell EVERY server tick; previously the one-shot
@@ -1823,6 +1908,16 @@ public final class StorageGolem extends PathfinderMob {
         out.putBoolean("haul_job",haulJob);
         out.putInt("haul_ticket",haulTicket);
         out.putInt("haul_worker_index",haulIndex);
+        out.putBoolean("remote_pickup_worker",remotePickup);
+        if(remotePickupMission!=null)out.putString(
+                "remote_pickup_mission",remotePickupMission.toString());
+        if(remotePickupCourier!=null)out.putString(
+                "remote_pickup_courier",remotePickupCourier.toString());
+        out.store("remote_pickup_target",BlockPos.CODEC,remotePickupTarget);
+        out.store("remote_pickup_warehouse",BlockPos.CODEC,remotePickupWarehouse);
+        out.store("remote_pickup_rally",BlockPos.CODEC,remotePickupRally);
+        for(int i=0;i<4;i++)out.store(
+                "remote_pickup_shelf_"+i,BlockPos.CODEC,remotePickupHomes[i]);
         out.putBoolean("remote_courier",remoteCourier);
         out.putInt("remote_courier_phase",remoteCourierPhase);
         if(remoteCarrierId!=null)out.putString("remote_courier_rig",remoteCarrierId.toString());
@@ -1866,6 +1961,19 @@ public final class StorageGolem extends PathfinderMob {
         haulJob=in.getBooleanOr("haul_job",false);
         haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
         haulIndex=Math.clamp(in.getIntOr("haul_worker_index",0),0,3);
+        remotePickup=in.getBooleanOr("remote_pickup_worker",false);
+        try{remotePickupMission=UUID.fromString(in.getStringOr("remote_pickup_mission",""));}
+        catch(IllegalArgumentException ex){remotePickupMission=null;}
+        try{remotePickupCourier=UUID.fromString(in.getStringOr("remote_pickup_courier",""));}
+        catch(IllegalArgumentException ex){remotePickupCourier=null;}
+        remotePickupTarget=in.read("remote_pickup_target",BlockPos.CODEC)
+                .orElse(BlockPos.ZERO);
+        remotePickupWarehouse=in.read("remote_pickup_warehouse",BlockPos.CODEC)
+                .orElse(BlockPos.ZERO);
+        remotePickupRally=in.read("remote_pickup_rally",BlockPos.CODEC)
+                .orElse(BlockPos.ZERO);
+        for(int i=0;i<4;i++)remotePickupHomes[i]=in.read(
+                "remote_pickup_shelf_"+i,BlockPos.CODEC).orElse(BlockPos.ZERO);
         remoteCourier=in.getBooleanOr("remote_courier",false);
         remoteCourierPhase=Math.clamp(in.getIntOr("remote_courier_phase",0),0,1);
         remoteCourierTarget=in.read("remote_courier_target",BlockPos.CODEC).orElse(BlockPos.ZERO);
@@ -1918,8 +2026,9 @@ public final class StorageGolem extends PathfinderMob {
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(level().isClientSide())return InteractionResult.SUCCESS;
         if(!player.isShiftKeyDown())return InteractionResult.PASS;
-        if(remoteCourier){
-            player.sendSystemMessage(Component.literal("Remote courier is finishing its assigned pallet exchange."));
+        if(remotePickup||remoteCourier){
+            player.sendSystemMessage(Component.literal(
+                    "This Golem is completing an assigned remote pallet exchange."));
             return InteractionResult.SUCCESS;
         }
         if(level() instanceof ServerLevel server){
