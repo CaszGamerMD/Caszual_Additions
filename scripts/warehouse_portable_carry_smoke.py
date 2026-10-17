@@ -27,8 +27,9 @@ crew=m("racks/StoragePalletCrew.java")
 assert "beginGroundPickup" in crew and "wrappedController" in crew
 transfer=m("racks/StorageGroundPalletTransfer.java")
 assert "for(int i=0;i<216;i++)" in transfer
-assert transfer.index("leader.loadPallet") < transfer.index("pallet.clearContent()")
-assert transfer.index("pallet.clearContent()") < transfer.index("level.removeBlock(root,false)")
+lift=transfer[transfer.index("    public static boolean lift(ServerLevel"):]
+assert lift.index("leader.loadPallet") < lift.index("pallet.clearContent()")
+assert lift.index("pallet.clearContent()") < lift.index("level.removeBlock(root,false)")
 assert "PalletCargoCollisionBlock.clear" in transfer
 golem=m("racks/StorageGolem.java")
 for token in ("groundPickup","DISPLAY_PALLET","DISPLAY_CARGO","syncPalletVisual",
