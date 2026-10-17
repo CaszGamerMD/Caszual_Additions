@@ -277,6 +277,15 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         remoteRigLastKnown=rig.blockPosition().immutable();
+        // Restart between fourth-worker handoff and courier discard: the
+        // recovered carrier already owns the worker identity. Don't run an
+        // orphaned fifth Golem or endlessly retry an already-committed join.
+        if(remoteCourierPhase==1&&remoteFresh.isEmpty()
+                &&rig.returningToWarehouse()){
+            remoteCourier=false;
+            discard();
+            return;
+        }
         if(remoteCourierPhase==0){
             if(remoteCourierAisle.equals(BlockPos.ZERO)
                     ||!StorageGolemReturnPath.walkable(level,remoteCourierAisle)){
