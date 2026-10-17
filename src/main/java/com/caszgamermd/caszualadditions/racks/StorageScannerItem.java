@@ -154,6 +154,26 @@ public final class StorageScannerItem extends Item {
                 +"Diagnostics are in the Rack Computer GUI.");
     }
 
+    /** Shelf block explicitly forwards Scanner clicks here so the vanilla
+     * shelf UI/insert logic cannot consume a Direct summon attempt. */
+    public static void onShelfClick(ServerLevel level,ServerPlayer player,
+            ItemStack scanner,BlockPos shelf){
+        if(mode(scanner)!=Mode.DIRECT){
+            message(player,"Scanner is REMOTE. Shift-right-click AIR for DIRECT.");
+            return;
+        }
+        BlockPos home=linkedComputer(scanner,level);
+        if(home==null){
+            message(player,"Link scanner first: shift-right-click your Rack Computer.");
+            return;
+        }
+        if(!level.hasChunkAt(shelf)
+                ||!(level.getBlockEntity(shelf) instanceof StorageGolemShelfEntity)){
+            message(player,"Not a valid Golem Shelf.");return;
+        }
+        message(player,StoragePalletCrew.enlistFromShelf(level,player,home,shelf));
+    }
+
     @Override public InteractionResult useOn(UseOnContext context){
         Player player=context.getPlayer();
         if(player==null)return InteractionResult.PASS;
@@ -207,7 +227,7 @@ public final class StorageScannerItem extends Item {
         // (2) click an installed or wrapped pallet to lift it
         // (3) click a rack or a ground placement face to deposit it.
         if(server.getBlockEntity(clicked) instanceof StorageGolemShelfEntity){
-            message(user,StoragePalletCrew.enlistFromShelf(server,user,home,clicked));
+            onShelfClick(server,user,scanner,clicked);
             return InteractionResult.SUCCESS;
         }
         var groundState=server.getBlockState(clicked);
