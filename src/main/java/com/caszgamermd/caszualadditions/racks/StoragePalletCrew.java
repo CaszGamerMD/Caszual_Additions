@@ -92,13 +92,36 @@ public final class StoragePalletCrew {
         return rig.returnToWarehouse(level,computer);
     }
 
+    /** Direct mode must be summoned from a shelf that is REALLY attached to
+     * the scanner's linked warehouse, never from a random nearby shelf. */
+    public static String enlistFromShelf(ServerLevel level,ServerPlayer player,
+            BlockPos computer,BlockPos selectedShelf){
+        if(!level.hasChunkAt(computer)){
+            WarehouseRemoteTickets.keep(level,computer);
+            return "Linked warehouse computer is unloaded. Retry once its chunk is ready.";
+        }
+        return enlistAt(level,player,computer,selectedShelf);
+    }
     public static String enlist(ServerLevel level,ServerPlayer player,BlockPos computer){
+        return enlistAt(level,player,computer,null);
+    }
+    private static String enlistAt(ServerLevel level,ServerPlayer player,
+            BlockPos computer,BlockPos selectedShelf){
         if(moving(level,player)!=null||!team(level,player).isEmpty())
             return "Four Golems already assigned. Deliver the carried pallet, then dismiss at the warehouse.";
         if(!level.hasChunkAt(computer)
                 ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER))
             return "No Rack Computer at that location.";
         List<StorageGolemShelfEntity> connected=RackComputerNet.nearbyShelves(level,computer);
+        if(selectedShelf!=null){
+            boolean valid=connected.stream().anyMatch(
+                    shelf->shelf.getBlockPos().equals(selectedShelf));
+            if(!valid)return "DIRECT: this Golem Shelf is not connected to "
+                    +"the scanner's linked warehouse.";
+            // Prefer selected shelf's workers, then its other linked shelves.
+            connected.sort(java.util.Comparator.comparingInt(
+                    shelf->shelf.getBlockPos().equals(selectedShelf)?0:1));
+        }
         List<StorageGolemShelfEntity> available=new ArrayList<>();
         for(StorageGolemShelfEntity shelf:connected)
             for(int i=0;i<shelf.docked();i++)available.add(shelf);
@@ -128,14 +151,25 @@ public final class StoragePalletCrew {
             }
             spawned.add(golem);
         }
-        return "Warehouse linked: four Storage Golems are following you. "
-                +"Right-click a sealed pallet at a PTP to enlist them for pickup.";
+        return "DIRECT: four Storage Golems called from linked shelves; "
+                +"they are following you. Right-click a wrapped pallet on "
+                +"a PTP, rack, or ground to pick it up. Then click an empty "
+                +"rack or block face for them to place it.";
     }
     private static void rollback(List<StorageGolem> workers,
             List<StorageGolemShelfEntity> shelves){
         for(StorageGolem golem:workers)golem.discard();
         for(StorageGolemShelfEntity shelf:shelves)shelf.add();
     }
+    /** In Direct mode, an installed pallet on a PTP is only a source.
+     * Selecting an empty PTP while loaded cannot steal/drop its inventory. */
+    public static String interactPtp(ServerLevel level,ServerPlayer player,
+            PtpBlockEntity point){
+        if(moving(level,player)!=null)return "Crew is carrying a pallet. "
+                +"Click an empty rack or a free ground placement face to deliver it.";
+        return pickup(level,player,point);
+    }
+
     public static String pickup(ServerLevel level,ServerPlayer player,PtpBlockEntity source){
         if(moving(level,player)!=null)return "Your four Golems are already carrying a pallet.";
         List<StorageGolem> workers=team(level,player);
@@ -335,7 +369,7 @@ public final class StoragePalletCrew {
                         ?"Choose a delivery location with the Warehouse Scanner."
                         :rig.deliveryStatus());
         List<StorageGolem> workers=team(level,player);
-        if(workers.isEmpty())return "No linked crew nearby. Right-click a Rack Computer to enlist four.";
+        if(workers.isEmpty())return "No direct crew nearby. In DIRECT mode right-click a linked Golem Shelf to call four.";
         int cargo=0;
         for(StorageGolem worker:workers)if(worker.holdsPallet())cargo++;
         return "Crew nearby: "+workers.size()+"/4; carrying wrapped pallet: "
