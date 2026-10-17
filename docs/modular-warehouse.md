@@ -412,56 +412,66 @@ crew then follows the player until dismissed at the original
 warehouse Computer. Death of a loaded moving pallet drops its actual
 one pallet, all stored items, and four recoverable Golem tokens.
 
-Pallet movement still uses Minecraft ground navigation, not
-teleportation or forced chunk-loading. A narrow aisle that cannot
-physically admit the wide pallet may stop the group. Validate uneven
+Manual pallet movement still uses Minecraft ground navigation,
+not teleportation. Automatic remote swaps additionally use expiring
+simulation tickets near the physical carrier, rather than permanent
+forceload settings. A narrow aisle that cannot physically admit the
+wide pallet may stop the group. Validate uneven
 terrain, obstacles, cargo integrity and saving in a backed-up test
 world; passing CI does not prove perfect client animation.
 
-## Handheld Warehouse Scanner and player-led pallet transport
+## Handheld Warehouse Scanner, manual haul and remote pallet exchange
 
-The **Storage Scanner is now a handheld tool**, not a placed block.
-It remembers its linked warehouse and is used to lead a team of four
-real Storage Golems. The previous automatic "nearest empty rack" haul
-and placed-scanner inspection are retired.
+The Storage Scanner is an item linked to one Rack Computer in the same
+dimension. **Linking and deploying a crew are separate operations**.
 
-1. **Right-click a Rack Computer while holding the Scanner** (no GUI button is needed). This saves the warehouse link immediately, then attempts to deploy **four docked Golems** from
-   its physically linked shelves. The four workers follow you.
-2. Load a pallet on a **3×3 PTP equipped with a Wrap Unit** and seal it.
-   Sealing renders **thin, transparent glass pane-style walls** around the
-   actual cargo instead of iron bands.
-3. **Right-click the sealed PTP with the scanner.** The crew walks to
-   the pallet and rallies on its four sides. Only after all four arrive
-   does the lead Golem take the actual pallet and its 216 inventory
-   slots. The empty PTP does **not** retain a duplicate copy.
-4. Lead the four Golems to the destination. They follow the linked player
-   in the same dimension. The pallet's contents are persisted on the
-   lead Golem, not inside the Scanner or the player's inventory.
-5. **Right-click an empty pallet rack** with the Scanner to insert the
-   full pallet and contents, **or right-click the intended ground block**
-   to place it in a clear loaded 2×2 footprint.
-6. Take the now-empty crew **back to the linked Rack Computer** and
-   right-click with the Scanner again to dismiss them. They walk back
-   to the same Storage Golem Shelves they came from.
+1. **Right-click a Rack Computer once with the Scanner** to link it. All
+   Golems remain docked; the warehouse is ready for automatic remote pickup.
+   Sneak-right-click the Computer for warehouse diagnostics.
+2. **Manual carry:** right-click the same Computer a second time to deploy
+   four docked Golems. Right-click a sealed PTP or wrapped ground pallet
+   to have them lift the cargo, then follow the crew to a clear rack or 2×2
+   ground footprint. Once unloaded, click the Computer to dismiss the crew.
+   Manual carrying and automatic remote dispatch share the four physical
+   workers: a warehouse with only four Golems cannot run both simultaneously.
+3. **Automatic remote pickup:** with the workers **still docked**, place a
+   glass-wrapped freestanding pallet at the off-site pickup location. Have
+   an empty pallet ready in a **Stack of Pallets** magazine stored in a
+   connected rack, or on an unwrapped, empty **INPUT PTP**. Sneak-right-click
+   any of the four ground-pallet blocks with the linked Scanner. The request
+   saves to the Scanner. When both locations are loaded and four docked
+   workers, an accessible shelf departure aisle and a replacement pallet are
+   available, a single four-Golem platform departs carrying the replacement.
+4. The carrier replaces the wrapped off-site pallet with the fresh pallet,
+   preserves all **216 cargo slots** on the original and returns to its linked
+   warehouse. An available INPUT PTP is preferred, then any other vacant PTP
+   (reconfigured as INPUT), then a free accessible rack. The recovered pallet
+   is unwrapped only after successful placement on a PTP.
+5. Pending automatic jobs retry from the linked Scanner every five seconds
+   while it is in the requesting player's inventory. The chat reply starts
+   with **WAITING** when dispatch is blocked; the original pallet is not
+   consumed while queued.
 
-**Diagnostics:** Sneak-right-click the Rack Computer with the Scanner
-for a read-only report of attached PTPs, rack and pallet capacity,
-docked Golems, Shulker Tank supplies and output queues. Right-click
-the Scanner in air for the team and warehouse-link status.
+**Unloaded chunks:** The Scanner now opens short-lived, renewable
+warehouse chunk tickets while its request is pending. Once dispatched, the
+single physical carrier keeps its own surrounding walking chunks and
+current destination ticking so it can travel outside the player's simulation
+distance. Unlike permanent /forceload settings, these tickets expire
+automatically if the request or carrier stops renewing them. The carrier
+still walks through the world; blocked terrain and nontraversable elevations
+are real obstacles. Do an in-game test for long routes, world restart
+and a shared server before relying on unattended cargo delivery.
 
-**Failure behavior:** A failed rack or floor placement leaves the
-inventory on the lead Golem. Killing or directly reclaiming the lead
-Golem drops the actual pallet and all of its carried stacks. While
-a crew awaits pickup, the wrapped PTP keeps ownership of its stock;
-a failed rally does not duplicate or delete it. Workers cannot
-follow through unloaded terrain or across dimensions without the
-player; keep the crew near you and avoid changing dimensions during
-transport. Test on a backed-up world.
+**Do not use the manual haul click before a remote job.** The most common
+failed dispatch on a four-Golem warehouse was the old Scanner-link behavior,
+which deployed all four workers automatically. This is corrected: the first
+click now **only links**.
 
-The lead Golem visibly raises its arms while moving the pallet.
-A synchronized floating 2×2 cargo model between all four corners
-remains a follow-up visual feature; the current transport is
-player-directed, not automatic destination selection.
+Failures are non-destructive where possible: the request remains saved,
+rejected warehouse pallet withdrawals restore the original magazine/PTP
+stock, and failed carrier placement retains custody of the pallet until a
+destination is available. Validate complete inventory recovery and floor
+navigation in a backed-up test world.
 
 ## Integrated testing tools
 

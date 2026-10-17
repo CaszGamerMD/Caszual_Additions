@@ -19,12 +19,35 @@ stationBlock=read(main/"ShulkerTankBlock.java")
 registration=read(main/"RackContent.java")
 clientReg=read(client/"CaszualAdditionsClient.java")
 assert 'tag.putBoolean("remote_pickup_pending",true)' in scanner
+# Linking must NOT call enlist: that would drain the four shelf Golems
+# which the remote dispatch transaction needs for its own pallet rig.
+assert "if(sameWarehouse){" in scanner
+assert scanner.index("if(sameWarehouse){") < scanner.index("StoragePalletCrew.enlist(level,player,computer)")
+assert 'Golems remain docked for remote pickup' in scanner
+assert 'Wrap it with the portable wrapper before requesting pickup.' in scanner
+# PTP dropPallet applies live filters; compare that exact canonical stack.
+assert '.applyFilterSettings(ptp.palletStack(),ptp)' in dispatch
 assert "RemotePalletDispatch.request(world,player,computer,target)" in scanner
+# Real long-distance dispatch uses temporary ticking tickets, not /forceload
+# or a hidden teleport. Both the pending request and travelling entity renew.
+tickets=read(main/"WarehouseRemoteTickets.java")
+assert "Registry.register(BuiltInRegistries.TICKET_TYPE" in tickets
+assert "new TicketType(240," in tickets
+assert "TicketType.FLAG_SIMULATION" in tickets
+assert "addTicketWithRadius(type,new ChunkPos(pos.getX() >> 4,pos.getZ() >> 4),RADIUS)" in tickets
+assert "WarehouseRemoteTickets.initialize();" in registration
+assert "WarehouseRemoteTickets.keep(world,computer);" in scanner
+assert "WarehouseRemoteTickets.keep(server,blockPosition());" in rig
+assert "WarehouseRemoteTickets.keep(server,deliveryPosition);" in rig
 assert "ServerTickEvents.END_SERVER_TICK" in scanner
 assert "StorageScannerItem.initialize();" in registration
 assert "beginRemoteExchange(old.getBlockPos(),computer)" in dispatch
 assert "StackOfPalletsItem.take(change)" in dispatch
 assert "sourcePtp.removePallet()" in dispatch
+# Withdrawal validation must roll back before consuming any shelf tokens.
+assert 'sourceRack.setItem(sourceSlot,previous);\n                return "WAITING: pallet magazine' in dispatch
+assert "if(!removed.isEmpty()&&!sourcePtp.installPallet(removed))" in dispatch
+assert "drop.getX()+.5,drop.getY()+.5,drop.getZ()+.5,removed" in dispatch
 assert "if(consumed==4&&level.addFreshEntity(carrier))" in dispatch
 assert "for(int i=0;i<consumed;i++)shelves.get(i).add();" in dispatch
 assert "exchange(ServerLevel level,BlockPos root,MovingPallet carrier)" in swap

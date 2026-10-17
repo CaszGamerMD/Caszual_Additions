@@ -73,6 +73,7 @@ public final class StorageScannerItem extends Item {
         if(!tag.getBooleanOr("remote_pickup_pending",false))return "";
         BlockPos computer=linkedComputer(scanner,world);
         if(computer==null)return "INVALID: scanner link lost.";
+        WarehouseRemoteTickets.keep(world,computer);
         BlockPos target=new BlockPos(tag.getIntOr("remote_pickup_x",0),
                 tag.getIntOr("remote_pickup_y",0),tag.getIntOr("remote_pickup_z",0));
         return RemotePalletDispatch.request(world,player,computer,target);
@@ -130,16 +131,23 @@ public final class StorageScannerItem extends Item {
                     "This crew belongs to another warehouse. Return and dismiss it first."));
             return;
         }
-        // First link the handheld tool to the clicked computer. Enlisting
-        // four workers is a separate operation with its own requirements.
+        if(sameWarehouse){
+            // A second normal click is an explicit request for a MANUAL crew.
+            // Never spend all four docked workers merely to link the Scanner:
+            // remote pickup needs those same four workers at their shelves.
+            player.sendSystemMessage(Component.literal(
+                    StoragePalletCrew.enlist(level,player,computer)));
+            return;
+        }
         bind(scanner,level,computer);
         List<StorageGolemShelfEntity> shelves=RackComputerNet.nearbyShelves(level,computer);
         int docked=shelves.stream().mapToInt(StorageGolemShelfEntity::docked).sum();
         player.sendSystemMessage(Component.literal("Scanner linked to warehouse at "
                 +computer.toShortString()+". Linked shelves: "+shelves.size()
-                +", docked Storage Golems: "+docked+"/4 required."));
-        String result=StoragePalletCrew.enlist(level,player,computer);
-        player.sendSystemMessage(Component.literal(result));
+                +", docked Storage Golems: "+docked+"/4 required. "
+                +"Golems remain docked for remote pickup: sneak-right-click a "
+                +"glass-wrapped ground pallet to request an automatic exchange. "
+                +"Right-click this Computer again ONLY for manual hauling."));
     }
 
     @Override public InteractionResult useOn(UseOnContext context){
@@ -163,19 +171,26 @@ public final class StorageScannerItem extends Item {
                     "Link scanner first: right-click your warehouse Rack Computer."));
             return InteractionResult.SUCCESS;
         }
-        if(player.isShiftKeyDown()){
+        if(player.isShiftKeyDown()
+                &&server.getBlockState(clicked).getBlock()
+                    instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock){
             var old=StorageGroundPalletTransfer.wrappedController(server,clicked);
-            if(old!=null){
-                queuePickup(scanner,old.getBlockPos());
-                String result=pendingPickup(scanner,server,user);
-                if(result.startsWith("Four Golems dispatched")){
-                    clearPickup(scanner);
-                    user.sendSystemMessage(Component.literal(result));
-                }else user.sendSystemMessage(Component.literal(
-                        "Remote pickup queued on Scanner: "+result
-                        +" The request remains saved until dispatch succeeds."));
+            if(old==null){
+                user.sendSystemMessage(Component.literal(
+                        "Remote pickup needs an intact, glass-wrapped 2x2 ground pallet. "
+                        +"Wrap it with the portable wrapper before requesting pickup."));
                 return InteractionResult.SUCCESS;
             }
+            queuePickup(scanner,old.getBlockPos());
+            String result=pendingPickup(scanner,server,user);
+            if(result.startsWith("Four Golems dispatched")){
+                clearPickup(scanner);
+                user.sendSystemMessage(Component.literal(result));
+            }else user.sendSystemMessage(Component.literal(
+                    "Remote pickup queued on Scanner: "+result
+                    +" Keep the warehouse and route loaded for physical transport; "
+                    +"the queued job will retry without losing its target."));
+            return InteractionResult.SUCCESS;
         }
         if(server.getBlockState(clicked).getBlock()
                 instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock){
