@@ -32,7 +32,8 @@ assert "getMoveControl().setWantedPosition(next.getX()+.5," in worker
 assert '?"SWIMMING EMPTY HANDED TO REMOTE TARGET"' in worker
 assert "if(remotePickup){tickRemotePickup(level);return;}" in worker
 assert "if(remoteCourier){tickRemoteCourier(level);return;}" in worker
-assert "worker.distanceToSqr(goal.getX()+.5" in team # readiness check unchanged, fix separately if swimming
+assert "worker.atRemotePickupGoal(level,goal)" in team
+assert "public boolean atRemotePickupGoal(ServerLevel level,BlockPos goal)" in worker
 assert "WarehouseRemoteTickets.keep(level,remotePickupTarget)" in worker
 # Route still rejects warehouse obstacles EVEN on water.
 for kind in ["RackBlock","StackOfPalletsBlock"]:
