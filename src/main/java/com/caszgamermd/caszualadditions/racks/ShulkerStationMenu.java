@@ -189,37 +189,68 @@ public final class ShulkerStationMenu extends AbstractContainerMenu {
     }
 
     private final class SelectedShulkerContainer implements Container {
+        // Minecraft vanilla Slot mutates ItemStacks IN PLACE before invoking
+        // Container.setChanged(). Return stable cache entries and commit the
+        // whole 27-slot component once setChanged() fires. Returning detached
+        // streams here silently deletes or duplicates shift/drag transfers.
+        private net.minecraft.core.NonNullList<ItemStack> cache=
+                net.minecraft.core.NonNullList.withSize(BOX_SLOTS,ItemStack.EMPTY);
+        private ItemStack baseline=ItemStack.EMPTY;
+        private int cachedLane=-1;
+        private void sync(){
+            if(tank==null)return;
+            ItemStack current=tank.workingBox(selectedLane);
+            if(cachedLane==selectedLane&&ItemStack.matches(baseline,current))return;
+            cache=net.minecraft.core.NonNullList.withSize(BOX_SLOTS,ItemStack.EMPTY);
+            for(int i=0;i<BOX_SLOTS;i++)
+                cache.set(i,tank.workingItem(selectedLane,i).copy());
+            baseline=current.copy();
+            cachedLane=selectedLane;
+        }
+        private void commit(){
+            if(tank==null||cachedLane!=selectedLane||baseline.isEmpty())return;
+            tank.replaceWorkingContents(selectedLane,cache);
+            baseline=tank.workingBox(selectedLane).copy();
+        }
         @Override public int getContainerSize(){return BOX_SLOTS;}
         @Override public boolean isEmpty(){
-            if(tank==null)return true;
-            for(int i=0;i<BOX_SLOTS;i++)if(!getItem(i).isEmpty())return false;
+            sync();
+            for(ItemStack stack:cache)if(!stack.isEmpty())return false;
             return true;
         }
         @Override public ItemStack getItem(int slot){
-            return tank==null?ItemStack.EMPTY:tank.workingItem(selectedLane,slot);
+            if(slot<0||slot>=BOX_SLOTS)return ItemStack.EMPTY;
+            sync();
+            return cache.get(slot);
         }
         @Override public ItemStack removeItem(int slot,int count){
-            ItemStack current=getItem(slot);
-            if(current.isEmpty()||count<=0)return ItemStack.EMPTY;
-            ItemStack taken=current.copyWithCount(Math.min(count,current.getCount()));
-            ItemStack remaining=current.copy();
-            remaining.shrink(taken.getCount());
-            setItem(slot,remaining);
+            if(slot<0||slot>=BOX_SLOTS||count<=0)return ItemStack.EMPTY;
+            sync();
+            ItemStack taken=net.minecraft.world.ContainerHelper.removeItem(cache,slot,count);
+            if(!taken.isEmpty())commit();
             return taken;
         }
         @Override public ItemStack removeItemNoUpdate(int slot){
-            ItemStack old=getItem(slot);
-            setItem(slot,ItemStack.EMPTY);
-            return old;
+            if(slot<0||slot>=BOX_SLOTS)return ItemStack.EMPTY;
+            sync();
+            ItemStack taken=net.minecraft.world.ContainerHelper.takeItem(cache,slot);
+            if(!taken.isEmpty())commit();
+            return taken;
         }
         @Override public void setItem(int slot,ItemStack stack){
-            if(tank!=null)tank.editWorking(selectedLane,slot,stack);
+            if(slot<0||slot>=BOX_SLOTS||tank==null
+                    ||!tank.canEditWorking(selectedLane,stack))return;
+            sync();
+            cache.set(slot,stack.copy());
+            commit();
         }
         @Override public boolean canPlaceItem(int slot,ItemStack stack){
-            return tank!=null&&tank.canEditWorking(selectedLane,stack);
+            return slot>=0&&slot<BOX_SLOTS&&tank!=null
+                    &&tank.canEditWorking(selectedLane,stack);
         }
-        @Override public void setChanged(){if(tank!=null)tank.setChanged();}
+        @Override public void setChanged(){commit();}
         @Override public boolean stillValid(Player player){return station.stillValid(player);}
         @Override public void clearContent(){}
     }
+
 }
