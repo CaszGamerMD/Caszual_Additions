@@ -148,6 +148,41 @@ controls for running the sorting queue and recalling workers. Those
 controls are **separate from Scanner interactions**, ensuring remote swaps
 can find all four docked workers without accidental manual dispatch.
 
+## Remote empty-pallet courier: pathfinding and circling fix
+
+The fourth remote Golem **pushes a full-width pallet**, so its floor
+footprint must be planned as a three-wide aisle, not the one-cell path
+of an empty-handed Storage Golem. Previously its target approach was
+selected by *straight-line distance from the Golem*, with no complete
+route check; it could pick an inaccessible side behind a rack, replan
+among obstructed service faces, or repeatedly try an incomplete route.
+That looked like endlessly turning and circling the target.
+
+The courier now selects a **reachable outer service aisle** using
+3×3 per-cell floor/collision clearance, avoiding the three pickup
+Golems' own rendezvous square. That aisle choice is held steady.
+The route is a cached, checked cardinal sequence with same-Y paths
+preferred. If a waypoint is genuinely blocked for more than 75 ticks,
+the courier marks that waypoint temporarily impassable and replans
+without dropping its actual empty pallet. After repeated stalls it
+checks a different service side; while waiting for unobstructed
+corridors it STOPS rather than circling. Short, partial routes toward
+an unreachable nearby target are rejected entirely.
+
+After placing the empty pallet, the fourth worker is no longer pushing
+a two-wide load. It switches to the normal one-worker clearance and
+chooses a persistent reachable aisle next to the loaded carrier for
+its final handoff, rather than switching to whichever side is
+geometrically closest on every tick. Selected push/rejoin approaches
+and excluded blocked approaches are saved and restored across reloads,
+and the worker renews chunk tickets around its actual route.
+
+This does not change the 3+1 swap, the 216-slot target inventory,
+the original replacement pallet item or the shelf worker token count.
+Test on a backed-up world with a side of the wrapped pallet blocked
+by racks, a long/turning warehouse aisle, one stack of pallets along
+the way, and a world save/reload while the courier is still travelling.
+
 ## Three independent remote pickup Golems — no empty cargo rig
 
 The three REMOTE pickup Golems now leave the warehouse as **three real,
