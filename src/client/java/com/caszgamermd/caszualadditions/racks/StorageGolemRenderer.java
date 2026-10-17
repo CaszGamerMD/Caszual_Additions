@@ -39,6 +39,7 @@ public final class StorageGolemRenderer
         var name=golem.getCustomName();
         String label=name==null?"":name.getString();
         state.carryingPallet=label.startsWith("PALLET ");
+        state.pushingEmptyPallet=golem.remoteCourierActive()&&!golem.displayPallet().isEmpty();
         state.showSharedPallet=state.carryingPallet
                 &&label.startsWith("PALLET 1/4")
                 &&!golem.displayPallet().isEmpty();
@@ -53,7 +54,7 @@ public final class StorageGolemRenderer
                 material=blockItem.getBlock();
             blocks.update(state.held[i],material.defaultBlockState(),DISPLAY);
         }
-        if(state.showSharedPallet){
+        if(state.showSharedPallet||state.pushingEmptyPallet){
             Block material=Blocks.OAK_PLANKS;
             ItemStack carried=golem.displayPallet();
             boolean plastic=false;
@@ -95,6 +96,17 @@ public final class StorageGolemRenderer
                         -.37f+col*.255f,.90f+row*.23f,-.68f,
                         .23f,.21f,.23f);
             }
+            pose.popPose();
+        }
+        if(state.pushingEmptyPallet){
+            // A single Golem pushes the replacement vertically on its edge.
+            pose.pushPose();
+            for(float y:new float[]{.23f,.58f,.91f})
+                piece(state.palletDeck,state,pose,collector,
+                        -.54f,y,-.77f,1.08f,.13f,.13f);
+            for(float x:new float[]{-.42f,.33f})
+                piece(state.palletSupport,state,pose,collector,
+                        x,.18f,-.82f,.11f,.89f,.13f);
             pose.popPose();
         }
         if(!state.showSharedPallet)return;
