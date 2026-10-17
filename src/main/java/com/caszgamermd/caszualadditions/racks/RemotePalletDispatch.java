@@ -131,7 +131,20 @@ public final class RemotePalletDispatch {
             return "Unable to prepare remote replacement crew.";
         carrier.setPos(staging.getX()+.5,staging.getY(),staging.getZ()+.5);
         StorageGolem courier=identities.get(3);
-        courier.setPos(staging.getX()+1.5,staging.getY(),staging.getZ()+.5);
+        // The courier is a separate physical entity. Stage it TWO blocks
+        // away wherever a clear aisle exists, not inside the 1.85-wide
+        // three-Golem platform's collision box.
+        BlockPos courierStart=null;
+        for(net.minecraft.core.Direction dir:net.minecraft.core.Direction.Plane.HORIZONTAL){
+            BlockPos trial=staging.relative(dir,2);
+            if(StorageGolemReturnPath.walkable(level,trial)){
+                courierStart=trial;break;
+            }
+        }
+        if(courierStart==null)courierStart=staging.relative(
+                net.minecraft.core.Direction.EAST);
+        courier.setPos(courierStart.getX()+.5,courierStart.getY(),
+                courierStart.getZ()+.5);
         // Before withdrawing from a magazine, move ownership to the one
         // actual Golem entity. The other three are only rendered on the rig.
         if(!carrier.splitRemoteCourier(courier))
