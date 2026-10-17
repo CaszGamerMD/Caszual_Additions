@@ -281,6 +281,21 @@ public final class StorageGolem extends PathfinderMob {
         return true;
     }
     public boolean remoteCourierActive(){return remoteCourier;}
+    public UUID remoteCourierMission(){return remoteCarrierId;}
+    public boolean remoteReplacementAvailableForReset(){
+        return remoteCourier&&remoteCourierPhase==0&&!remoteFresh.isEmpty();
+    }
+    /** Hand the one real replacement ItemStack to the reset transaction.
+     * The Golem is discarded by the coordinator only after the recovery
+     * is committed; no extra pallet item is ever synthesized. */
+    public ItemStack takeRemoteReplacementForReset(){
+        if(!remoteReplacementAvailableForReset())return ItemStack.EMPTY;
+        ItemStack recovered=remoteFresh;
+        remoteFresh=ItemStack.EMPTY;
+        remoteCourier=false;
+        syncRemoteFreshVisual();
+        return recovered;
+    }
 
     public void beginRemotePickup(UUID mission,UUID courier,BlockPos target,
             BlockPos warehouse,BlockPos rally,BlockPos[] fourHomes){
@@ -2379,6 +2394,13 @@ public final class StorageGolem extends PathfinderMob {
         if(level().isClientSide())return InteractionResult.SUCCESS;
         if(player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
                 &&(remotePickup||remoteCourier)){
+            if(player.isShiftKeyDown()&&player instanceof net.minecraft.server.level.ServerPlayer user
+                    &&level() instanceof ServerLevel server){
+                UUID mission=remoteCourier?remoteCarrierId:remotePickupMission;
+                player.sendSystemMessage(Component.literal(
+                        RemotePalletReset.request(server,user,mission)));
+                return InteractionResult.SUCCESS;
+            }
             if(resumeRemotePath())
                 player.sendSystemMessage(Component.literal(
                         "Scanner: Golem resumed dry-land pathfinding. "
