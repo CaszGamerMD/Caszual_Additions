@@ -386,7 +386,7 @@ public final class RackComputerScreen extends Screen {
         graphics.fill(splitter,160,width-20,height-45,0xff22382f);
         graphics.text(font,Component.literal("AISLES / RACKS"),29,167,0xffb3f9c1,false);
         graphics.text(font,Component.literal("SELECTED RACK • CONTENTS"),splitter+11,167,0xffb3f9c1,false);
-        int rows=Math.max(0,(height-236)/25);
+        int rows=Math.max(0,(height-253)/25);
         for(int i=scroll;i<racks.size()&&i<scroll+rows;i++){
             JsonObject rack=racks.get(i).getAsJsonObject();
             int y=183+(i-scroll)*25;
@@ -469,7 +469,7 @@ public final class RackComputerScreen extends Screen {
         graphics.fill(20,151,width-20,height-45,0xff21392e);
         graphics.text(font,Component.literal("DEPLOYED WORKERS • LIVE TASK TRACKER"),
                 29,159,0xffb3f9c1,false);
-        int rows=Math.max(0,(height-238)/31);
+        int rows=Math.max(0,(height-258)/31);
         if(workers.isEmpty())
             graphics.text(font,Component.literal(
                     "No active workers loaded. Docked Golems remain on shelves."),
@@ -489,9 +489,7 @@ public final class RackComputerScreen extends Screen {
             graphics.text(font,Component.literal(compact(line,
                     Math.max(14,(width-58)/6))),32,y+16,0xff99cbb2,false);
         }
-        graphics.text(font,Component.literal(
-                "ENLIST: manual team  •  RUN QUEUE: sorting/orders  •  RECALL ALL: return warehouse Golems"),
-                22,height-42,0xffa3d1ae,false);
+
     }
 
     @Override public void tick(){
