@@ -298,6 +298,12 @@ public final class StorageGolem extends PathfinderMob {
     public BlockPos remotePickupWarehouse(){return remotePickupWarehouse;}
     public BlockPos remotePickupRally(){return remotePickupRally;}
     public BlockPos[] remotePickupHomes(){return remotePickupHomes.clone();}
+    /** Physically reached the assigned rally cell, including waterline
+     * bobbing. The assembled rig must not wait forever for a fake exact-Y
+     * distance in the lake when all three robots are already at their slots. */
+    public boolean atRemotePickupGoal(ServerLevel level,BlockPos goal){
+        return routeDistanceSq(level,goal)<1.30;
+    }
     public UUID remotePickupOwner(){
         try{return UUID.fromString(haulOwner);}
         catch(IllegalArgumentException ex){return null;}
