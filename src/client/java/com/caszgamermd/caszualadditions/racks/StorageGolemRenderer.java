@@ -39,7 +39,7 @@ public final class StorageGolemRenderer
         var name=golem.getCustomName();
         String label=name==null?"":name.getString();
         state.carryingPallet=label.startsWith("PALLET ");
-        state.pushingEmptyPallet=golem.remoteCourierActive()&&!golem.displayPallet().isEmpty();
+        state.pushingEmptyPallet=label.startsWith("EMPTY PALLET")&&!golem.displayPallet().isEmpty();
         state.showSharedPallet=state.carryingPallet
                 &&label.startsWith("PALLET 1/4")
                 &&!golem.displayPallet().isEmpty();
