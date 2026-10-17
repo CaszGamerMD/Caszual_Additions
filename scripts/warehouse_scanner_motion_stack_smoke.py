@@ -25,7 +25,9 @@ assert "shelf.recallSerial()>observedRecallSerial" in golem
 
 # Remote three-worker rig must be empty-handed, with natural animated arms
 # until it physically acquires the 216-slot old pallet at the target.
-assert "state.visible=!stack.isEmpty();" in rig_render
+assert "state.visible=entity.handsActuallyCarryingPallet()&&!stack.isEmpty();" in rig_render
+assert "entityData.set(HOLDING_DECK,holding);" in rig
+assert "deliveryMode!=4" in rig
 assert "state.liftProgress=state.visible?entity.liftProgress():0f;" in rig_render
 assert "if(!state.visible)" in model
 assert "Mth.cos(phase+offset)" in model
