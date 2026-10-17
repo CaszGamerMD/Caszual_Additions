@@ -41,6 +41,14 @@ assert "remoteFresh=ItemStack.EMPTY;" in worker
 assert "remoteCourier=false;" in worker
 assert "if(player.isShiftKeyDown()" in worker
 assert "cancelQueuedForTarget(ServerPlayer player,BlockPos target)" in scanner
+assert "RemotePalletReset.activeMission(server,user)!=null" in scanner
+assert scanner.count("RemotePalletReset.requestActive(server,user)") == 2
+assert 'message(user,RemotePalletReset.requestActive(server,user));' in scanner
+assert "public static UUID activeMission(ServerLevel level,ServerPlayer player)" in reset
+assert "mission=rig.getUUID();" in reset
+assert "mission=worker.remoteCourierMission();" in reset
+assert "mission=worker.remotePickupMission();" in reset
+assert "found!=null&&!found.equals(mission)" in reset
 
 # Transaction identity accounting, before and after pickup.
 initial=Counter(original_pallet=1,replacement_pallet=1,workers=4)
