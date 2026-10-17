@@ -46,6 +46,93 @@ public final class ShulkerTankEntity extends BlockEntity implements Container, E
     @Override public BlockPos getScreenOpeningData(ServerPlayer player){
         return worldPosition;
     }
+
+    /** These lanes are the real saved ItemStacks; the screen never copies
+     * goods into a client-only fake inventory. */
+    public ItemStack workingBox(int lane){
+        return lane>=0&&lane<STATIONS?working.get(lane):ItemStack.EMPTY;
+    }
+    public ItemStack readyBox(int lane){
+        return lane>=0&&lane<STATIONS?finished.get(lane):ItemStack.EMPTY;
+    }
+    private static boolean validBox(ItemStack stack){
+        return stack.isEmpty()||(stack.is(ItemTags.SHULKER_BOXES)
+                &&!stack.has(DataComponents.CONTAINER_LOOT)&&stack.getCount()==1);
+    }
+    public void setWorkingBox(int lane,ItemStack item){
+        if(lane<0||lane>=STATIONS||!validBox(item))return;
+        bufferedItems=Math.max(0,bufferedItems
+                -StorageGolemPacking.itemCount(working.get(lane))
+                +StorageGolemPacking.itemCount(item));
+        working.set(lane,item.isEmpty()?ItemStack.EMPTY:item.copyWithCount(1));
+        setChanged();
+    }
+    public void setReadyBox(int lane,ItemStack item){
+        if(lane<0||lane>=STATIONS||!validBox(item))return;
+        bufferedItems=Math.max(0,bufferedItems
+                -StorageGolemPacking.itemCount(finished.get(lane))
+                +StorageGolemPacking.itemCount(item));
+        finished.set(lane,item.isEmpty()?ItemStack.EMPTY:item.copyWithCount(1));
+        setChanged();
+    }
+    /** Take one physical empty box from the magazine into a chosen idle lane. */
+    public boolean loadEmptyIntoLane(int lane){
+        if(lane<0||lane>=STATIONS||!working.get(lane).isEmpty()
+                ||!finished.get(lane).isEmpty())return false;
+        ItemStack next=take();
+        if(next.isEmpty())return false;
+        working.set(lane,next.copyWithCount(1));
+        setChanged();
+        return true;
+    }
+    public ItemStack workingItem(int lane,int slot){
+        if(slot<0||slot>=27||lane<0||lane>=STATIONS)return ItemStack.EMPTY;
+        List<ItemStack> contents=StorageGolemPacking.unpack(working.get(lane));
+        return slot<contents.size()?contents.get(slot):ItemStack.EMPTY;
+    }
+    public boolean canEditWorking(int lane,ItemStack item){
+        return lane>=0&&lane<STATIONS&&!working.get(lane).isEmpty()
+                &&(item.isEmpty()||item.getItem().canFitInsideContainerItems());
+    }
+    /** Repack atomically after a manual slot edit. A last-item removal
+     * restores the original empty shulker without discarding its color/name. */
+    public void editWorking(int lane,int slot,ItemStack item){
+        if(slot<0||slot>=27||!canEditWorking(lane,item))return;
+        ItemStack old=working.get(lane);
+        List<ItemStack> values=new ArrayList<>(StorageGolemPacking.unpack(old));
+        if(slot>values.size())return;
+        if(slot==values.size()){
+            if(item.isEmpty())return;
+            values.add(item.copy());
+        }else if(item.isEmpty()){
+            values.remove(slot);
+        }else values.set(slot,item.copy());
+        ItemStack replacement=values.isEmpty()?StorageGolemPacking.emptyVersion(old)
+                :StorageGolemPacking.fill(StorageGolemPacking.emptyVersion(old),values);
+        if(!replacement.isEmpty())setWorkingBox(lane,replacement);
+    }
+    /** Commit only the selected real shulker to the physically adjacent
+     * OUTPUT adapter's PTP; failed insertion retains the boxed inventory. */
+    public boolean sendSelected(ServerLevel level,int lane){
+        if(lane<0||lane>=STATIONS)return false;
+        PtpBlockEntity output=attachedOutput(level);
+        if(output==null)return false;
+        if(!working.get(lane).isEmpty()){
+            if(!finished.get(lane).isEmpty())return false;
+            finished.set(lane,working.get(lane));
+            working.set(lane,ItemStack.EMPTY);
+            setChanged();
+        }
+        ItemStack box=finished.get(lane);
+        if(box.isEmpty())return false;
+        ItemStack moving=box.copy();
+        if(StorageGolemDispatch.insert(level,output.getBlockPos(),moving)!=1
+                ||!moving.isEmpty())return false;
+        bufferedItems=Math.max(0,bufferedItems-StorageGolemPacking.itemCount(box));
+        finished.set(lane,ItemStack.EMPTY);
+        setChanged();
+        return true;
+    }
     public int activeCount(){
         int count=0;
         for(ItemStack box:working)if(!box.isEmpty())count++;
