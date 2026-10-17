@@ -53,7 +53,8 @@ assert "public void remoteCarrierDestroyed(ServerLevel level)" in courier
 assert "if(!remoteFresh.isEmpty())" in courier
 assert "remote_courier_rig" in courier and "remote_empty_pallet" in courier
 assert "remote_courier_uuid" in carrier and "remote_replacement_placed" in carrier
-assert "walkTo(level,remoteCourierAisle,1.12)" in courier
+assert "followCourierRoute(level,remoteCourierAisle,true)" in courier
+assert "RemotePalletCourierRoute.chooseServiceAisle(" in courier
 assert "WarehouseRemoteTickets.keep(level,remoteCourierTarget)" in courier
 assert "corner[i].visible=i<state.crewSize;" in model
 assert "state.crewSize=entity.displayedCrewSize()" in rigview
