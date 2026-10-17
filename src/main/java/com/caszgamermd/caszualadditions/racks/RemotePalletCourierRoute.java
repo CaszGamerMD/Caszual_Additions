@@ -46,6 +46,14 @@ public final class RemotePalletCourierRoute {
                 &&Math.abs(start.getZ()-destination.getZ())<=SEARCH_RADIUS)
             exact=StorageGolemReturnPath.steps(start,destination,passable);
         if(exact!=null)return exact;
+        // When the destination is already nearby and on this floor,
+        // a short PARTIAL route is worse than waiting: the Golem would
+        // repeatedly approach the same blocked wall, turn and circle.
+        // Long trips may still accept rolling 36-cell forward legs.
+        if(start.getY()==destination.getY()
+                &&Math.abs(start.getX()-destination.getX())<=36
+                &&Math.abs(start.getZ()-destination.getZ())<=36)
+            return null;
         return WarehousePreferredPath.leg(start,destination,passable,avoid);
     }
 
@@ -57,9 +65,16 @@ public final class RemotePalletCourierRoute {
             BlockPos from,BlockPos pallet,BlockPos trioRally,BlockPos excluded){
         BlockPos chosen=BlockPos.ZERO;
         double score=Double.POSITIVE_INFINITY;
+        // Evaluate nearer service aisles first. On long journeys the
+        // 36-cell rolling planner is expensive; a route is only computed
+        // for a candidate that already has enough 3-wide clearance.
+        java.util.ArrayList<BlockPos> candidates=new java.util.ArrayList<>();
         for(Direction face:Direction.Plane.HORIZONTAL)
-            for(int distance=4;distance<=7;distance++){
-                BlockPos candidate=pallet.relative(face,distance);
+            for(int distance=4;distance<=7;distance++)
+                candidates.add(pallet.relative(face,distance));
+        candidates.sort(java.util.Comparator.comparingDouble(from::distSqr));
+        for(BlockPos candidate:candidates){
+                int distance=(int)Math.round(Math.sqrt(candidate.distSqr(pallet)));
                 // A stalled approach should try ANOTHER service aisle,
                 // not return to the same trapped goal indefinitely.
                 if(!excluded.equals(BlockPos.ZERO)
