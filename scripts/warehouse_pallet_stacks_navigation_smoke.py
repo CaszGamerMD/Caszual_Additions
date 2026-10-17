@@ -22,6 +22,14 @@ assert "pallets=NonNullList.withSize(12,ItemStack.EMPTY)" in be
 assert "ContainerHelper.saveAllItems(output,pallets)" in be
 assert "ContainerHelper.loadAllItems(input,pallets)" in be
 assert "be.loadMagazine(stack)" in blocks
+assert "ExtendedMenuProvider<BlockPos>" in be
+assert "server.openMenu(magazine);" in blocks
+assert "PALLET_STACK_MENU=Registry.register" in registration
+stack_menu=read("StackOfPalletsMenu.java")
+assert "CAPACITY=12" in stack_menu
+assert "addStandardInventorySlots(inventory,8,111);" in stack_menu
+assert "StackOfPalletsScreen::new" in (
+    root/"src/client/java/com/caszgamermd/caszualadditions/CaszualAdditionsClient.java").read_text()
 assert "be.asItem()" in blocks
 assert "magazine.put(cargo.copyWithCount(1))" in worker
 assert "magazines.putIfAbsent(pos,stack)" in network
