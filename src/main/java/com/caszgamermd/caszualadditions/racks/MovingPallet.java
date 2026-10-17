@@ -58,7 +58,7 @@ public final class MovingPallet extends PathfinderMob {
     private final BlockPos[] shelves={BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO};
     private ItemStack pallet=ItemStack.EMPTY;
     private NonNullList<ItemStack> contents=NonNullList.withSize(216,ItemStack.EMPTY);
-    private boolean delivered,deathDropsReleased;
+    private boolean delivered,deathDropsReleased,recallAfterDelivery;
     private int liftTicks;
     private int deliveryMode,releaseTicks;
     private BlockPos deliveryPosition=BlockPos.ZERO;
@@ -134,6 +134,7 @@ public final class MovingPallet extends PathfinderMob {
         for(int i=0;i<216;i++)contents.set(i,recovered.get(i).copy());
         syncDisplay();
         deliveryMode=3;
+        recallAfterDelivery=true;
         deliveryPosition=remoteWarehouse;
         deliveryFailure="RETURNING RECOVERED PALLET TO WAREHOUSE";
         return true;
@@ -155,6 +156,7 @@ public final class MovingPallet extends PathfinderMob {
             return "Linked Rack Computer no longer exists.";
         deliveryPosition=computer.immutable();
         deliveryMode=3;
+        recallAfterDelivery=true;
         releaseTicks=0;
         entityData.set(RELEASE_TICKS,0);
         entityData.set(RACK_INSERT_ACTIVE,false);
@@ -759,6 +761,8 @@ public final class MovingPallet extends PathfinderMob {
             }
             spawned.add(golem);
         }
+        if(recallAfterDelivery)
+            for(StorageGolem worker:spawned)worker.recallToShelf(level);
         discard();
         return true;
     }
@@ -915,6 +919,7 @@ public final class MovingPallet extends PathfinderMob {
         super.addAdditionalSaveData(out);
         out.putString("owner",owner);
         out.putBoolean("delivered",delivered);
+        out.putBoolean("recall_after_delivery",recallAfterDelivery);
         out.putInt("lift_ticks",liftTicks);
         out.putInt("delivery_mode",deliveryMode);
         out.putInt("release_ticks",releaseTicks);
@@ -930,6 +935,7 @@ public final class MovingPallet extends PathfinderMob {
         super.readAdditionalSaveData(in);
         owner=in.getStringOr("owner","");
         delivered=in.getBooleanOr("delivered",false);
+        recallAfterDelivery=in.getBooleanOr("recall_after_delivery",false);
         if(delivered){
             setNoGravity(true);
             noPhysics=true;
