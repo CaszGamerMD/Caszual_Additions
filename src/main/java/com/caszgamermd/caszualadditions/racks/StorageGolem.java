@@ -312,8 +312,10 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         if(remoteCourierPhase==1){
-            BlockPos join=rig.blockPosition();
-            if(distanceToSqr(rig)<6.25){
+            // The carrier's CENTER is physically occupied by the loaded
+            // 1.85-wide platform. Join from its first clear side aisle, not
+            // a goal INSIDE the collision box (which caused 20s stalls).
+            if(distanceToSqr(rig)<7.84){
                 if(rig.joinRemoteCourier(getUUID())){
                     remoteCourier=false;remoteFresh=ItemStack.EMPTY;
                     entityData.set(DISPLAY_PALLET,ItemStack.EMPTY);
@@ -321,8 +323,16 @@ public final class StorageGolem extends PathfinderMob {
                 }
                 return;
             }
-            if(StorageGolemReturnPath.walkable(level,join))
-                walkTo(level,join,1.12);
+            BlockPos join=BlockPos.ZERO;
+            double nearest=Double.POSITIVE_INFINITY;
+            for(Direction side:Direction.Plane.HORIZONTAL){
+                BlockPos candidate=rig.blockPosition().relative(side,2);
+                if(!StorageGolemReturnPath.walkable(level,candidate))continue;
+                double score=candidate.distSqr(blockPosition());
+                if(score<nearest){join=candidate;nearest=score;}
+            }
+            if(!join.equals(BlockPos.ZERO))walkTo(level,join,1.12);
+            else routeIssue="WAITING FOR CLEAR APPROACH TO LOADED TEAM";
             routeIssue="REJOINING THREE-GOLEM LOADED CARRIER";
         }
     }
