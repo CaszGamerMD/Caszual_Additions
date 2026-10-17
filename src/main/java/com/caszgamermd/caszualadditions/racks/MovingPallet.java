@@ -63,6 +63,11 @@ public final class MovingPallet extends PathfinderMob {
     private int deliveryMode,releaseTicks;
     private BlockPos deliveryPosition=BlockPos.ZERO;
     private BlockPos remoteWarehouse=BlockPos.ZERO;
+    private UUID remoteCourierId;
+    private boolean remoteReplacementPlaced,remoteOldLegacy;
+    private Direction remoteOldFacing=Direction.NORTH;
+    private BlockPos remoteAisle=BlockPos.ZERO,remoteMoveAside=BlockPos.ZERO;
+    private static final EntityDataAccessor<Integer> CREW_SIZE=SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
     private Direction deliveryFacing=Direction.NORTH;
     private String deliveryFailure="";
     // A nearly two-block-wide mob can stop pathing before reaching a
@@ -106,6 +111,7 @@ public final class MovingPallet extends PathfinderMob {
         super.defineSynchedData(builder);
         builder.define(DISPLAY_PALLET,ItemStack.EMPTY);
         builder.define(DISPLAY_CARGO,0);
+        builder.define(CREW_SIZE,4);
         builder.define(LIFT_TICKS,0);
         builder.define(RELEASE_TICKS,0);
         builder.define(RACK_INSERT_ACTIVE,false);
@@ -115,6 +121,7 @@ public final class MovingPallet extends PathfinderMob {
     }
     public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
     public int visibleCargo(){return entityData.get(DISPLAY_CARGO);}
+    public int displayedCrewSize(){return entityData.get(CREW_SIZE);}
     public float liftProgress(){return entityData.get(LIFT_TICKS)/12.0f;}
     public float releaseProgress(){return entityData.get(RELEASE_TICKS)/20.0f;}
     public boolean rackInserting(){return entityData.get(RACK_INSERT_ACTIVE);}
@@ -127,22 +134,59 @@ public final class MovingPallet extends PathfinderMob {
     public float rackInsertZ(){return entityData.get(RACK_INSERT_Z);}
     public boolean isDelivering(){return deliveryMode!=0;}
     public boolean returningToWarehouse(){return deliveryMode==3;}
-    public boolean remoteExchangeActive(){return deliveryMode==4;}
+    public boolean remoteExchangeActive(){return deliveryMode>=4&&deliveryMode<=6;}
     public boolean freshPalletOnly(){
         if(pallet.isEmpty())return false;
         for(ItemStack content:contents)if(!content.isEmpty())return false;
         return true;
     }
-    public boolean acceptRecoveredPallet(ItemStack wrapped,NonNullList<ItemStack> recovered){
-        if(!remoteExchangeActive()||!freshPalletOnly()||wrapped.isEmpty()||recovered.size()!=216)
+    /** One real Golem takes exclusive ownership of the empty replacement. */
+    public boolean splitRemoteCourier(StorageGolem worker){
+        if(deliveryMode!=4||worker==null||!freshPalletOnly()||remoteCourierId!=null)return false;
+        if(!worker.beginRemoteCourier(getUUID(),deliveryPosition,pallet.copyWithCount(1)))
             return false;
+        remoteCourierId=worker.getUUID();
+        pallet=ItemStack.EMPTY;syncDisplay();
+        entityData.set(CREW_SIZE,3);
+        deliveryFailure="THREE GOLEMS TO TARGET; ONE PUSHING EMPTY PALLET";
+        return true;
+    }
+    public boolean acceptsRemoteLift(BlockPos target){
+        return deliveryMode==4&&remoteCourierId!=null
+                &&target.equals(deliveryPosition)&&pallet.isEmpty();
+    }
+    public boolean acceptRemoteLift(BlockPos target,BlockState oldState,
+            ItemStack wrapped,NonNullList<ItemStack> recovered){
+        if(!acceptsRemoteLift(target)||wrapped.isEmpty()||recovered.size()!=216)return false;
         pallet=wrapped.copyWithCount(1);
         for(int i=0;i<216;i++)contents.set(i,recovered.get(i).copy());
+        remoteOldFacing=oldState.getValue(PalletBlock.FACING);
+        remoteOldLegacy=oldState.getValue(PalletBlock.LEGACY);
+        remoteMoveAside=BlockPos.ZERO;
+        deliveryMode=5;remoteAisle=BlockPos.ZERO;
         syncDisplay();
+        deliveryFailure="THREE GOLEMS LIFTED TARGET; MOVING ASIDE";
+        return true;
+    }
+    public boolean readyForCourierPlacement(){return deliveryMode==6&&!remoteReplacementPlaced;}
+    public Direction remoteOldFacing(){return remoteOldFacing;}
+    public boolean remoteOldLegacy(){return remoteOldLegacy;}
+    public boolean confirmCourierPlacement(UUID courier){
+        if(!readyForCourierPlacement()||!courier.equals(remoteCourierId))return false;
+        remoteReplacementPlaced=true;
+        deliveryFailure="NEW PALLET PLACED; WAITING FOR FOURTH GOLEM";
+        return true;
+    }
+    public boolean joinRemoteCourier(UUID courier){
+        if(deliveryMode!=6||!remoteReplacementPlaced
+                ||!courier.equals(remoteCourierId))return false;
+        remoteCourierId=null;
+        entityData.set(CREW_SIZE,4);
         deliveryMode=3;
         recallAfterDelivery=true;
         deliveryPosition=remoteWarehouse;
-        deliveryFailure="RETURNING RECOVERED PALLET TO WAREHOUSE";
+        remoteFloorRoute.clear();nextRemotePlan=0;
+        deliveryFailure="FOUR GOLEMS RETURNING RECOVERED PALLET";
         return true;
     }
     public boolean beginRemoteExchange(BlockPos target,BlockPos computer){
@@ -150,7 +194,7 @@ public final class MovingPallet extends PathfinderMob {
         remoteWarehouse=computer.immutable();
         deliveryPosition=target.immutable();
         deliveryMode=4;
-        deliveryFailure="DELIVERING FRESH PALLET FOR REMOTE SWAP";
+        deliveryFailure="DISPATCHING THREE GOLEMS PLUS ONE PALLET COURIER";
         return true;
     }
     public String deliveryStatus(){return deliveryFailure;}
@@ -452,37 +496,67 @@ public final class MovingPallet extends PathfinderMob {
         return true;
     }
 
+    private boolean nearRemoteGoal(BlockPos target){
+        double dx=target.getX()+.5-getX(),dz=target.getZ()+.5-getZ();
+        return dx*dx+dz*dz<1.8&&Math.abs(target.getY()-getY())<.9;
+    }
+    private BlockPos remoteAisle(ServerLevel level,BlockPos target,int min,int max){
+        BlockPos choice=BlockPos.ZERO;
+        double closest=Double.POSITIVE_INFINITY;
+        for(Direction side:Direction.Plane.HORIZONTAL)for(int n=min;n<=max;n++){
+            BlockPos trial=target.relative(side,n);
+            if(!safePlatformFloor(level,trial))continue;
+            double distance=trial.distSqr(blockPosition());
+            if(distance<closest){closest=distance;choice=trial;}
+        }
+        return choice;
+    }
     private void tickRemoteExchange(ServerLevel level){
+        if(remoteCourierId==null){
+            deliveryFailure="WAITING FOR PALLET COURIER ASSIGNMENT";return;
+        }
         BlockPos target=deliveryPosition;
-        var old=StorageGroundPalletTransfer.wrappedController(level,target);
-        if(old==null){
-            deliveryFailure="WAITING: REMOTE WRAPPED PALLET MISSING OR UNLOADED";
-            getNavigation().stop();return;
+        if(StorageGroundPalletTransfer.wrappedController(level,target)==null){
+            deliveryFailure="WAITING FOR WRAPPED TARGET PALLET";return;
         }
-        BlockPos best=null;
-        double bestDistance=Double.POSITIVE_INFINITY;
-        for(Direction side:Direction.Plane.HORIZONTAL){
-            for(int steps=3;steps<=4;steps++){
-                BlockPos trial=target.relative(side,steps);
-                if(!safePlatformFloor(level,trial))continue;
-                double d=trial.distSqr(blockPosition());
-                if(d<bestDistance){bestDistance=d;best=trial;}
-            }
+        // Fix the aisle target for the ENTIRE approach; changing to the
+        // nearest side every tick previously made the team turn indefinitely.
+        if(remoteAisle.equals(BlockPos.ZERO)
+                ||!safePlatformFloor(level,remoteAisle))
+            remoteAisle=remoteAisle(level,target,3,5);
+        if(remoteAisle.equals(BlockPos.ZERO)){
+            deliveryFailure="WAITING FOR CLEAR THREE-WIDE APPROACH";return;
         }
-        if(best==null){
-            deliveryFailure="WAITING: NO CLEAR REMOTE LOADING AISLE";
-            getNavigation().stop();return;
-        }
-        double dx=best.getX()+.5-getX(),dz=best.getZ()+.5-getZ();
-        if(dx*dx+dz*dz>2.25||Math.abs(best.getY()-getY())>.8){
-            deliveryFailure="CARRYING FRESH PALLET TO REMOTE PICKUP";
-            navigateRemoteFloor(level,best);
-            return;
+        if(!nearRemoteGoal(remoteAisle)){
+            deliveryFailure="THREE GOLEMS APPROACHING WRAPPED TARGET";
+            navigateRemoteFloor(level,remoteAisle);return;
         }
         getNavigation().stop();
-        if(!StorageGroundPalletTransfer.exchange(level,target,this)){
-            deliveryFailure="WAITING: REMOTE EXCHANGE COULD NOT COMPLETE";
+        if(!StorageGroundPalletTransfer.liftForRemoteExchange(level,target,this))
+            deliveryFailure="WAITING FOR TARGET PALLET LIFT";
+    }
+    private void tickRemoteStepAside(ServerLevel level){
+        if(remoteMoveAside.equals(BlockPos.ZERO)
+                ||!safePlatformFloor(level,remoteMoveAside)){
+            remoteMoveAside=remoteAisle(level,deliveryPosition,6,9);
+            remoteFloorRoute.clear();nextRemotePlan=0;
         }
+        if(remoteMoveAside.equals(BlockPos.ZERO)){
+            deliveryFailure="WAITING FOR CLEAR THREE-WIDE SIDE AISLE";return;
+        }
+        if(!nearRemoteGoal(remoteMoveAside)){
+            deliveryFailure="THREE GOLEMS MOVING TARGET ASIDE";
+            navigateRemoteFloor(level,remoteMoveAside);return;
+        }
+        getNavigation().stop();
+        deliveryMode=6;
+        deliveryFailure="FOOTPRINT CLEARED; WAITING FOR EMPTY COURIER";
+    }
+    private void tickRemoteRendezvous(ServerLevel level){
+        getNavigation().stop();
+        deliveryFailure=remoteReplacementPlaced
+                ?"WAITING FOR FOURTH GOLEM TO JOIN"
+                :"WAITING FOR COURIER TO PLACE EMPTY PALLET";
     }
     private void tickWarehouseReturn(ServerLevel level){
         BlockPos computer=deliveryPosition;
@@ -574,6 +648,8 @@ public final class MovingPallet extends PathfinderMob {
     private void tickDelivery(ServerLevel level){
         if(deliveryMode==3){tickWarehouseReturn(level);return;}
         if(deliveryMode==4){tickRemoteExchange(level);return;}
+        if(deliveryMode==5){tickRemoteStepAside(level);return;}
+        if(deliveryMode==6){tickRemoteRendezvous(level);return;}
         if(!level.hasChunkAt(deliveryPosition))return;
         BlockPos target=deliveryPosition;
         double targetX,targetZ;
@@ -903,10 +979,12 @@ public final class MovingPallet extends PathfinderMob {
     private void updateCrewLabel(){
         String text=delivered?"4 GOLEMS | UNLOADING"
                 :isDelivering()?(deliveryMode==4
-                    ?"4 GOLEMS | REMOTE PALLET SWAP"
+                    ?"3 GOLEMS | TARGET PICKUP"
                     :deliveryMode==3?"4 GOLEMS | RETURNING TO WAREHOUSE"
                     :deliveryMode==1?"4 GOLEMS | DELIVERING TO RACK"
                     :"4 GOLEMS | PLACING PALLET")
+                :deliveryMode==5?"3 GOLEMS | MOVING ASIDE"
+                :deliveryMode==6?"3 GOLEMS | COURIER HANDOFF"
                 :liftTicks<12?"4 GOLEMS | LIFTING"
                 :"4 GOLEMS | FOLLOWING PLAYER";
         if(getCustomName()==null||!getCustomName().getString().equals(text))
@@ -917,7 +995,7 @@ public final class MovingPallet extends PathfinderMob {
         super.tick();
         if(!(level() instanceof ServerLevel server))return;
         if(tickCount%10==0)updateCrewLabel();
-        if((deliveryMode==3||deliveryMode==4)&&tickCount%40==0){
+        if((deliveryMode>=3&&deliveryMode<=6)&&tickCount%40==0){
             // Keep a short, expiring simulation corridor around the actual
             // walking platform, plus its next destination. No teleportation.
             WarehouseRemoteTickets.keep(server,blockPosition());
@@ -987,6 +1065,12 @@ public final class MovingPallet extends PathfinderMob {
         out.store("remote_warehouse",BlockPos.CODEC,remoteWarehouse);
         out.putString("delivery_facing",deliveryFacing.getName());
         out.putString("delivery_failure",deliveryFailure);
+        out.putBoolean("remote_replacement_placed",remoteReplacementPlaced);
+        out.putBoolean("remote_old_legacy",remoteOldLegacy);
+        out.putString("remote_old_facing",remoteOldFacing.getName());
+        if(remoteCourierId!=null)out.putString("remote_courier_uuid",remoteCourierId.toString());
+        out.store("remote_aisle",BlockPos.CODEC,remoteAisle);
+        out.store("remote_move_aside",BlockPos.CODEC,remoteMoveAside);
         for(int i=0;i<4;i++)out.store("shelf_"+i,BlockPos.CODEC,shelves[i]);
         if(!pallet.isEmpty())out.store("pallet",ItemStack.CODEC,pallet);
         ContainerHelper.saveAllItems(out,contents);
@@ -1002,7 +1086,7 @@ public final class MovingPallet extends PathfinderMob {
         }
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
-        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,4);
+        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,6);
         releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,20);
         deliveryPosition=in.read("delivery_position",BlockPos.CODEC).orElse(BlockPos.ZERO);
         remoteWarehouse=in.read("remote_warehouse",BlockPos.CODEC).orElse(BlockPos.ZERO);
@@ -1011,6 +1095,16 @@ public final class MovingPallet extends PathfinderMob {
                     .toUpperCase(java.util.Locale.ROOT));}
         catch(IllegalArgumentException ex){deliveryFacing=Direction.NORTH;}
         deliveryFailure=in.getStringOr("delivery_failure","");
+        remoteReplacementPlaced=in.getBooleanOr("remote_replacement_placed",false);
+        remoteOldLegacy=in.getBooleanOr("remote_old_legacy",false);
+        remoteAisle=in.read("remote_aisle",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        remoteMoveAside=in.read("remote_move_aside",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        try{remoteOldFacing=Direction.valueOf(in.getStringOr("remote_old_facing","north")
+                .toUpperCase(java.util.Locale.ROOT));}
+        catch(IllegalArgumentException ex){remoteOldFacing=Direction.NORTH;}
+        try{remoteCourierId=UUID.fromString(in.getStringOr("remote_courier_uuid",""));}
+        catch(IllegalArgumentException ex){remoteCourierId=null;}
+        entityData.set(CREW_SIZE,remoteCourierId==null?4:3);
         entityData.set(RELEASE_TICKS,releaseTicks);
         entityData.set(RACK_INSERT_ACTIVE,deliveryMode==1);
         for(int i=0;i<4;i++)
