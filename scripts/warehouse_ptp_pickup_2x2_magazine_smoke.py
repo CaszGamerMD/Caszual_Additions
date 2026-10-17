@@ -29,7 +29,7 @@ assert "IntegerProperty.create(\"part\",0,3)" in stack
 assert "level.getWorldBorder().isWithinBounds(pos)" in stack
 assert "for(int part=0;part<4;part++)" in stack
 assert "new StackOfPalletsBlockEntity(pos,state):null" in stack
-assert "magazine.loadMagazine(stack)" in stack
+assert "be.loadMagazine(stack)" in stack
 assert "public static @Nullable StackOfPalletsBlockEntity controller" in stack
 assert "Block.popResource(level,origin,magazine.asItem())" in stack
 assert "level.removeBlock(other,false)" in stack
