@@ -37,21 +37,26 @@ single-owned from start to finish.
 
 ## Placeable Stack of Pallets and persistent Golem routes
 
-- **Stack of Pallets occupies an actual 2×2 footprint:** placement requires
-  all four ground cells to be clear. All four parts share ONE saved 12-slot
-  controller inventory (no duplicate inventories or pallet items). The
-  block entity renders **every one of the 12 pallets separately** in four
-  positions per tier across three tiers. Each miniature has its real mixed
-  wood-plank textures, material (plastic, iron or copper age), plastic tint
-  and glass-wrap appearance, reflecting the corresponding saved slot. Click
-  any quarter to interact; breaking any quarter in survival retrieves one
-  magazine containing the entire inventory. Right-click with a pallet to
-  deposit it; sneak-right-click with an empty hand to retrieve one.
-  Right-click with an empty hand to open its dedicated 12-slot inventory
-  alongside the player's inventory (no overlapping filter controls).
-  Breaking the magazine normally drops a single Stack of Pallets item with
-  its contents, not twelve scattered pallet items. The item can still be used
-  as an older handheld/rack magazine for existing worlds.
+- **Stack of Pallets: FULL-SIZE 12-high tower with real collision.**
+  The 2×2 footprint now has up to 12 FULL-WIDTH pallets stacked vertically,
+  one pallet per layer, not four miniatures per tier. Each pallet uses its
+  real wood/material/plastic color/copper ageing and wrap appearance from
+  the actual saved stack. The vanilla 2×2 pallet deck is 5 pixels tall:
+  the full 12-pallet stack reaches 60 pixels / 3.75 blocks. Four linked
+  vertical tiers of 2×2 cells give it real solid collision, including on
+  the upper three blocks. All 16 footprint/tower cells are ONE magazine with
+  a single inventory and a single drop. Requires a clear 2×2 footprint and
+  four blocks of headroom on placement. Old 2×2 magazines are expanded
+  into the upper collision tiers when that overhead is free; other blocks
+  are never overwritten.
+  **Empty-hand right-click on any occupied face removes the TOP real pallet**
+  with all its stored components and gives it to the player. If the
+  inventory is full, vanilla inventory handoff drops the item safely.
+  Right-click while holding a pallet to add one (up to 12); **sneak-right-click
+  with an empty hand opens the 12-slot GUI** for precise manual editing.
+  Breaking any part drops a single contents-preserving magazine item in
+  survival, not 12 loose decks. Original item IDs, slot data and warehouse
+  stock automation remain compatible.
 - **Empty pallet removal from PTPs:** sneak-right-click any connected PTP
   cell with an empty hand while a pallet is installed to collect it, provided
   the pallet is empty, unwrapped and has no pending output reservations or
