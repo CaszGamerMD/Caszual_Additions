@@ -6,6 +6,7 @@ import com.caszgamermd.caszualadditions.pallet.PalletContent;
 import com.caszgamermd.caszualadditions.pallet.PalletData;
 import com.caszgamermd.caszualadditions.pallet.PalletKind;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelResolver;
@@ -38,11 +39,15 @@ public final class MovingPalletRenderer extends MobRenderer<
     @Override public void extractRenderState(MovingPallet entity,
             MovingPalletRenderState state,float partialTick){
         super.extractRenderState(entity,state,partialTick);
-        // LivingEntityRenderer otherwise swivels the whole group to match
-        // navigator body yaw while the separately rendered pallet remains
-        // world-aligned. Keep all four attached bots' facing LOCKED instead
-        // of letting them act like a single neck joint.
-        state.bodyRot=180.0f;
+        // Golem body and deck MUST now share the real moving-rig yaw.
+        // super.extractRenderState already interpolates the living body's
+        // heading: don't replace it with the old hard-coded 180 degrees.
+        state.groundedMask=entity.cornerSupportMask();
+        for(int i=0;i<4;i++)
+            state.footHeight[i]=entity.cornerTerrainHeight(i);
+        float[] slope=MovingPalletTerrain.tilt(state.footHeight,state.groundedMask);
+        state.platformPitch=slope[0];
+        state.platformRoll=slope[1];
         ItemStack stack=entity.displayPallet();
         state.visible=entity.handsActuallyCarryingPallet()&&!stack.isEmpty();
         state.crewSize=entity.displayedCrewSize();
@@ -79,6 +84,10 @@ public final class MovingPalletRenderer extends MobRenderer<
         super.submit(state,pose,collector,camera);
         if(!state.visible)return;
         pose.pushPose();
+        // Vanilla LivingEntityRenderer applies (180 - bodyRot) to the four
+        // Golems. Mirror that exact rotation for the separate pallet deck,
+        // so feet/arms/cargo all turn together during movement.
+        pose.mulPose(Axis.YP.rotationDegrees(180.0f-state.bodyRot));
         // Inverse of the rack extraction renderer:
         // 0..22 ticks lift pallet to shelf level, then 22..40 slide it
         // inward. Robots stay rigidly at their four corner offsets until
@@ -91,6 +100,12 @@ public final class MovingPalletRenderer extends MobRenderer<
         // Origin = geometric middle of the unit. All four Golems have
         // identical corner offsets relative to this one pallet platform.
         pose.translate(-.9f,.50f+.98f*state.liftProgress,-.9f);
+        // Pivot at the center of the carrying surface, not at a world block
+        // corner. All pallet boards, cargo and glass tilt as ONE rigid load.
+        pose.translate(.9f,.16f,.9f);
+        pose.mulPose(Axis.XP.rotation(state.platformPitch));
+        pose.mulPose(Axis.ZP.rotation(-state.platformRoll));
+        pose.translate(-.9f,-.16f,-.9f);
         for(float z:new float[]{.08f,1.48f})
             piece(state.deck,state,pose,collector,.02f,0,z,1.76f,.10f,.24f);
         for(float x:new float[]{.10f,.73f,1.36f})
