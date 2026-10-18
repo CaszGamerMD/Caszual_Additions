@@ -278,12 +278,24 @@ public final class RackStairsBlock extends Block implements EntityBlock {
     /** Collision rails exactly follow the rendered left/right steel barriers.
      *  Rotating the staircase rotates the open sides as well. */
     private static VoxelShape sideShape(Direction facing,boolean left,boolean support){
+        if(support){
+            // Local posts occupy just one pixel of the lower steel frame.
+            // Rotate the post with its multipart model; wrong-way supports
+            // would otherwise create invisible collision at 90/180 degrees.
+            return switch(facing){
+                case NORTH -> left?box(0,0,1,1,16,2):box(15,0,1,16,16,2);
+                case EAST -> left?box(14,0,0,15,16,1):box(14,0,15,15,16,16);
+                case SOUTH -> left?box(15,0,14,16,16,15):box(0,0,14,1,16,15);
+                case WEST -> left?box(1,0,15,2,16,16):box(1,0,0,2,16,1);
+                default -> Shapes.empty();
+            };
+        }
         Direction side=left?facing.getCounterClockWise():facing.getClockWise();
         return switch(side){
-            case WEST -> support?box(0,0,1,1,16,2):box(0,3,0,1,16,16);
-            case EAST -> support?box(15,0,1,16,16,2):box(15,3,0,16,16,16);
-            case NORTH -> support?box(1,0,0,2,16,1):box(0,3,0,16,16,1);
-            case SOUTH -> support?box(1,0,15,2,16,16):box(0,3,15,16,16,16);
+            case WEST -> box(0,3,0,1,16,16);
+            case EAST -> box(15,3,0,16,16,16);
+            case NORTH -> box(0,3,0,16,16,1);
+            case SOUTH -> box(0,3,15,16,16,16);
             default -> Shapes.empty();
         };
     }
