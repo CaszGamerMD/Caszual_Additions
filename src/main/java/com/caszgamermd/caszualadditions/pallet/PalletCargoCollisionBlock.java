@@ -117,6 +117,12 @@ public final class PalletCargoCollisionBlock extends Block {
     /** Resolve the real shared pallet controller behind an upper cargo
      *  selection cell. Never open an unrelated pallet beneath an air gap.
      */
+    public static BlockPos owningPallet(BlockGetter level,BlockPos at){
+        if(!(level.getBlockState(at).getBlock() instanceof PalletCargoCollisionBlock))
+            return null;
+        return owner(level,at);
+    }
+
     private static BlockPos owner(BlockGetter level,BlockPos at){
         for(int down=1;down<=2;down++){
             BlockPos partPos=at.below(down);
