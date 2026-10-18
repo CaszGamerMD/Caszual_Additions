@@ -64,7 +64,11 @@ public final class WarehouseRackAccess {
      * Golems wait for the stair mover instead of clipping through. */
     public static boolean clearOfStairs(ServerLevel level,RackBlockEntity rack){
         var pos=rack.getBlockPos();
-        for(int h=0;h<=2;h++)for(int col=0;col<2;col++)
+        // Upper rack bays can have a mobile staircase parked BELOW the
+        // pallet lip; the pallet then has to LOWER through that very aisle.
+        // Check the whole lowering shaft, not only three cells above the
+        // rack root (which missed stair units at floor level).
+        for(int h=-4;h<=2;h++)for(int col=0;col<2;col++)
             for(int dist=1;dist<=3;dist++){
                 BlockPos at=RackBlock.cell(pos,rack.facing(),col)
                         .relative(rack.facing(),dist).above(h);
