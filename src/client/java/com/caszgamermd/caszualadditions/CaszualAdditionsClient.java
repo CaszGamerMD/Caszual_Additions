@@ -47,6 +47,9 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         CaszUtilsClient.initialize();
         HeadVendingClient.initialize();
         RackComputerClient.initialize();
+        ModelLayerRegistry.registerModelLayer(
+                com.caszgamermd.caszualadditions.antiwarden.WoolGearLayer.LAYER,
+                com.caszgamermd.caszualadditions.antiwarden.WoolGearLayer::layer);
         ModelLayerRegistry.registerModelLayer(StorageGolemRenderer.LAYER,StorageGolemModel::layer);
         EntityRenderers.register(RackContent.STORAGE_GOLEM_TYPE,StorageGolemRenderer::new);
         ModelLayerRegistry.registerModelLayer(MovingPalletRenderer.LAYER,MovingPalletModel::layer);
