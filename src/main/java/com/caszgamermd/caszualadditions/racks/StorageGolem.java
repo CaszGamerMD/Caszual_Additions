@@ -47,6 +47,12 @@ public final class StorageGolem extends PathfinderMob {
             SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Integer> DISPLAY_CARGO=
             SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.INT);
+    // The client cannot see remoteCourier / remoteFresh / playerHaul / stage
+    // NBT task fields. Those are server-only. Sync a tiny visual-only state
+    // rather than attempting to read private mission ownership on client:
+    // 0 = hands free, 1 = supporting loaded pallet, 2 = pushing empty deck.
+    private static final EntityDataAccessor<Integer> DISPLAY_PALLET_ACTION=
+            SynchedEntityData.defineId(StorageGolem.class,EntityDataSerializers.INT);
     // These are three SAMPLES of actual in-transit items. The complete
     // nine-slot order inventory stays server-owned and persisted in NBT.
     private static final EntityDataAccessor<ItemStack> DISPLAY_HELD_A=
@@ -73,6 +79,7 @@ public final class StorageGolem extends PathfinderMob {
         super.defineSynchedData(builder);
         builder.define(DISPLAY_PALLET,ItemStack.EMPTY);
         builder.define(DISPLAY_CARGO,0);
+        builder.define(DISPLAY_PALLET_ACTION,0);
         builder.define(DISPLAY_HELD_A,ItemStack.EMPTY);
         builder.define(DISPLAY_HELD_B,ItemStack.EMPTY);
         builder.define(DISPLAY_HELD_C,ItemStack.EMPTY);
@@ -276,6 +283,7 @@ public final class StorageGolem extends PathfinderMob {
         remoteCourierPhase=0;
         stage=0;haulJob=false;playerHaul=false;
         syncRemoteFreshVisual();
+        syncPalletAction();
         setCustomName(Component.literal("EMPTY PALLET | 1 GOLEM PUSHING"));
         setCustomNameVisible(true);
         return true;
@@ -283,9 +291,17 @@ public final class StorageGolem extends PathfinderMob {
     public boolean remoteCourierActive(){return remoteCourier;}
     /** Real carrying stage, not a lingering client-visible name.
      * Stage 4 is idle/awaiting orders and MUST have arms at the sides. */
-    public boolean carryingPalletPose(){return playerHaul&&stage==1;}
+    public boolean carryingPalletPose(){
+        return entityData.get(DISPLAY_PALLET_ACTION)==1;
+    }
     public boolean pushingPalletPose(){
-        return remoteCourier&&remoteCourierPhase==0&&!remoteFresh.isEmpty();
+        return entityData.get(DISPLAY_PALLET_ACTION)==2;
+    }
+    private void syncPalletAction(){
+        int action=remoteCourier&&remoteCourierPhase==0
+                &&!remoteFresh.isEmpty()?2:playerHaul&&stage==1?1:0;
+        if(entityData.get(DISPLAY_PALLET_ACTION)!=action)
+            entityData.set(DISPLAY_PALLET_ACTION,action);
     }
 
     public void beginRemotePickup(UUID mission,UUID courier,BlockPos target,
@@ -426,6 +442,7 @@ public final class StorageGolem extends PathfinderMob {
         stage=2;
         haulJob=false;playerHaul=false;
         remoteCourierPhase=0;
+        syncPalletAction();
         routeIssue="CARRIER LOST; RETURNING TO SHELF";
         getNavigation().stop();
     }
@@ -692,6 +709,7 @@ public final class StorageGolem extends PathfinderMob {
                     remoteCourierTarget,rig,this,remoteFresh)){
                 remoteFresh=ItemStack.EMPTY;
                 remoteCourierPhase=1;
+                syncPalletAction();
                 remoteCourierAisle=BlockPos.ZERO;
                 remoteCourierJoinAisle=BlockPos.ZERO;
                 resetCourierRoute();
@@ -1950,6 +1968,7 @@ public final class StorageGolem extends PathfinderMob {
         if(!remoteCourier&&!remotePickup)checkPendingRecall(level);
         if(tickCount%10==0)updateTaskLabel();
         syncHeldVisual();
+        syncPalletAction();
         if(remotePickup){tickRemotePickup(level);return;}
         if(remoteCourier){tickRemoteCourier(level);return;}
         // Movement controls expire after each mob AI tick. Drive the next
@@ -2372,6 +2391,7 @@ public final class StorageGolem extends PathfinderMob {
         syncPalletVisual();
         syncHeldVisual();
         syncRemoteFreshVisual();
+        syncPalletAction();
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel server &&!deathDropsReleased){
