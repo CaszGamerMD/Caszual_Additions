@@ -58,7 +58,8 @@ assert "level.addFreshEntity(worker)" in dispatch
 assert "worker.beginRemotePickup(" in dispatch
 assert "level.addFreshEntity(courier)" in dispatch
 assert "carrier.splitRemoteCourier(courier)" in dispatch
-assert "for(int i=0;i<consumed;i++)shelves.get(i).add();" in dispatch
+assert "for(int i=0;i<consumed;i++)" in dispatch
+assert "shelves.get(i).addNamed(deployedNames.get(i))" in dispatch
 assert "liftForRemoteExchange(ServerLevel level,BlockPos root," in swap
 assert "placeRemoteReplacement(ServerLevel level,BlockPos root," in swap
 assert "NonNullList.withSize(216,ItemStack.EMPTY)" in swap
