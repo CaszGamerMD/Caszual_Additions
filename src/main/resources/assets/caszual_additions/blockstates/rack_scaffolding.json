@@ -1,36 +1,98 @@
 {
-  "variants": {
-    "facing=north,folded=false": {
-      "model": "caszual_additions:block/rack_scaffolding_open",
-      "y": 0
+  "multipart": [
+    {
+      "when": {
+        "folded": "false",
+        "ladder_hatch": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_scaffolding_deck"
+      }
     },
-    "facing=north,folded=true": {
-      "model": "caszual_additions:block/rack_scaffolding_folded",
-      "y": 0
+    {
+      "when": {
+        "folded": "false",
+        "ladder_hatch": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_scaffolding_hatch"
+      }
     },
-    "facing=east,folded=false": {
-      "model": "caszual_additions:block/rack_scaffolding_open",
-      "y": 90
+    {
+      "when": {
+        "folded": "false",
+        "rail_north": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_scaffolding_rail_north"
+      }
     },
-    "facing=east,folded=true": {
-      "model": "caszual_additions:block/rack_scaffolding_folded",
-      "y": 90
+    {
+      "when": {
+        "folded": "false",
+        "rail_south": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_scaffolding_rail_south"
+      }
     },
-    "facing=south,folded=false": {
-      "model": "caszual_additions:block/rack_scaffolding_open",
-      "y": 180
+    {
+      "when": {
+        "folded": "false",
+        "rail_east": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_scaffolding_rail_east"
+      }
     },
-    "facing=south,folded=true": {
-      "model": "caszual_additions:block/rack_scaffolding_folded",
-      "y": 180
+    {
+      "when": {
+        "folded": "false",
+        "rail_west": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_scaffolding_rail_west"
+      }
     },
-    "facing=west,folded=false": {
-      "model": "caszual_additions:block/rack_scaffolding_open",
-      "y": 270
+    {
+      "when": {
+        "folded": "true",
+        "facing": "north"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_scaffolding_folded",
+        "y": 0
+      }
     },
-    "facing=west,folded=true": {
-      "model": "caszual_additions:block/rack_scaffolding_folded",
-      "y": 270
+    {
+      "when": {
+        "folded": "true",
+        "facing": "east"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_scaffolding_folded",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "folded": "true",
+        "facing": "south"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_scaffolding_folded",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "folded": "true",
+        "facing": "west"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_scaffolding_folded",
+        "y": 270
+      }
     }
-  }
+  ]
 }
