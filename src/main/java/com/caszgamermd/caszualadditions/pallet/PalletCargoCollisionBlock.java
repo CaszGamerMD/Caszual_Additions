@@ -65,7 +65,13 @@ public final class PalletCargoCollisionBlock extends Block {
             net.minecraft.world.level.Level level,BlockPos pos,
             net.minecraft.world.entity.player.Player player,
             net.minecraft.world.InteractionHand hand,net.minecraft.world.phys.BlockHitResult hit){
-        if(player.isShiftKeyDown())return net.minecraft.world.InteractionResult.PASS;
+        // The wrapper, Scanner and Stack of Pallets must still receive their
+        // own item.useOn call. Each now resolves this proxy to its root.
+        if(player.isShiftKeyDown()
+                ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.PORTABLE_WRAPPER)
+                ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.STORAGE_SCANNER_ITEM)
+                ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.STACK_OF_PALLETS))
+            return net.minecraft.world.InteractionResult.PASS;
         BlockPos root=owner(level,pos);
         if(root==null)return net.minecraft.world.InteractionResult.PASS;
         return PalletBlock.openPallet(level,root,level.getBlockState(root),player);
