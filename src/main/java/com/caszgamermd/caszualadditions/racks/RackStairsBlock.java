@@ -4,6 +4,7 @@ import com.mojang.serialization.MapCodec;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -12,6 +13,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -23,6 +26,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
@@ -45,16 +49,45 @@ import org.jspecify.annotations.Nullable;
 public final class RackStairsBlock extends Block implements EntityBlock {
     public static final IntegerProperty PART=IntegerProperty.create("part",0,8);
     public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
+    public static final BooleanProperty RAIL_LEFT=BooleanProperty.create("rail_left");
+    public static final BooleanProperty RAIL_RIGHT=BooleanProperty.create("rail_right");
     private final MapCodec<RackStairsBlock> codec=MapCodec.unit(this);
     public RackStairsBlock(BlockBehaviour.Properties p){
         super(p);
         registerDefaultState(stateDefinition.any().setValue(PART,0)
-                .setValue(FACING,Direction.NORTH));
+                .setValue(FACING,Direction.NORTH)
+                .setValue(RAIL_LEFT,true).setValue(RAIL_RIGHT,true));
     }
     @Override protected MapCodec<? extends Block> codec(){return codec;}
     @Override protected void createBlockStateDefinition(
             StateDefinition.Builder<Block,BlockState> builder){
-        builder.add(PART,FACING);
+        builder.add(PART,FACING,RAIL_LEFT,RAIL_RIGHT);
+    }
+    /** Rails are individual per footprint cell, keeping all nine pieces a single stair.
+     *  Connected rack/scaffold edges remain open, including after a push or rotation. */
+    private static boolean hasSideConnection(BlockState neighbor,int part,Direction facing){
+        if(neighbor.getBlock() instanceof RackScaffoldingBlock
+                ||neighbor.getBlock() instanceof RackBlock)return true;
+        return neighbor.getBlock() instanceof RackStairsBlock
+                &&neighbor.getValue(PART)==part&&neighbor.getValue(FACING)==facing;
+    }
+    private static BlockState withRails(BlockState state,BlockGetter level,BlockPos at){
+        Direction facing=state.getValue(FACING);
+        int part=state.getValue(PART);
+        return state.setValue(RAIL_LEFT,!hasSideConnection(
+                        level.getBlockState(at.relative(facing.getCounterClockWise())),part,facing))
+                .setValue(RAIL_RIGHT,!hasSideConnection(
+                        level.getBlockState(at.relative(facing.getClockWise())),part,facing));
+    }
+    @Override protected BlockState updateShape(BlockState state,LevelReader level,
+            ScheduledTickAccess ticks,BlockPos at,Direction side,BlockPos neighborPos,
+            BlockState neighbor,RandomSource random){
+        Direction facing=state.getValue(FACING);
+        if(side==facing.getCounterClockWise())
+            return state.setValue(RAIL_LEFT,!hasSideConnection(neighbor,state.getValue(PART),facing));
+        if(side==facing.getClockWise())
+            return state.setValue(RAIL_RIGHT,!hasSideConnection(neighbor,state.getValue(PART),facing));
+        return state;
     }
     public static BlockPos cell(BlockPos root,Direction facing,int part){
         return root.relative(facing,part%3).above(part/3);
@@ -83,20 +116,21 @@ public final class RackStairsBlock extends Block implements EntityBlock {
                 &&!(support.getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock);
     }
     @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext ctx){
-        if(!(ctx.getLevel() instanceof ServerLevel level)) {
-            return defaultBlockState().setValue(FACING,
-                    ctx.getHorizontalDirection().getOpposite());
-        }
         Direction face=ctx.getHorizontalDirection().getOpposite();
+        BlockState initial=defaultBlockState().setValue(FACING,face);
+        if(!(ctx.getLevel() instanceof ServerLevel level))
+            return withRails(initial,ctx.getLevel(),ctx.getClickedPos());
         return fits(level,ctx.getClickedPos(),face,java.util.Set.of())
-                ?defaultBlockState().setValue(FACING,face):null;
+                ?withRails(initial,level,ctx.getClickedPos()):null;
     }
     @Override public void setPlacedBy(Level level,BlockPos pos,BlockState state,
             @Nullable LivingEntity who,ItemStack item){
         super.setPlacedBy(level,pos,state,who,item);
         if(level.isClientSide())return;
-        for(int i=1;i<9;i++)level.setBlock(cell(pos,state.getValue(FACING),i),
-                state.setValue(PART,i),3);
+        for(int i=1;i<9;i++){
+            BlockPos at=cell(pos,state.getValue(FACING),i);
+            level.setBlock(at,withRails(state.setValue(PART,i),level,at),3);
+        }
     }
     @Override public @Nullable BlockEntity newBlockEntity(BlockPos pos,BlockState state){
         return state.getValue(PART)==0?new RackStairsBlockEntity(pos,state):null;
@@ -181,9 +215,10 @@ public final class RackStairsBlock extends Block implements EntityBlock {
         var snapshot=before.snapshot();
         for(int i=0;i<9;i++)
             world.setBlock(cell(origin,face,i),Blocks.AIR.defaultBlockState(),2);
-        for(int i=0;i<9;i++)
-            world.setBlock(cell(origin,turned,i),
-                    original.setValue(FACING,turned).setValue(PART,i),3);
+        for(int i=0;i<9;i++){
+            BlockPos at=cell(origin,turned,i);
+            world.setBlock(at,withRails(original.setValue(FACING,turned).setValue(PART,i),world,at),3);
+        }
         if(world.getBlockEntity(origin) instanceof RackStairsBlockEntity moved)
             moved.restore(snapshot,origin);
         return true;
@@ -212,8 +247,10 @@ public final class RackStairsBlock extends Block implements EntityBlock {
         // Clear old parts WITHOUT issuing nine independent drop events.
         for(int i=0;i<9;i++)world.setBlock(cell(oldRoot,face,i),
                 Blocks.AIR.defaultBlockState(),2);
-        for(int i=0;i<9;i++)world.setBlock(cell(to,face,i),
-                first.setValue(PART,i),3);
+        for(int i=0;i<9;i++){
+            BlockPos at=cell(to,face,i);
+            world.setBlock(at,withRails(first.setValue(PART,i),world,at),3);
+        }
         if(world.getBlockEntity(to) instanceof RackStairsBlockEntity moved)
             moved.restore(snapshot,byPlayer?to:snapshot.home());
         return true;
@@ -238,32 +275,39 @@ public final class RackStairsBlock extends Block implements EntityBlock {
     @Override protected RenderShape getRenderShape(BlockState state){
         return RenderShape.MODEL;
     }
+    /** Collision rails exactly follow the rendered left/right steel barriers.
+     *  Rotating the staircase rotates the open sides as well. */
+    private static VoxelShape sideShape(Direction facing,boolean left,boolean support){
+        Direction side=left?facing.getCounterClockWise():facing.getClockWise();
+        return switch(side){
+            case WEST -> support?box(0,0,1,1,16,2):box(0,3,0,1,16,16);
+            case EAST -> support?box(15,0,1,16,16,2):box(15,3,0,16,16,16);
+            case NORTH -> support?box(1,0,0,2,16,1):box(0,3,0,16,16,1);
+            case SOUTH -> support?box(1,0,15,2,16,16):box(0,3,15,16,16,16);
+            default -> Shapes.empty();
+        };
+    }
     private static VoxelShape shape(BlockState state){
         int part=state.getValue(PART),run=part%3,level=part/3;
         if(level>run)return Shapes.empty();
-        if(level<run){
-            // Narrow under-stair steel supports, no solid vertical box.
-            return Shapes.or(box(1,0,1,2,16,2),
-                    box(14,0,1,15,16,2));
+        Direction facing=state.getValue(FACING);
+        boolean support=level<run;
+        VoxelShape result=Shapes.empty();
+        if(!support){
+            // Two half-block treads, rising toward the facing direction.
+            result=switch(facing){
+                case NORTH -> Shapes.or(box(0,0,8,16,8,16),box(0,0,0,16,16,8));
+                case SOUTH -> Shapes.or(box(0,0,0,16,8,8),box(0,0,8,16,16,16));
+                case EAST -> Shapes.or(box(0,0,0,8,8,16),box(8,0,0,16,16,16));
+                case WEST -> Shapes.or(box(8,0,0,16,8,16),box(0,0,0,8,16,16));
+                default -> Shapes.empty();
+            };
         }
-        // Two half-block treads, rising toward the facing direction.
-        VoxelShape first=box(0,0,8,16,8,16);
-        VoxelShape second=box(0,0,0,16,16,8);
-        VoxelShape rails=Shapes.or(box(0,0,0,1,16,16),
-                box(15,0,0,16,16,16));
-        var result=Shapes.or(first,second,rails);
-        return switch(state.getValue(FACING)){
-            case NORTH -> result;
-            case SOUTH -> Shapes.or(box(0,0,0,16,8,8),
-                    box(0,0,8,16,16,16),rails);
-            case EAST -> Shapes.or(box(0,0,0,8,8,16),
-                    box(8,0,0,16,16,16),
-                    box(0,0,0,16,16,1),box(0,0,15,16,16,16));
-            case WEST -> Shapes.or(box(8,0,0,16,8,16),
-                    box(0,0,0,8,16,16),
-                    box(0,0,0,16,16,1),box(0,0,15,16,16,16));
-            default ->result;
-        };
+        if(state.getValue(RAIL_LEFT))
+            result=Shapes.or(result,sideShape(facing,true,support));
+        if(state.getValue(RAIL_RIGHT))
+            result=Shapes.or(result,sideShape(facing,false,support));
+        return result;
     }
     @Override protected VoxelShape getShape(BlockState state,BlockGetter level,
             BlockPos pos,CollisionContext ctx){return assemblyOutline(pos,state);}
