@@ -640,7 +640,7 @@ public final class MovingPallet extends PathfinderMob {
         deliveryFailure="MOVING TO RACK FRONT";
         getNavigation().stop();
         getMoveControl().setWantedPosition(next.getX()+.5,
-                next.getY(),next.getZ()+.5,1.0);
+                WarehouseTerrain.standingY(level,next),next.getZ()+.5,1.0);
     }
     /**
      * Retain the same wrapped pallet and all 216 slots while the four-Golem
@@ -671,7 +671,8 @@ public final class MovingPallet extends PathfinderMob {
             double dx=next.getX()+.5-getX(),dz=next.getZ()+.5-getZ();
             // Allow a 1.85-wide rig to finish a waypoint without trying
             // to pin its center to within half a block indefinitely.
-            if(dx*dx+dz*dz>.72||Math.abs(next.getY()-getY())>.80)break;
+            if(dx*dx+dz*dz>.72
+                    ||Math.abs(WarehouseTerrain.standingY(level,next)-getY())>.80)break;
             remoteFloorRoute.removeFirst();
             lastRemoteProgress=Double.POSITIVE_INFINITY;
             remoteProgressTick=tickCount;
@@ -680,7 +681,8 @@ public final class MovingPallet extends PathfinderMob {
             var path=WarehousePreferredPath.leg(here,target,
                     p->safePlatformFloor(level,p)
                             &&(tickCount>=remoteAvoidUntil
-                                ||!p.equals(blockedRemoteCell)),BlockPos.ZERO);
+                                ||!p.equals(blockedRemoteCell)),
+                    BlockPos.ZERO,p->WarehouseTerrain.standingY(level,p));
             nextRemotePlan=tickCount+30;
             if(path==null){
                 deliveryFailure="WAITING: SAFE ROUTE BLOCKED, RETRYING";
@@ -722,9 +724,12 @@ public final class MovingPallet extends PathfinderMob {
             return false;
         }
         getNavigation().stop();
+        double waypointY=WarehouseTerrain.standingY(level,next);
+        double riseHeight=waypointY-getY();
         getMoveControl().setWantedPosition(next.getX()+.5,
-                next.getY(),next.getZ()+.5,rise==0?1.0:.85);
-        if(rise==1&&onGround()&&tickCount>=nextRemoteTerrainJump
+                waypointY,next.getZ()+.5,
+                Math.abs(riseHeight)<=.501?1.0:.85);
+        if(rise==1&&riseHeight>.60&&onGround()&&tickCount>=nextRemoteTerrainJump
                 &&distance<2.8){
             getJumpControl().jump();
             nextRemoteTerrainJump=tickCount+10;
@@ -1200,13 +1205,7 @@ public final class MovingPallet extends PathfinderMob {
      * through a one-block opening or stand half over the edge of a rack.
      */
     private boolean safePlatformFloor(ServerLevel level,BlockPos center){
-        for(int x=-1;x<=1;x++)
-            for(int z=-1;z<=1;z++){
-                BlockPos cell=center.offset(x,0,z);
-                if(!StorageGolemReturnPath.walkable(level,cell))
-                    return false;
-            }
-        return true;
+        return WarehouseTerrain.wideFloor(level,center);
     }
 
     private void followOnFloor(ServerLevel level,
@@ -1247,7 +1246,8 @@ public final class MovingPallet extends PathfinderMob {
             }
             double sx=waypoint.getX()+.5-getX();
             double sz=waypoint.getZ()+.5-getZ();
-            if(sx*sx+sz*sz<.28&&Math.abs(getY()-waypoint.getY())<.8){
+            if(sx*sx+sz*sz<.28
+                    &&Math.abs(getY()-WarehouseTerrain.standingY(level,waypoint))<.8){
                 floorFollowRoute.removeFirst();
                 lastFollowDistance=Double.POSITIVE_INFINITY;
                 lastFollowProgressTick=tickCount;
