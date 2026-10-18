@@ -37,7 +37,8 @@ assert "RemotePalletCourierRoute.validServiceAisle(" in courier
 assert "remoteCourierRejectedAisle,rig,remoteFresh" in courier
 assert "pos.distSqr(crewRally)>=9" in router
 assert "StorageGolemReturnPath.steps(start,destination,passable)" in router
-assert "WarehousePreferredPath.leg(start,destination,passable,avoid)" in router
+assert "WarehousePreferredPath.leg(start,destination,passable,avoid," in router
+assert "WarehouseTerrain.standingY(level,pos)" in router
 assert "StorageGolemReturnPath.walkable(level,center.offset(xSide,0,zSide))" in router
 assert "for(int xSide:new int[]{-1,1})" in router
 assert "public static BlockPos chooseJoinAisle" in router
