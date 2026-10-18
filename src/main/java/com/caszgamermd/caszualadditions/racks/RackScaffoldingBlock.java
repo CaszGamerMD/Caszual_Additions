@@ -66,6 +66,11 @@ public final class RackScaffoldingBlock extends Block {
             result=Shapes.or(result,EAST);
         return result;
     }
+    @Override public BlockState getStateForPlacement(
+            net.minecraft.world.item.context.BlockPlaceContext ctx){
+        return defaultBlockState().setValue(FACING,
+                ctx.getHorizontalDirection().getOpposite());
+    }
     @Override protected VoxelShape getShape(BlockState state,BlockGetter world,
             BlockPos pos,CollisionContext ctx){return shape(world,pos,state);}
     @Override protected VoxelShape getCollisionShape(BlockState state,
