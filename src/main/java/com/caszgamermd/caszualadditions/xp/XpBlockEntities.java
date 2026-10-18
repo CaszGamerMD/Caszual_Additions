@@ -13,5 +13,6 @@ public final class XpBlockEntities {
   DRAIN=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,CaszualAdditions.id("xp_drain"),FabricBlockEntityTypeBuilder.create(XpDrainBlockEntity::new,XpBlocks.XP_DRAIN).build());
   SHOWER=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,CaszualAdditions.id("xp_shower"),FabricBlockEntityTypeBuilder.create(XpShowerBlockEntity::new,XpBlocks.XP_SHOWER).build());
   CHARGER=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,CaszualAdditions.id("xp_charger"),FabricBlockEntityTypeBuilder.create(XpChargerBlockEntity::new,XpBlocks.XP_CHARGER).build());
+  COLLECTOR=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,CaszualAdditions.id("xp_collector"),FabricBlockEntityTypeBuilder.create(XpCollectorBlockEntity::new,XpBlocks.XP_COLLECTOR).build());
  }
 }
