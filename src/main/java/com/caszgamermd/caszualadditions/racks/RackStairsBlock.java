@@ -101,6 +101,14 @@ public final class RackStairsBlock extends Block implements EntityBlock {
     @Override public @Nullable BlockEntity newBlockEntity(BlockPos pos,BlockState state){
         return state.getValue(PART)==0?new RackStairsBlockEntity(pos,state):null;
     }
+    @Override public <T extends BlockEntity> net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+            Level level,BlockState state,
+            net.minecraft.world.level.block.entity.BlockEntityType<T> type){
+        if(!(level instanceof ServerLevel)||state.getValue(PART)!=0
+                ||type!=RackContent.RACK_STAIRS_ENTITY)return null;
+        return (world,pos,block,entity)->RackStairsBlockEntity.tick(
+                (ServerLevel)world,pos,(RackStairsBlockEntity)entity);
+    }
     public static @Nullable RackStairsBlockEntity controller(Level level,BlockPos pos){
         BlockState state=level.getBlockState(pos);
         if(!(state.getBlock() instanceof RackStairsBlock))return null;
