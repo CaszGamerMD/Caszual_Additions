@@ -2447,7 +2447,7 @@ public final class StorageGolem extends PathfinderMob {
             // A remote courier is already one of the four shelf tokens
             // owned by the moving rig. Never drop a fifth worker.
             if(!remoteCourier)Containers.dropItemStack(server,getX(),getY(),getZ(),
-                    new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
+                    WarehouseGolemNames.namedToken(golemName));
         }
         super.die(source);
     }
@@ -2513,7 +2513,7 @@ public final class StorageGolem extends PathfinderMob {
             player.getInventory().placeItemBackInInventory(emptyBox.copy());
             emptyBox=ItemStack.EMPTY;
         }
-        player.getInventory().placeItemBackInInventory(new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
+        player.getInventory().placeItemBackInInventory(WarehouseGolemNames.namedToken(golemName));
         discard();
         return InteractionResult.SUCCESS;
     }
