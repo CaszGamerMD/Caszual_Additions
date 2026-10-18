@@ -29,18 +29,26 @@ public final class WarehousePreferredPath {
     }
     public static java.util.List<BlockPos> leg(BlockPos start,BlockPos target,
             Predicate<BlockPos> passable,BlockPos blocked){
+        return leg(start,target,passable,blocked,p->p.getY());
+    }
+    /** Height-aware path for the actual world. A change of one integer
+     * BlockPos Y between a full block and a bottom slab is only 1/2 block,
+     * and must not incur the usual costly one-block climb penalty. */
+    public static java.util.List<BlockPos> leg(BlockPos start,BlockPos target,
+            Predicate<BlockPos> passable,BlockPos blocked,
+            java.util.function.ToDoubleFunction<BlockPos> standingY){
         // A flat route is cheap and normally ideal, but NOT mandatory:
         // a giant same-level detour should lose to two short, legal
         // one-block transitions. Compare its excess distance against the
         // exact height-change penalty (up + down), rather than forbidding
         // all climbs merely because a very long flat route exists.
         var flat=start.getY()==target.getY()
-                ?find(start,target,passable,blocked,false):null;
+                ?find(start,target,passable,blocked,false,standingY):null;
         int direct=Math.abs(start.getX()-target.getX())
                 +Math.abs(start.getZ()-target.getZ());
         if(flat!=null&&flat.size()<=direct+STEP_HEIGHT_COST*2)
             return flat;
-        var terrain=find(start,target,passable,blocked,true);
+        var terrain=find(start,target,passable,blocked,true,standingY);
         if(flat==null)return terrain;
         if(terrain==null)return flat;
         // A partial forward leg must not outrank an exact 3-D arrival.
@@ -50,13 +58,17 @@ public final class WarehousePreferredPath {
         int terrainCost=terrain.size();
         BlockPos previous=start;
         for(BlockPos cell:terrain){
-            terrainCost+=Math.abs(cell.getY()-previous.getY())*STEP_HEIGHT_COST;
+            terrainCost+=(int)Math.round(Math.max(0,
+                    Math.abs(standingY.applyAsDouble(cell)
+                            -standingY.applyAsDouble(previous))-.501)
+                    *STEP_HEIGHT_COST);
             previous=cell;
         }
         return flat.size()<=terrainCost?flat:terrain;
     }
     private static java.util.List<BlockPos> find(BlockPos start,BlockPos target,
-            Predicate<BlockPos> passable,BlockPos blocked,boolean allowElevation){
+            Predicate<BlockPos> passable,BlockPos blocked,boolean allowElevation,
+            java.util.function.ToDoubleFunction<BlockPos> standingY){
         int floor=start.getY();
         if(!allowElevation&&floor!=target.getY())return null;
         PriorityQueue<Node> open=new PriorityQueue<>(
@@ -96,7 +108,13 @@ public final class WarehousePreferredPath {
                             ||!passable.test(next))continue;
                     // Multiple changes cost more than a level detour.
                     // Still allow +1 or -1 where terrain actually requires it.
-                    int cost=node.cost()+1+(delta==0?0:STEP_HEIGHT_COST);
+                    double rise=Math.abs(standingY.applyAsDouble(next)
+                            -standingY.applyAsDouble(here));
+                    if(rise>1.001)continue;
+                    // Half slabs are smooth floor; they should never
+                    // trigger a jump or a high elevation-routing penalty.
+                    int penalty=rise<=.501?0:STEP_HEIGHT_COST;
+                    int cost=node.cost()+1+penalty;
                     if(cost>=costs.getOrDefault(next,Integer.MAX_VALUE))continue;
                     costs.put(next,cost);
                     parent.put(next,here);
