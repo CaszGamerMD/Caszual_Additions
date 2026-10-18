@@ -26,7 +26,8 @@ public final class TransportVehicle extends PathfinderMob {
     private Direction heading=Direction.NORTH;
     private boolean running,traveling,linkedBay,returning,dropsReleased;
     private int flightStage,latchedRoute=-1;
-    private BlockPos stationPassed=BlockPos.ZERO;
+    private static final BlockPos NO_STATION=new BlockPos(0,Integer.MIN_VALUE,0);
+    private BlockPos stationPassed=NO_STATION;
     private int lastMoveTick=-100;
     private double progress=.5;
     private String ahead="",behind="",status="Parked";
@@ -39,7 +40,7 @@ public final class TransportVehicle extends PathfinderMob {
     public int capacity(){return kind()==2?3:kind()==0||kind()==4?1:0;}
     public ItemStack deck(int i){return entityData.get(i==0?DECK0:i==1?DECK1:DECK2);}
     public int visible(int i){return (entityData.get(LOAD)>>(i*5))&31;}
-    public void sync(){entityData.set(DECK0,cargo[0].deck.copy());entityData.set(DECK1,cargo[1].deck.copy());entityData.set(DECK2,cargo[2].deck.copy());int n=0;for(int i=0;i<3;i++)n|=cargo[i].visible()<<(i*5);entityData.set(LOAD,n);}
+    public void sync(){entityData.set(DECK0,cargo[0].deck.copy());entityData.set(DECK1,cargo[1].deck.copy());entityData.set(DECK2,cargo[2].deck.copy());int n=0;for(int i=0;i<3;i++)n|=cargo[i].visible()<<(i*5);entityData.set(LOAD,n);if(level() instanceof ServerLevel l)TransitWorldData.get(l).record(this);}
     public void configure(int kind,BlockPos p,Direction d){
         entityData.set(KIND,kind);node=p;target=p;home=p;heading=d;
         setYRot(d.toYRot());setYBodyRot(getYRot());running=kind==0;
@@ -47,6 +48,7 @@ public final class TransportVehicle extends PathfinderMob {
         var state=level().getBlockState(p);
         if(state.getBlock() instanceof GuidewayBlock way&&!way.bay()){
             int turn=way.kind.endsWith("_left")?-1:way.kind.endsWith("_right")?1:0;
+            if(way.kind.equals("conveyor_logic"))progress=0;
             int rotation=switch(d){case EAST->1;case SOUTH->2;case WEST->3;default->0;};
             var point=TransportPath.sample(turn,way.rise(),rotation,progress);
             x=point.x();y=point.y();z=point.z();
@@ -147,7 +149,7 @@ public final class TransportVehicle extends PathfinderMob {
         traveling=true;
         if(step(l,goal,speed+.002)){
             progress=nextProgress;
-            if(progress>=1){node=next;target=next;progress=0;latchedRoute=-1;stationPassed=BlockPos.ZERO;traveling=false;}
+            if(progress>=1){node=next;target=next;progress=0;latchedRoute=-1;stationPassed=NO_STATION;traveling=false;}
         }
     }
     private void record(){trail.addLast(position());while(trail.size()>400)trail.removeFirst();}
@@ -236,7 +238,7 @@ public final class TransportVehicle extends PathfinderMob {
         out.store("trail",Vec3.CODEC.listOf(),List.copyOf(trail));for(int i=0;i<3;i++)cargo[i].save(out,i);
     }
     @Override protected void readAdditionalSaveData(ValueInput in){
-        super.readAdditionalSaveData(in);latchedRoute=Math.clamp(in.getIntOr("logic_route",-1),-1,2);stationPassed=in.read("station_passed",BlockPos.CODEC).orElse(BlockPos.ZERO);entityData.set(KIND,Math.clamp(in.getIntOr("kind",0),0,4));progress=Math.clamp(in.getDoubleOr("progress",.5),0,1);node=in.read("node",BlockPos.CODEC).orElse(blockPosition());target=in.read("target",BlockPos.CODEC).orElse(node);home=in.read("home",BlockPos.CODEC).orElse(node);destination=in.read("destination",BlockPos.CODEC).orElse(home);
+        super.readAdditionalSaveData(in);latchedRoute=Math.clamp(in.getIntOr("logic_route",-1),-1,2);stationPassed=in.read("station_passed",BlockPos.CODEC).orElse(NO_STATION);entityData.set(KIND,Math.clamp(in.getIntOr("kind",0),0,4));progress=Math.clamp(in.getDoubleOr("progress",.5),0,1);node=in.read("node",BlockPos.CODEC).orElse(blockPosition());target=in.read("target",BlockPos.CODEC).orElse(node);home=in.read("home",BlockPos.CODEC).orElse(node);destination=in.read("destination",BlockPos.CODEC).orElse(home);
         running=in.getBooleanOr("running",false);traveling=in.getBooleanOr("traveling",false);linkedBay=in.getBooleanOr("linked_bay",false);returning=in.getBooleanOr("returning",false);flightStage=Math.clamp(in.getIntOr("flight_stage",0),0,2);ahead=in.getStringOr("ahead","");behind=in.getStringOr("behind","");dropsReleased=in.getBooleanOr("drops_released",false);
         trail.clear();var saved=in.read("trail",Vec3.CODEC.listOf()).orElse(List.of());trail.addAll(saved.subList(Math.max(0,saved.size()-400),saved.size()));for(int i=0;i<3;i++)cargo[i].load(in,i);sync();setNoGravity(true);
     }

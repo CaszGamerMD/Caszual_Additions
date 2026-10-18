@@ -29,6 +29,9 @@ public final class TransportController extends Item {
     public static InteractionResult useVehicle(Player player,InteractionHand hand,TransportVehicle v){
         if(!(v.level() instanceof ServerLevel l))return InteractionResult.SUCCESS;
         ItemStack stack=player.getItemInHand(hand);CompoundTag t=data(stack);
+        if(v.kind()==4&&t.contains("bay")&&dimension(l).equals(t.getStringOr("dimension",""))){
+            boolean ok=v.linkBay(BlockPos.of(t.getLongOr("bay",0)));message(player,ok?"Drone destination linked. Empty-hand click to depart.":"Stop the drone and choose a bay different from its home.");if(ok){t.remove("bay");save(stack,t);}return InteractionResult.SUCCESS;
+        }
         if(t.contains("pallet")&&dimension(l).equals(t.getStringOr("dimension",""))){
             BlockPos p=BlockPos.of(t.getLongOr("pallet",0));
             boolean ok=p.distToCenterSqr(v.position())<=144&&v.load(l,p);
@@ -48,13 +51,16 @@ public final class TransportController extends Item {
         if(state.getBlock() instanceof PalletBlock){
             var pallet=StorageGroundPalletTransfer.wrappedController(l,p);
             if(pallet==null){message(player,"Wrap this pallet before transporting it.");return InteractionResult.SUCCESS;}
-            t.remove("vehicle");t.putLong("pallet",pallet.getBlockPos().asLong());t.putString("dimension",dimension(l));save(held,t);
+            t.remove("vehicle");t.remove("bay");t.putLong("pallet",pallet.getBlockPos().asLong());t.putString("dimension",dimension(l));save(held,t);
             message(player,"Pallet selected. Click a conveyor or a stopped pallet car/drone to load.");return InteractionResult.SUCCESS;
         }
         if(state.getBlock() instanceof GuidewayBlock w){
             BlockPos root=GuidewayBlock.root(p,state);
             TransportVehicle v=selected(l,t);
-            if(w.bay()&&v!=null&&v.kind()==4){message(player,v.linkBay(root)?"Drone route linked. Empty-hand click the drone to depart; click again after unloading to return.":"Choose a different bay within 128 blocks.");return InteractionResult.SUCCESS;}
+            if(w.bay()&&v!=null&&v.kind()==4){message(player,v.linkBay(root)?"Drone route linked. Empty-hand click the drone to depart; click again after unloading to return.":"Stop the drone and choose a different bay.");return InteractionResult.SUCCESS;}
+            if(w.bay()&&GuidewayBlock.complete(l,root)){
+                t.remove("vehicle");t.remove("pallet");t.putLong("bay",root.asLong());t.putString("dimension",dimension(l));save(held,t);message(player,"Destination bay selected. Click a stopped drone in this dimension to link it, even if the bay is distant.");return InteractionResult.SUCCESS;
+            }
             if(!w.rail()&&!w.bay()&&t.contains("pallet")&&dimension(l).equals(t.getStringOr("dimension",""))){
                 BlockPos source=BlockPos.of(t.getLongOr("pallet",0));
                 if(source.distSqr(root)>144||!GuidewayBlock.complete(l,root)){message(player,"Use a complete conveyor within 12 blocks of the pallet.");return InteractionResult.SUCCESS;}

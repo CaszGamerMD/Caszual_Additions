@@ -6,8 +6,8 @@ ROOT=Path(__file__).resolve().parents[1]
 COLORS={'steel':'#555e68','dark':'#394149','rubber':'#1c2024','edge':'#bfc7cb','yellow':'#dfb044','light':'#98efe8','red':'#bb4b45','glass':'#648d9c','wood':'#72513c','seat':'#357582','copper':'#b86c44'}
 font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',22)
 small=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',14)
-canvas=Image.new('RGB',(1500,1000),'#141b24');draw=ImageDraw.Draw(canvas)
-entries=[('pallet_engine','Train engine'),('pallet_car','Three-pallet flatbed'),('passenger_car','Passenger carriage'),('pallet_drone','Pallet drone'),('conveyor_straight_item','Straight conveyor'),('conveyor_left_item','Left conveyor'),('conveyor_up_item','Ascending conveyor'),('drone_parking_bay_item','Drone parking bay')]
+canvas=Image.new('RGB',(1500,1470),'#141b24');draw=ImageDraw.Draw(canvas)
+entries=[('pallet_engine','Train engine'),('pallet_car','Three-pallet flatbed'),('passenger_car','Passenger carriage'),('pallet_drone','Pallet drone'),('conveyor_straight_item','Straight conveyor'),('conveyor_left_item','Left conveyor'),('conveyor_up_item','Ascending conveyor'),('drone_parking_bay_item','Drone parking bay'),('conveyor_hold_item','Redstone hold conveyor'),('conveyor_logic_item','Logic conveyor'),('train_station_post','Train station post'),('pallet_transit_computer','Pallet transit computer')]
 for idx,(name,label) in enumerate(entries):
  col,row=idx%4,idx//4;x0,y0=col*375,row*470+50
  model=json.loads((ROOT/f'src/main/resources/assets/caszual_additions/models/block/transport/{name}.json').read_text())
@@ -16,6 +16,7 @@ for idx,(name,label) in enumerate(entries):
   x,y,z=p;return ((x-z)*.707,(x+z)*.3535-y*.866)
  for element in model['elements']:
   a,b=element['from'],element['to'];x,y,z=a;X,Y,Z=b
+  if name in ('train_station_post','pallet_transit_computer'):x,X,z,Z=16-X,16-x,16-Z,16-z
   coords={'up':[(x,Y,z),(X,Y,z),(X,Y,Z),(x,Y,Z)],'south':[(x,y,Z),(X,y,Z),(X,Y,Z),(x,Y,Z)],'east':[(X,y,z),(X,y,Z),(X,Y,Z),(X,Y,z)]}
   for face,verts in coords.items():
    color=COLORS[element['faces'][face]['texture'][1:]];rgb=tuple(int(color[i:i+2],16) for i in (1,3,5));shade={'up':1.12,'south':.8,'east':.98}[face];rgb=tuple(min(255,int(v*shade)) for v in rgb)
@@ -29,5 +30,5 @@ for idx,(name,label) in enumerate(entries):
  draw.text((x0+22,y0+400),label,fill='#edf1f5',font=font)
  draw.text((x0+22,y0+433),f'{len(model["elements"])} model elements',fill='#94a7ba',font=small)
 draw.text((22,18),'PALLET TRANSPORT / MODEL GEOMETRY REVIEW',fill='#edf1f5',font=font)
-draw.text((22,980),'Rendered from repository geometry. Flat swatches approximate materials; this is not an in-game screenshot.',fill='#94a7ba',font=small)
+draw.text((22,1450),'Rendered from repository geometry. Flat swatches approximate materials; this is not an in-game screenshot.',fill='#94a7ba',font=small)
 canvas.save(ROOT/'docs/transport/model-geometry-preview.png')

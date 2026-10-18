@@ -35,7 +35,7 @@ public final class DroneChunkLoading {
                     if(e!=null){absentTicks.remove(key);continue;}
                     // Do not expire a record while its chunk is still loading.
                     ChunkPos here=chunks.getFirst();
-                    if(level.getChunkSource().hasChunk(here.x,here.z)&&absentTicks.merge(key,10,Integer::sum)>600){data.forget(entry.getKey());absentTicks.remove(key);}
+                    if(level.getChunkSource().hasChunk(here.x(),here.z())&&absentTicks.merge(key,10,Integer::sum)>600){data.forget(entry.getKey());absentTicks.remove(key);}
                 }
             }
         });
