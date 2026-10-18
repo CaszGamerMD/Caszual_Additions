@@ -851,6 +851,54 @@ public final class MovingPallet extends PathfinderMob {
         if(!StorageGroundPalletTransfer.liftForRemoteExchange(level,target,this))
             deliveryFailure="WAITING FOR TARGET PALLET LIFT";
     }
+    /** Find a place for the loaded three-Golem pallet to wait BEFORE
+     * the replacement is installed. Scan actual safe, reachable positions
+     * around the rig. The old root-relative 4-7 block guess frequently
+     * selected an aisle through another pallet / rack, then both teams
+     * stood still indefinitely.
+     */
+    private BlockPos remoteClearParking(ServerLevel level){
+        if(!(pallet.getItem() instanceof BlockItem item)
+                ||!(item.getBlock() instanceof PalletBlock block))
+            return BlockPos.ZERO;
+        BlockState state=block.defaultBlockState()
+                .setValue(PalletBlock.PART,0)
+                .setValue(PalletBlock.FACING,remoteOldFacing)
+                .setValue(PalletBlock.LEGACY,remoteOldLegacy);
+        int minX=Integer.MAX_VALUE,minZ=Integer.MAX_VALUE;
+        int maxX=Integer.MIN_VALUE,maxZ=Integer.MIN_VALUE;
+        for(int i=0;i<4;i++){
+            BlockPos cell=PalletBlock.partPos(deliveryPosition,i,state);
+            minX=Math.min(minX,cell.getX());maxX=Math.max(maxX,cell.getX());
+            minZ=Math.min(minZ,cell.getZ());maxZ=Math.max(maxZ,cell.getZ());
+        }
+        AABB occupied=new AABB(minX-.5,deliveryPosition.getY()-.5,
+                minZ-.5,maxX+1.5,deliveryPosition.getY()+2.6,maxZ+1.5);
+        BlockPos start=blockPosition(),best=BlockPos.ZERO;
+        double score=Double.POSITIVE_INFINITY;
+        // Explore the current 3-wide staging aisle and adjacent lanes.
+        // A successful route must end EXACTLY at the selected parking spot.
+        for(int radius=2;radius<=8;radius++)
+            for(int dx=-radius;dx<=radius;dx++)
+                for(int dz=-radius;dz<=radius;dz++){
+                    if(Math.max(Math.abs(dx),Math.abs(dz))!=radius)continue;
+                    BlockPos cell=start.offset(dx,0,dz);
+                    if(!safePlatformFloor(level,cell))continue;
+                    AABB moved=getBoundingBox().move(
+                            cell.getX()+.5-getX(),
+                            WarehouseTerrain.standingY(level,cell)-getY(),
+                            cell.getZ()+.5-getZ());
+                    if(moved.intersects(occupied))continue;
+                    var route=WarehousePreferredPath.leg(start,cell,
+                            p->safePlatformFloor(level,p),BlockPos.ZERO,
+                            p->WarehouseTerrain.standingY(level,p));
+                    if(route==null||route.isEmpty()
+                            ||!route.get(route.size()-1).equals(cell))continue;
+                    double cost=route.size()+radius*.08;
+                    if(cost<score){score=cost;best=cell;}
+                }
+        return best;
+    }
     private void tickRemoteStepAside(ServerLevel level){
         // Release the courier AS SOON AS the old footprint is physically
         // unobstructed. Previously the loaded three-person rig froze at a
@@ -867,7 +915,7 @@ public final class MovingPallet extends PathfinderMob {
             // No need to travel seven blocks from the arbitrary ROOT.
             // Select the closest wide, level ground that clears the
             // actual old footprint and frees the courier to place.
-            remoteMoveAside=remoteAisle(level,deliveryPosition,4,7);
+            remoteMoveAside=remoteClearParking(level);
             remoteFloorRoute.clear();nextRemotePlan=0;
         }
         if(remoteMoveAside.equals(BlockPos.ZERO)){
@@ -875,7 +923,16 @@ public final class MovingPallet extends PathfinderMob {
         }
         if(!nearRemoteGoal(remoteMoveAside)){
             deliveryFailure="THREE GOLEMS MOVING TARGET ASIDE";
-            navigateRemoteFloor(level,remoteMoveAside);return;
+            navigateRemoteFloor(level,remoteMoveAside);
+            // A route with no progress must not endlessly target the
+            // same stale parking cell through a nearby pallet.
+            if(deliveryFailure.startsWith("WAITING:")
+                    ||deliveryFailure.startsWith("REROUTING")){
+                remoteMoveAside=BlockPos.ZERO;
+                remoteFloorRoute.clear();
+                nextRemotePlan=tickCount+20;
+            }
+            return;
         }
         // A planned aisle can be reached while the bounding box still
         // overlaps the old deck. Never claim placement-ready prematurely.
