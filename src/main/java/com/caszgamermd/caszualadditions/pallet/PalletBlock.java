@@ -100,8 +100,13 @@ public final class PalletBlock extends Block implements EntityBlock {
             minX=Math.min(minX,part.getX());
             minZ=Math.min(minZ,part.getZ());
         }
-        return Block.box((minX-pos.getX())*16,0,(minZ-pos.getZ())*16,
+        VoxelShape deck=Block.box((minX-pos.getX())*16,0,(minZ-pos.getZ())*16,
                 (minX-pos.getX()+2)*16,5,(minZ-pos.getZ()+2)*16);
+        // Cargo boxes already collide above the pallet, but the invisible
+        // proxy blocks used to have no selection shape. Join the 3D
+        // cargo outline here too: the selected pallet grows with its load,
+        // including partially filled tiers and its rotated 2x2 footprint.
+        return Shapes.or(deck,PalletCargoCollisionBlock.selectionShape(level,pos,root,state));
     }
 
     @Override
@@ -227,7 +232,7 @@ public final class PalletBlock extends Block implements EntityBlock {
     /** All four pallet blocks open the same 216-slot controller.
      * The menu must also open with ordinary items in hand, like rack pallets.
      * Keep crouch+item available for deliberate block/item placement. */
-    private static InteractionResult openPallet(Level level,BlockPos pos,
+    static InteractionResult openPallet(Level level,BlockPos pos,
             BlockState state,Player player){
         if(level.isClientSide())return InteractionResult.SUCCESS;
         PalletBlockEntity controller=rootEntity(level,pos,state);
