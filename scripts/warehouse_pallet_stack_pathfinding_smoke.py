@@ -35,7 +35,7 @@ assert "return !below.getCollisionShape(level,ground).isEmpty();" in goals
 assert "!level.getFluidState(feet).isEmpty()" in goals
 # ALL warehouse path callers must share the same walkability barrier.
 assert "StorageGolemReturnPath.walkable(level,p)" in worker
-assert "StorageGolemReturnPath.walkable(level,cell)" in carrier
+assert "WarehouseTerrain.wideFloor(level,center)" in carrier
 assert "List<BlockPos> route=WarehousePreferredPath.leg(feet,target," in worker
 assert "WarehousePreferredPath.leg(feet,target," in worker
 assert "WarehousePreferredPath.leg(here,target," in carrier
