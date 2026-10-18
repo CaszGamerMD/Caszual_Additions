@@ -219,6 +219,10 @@ public final class StorageGolem extends PathfinderMob {
     private Direction playerPtpFace=Direction.NORTH;
     private int rackFloorY;
     private String haulOwner="";
+    /** Set after the followed player dies/leaves the world; no long-range
+     * pursuit after respawn. The worker waits where it stopped until the
+     * same owner walks back within 16 blocks. Persist across chunk reloads. */
+    private boolean waitingForPlayer;
     private ItemStack carryingPallet=ItemStack.EMPTY;
     private NonNullList<ItemStack> palletContents=NonNullList.withSize(216,ItemStack.EMPTY);
     private boolean deathDropsReleased;
@@ -888,6 +892,7 @@ public final class StorageGolem extends PathfinderMob {
         outputJob=false;outputTicket=0;packedJob=false;
         haulJob=true;playerHaul=true;haulOwner=owner.toString();
         haulTicket=0;haulIndex=index;stage=4;waitTicks=0;
+        waitingForPlayer=false;
         // RECALL ALL persists as a serial number on the shelf. Workers
         // deployed AFTER that command must inherit the current serial or
         // they immediately interpret the OLD recall as a NEW instruction
@@ -1012,7 +1017,8 @@ public final class StorageGolem extends PathfinderMob {
                     +(remoteCourierPhase==0?"PUSHING":"JOINING")
                     +(routeIssue.isBlank()?"":" | "+routeIssue);
         }else if(playerHaul&&stage==1){
-            label="PALLET "+(haulIndex+1)+"/4 | WITH PLAYER";
+            label=waitingForPlayer?"PALLET "+(haulIndex+1)+"/4 | WAITING FOR PLAYER"
+                    :"PALLET "+(haulIndex+1)+"/4 | WITH PLAYER";
         }else if(playerHaul&&stage==0){
             label="RALLY "+(haulIndex+1)+"/4 | COLLECT";
         }else if(playerHaul&&stage==4){
@@ -1340,7 +1346,20 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         var player=level.getPlayerByUUID(owner);
-        if(player==null||player.isSpectator())return;
+        if(player==null||!player.isAlive()||player.isSpectator()){
+            waitingForPlayer=true;
+            getNavigation().stop();
+            setDeltaMovement(0,getDeltaMovement().y,0);
+            return;
+        }
+        if(waitingForPlayer){
+            if(player.distanceToSqr(getX(),getY(),getZ())>16.0*16.0){
+                getNavigation().stop();
+                setDeltaMovement(0,getDeltaMovement().y,0);
+                return;
+            }
+            waitingForPlayer=false;
+        }
         // An empty crew stays at the position where it last caught up.
         // No relative orientation, no forced follow-behind formation:
         // spinning the player in place must not cause any path changes.
@@ -2418,6 +2437,7 @@ public final class StorageGolem extends PathfinderMob {
         out.store("remote_rig_last_known",BlockPos.CODEC,remoteRigLastKnown);
         if(!remoteFresh.isEmpty())out.store("remote_empty_pallet",ItemStack.CODEC,remoteFresh);
         out.putBoolean("player_haul",playerHaul);
+        out.putBoolean("waiting_for_player",waitingForPlayer);
         out.putString("golem_name",golemName);
         out.putBoolean("ground_pickup",groundPickup);
         out.putBoolean("rack_pickup",rackPickup);
@@ -2488,6 +2508,7 @@ public final class StorageGolem extends PathfinderMob {
         try{remoteCarrierId=UUID.fromString(in.getStringOr("remote_courier_rig",""));}
         catch(IllegalArgumentException ex){remoteCarrierId=null;}
         playerHaul=in.getBooleanOr("player_haul",false);
+        waitingForPlayer=in.getBooleanOr("waiting_for_player",false);
         golemName=in.getStringOr("golem_name","");
         groundPickup=in.getBooleanOr("ground_pickup",false);
         rackPickup=in.getBooleanOr("rack_pickup",false);
