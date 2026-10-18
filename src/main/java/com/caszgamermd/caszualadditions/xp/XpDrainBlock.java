@@ -24,7 +24,7 @@ public final class XpDrainBlock extends Block implements EntityBlock {
          BlockPos pos,Player player,BlockHitResult hit){
   if(level instanceof net.minecraft.server.level.ServerLevel server){
    if(XpNetwork.capacity(server,pos)==0){
-    player.displayClientMessage(Component.literal(
+    ((net.minecraft.server.level.ServerPlayer)player).sendSystemMessage(Component.literal(
             "XP Drain: connect an XP Tank to any side to store XP."),true);
    }else{
     int moved=player.isCrouching()?
