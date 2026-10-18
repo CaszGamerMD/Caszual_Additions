@@ -1576,7 +1576,7 @@ public final class StorageGolem extends PathfinderMob {
     }
     private double routeDistanceSq(ServerLevel level,BlockPos position){
         double dx=position.getX()+.5-getX(),dz=position.getZ()+.5-getZ();
-        double y=position.getY()-getY();
+        double y=WarehouseTerrain.standingY(level,position)-getY();
         return dx*dx+dz*dz+y*y;
     }
     private void steerOnFloor(BlockPos next,double speed){
@@ -1599,7 +1599,9 @@ public final class StorageGolem extends PathfinderMob {
             }
             speed=Math.min(speed,.72);
         }
-        getMoveControl().setWantedPosition(next.getX()+.5,next.getY(),
+        double walkY=level() instanceof ServerLevel server
+                ?WarehouseTerrain.standingY(server,next):next.getY();
+        getMoveControl().setWantedPosition(next.getX()+.5,walkY,
                 next.getZ()+.5,speed);
     }
     /** Follow a CHECKED adjacent terrain step without asking vanilla A*
@@ -1611,7 +1613,12 @@ public final class StorageGolem extends PathfinderMob {
         int delta=next.getY()-feet.getY();
         if(delta>1||delta< -1)return;
         steerOnFloor(next,speed);
-        if(delta==1&&onGround()&&tickCount>=nextTerrainJumpTick){
+        // Bottom slab to full floor is a gentle 0.5-block step, not a
+        // full one-block jump (even when integer block Y changed by 1).
+        boolean realRise=level() instanceof ServerLevel server
+                &&WarehouseTerrain.standingY(server,next)-getY()>.60;
+        if(delta==1&&realRise&&onGround()
+                &&tickCount>=nextTerrainJumpTick){
             double dx=next.getX()+.5-getX(),dz=next.getZ()+.5-getZ();
             if(dx*dx+dz*dz<2.6){
                 getJumpControl().jump();
@@ -1648,7 +1655,8 @@ public final class StorageGolem extends PathfinderMob {
             // a COMPLETE checked dry route, never a partial loop.
             List<BlockPos> route=WarehousePreferredPath.leg(feet,target,
                     available,tickCount<avoidWorkUntil
-                            ?blockedWorkCell:BlockPos.ZERO);
+                            ?blockedWorkCell:BlockPos.ZERO,
+                    p->WarehouseTerrain.standingY(level,p));
             nextWorkPlan=tickCount+20;
             if(route!=null){
                 flatWorkRoute.addAll(route);
