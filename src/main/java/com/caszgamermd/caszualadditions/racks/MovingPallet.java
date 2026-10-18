@@ -62,6 +62,11 @@ public final class MovingPallet extends PathfinderMob {
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.FLOAT);
     private String owner="";
     private final BlockPos[] shelves={BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO};
+    private final String[] crewNames={"","","",""};
+    public void setCrewName(int index,String name){
+        if(index>=0&&index<4)crewNames[index]=name==null?"":name;
+    }
+    public String crewName(int index){return crewNames[index];}
     private ItemStack pallet=ItemStack.EMPTY;
     private NonNullList<ItemStack> contents=NonNullList.withSize(216,ItemStack.EMPTY);
     private boolean delivered,deathDropsReleased,recallAfterDelivery;
@@ -336,6 +341,7 @@ public final class MovingPallet extends PathfinderMob {
             if(i<0||i>=4||index[i]||!golem.ownedBy(player))return false;
             index[i]=true;
             shelves[i]=golem.shelfHome();
+            crewNames[i]=golem.golemName();
         }
         owner=player.toString();
         pallet=deck.copyWithCount(1);
@@ -1175,6 +1181,7 @@ public final class MovingPallet extends PathfinderMob {
             StorageGolem golem=RackContent.STORAGE_GOLEM_TYPE.create(level,EntitySpawnReason.EVENT);
             if(golem==null){for(StorageGolem worker:spawned)worker.discard();return false;}
             golem.assignPlayerCrew(shelves[i],i,id);
+            golem.setGolemName(crewNames[i]);
             // After the pallet is placed the former corner of the carried
             // model may be INSIDE the new pallet block. Stand each separate
             // worker safely OUTSIDE its footprint, oriented towards the
@@ -1320,7 +1327,11 @@ public final class MovingPallet extends PathfinderMob {
                 :"4 GOLEMS | FOLLOWING PLAYER";
         if(getCustomName()==null||!getCustomName().getString().equals(text))
             setCustomName(net.minecraft.network.chat.Component.literal(text));
-        if(!isCustomNameVisible())setCustomNameVisible(true);
+        boolean debug=level() instanceof ServerLevel world
+                &&world.hasChunkAt(shelves[0])
+                &&world.getBlockEntity(shelves[0]) instanceof StorageGolemShelfEntity shelf
+                &&shelf.debugStatuses();
+        if(isCustomNameVisible()!=debug)setCustomNameVisible(debug);
     }
     @Override public void tick(){
         super.tick();
@@ -1414,7 +1425,10 @@ public final class MovingPallet extends PathfinderMob {
         if(remoteCourierId!=null)out.putString("remote_courier_uuid",remoteCourierId.toString());
         out.store("remote_aisle",BlockPos.CODEC,remoteAisle);
         out.store("remote_move_aside",BlockPos.CODEC,remoteMoveAside);
-        for(int i=0;i<4;i++)out.store("shelf_"+i,BlockPos.CODEC,shelves[i]);
+        for(int i=0;i<4;i++){
+            out.store("shelf_"+i,BlockPos.CODEC,shelves[i]);
+            out.putString("crew_name_"+i,crewNames[i]);
+        }
         if(!pallet.isEmpty())out.store("pallet",ItemStack.CODEC,pallet);
         ContainerHelper.saveAllItems(out,contents);
     }
@@ -1451,8 +1465,10 @@ public final class MovingPallet extends PathfinderMob {
         entityData.set(CREW_SIZE,remoteCourierId==null?4:3);
         entityData.set(RELEASE_TICKS,releaseTicks);
         entityData.set(RACK_INSERT_ACTIVE,deliveryMode==1);
-        for(int i=0;i<4;i++)
+        for(int i=0;i<4;i++){
             shelves[i]=in.read("shelf_"+i,BlockPos.CODEC).orElse(BlockPos.ZERO);
+            crewNames[i]=in.getStringOr("crew_name_"+i,"");
+        }
         pallet=in.read("pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
         contents=NonNullList.withSize(216,ItemStack.EMPTY);
         ContainerHelper.loadAllItems(in,contents);
