@@ -2447,20 +2447,12 @@ public final class StorageGolem extends PathfinderMob {
                         ==StorageScannerItem.Mode.DIRECT
                 &&player instanceof net.minecraft.server.level.ServerPlayer user
                 &&ownedBy(user.getUUID())){
-            // Direct-mode scanner right click is a controlled HOME command,
-            // not a Golem item pickup. Never silently dismiss one member
-            // while an active four-person pallet crew owns real inventory.
-            if(stage==1||holdsPallet()){
-                player.sendSystemMessage(Component.literal(
-                        "DIRECT: pallet crew is carrying a shipment. "
-                        +"Place the pallet before recalling individual Golems."));
-            }else if(recallToShelf((ServerLevel)level())){
-                player.sendSystemMessage(Component.literal(
-                        "DIRECT: Golem returning to its assigned shelf."));
-            }else{
-                player.sendSystemMessage(Component.literal(
-                        "DIRECT: this Golem is already returning or cannot be recalled."));
-            }
+            // Clicking ANY personally assigned follower sends the WHOLE
+            // independent crew home. No Rack Computer interaction or nearby
+            // shelf is needed. The coordinator first checks the entire
+            // group to avoid splitting four Golems around live cargo.
+            player.sendSystemMessage(Component.literal(
+                    StoragePalletCrew.recallFollowing((ServerLevel)level(),user)));
             return InteractionResult.SUCCESS;
         }
         if(!player.isShiftKeyDown())return InteractionResult.PASS;
