@@ -68,7 +68,15 @@ public final class StorageScannerItem extends Item {
                 ||response.startsWith("Four Golems dispatched");
     }
     private static void message(ServerPlayer player,String text){
-        player.sendSystemMessage(Component.literal(text));
+        // Routine scanner traffic belongs in the action bar, not the
+        // permanent chat log. The DEBUG switch can opt into chat output.
+        ItemStack hand=player.getMainHandItem();
+        BlockPos computer=hand.is(RackContent.STORAGE_SCANNER_ITEM)
+                ?linkedComputer(hand,player.level()):null;
+        boolean chat=computer!=null
+                &&RackComputerNet.nearbyShelves(player.level(),computer).stream()
+                        .anyMatch(StorageGolemShelfEntity::debugChat);
+        player.displayClientMessage(Component.literal(text),!chat);
     }
 
     /** Persist remote pickup requests on the linked scanner item. */
