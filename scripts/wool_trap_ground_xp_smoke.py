@@ -49,6 +49,27 @@ assert "model.leftLeg.translateAndRotate(pose)" in render
 assert "WoolGearLayer::layer" in client
 assert "new com.caszgamermd.caszualadditions.antiwarden.WoolGearLayer(this,context)" in avatar
 assert (res/"assets/caszual_additions/textures/entity/wool_sensory_gear.png").exists()
+# Equipped armor is ONLY the custom articulated 3D layer. Vanilla's
+# full helmet/leg armor shell previously covered the skin in a giant
+# purple panel / overlaid the actual earmuffs and slipper geometry.
+asset=json.loads((res/"assets/caszual_additions/equipment/wool_armor.json").read_text())
+assert all(len(layers)==0 for layers in asset["layers"].values())
+assert all(k in asset["layers"] for k in ("humanoid","humanoid_baby","humanoid_leggings"))
+assert "return LayerDefinition.create(mesh,256,256);" in render
+assert "texOffs(0,64)" in render and "texOffs(48,64)" in render
+assert "addOrReplaceChild(\"left_slipper\",slipper" in render
+assert "addOrReplaceChild(\"right_slipper\",slipper" in render
+assert "model.head.translateAndRotate(pose)" in render
+assert "model.leftLeg.translateAndRotate(pose)" in render
+assert "model.rightLeg.translateAndRotate(pose)" in render
+assert "full-face" in render or "full face" in render
+# UV atlas and model texture dimensions must MATCH; all five material
+# regions (offwhite wool, slate, rim, lens, sole) are present in PNG.
+import struct
+png=(res/"assets/caszual_additions/textures/entity/wool_sensory_gear.png").read_bytes()
+assert png.startswith(b"\\x89PNG\\r\\n\\x1a\\n")
+assert struct.unpack(">II",png[16:24])==(256,256)
+assert len(png)>900
 for name,minimum in [("wool_helmet",12),("wool_boots",10)]:
     model=json.loads((res/f"assets/caszual_additions/models/item/{name}.json").read_text())
     assert len(model["elements"])>=minimum
