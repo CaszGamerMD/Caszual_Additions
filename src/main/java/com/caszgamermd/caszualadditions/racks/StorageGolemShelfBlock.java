@@ -67,7 +67,7 @@ public final class StorageGolemShelfBlock extends Block implements EntityBlock {
             if(be.addNamed(WarehouseGolemNames.fromToken(held))){
                 if(!player.getAbilities().instabuild)held.shrink(1);
                 WarehouseGolemDebug.message(player,pos,Component.literal(
-                        "Golem "+be.docked()+"/2 docked: "+be.nextName()));
+                        "Golem "+be.docked()+"/2 docked: "+be.newestName()));
             }else WarehouseGolemDebug.message(player,pos,Component.literal(
                     "Storage Golem Shelf is full (2/2)."));
         }
