@@ -9,7 +9,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 public final class XpBlocks {
- public static Block XP_TANK, XP_CHARGER, XP_DRAIN, XP_SHOWER;
+ public static Block XP_TANK, XP_CHARGER, XP_DRAIN, XP_SHOWER, XP_COLLECTOR;
  private XpBlocks(){}
  public static void initialize(){
   XP_TANK=register("xp_tank",new XpTankBlock(props("xp_tank").strength(2.0f).noOcclusion()));
