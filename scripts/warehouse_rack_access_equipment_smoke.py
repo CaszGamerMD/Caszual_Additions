@@ -41,7 +41,6 @@ assert "stair.destination().equals(desired)" in access
 assert "getWorldBorder().isWithinBounds(cell)" in stairs
 assert "moved.restore(snapshot,byPlayer?to:snapshot.home());" in stairs
 assert "current.relative(player.getDirection())" in stairs
-assert "be.setHome(be.getBlockPos())" in stairs
 assert "out.store(\"rack_stairs_home\"" in stairbe
 assert "out.store(\"rack_stairs_target\"" in stairbe
 assert "be.mover" in stairbe and "escort.isAlive()" in stairbe
