@@ -56,6 +56,8 @@ assert "WarehouseRackAccess.finishStairAccess" in golem
 
 # Side climbing and dismount are vanilla ladder rules.
 assert "extends LadderBlock" in ladder
+assert "instanceof RackBlock" in ladder
+assert "super.canSurvive(state,level,pos)" in ladder
 tag=json.loads((res/"data/minecraft/tags/block/climbable.json").read_text())
 assert "caszual_additions:rack_ladder" in tag["values"]
 
