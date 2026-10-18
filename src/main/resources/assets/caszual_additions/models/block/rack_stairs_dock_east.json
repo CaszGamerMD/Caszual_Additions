@@ -37,38 +37,6 @@
           "texture": "#grip"
         }
       }
-    },
-    {
-      "from": [
-        15,
-        15,
-        4
-      ],
-      "to": [
-        16,
-        16,
-        12
-      ],
-      "faces": {
-        "north": {
-          "texture": "#warn"
-        },
-        "south": {
-          "texture": "#warn"
-        },
-        "east": {
-          "texture": "#warn"
-        },
-        "west": {
-          "texture": "#warn"
-        },
-        "up": {
-          "texture": "#warn"
-        },
-        "down": {
-          "texture": "#warn"
-        }
-      }
     }
   ],
   "ambientocclusion": false
