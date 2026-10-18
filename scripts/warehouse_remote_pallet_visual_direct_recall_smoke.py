@@ -28,9 +28,9 @@ assert "for(int board=0;board<4;board++)" in renderer
 # Direct mode only. No remote mission cancellation or inventory deletion.
 assert "StorageScannerItem.Mode.DIRECT" in golem
 assert "&&ownedBy(user.getUUID())" in golem
-assert "if(stage==1||holdsPallet())" in golem
-assert "recallToShelf((ServerLevel)level())" in golem
-assert "DIRECT: pallet crew is carrying a shipment." in golem
+assert "StoragePalletCrew.recallFollowing((ServerLevel)level(),user)" in golem
+assert "if(members.stream().anyMatch(w->w.holdsPallet()" in (src/"StoragePalletCrew.java").read_text()
+assert "if(worker.recallToShelf(level))sent++;" in (src/"StoragePalletCrew.java").read_text()
 assert "remotePickup||remoteCourier" in golem
 assert "StorageScannerItem.Mode.DIRECT" in rig
 assert "StorageScannerItem.linkedComputer(" in rig
