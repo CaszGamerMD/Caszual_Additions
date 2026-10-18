@@ -92,6 +92,8 @@ jobs:
         run: python3 scripts/warehouse_remote_handoff_arms_smoke.py
       - name: Verify connected PVC curtain barrier and remote pickup placement handoff
         run: python3 scripts/plastic_curtains_remote_handoff_smoke.py
+      - name: Verify stairs, rack ladder and folding scaffolding safety railings
+        run: python3 scripts/warehouse_rack_access_equipment_smoke.py
       - name: Verify intact pallet death recovery and scanner mode swapping
         run: python3 scripts/warehouse_pallet_death_recovery_smoke.py
       - name: Verify idle golem arms, repaired UV atlas and smooth slab traversal
