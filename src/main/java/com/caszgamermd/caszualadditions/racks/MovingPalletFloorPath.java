@@ -25,13 +25,19 @@ public final class MovingPalletFloorPath {
 
     public static List<BlockPos> route(BlockPos start,BlockPos playerFloor,
             boolean playerAbove,Predicate<BlockPos> standable){
+        return route(start,playerFloor,playerAbove,standable,(a,b)->false);
+    }
+    /** Permit an upward integer Y waypoint even without a full jump when
+     * its actual surface is only a HALF slab above the previous cell. */
+    public static List<BlockPos> route(BlockPos start,BlockPos playerFloor,
+            boolean playerAbove,Predicate<BlockPos> standable,
+            java.util.function.BiPredicate<BlockPos,BlockPos> smoothHalfStep){
         if(nearPlayer(start,playerFloor))return List.of();
         int minX=Math.min(start.getX(),playerFloor.getX())-MARGIN;
         int maxX=Math.max(start.getX(),playerFloor.getX())+MARGIN;
         int minZ=Math.min(start.getZ(),playerFloor.getZ())-MARGIN;
         int maxZ=Math.max(start.getZ(),playerFloor.getZ())+MARGIN;
-        int maxY=playerAbove?Math.max(start.getY(),playerFloor.getY())
-                :start.getY();
+        int maxY=Math.max(start.getY(),playerFloor.getY());
         int minY=Math.min(start.getY(),playerFloor.getY())-1;
         ArrayDeque<BlockPos> queue=new ArrayDeque<>();
         Map<BlockPos,BlockPos> parent=new HashMap<>();
@@ -49,8 +55,9 @@ public final class MovingPalletFloorPath {
                 // the player is elevated. Up is never explored merely
                 // because the pathfinder found a shortcut over a crate.
                 for(int change:new int[]{0,-1,1}){
-                    if(change==1&&!playerAbove)continue;
                     BlockPos next=same.offset(0,change,0);
+                    if(change==1&&!playerAbove
+                            &&!smoothHalfStep.test(current,next))continue;
                     if(next.getY()<minY||next.getY()>maxY
                             ||next.getX()<minX||next.getX()>maxX
                             ||next.getZ()<minZ||next.getZ()>maxZ
