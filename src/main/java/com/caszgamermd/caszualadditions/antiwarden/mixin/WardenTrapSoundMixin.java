@@ -20,9 +20,15 @@ import org.jspecify.annotations.Nullable;
 @Mixin(ServerLevel.class)
 public abstract class WardenTrapSoundMixin {
     private boolean caszual$mute(Holder<SoundEvent> sound,Vec3 position){
-        String id=BuiltInRegistries.SOUND_EVENT.getKey(sound.value()).toString();
-        return WardenTrapSilence.sculkOrWardenSound(id)
-                &&WardenTrapSilence.near((ServerLevel)(Object)this,position);
+        // Mods can play direct/unregistered SoundEvent holders. The
+        // registry returns null for them, so NEVER call toString on that
+        // lookup. Outside an active trap we also leave every sound alone.
+        if(sound==null||sound.value()==null
+                ||!WardenTrapSilence.near((ServerLevel)(Object)this,position))
+            return false;
+        var key=BuiltInRegistries.SOUND_EVENT.getKey(sound.value());
+        return key!=null
+                &&WardenTrapSilence.sculkOrWardenSound(key.toString());
     }
     @Inject(method="playSeededSound(Lnet/minecraft/world/entity/Entity;DDDLnet/minecraft/core/Holder;Lnet/minecraft/sounds/SoundSource;FFJ)V",
             at=@At("HEAD"),cancellable=true,require=0)
