@@ -94,7 +94,7 @@ assert "withRails(original.setValue(FACING,turned)" in stairs
 assert "withRails(first.setValue(PART,i)" in stairs
 assert "updateShape(BlockState state" in stairs
 stair_parts=json.loads((res/"assets/caszual_additions/blockstates/rack_stairs.json").read_text())["multipart"]
-assert len(stair_parts)==84, len(stair_parts)
+assert len(stair_parts)==64, len(stair_parts)
 for i in range(9):
     for face in ("north","south","east","west"):
         assert any(p.get("when",{})=={"part":str(i),"facing":face}
@@ -103,13 +103,40 @@ for part in (0,4,8):
     for side,edge in (("rail_left","west"),("rail_right","east")):
         assert any(p.get("when",{}).get("part")==str(part)
                    and p.get("when",{}).get(side)=="true"
-                   and f"rack_scaffolding_rail_{edge}" in p["apply"]["model"]
+                   and f"rack_stairs_slope_{edge}" in p["apply"]["model"]
                    for p in stair_parts)
 for i in (0,4,8):
     base=json.loads((res/f"assets/caszual_additions/models/block/rack_stairs_{i}.json").read_text())
     assert all(e["from"][0]>0 and e["to"][0]<16 for e in base["elements"])
 for edge in ("west","east"):
     assert (res/f"assets/caszual_additions/models/block/rack_stairs_support_{edge}.json").exists()
+# Stair-top docking looks one block UP in all four cardinal directions.
+assert "at.above().relative(side)" in stairs
+assert "pos.relative(side).below()" in scaff
+assert "getValue(RackStairsBlock.PART)==8" in scaff
+assert "scheduleElevatedStairRefresh(level,pos)" in scaff
+assert "notifyTopDockChange(world,cell(oldRoot,face,8))" in stairs
+assert "notifyTopDockChange(world,cell(to,face,8))" in stairs
+assert "notifyTopDockChange(level,cell(pos,state.getValue(FACING),8))" in stairs
+for edge in ("north","south","east","west"):
+    assert f'DOCK_{edge.upper()}=BooleanProperty.create("dock_{edge}")' in stairs
+    assert any(p.get("when",{}).get("part")=="8"
+               and p.get("when",{}).get("dock_"+edge)=="true"
+               and p["apply"]["model"].endswith(f"rack_stairs_dock_{edge}")
+               for p in stair_parts)
+    dock=json.loads((res/f"assets/caszual_additions/models/block/rack_stairs_dock_{edge}.json").read_text())
+    assert dock["elements"]
+
+# Structural supports make the 3-level stair a unified steel frame.
+for part in (1,2,5):
+    support=json.loads((res/f"assets/caszual_additions/models/block/rack_stairs_{part}.json").read_text())
+    assert len(support["elements"])>=10
+for edge in ("west","east"):
+    slope=json.loads((res/f"assets/caszual_additions/models/block/rack_stairs_slope_{edge}.json").read_text())
+    assert any(e.get("rotation",{}).get("angle")==45 for e in slope["elements"])
+for part in (0,4,8):
+    tread=json.loads((res/f"assets/caszual_additions/models/block/rack_stairs_{part}.json").read_text())
+    assert len(tread["elements"])>=10
 assert "RackScaffoldingBlock.setFolded(level,at,true)" in access
 assert "RackScaffoldingBlock.setFolded(level,at,false)" in access
 assert "WarehouseRackAccess.prepare(level,rack)" in plan
