@@ -263,7 +263,8 @@ public final class StorageScannerItem extends Item {
                         +(next==Mode.REMOTE
                             ?"Click a wrapped ground pallet to dispatch a remote swap."
                             :"Click a linked Golem Shelf to call four workers, then "
-                                +"click a pallet to pick up and a rack/block to place.")
+                                +"click a pallet to pick up and a rack/block to place. "
+                                +"Right-click ANY following Golem to send ALL followers home.")
                         +(home==null?" Link a computer first.":""));
             }else{
                 message(user,"Scanner: "+mode(scanner)+" | "
