@@ -31,6 +31,15 @@ assert "RADIUS=9.0" in trap_silence
 assert "sculkOrWardenSound" in trap_silence
 assert "WardenTrapSilence.near" in sounds
 assert "playSeededSound" in sounds
+# Animal Garden and other mods may play direct SoundEvent values for which
+# BuiltInRegistries.SOUND_EVENT.getKey(value) returns null. These must NOT
+# crash the server or be canceled, even when a trap is nearby.
+assert "if(sound==null||sound.value()==null" in sounds
+assert "var key=BuiltInRegistries.SOUND_EVENT.getKey(sound.value());" in sounds
+assert "return key!=null" in sounds
+assert "key.toString()" in sounds
+assert "getKey(sound.value()).toString()" not in sounds
+assert sounds.index("WardenTrapSilence.near((ServerLevel)(Object)this,position)") < sounds.index("var key=BuiltInRegistries.SOUND_EVENT.getKey(sound.value())")
 assert "WardenTrapSilence.near(level,position)" in boots
 assert "distanceToSqr(player.position())<=49.0" in boots
 assert "rightSlipper" in render and "leftSlipper" in render
