@@ -205,6 +205,9 @@ public final class StorageGolem extends PathfinderMob {
     private boolean haulJob;
     private int haulTicket,haulIndex;
     private boolean playerHaul;
+    // Stable identity assigned by the shelf on insertion. Job labels are
+    // presentation only and never overwrite this saved identity.
+    private String golemName="";
     private boolean groundPickup;
     private boolean rackPickup;
     // Fixed physical service face for Direct pickup; DO NOT reselect the
@@ -232,6 +235,17 @@ public final class StorageGolem extends PathfinderMob {
     private boolean remotePathPaused;
     private String remotePauseReason="";
     private int remoteUnreachableAttempts;
+    public String golemName(){return golemName;}
+    public void setGolemName(String name){
+        golemName=name==null||name.isBlank()
+                ?WarehouseGolemNames.random(level().getRandom()):name;
+        updateTaskLabel();
+    }
+    private boolean showDebugStatuses(){
+        return level() instanceof ServerLevel world&&world.hasChunkAt(home)
+                &&world.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf
+                &&shelf.debugStatuses();
+    }
     public StorageGolem(EntityType<? extends StorageGolem> type,Level level){
         super(type,level);
         setPersistenceRequired();
@@ -943,22 +957,15 @@ public final class StorageGolem extends PathfinderMob {
     /** Every independently walking robot advertises its actual task.
      * The PALLET prefix is preserved for the existing pallet renderer. */
     private void updateTaskLabel(){
-        if(remotePickup){
-            setCustomName(Component.literal("REMOTE PICKUP "+(haulIndex+1)
-                    +"/3 | EMPTY HANDED"
-                    +(routeIssue.isBlank()?"":" | "+routeIssue)));
-            setCustomNameVisible(true);
-            return;
-        }
-        if(remoteCourier){
-            setCustomName(Component.literal("EMPTY PALLET COURIER | "+
-                    (remoteCourierPhase==0?"PUSHING":"JOINING")+ 
-                    (routeIssue.isBlank()?"":" | "+routeIssue)));
-            setCustomNameVisible(true);
-            return;
-        }
         String label;
-        if(playerHaul&&stage==1){
+        if(remotePickup){
+            label="REMOTE PICKUP "+(haulIndex+1)+"/3 | EMPTY HANDED"
+                    +(routeIssue.isBlank()?"":" | "+routeIssue);
+        }else if(remoteCourier){
+            label="EMPTY PALLET COURIER | "
+                    +(remoteCourierPhase==0?"PUSHING":"JOINING")
+                    +(routeIssue.isBlank()?"":" | "+routeIssue);
+        }else if(playerHaul&&stage==1){
             label="PALLET "+(haulIndex+1)+"/4 | WITH PLAYER";
         }else if(playerHaul&&stage==0){
             label="RALLY "+(haulIndex+1)+"/4 | COLLECT";
@@ -979,8 +986,14 @@ public final class StorageGolem extends PathfinderMob {
             if(haulJob)label="HAUL "+(haulIndex+1)+"/4 | "+(stage==0?"COLLECT":"DELIVER");
             if(!routeIssue.isBlank())label+=" | "+routeIssue;
         }
-        if(getCustomName()==null||!getCustomName().getString().equals(label))
-            setCustomName(Component.literal(label));
+        if(golemName.isBlank()){
+            // Old-world workers gain identities once without changing the
+            // physical shelf token or the associated inventory.
+            golemName=WarehouseGolemNames.random(level().getRandom());
+        }
+        String displayed=showDebugStatuses()?golemName+" | "+label:golemName;
+        if(getCustomName()==null||!getCustomName().getString().equals(displayed))
+            setCustomName(Component.literal(displayed));
         if(!isCustomNameVisible())setCustomNameVisible(true);
     }
     private String shortItem(){
@@ -1788,7 +1801,7 @@ public final class StorageGolem extends PathfinderMob {
             getNavigation().stop();
             flatHomeRoute.clear();
             StorageGolemShelfEntity receiving=availableDock(level,shelf);
-            if(receiving!=null&&receiving.add()){
+            if(receiving!=null&&receiving.addNamed(golemName)){
                 routeIssue="";
                 setCustomNameVisible(false);
                 // A recalled/aborted worker can still own unsorted items,
@@ -2281,7 +2294,8 @@ public final class StorageGolem extends PathfinderMob {
             Containers.dropItemStack(level,getX(),getY(),getZ(),cargo);
             cargo=ItemStack.EMPTY;
         }
-        if(level.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf &&shelf.add()){
+        if(level.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf
+                &&shelf.addNamed(golemName)){
             discard(); // one entity becomes exactly one docked golem token
         }
     }
@@ -2331,6 +2345,7 @@ public final class StorageGolem extends PathfinderMob {
         out.store("remote_rig_last_known",BlockPos.CODEC,remoteRigLastKnown);
         if(!remoteFresh.isEmpty())out.store("remote_empty_pallet",ItemStack.CODEC,remoteFresh);
         out.putBoolean("player_haul",playerHaul);
+        out.putString("golem_name",golemName);
         out.putBoolean("ground_pickup",groundPickup);
         out.putBoolean("rack_pickup",rackPickup);
         out.putString("player_ptp_face",playerPtpFace.getName());
@@ -2394,6 +2409,7 @@ public final class StorageGolem extends PathfinderMob {
         try{remoteCarrierId=UUID.fromString(in.getStringOr("remote_courier_rig",""));}
         catch(IllegalArgumentException ex){remoteCarrierId=null;}
         playerHaul=in.getBooleanOr("player_haul",false);
+        golemName=in.getStringOr("golem_name","");
         groundPickup=in.getBooleanOr("ground_pickup",false);
         rackPickup=in.getBooleanOr("rack_pickup",false);
         try{playerPtpFace=Direction.valueOf(in.getStringOr("player_ptp_face","north")
