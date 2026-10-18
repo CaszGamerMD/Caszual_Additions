@@ -36,7 +36,7 @@ assert "WarehouseRemoteTickets.keep(level,blockPosition());" in home
 assert "WarehouseRemoteTickets.keep(level,home);" in home
 assert "feet.getX()+(int)Math.round(dx/length*16)" in home
 assert "WarehouseRemoteTickets.keep(level,new BlockPos(" in home
-assert "if(receiving!=null&&receiving.add())" in home
+assert "if(receiving!=null&&receiving.addNamed(golemName))" in home
 assert "discard();" in home
 
 assert "Mode next=toggleMode(scanner);" in scanner
