@@ -41,7 +41,8 @@ for x in (0,16):
 assert "state.carryingPallet=golem.carryingPalletPose();" in renderer
 assert "state.pushingEmptyPallet=golem.pushingPalletPose();" in renderer
 assert 'label.startsWith("PALLET ")' not in renderer
-assert "return playerHaul&&stage==1;" in golem
+assert "return entityData.get(DISPLAY_PALLET_ACTION)==1;" in golem
+assert "return entityData.get(DISPLAY_PALLET_ACTION)==2;" in golem
 assert 'label="CREW "+(haulIndex+1)+"/4 | IDLE";' in golem
 assert "if(amount<.045f)amount=0f;" in solo
 assert "leftForearm.xRot=rightForearm.xRot=0f;" in solo
