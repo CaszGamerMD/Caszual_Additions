@@ -83,8 +83,14 @@ public final class WarehouseRackAccess {
     public static RackStairsBlockEntity findAssignedStairs(ServerLevel world,
             java.util.UUID mover,BlockPos around){
         if(mover==null||around.equals(BlockPos.ZERO))return null;
-        for(int y=-2;y<=2;y++)for(int x=-12;x<=12;x++)
-            for(int z=-12;z<=12;z++){
+        if(world.hasChunkAt(around)
+                &&world.getBlockEntity(around) instanceof RackStairsBlockEntity present
+                &&mover.equals(present.mover()))return present;
+        // The stairs advance only one block per 16 ticks, so the last
+        // known controller should be within 6 cells. Avoid thousands of
+        // BlockEntity lookups per worker on EVERY game tick.
+        for(int y=-1;y<=1;y++)for(int x=-6;x<=6;x++)
+            for(int z=-6;z<=6;z++){
                 BlockPos pos=around.offset(x,y,z);
                 if(!world.hasChunkAt(pos))continue;
                 if(world.getBlockEntity(pos) instanceof RackStairsBlockEntity stairs
