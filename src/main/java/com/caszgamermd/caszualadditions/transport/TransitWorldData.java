@@ -3,6 +3,8 @@ package com.caszgamermd.caszualadditions.transport;
 import com.caszgamermd.caszualadditions.CaszualAdditions;
 import com.google.gson.*;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.Dynamic;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.*;
 import java.util.*;
@@ -11,11 +13,14 @@ import java.util.*;
 public final class TransitWorldData extends SavedData {
     public static final SavedDataType<TransitWorldData> TYPE=new SavedDataType<>(
         CaszualAdditions.id("pallet_transit"),TransitWorldData::new,
-        Codec.STRING.xmap(TransitWorldData::decode,TransitWorldData::encode),null);
+        Codec.PASSTHROUGH.xmap(TransitWorldData::decodeDynamic,TransitWorldData::encodeDynamic),null);
     public final Map<String,JsonObject> vehicles=new LinkedHashMap<>();
     public final Map<String,JsonObject> stations=new LinkedHashMap<>();
     public final Map<String,Integer> terrain=new LinkedHashMap<>();
     public static TransitWorldData get(ServerLevel l){return l.getDataStorage().computeIfAbsent(TYPE);}
+    // Store a compound, not one JSON string: large maps exceed NBT's UTF string limit.
+    private static TransitWorldData decodeDynamic(Dynamic<?> value){return decode(value.convert(JsonOps.INSTANCE).getValue().toString());}
+    private Dynamic<JsonElement> encodeDynamic(){return new Dynamic<>(JsonOps.INSTANCE,JsonParser.parseString(encode()));}
     private static TransitWorldData decode(String text){
         TransitWorldData d=new TransitWorldData();
         try{JsonObject o=JsonParser.parseString(text).getAsJsonObject();
