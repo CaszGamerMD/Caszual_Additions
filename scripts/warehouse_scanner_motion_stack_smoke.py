@@ -46,8 +46,10 @@ assert "state.walkAnimationSpeed" in courier
 assert "Axis.ZP.rotationDegrees" in courier
 assert "Axis.XP.rotationDegrees" in courier
 assert "pose.translate(0,1.01f+bob,-.80f)" in courier
-assert "piece(state.heldTray,state,pose,collector" in courier
-assert "blocks.update(state.heldTray,Blocks.POLISHED_DEEPSLATE" in courier
+assert "heldTray" not in courier
+assert "ItemStackRenderState" in render("StorageGolemRenderState.java")
+assert "items.updateForLiving(state.heldItem,held," in courier
+assert "getParentModel().translateToCargoHand(pose);" in courier
 assert "if(state.pushingEmptyPallet)" in render("StorageGolemModel.java")
 assert "1.88f,.255f,.185f" in courier
 assert "for(int board=0;board<4;board++)" in courier
