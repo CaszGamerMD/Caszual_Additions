@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "I I",
+    "IDI",
+    "IBI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "D": "minecraft:cyan_dye",
+    "B": "minecraft:bucket"
+  },
+  "result": {
+    "id": "caszual_additions:industrial_paint_can",
+    "count": 1
+  }
+}
