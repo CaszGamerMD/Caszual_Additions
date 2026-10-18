@@ -11,13 +11,30 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 public final class XpDrainBlockEntity extends BlockEntity {
  public XpDrainBlockEntity(BlockPos p,BlockState s){super(XpBlockEntities.DRAIN,p,s);}
+ /** Player XP uses a broad pad detector so crouch-walking over the thin
+  * drain grate works even when the player is moving between block cells.
+  * We still require horizontal overlap with the plate's footprint. */
+ public static int transferPlayer(ServerLevel level,BlockPos pos,Player player){
+  if(!player.isCrouching()||player.isSpectator())return 0;
+  if(player.getBoundingBox().maxY<pos.getY()||player.getBoundingBox().minY>pos.getY()+1.6)return 0;
+  if(player.getBoundingBox().maxX<=pos.getX()+.125
+          ||player.getBoundingBox().minX>=pos.getX()+.875
+          ||player.getBoundingBox().maxZ<=pos.getZ()+.125
+          ||player.getBoundingBox().minZ>=pos.getZ()+.875)return 0;
+  int available=XpPlayer.total(player);
+  if(available<=0)return 0;
+  int moved=XpNetwork.insert(level,pos,Math.min(available,40));
+  if(moved>0)XpPlayer.remove(player,moved);
+  return moved;
+ }
  public static void tick(ServerLevel level,BlockPos pos,XpDrainBlockEntity drain){
   if(XpNetwork.space(level,pos)<=0)return;
   var box=new AABB(pos).inflate(.75,.5,.75);
-  var playerPad=new AABB(pos.getX()+6.0/16.0,pos.getY(),pos.getZ()+6.0/16.0,pos.getX()+10.0/16.0,pos.getY()+1.0/16.0,pos.getZ()+10.0/16.0);
+  var playerPad=new AABB(pos.getX()-.25,pos.getY()-.25,pos.getZ()-.25,
+          pos.getX()+1.25,pos.getY()+1.75,pos.getZ()+1.25);
   for(Player p:level.getEntitiesOfClass(Player.class,playerPad)){
-   if(!p.isCrouching())continue;int available=XpPlayer.total(p);if(available<=0)continue;int moved=XpNetwork.insert(level,pos,Math.min(available,20));
-   if(moved>0)XpPlayer.remove(p,moved);if(XpNetwork.space(level,pos)<=0)return;
+   transferPlayer(level,pos,p);
+   if(XpNetwork.space(level,pos)<=0)return;
   }
   for(ExperienceOrb orb:level.getEntitiesOfClass(ExperienceOrb.class,box)){
    int value=orb.getValue();int moved=XpNetwork.insert(level,pos,value);if(moved==value)orb.discard();
