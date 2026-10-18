@@ -165,7 +165,8 @@ public final class WarehouseRackAccess {
             BlockPos at=desired.offset(dx,0,dz);
             if(!world.hasChunkAt(at))continue;
             if(world.getBlockEntity(at) instanceof RackStairsBlockEntity stair
-                    &&stair.reserved())stair.release();
+                    &&stair.reserved()
+                    &&stair.destination().equals(desired))stair.release();
         }
     }
 
