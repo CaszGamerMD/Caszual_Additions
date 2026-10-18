@@ -76,6 +76,7 @@ assert "state.getValue(FOLDED)?Shapes.empty()" in scaff
 assert "RackScaffoldingBlock.setFolded(level,at,true)" in access
 assert "RackScaffoldingBlock.setFolded(level,at,false)" in access
 assert "WarehouseRackAccess.prepare(level,rack)" in plan
+assert "WarehouseRackAccess.release(level,rack)" in plan
 assert "WarehouseRackAccess.prepare(" in rack
 assert "WarehouseRackAccess.release(world,this)" in rack
 assert "WarehouseRackAccess.clearOfStairs" in plan
