@@ -70,7 +70,9 @@ public final class RackScaffoldingBlock extends Block {
             BlockPos pos,CollisionContext ctx){return shape(world,pos,state);}
     @Override protected VoxelShape getCollisionShape(BlockState state,
             BlockGetter world,BlockPos pos,CollisionContext ctx){
-        return shape(world,pos,state);
+        // Folded deck and rail are inside a wall cassette. There is NO
+        // protruding collision in the pallet-lifting aisle.
+        return state.getValue(FOLDED)?Shapes.empty():shape(world,pos,state);
     }
     public static boolean occupied(Level world,BlockPos pos){
         // Never retract under feet, nor close the railing through people.
