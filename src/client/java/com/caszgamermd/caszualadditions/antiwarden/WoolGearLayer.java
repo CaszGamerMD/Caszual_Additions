@@ -41,34 +41,49 @@ public final class WoolGearLayer extends RenderLayer<AvatarRenderState,PlayerMod
     public static LayerDefinition layer(){
         MeshDefinition mesh=new MeshDefinition();
         var root=mesh.getRoot();
-        // A slender strap; fluffy earcups float to either side of the
-        // skull. Two goggles stand in front of the eyes, with a bridge,
-        // wide green lens faces and tiny dark steel housings.
+
+        // Every box has its OWN 48x32 UV cell on the 256x256 atlas.
+        // Sharing old 64x64 offsets made large armor surfaces sample
+        // unrelated colors and appear as huge pink/untextured panels.
+        // The head stays visible: earmuffs cushion the ears while goggles
+        // cover only the eyes; no opaque cube over the whole face.
         root.addOrReplaceChild("helmet",CubeListBuilder.create()
-                .texOffs(0,0).addBox(-4.5f,-8.7f,-3.5f,9,1.3f,7)
-                .texOffs(0,16).addBox(-5.7f,-6.5f,-2.7f,2,4.5f,5.4f)
-                .texOffs(24,16).addBox(3.7f,-6.5f,-2.7f,2,4.5f,5.4f)
-                .texOffs(48,16).addBox(-4.2f,-5.8f,-5.3f,8.4f,1.3f,2.2f)
-                .texOffs(0,32).addBox(-4.3f,-6.8f,-6.2f,3.8f,3.6f,2.7f)
-                .texOffs(24,32).addBox(.5f,-6.8f,-6.2f,3.8f,3.6f,2.7f)
-                .texOffs(42,32).addBox(-3.6f,-6.2f,-6.55f,2.4f,2.4f,.5f)
-                .texOffs(42,32).addBox(1.2f,-6.2f,-6.55f,2.4f,2.4f,.5f),
+                // Steel band resting on the top of the head
+                .texOffs(0,0).addBox(-4.45f,-8.7f,-3.2f,8.9f,1.3f,6.4f)
+                .texOffs(48,0).addBox(-3.65f,-9.0f,-2.8f,7.3f,.75f,5.6f)
+                // Cushioned earcups, outer shell + wool pads
+                .texOffs(96,0).addBox(-5.45f,-7f,-3f,1.7f,4.5f,6f)
+                .texOffs(144,0).addBox(3.75f,-7f,-3f,1.7f,4.5f,6f)
+                .texOffs(192,0).addBox(-5.7f,-6.5f,-2.8f,1.7f,3.5f,5.6f)
+                .texOffs(0,32).addBox(4f,-6.5f,-2.8f,1.7f,3.5f,5.6f)
+                // Band from each ear to the dual night-vision eyepieces
+                .texOffs(48,32).addBox(-4.2f,-6.0f,-4.05f,8.4f,1f,.8f)
+                .texOffs(96,32).addBox(-3.9f,-6.5f,-4.4f,7.8f,.8f,1.25f)
+                // Small dark metal goggle housings in front of the face
+                .texOffs(144,32).addBox(-3.65f,-6.25f,-5.5f,3.3f,3.1f,1.65f)
+                .texOffs(192,32).addBox(.35f,-6.25f,-5.5f,3.3f,3.1f,1.65f)
+                // Inset green glass fronts, not a full-face visor
+                .texOffs(0,64).addBox(-3.15f,-5.8f,-5.72f,2.3f,2.1f,.28f)
+                .texOffs(48,64).addBox(.85f,-5.8f,-5.72f,2.3f,2.1f,.28f)
+                .texOffs(96,64).addBox(-.55f,-5.5f,-5.2f,1.1f,1.05f,.95f)
+                .texOffs(144,64).addBox(-2.7f,-5.5f,-5.79f,.65f,.5f,.12f)
+                .texOffs(192,64).addBox(1.3f,-5.5f,-5.79f,.65f,.5f,.12f),
                 PartPose.ZERO);
-        // Geometry in vanilla leg coordinates: feet are near Y = 12.
-        root.addOrReplaceChild("left_slipper",CubeListBuilder.create()
-                .texOffs(24,46).addBox(-2.55f,10.85f,-4.5f,5.1f,1.35f,7.0f)
-                .texOffs(0,46).addBox(-2.4f,9.25f,-4.3f,4.8f,1.7f,6.4f)
-                .texOffs(48,46).addBox(-2.25f,9.9f,-4.7f,4.5f,1.0f,3.2f)
-                .texOffs(0,16).addBox(-2.5f,8.8f,-.5f,5,1.2f,3.6f),
-                PartPose.ZERO);
-        root.addOrReplaceChild("right_slipper",CubeListBuilder.create()
-                .texOffs(24,46).addBox(-2.55f,10.85f,-4.5f,5.1f,1.35f,7.0f)
-                .texOffs(0,46).addBox(-2.4f,9.25f,-4.3f,4.8f,1.7f,6.4f)
-                .texOffs(48,46).addBox(-2.25f,9.9f,-4.7f,4.5f,1.0f,3.2f)
-                .texOffs(0,16).addBox(-2.5f,8.8f,-.5f,5,1.2f,3.6f),
-                PartPose.ZERO);
-        return LayerDefinition.create(mesh,64,64);
+
+        // Vanilla player legs: feet at y=12; each slipper is about five
+        // pixels wide, with a flexible 1-pixel sole, a round wool toe,
+        // and a soft cuff at the ankle. NO full-height leg box.
+        CubeListBuilder slipper=CubeListBuilder.create()
+                .texOffs(0,96).addBox(-2.4f,10.95f,-4.1f,4.8f,1.3f,6.6f)
+                .texOffs(48,96).addBox(-2.2f,9.65f,-3.8f,4.4f,1.5f,5.8f)
+                .texOffs(96,96).addBox(-2.3f,9.55f,-4.2f,4.6f,1.4f,2.7f)
+                .texOffs(144,96).addBox(-2.45f,8.8f,-.35f,4.9f,1.5f,2.8f)
+                .texOffs(192,96).addBox(-1.75f,9.4f,-4.25f,3.5f,.35f,.2f);
+        root.addOrReplaceChild("left_slipper",slipper,PartPose.ZERO);
+        root.addOrReplaceChild("right_slipper",slipper,PartPose.ZERO);
+        return LayerDefinition.create(mesh,256,256);
     }
+
     private static void draw(ModelPart part,PoseStack pose,
             SubmitNodeCollector collector,int light,int outline){
         collector.order(1).submitModelPart(part,pose,RenderTypes.entityCutout(TEXTURE),
