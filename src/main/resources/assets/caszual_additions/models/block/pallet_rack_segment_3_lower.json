@@ -173,7 +173,39 @@
       "to": [
         4,
         2,
-        16
+        7.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "down": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "from": [
+        3,
+        1,
+        8.5
+      ],
+      "to": [
+        4,
+        2,
+        15
       ],
       "faces": {
         "north": {
@@ -205,7 +237,39 @@
       "to": [
         9,
         2,
-        16
+        7.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "down": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "from": [
+        8,
+        1,
+        8.5
+      ],
+      "to": [
+        9,
+        2,
+        15
       ],
       "faces": {
         "north": {
@@ -237,7 +301,39 @@
       "to": [
         14,
         2,
-        16
+        7.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "down": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "from": [
+        13,
+        1,
+        8.5
+      ],
+      "to": [
+        14,
+        2,
+        15
       ],
       "faces": {
         "north": {
@@ -294,7 +390,7 @@
     },
     {
       "from": [
-        0,
+        1,
         1,
         15
       ],
