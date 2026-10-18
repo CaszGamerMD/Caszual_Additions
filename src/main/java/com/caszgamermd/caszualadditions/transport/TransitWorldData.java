@@ -30,7 +30,7 @@ public final class TransitWorldData extends SavedData {
         o.addProperty("x",v.getX());o.addProperty("y",v.getY());o.addProperty("z",v.getZ());o.addProperty("yaw",v.getYRot());
         o.addProperty("active",v.flightActive());o.addProperty("tx",v.flightDestination().getX());o.addProperty("tz",v.flightDestination().getZ());
         o.addProperty("status",v.transitStatus());o.addProperty("seen",v.level().getGameTime());
-        JsonArray pallets=new JsonArray();for(int i=0;i<v.capacity();i++)if(!v.cargo[i].empty()){JsonObject p=new JsonObject();p.addProperty("slot",i+1);p.addProperty("name",v.cargo[i].deck.getHoverName().getString());p.addProperty("stacks",v.cargo[i].items.stream().filter(s->!s.isEmpty()).count());pallets.add(p);}
+        JsonArray pallets=new JsonArray();for(int i=0;i<v.capacity();i++)if(!v.cargo[i].empty()){JsonObject p=new JsonObject();p.addProperty("slot",i+1);String name=v.cargo[i].deck.getHoverName().getString();p.addProperty("name",name.substring(0,Math.min(80,name.length())));p.addProperty("stacks",v.cargo[i].items.stream().filter(s->!s.isEmpty()).count());pallets.add(p);}
         o.add("pallets",pallets);vehicles.put(v.getStringUUID(),o);setDirty();
     }
     public void forget(String id){if(vehicles.remove(id)!=null)setDirty();}
