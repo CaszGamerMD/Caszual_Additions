@@ -39,7 +39,8 @@ for token in ("groundPickup","DISPLAY_PALLET","DISPLAY_CARGO","syncPalletVisual"
 state=c("racks/StorageGolemRenderState.java")
 renderer=c("racks/StorageGolemRenderer.java")
 assert "showSharedPallet" in state and "visibleCargo" in state
-assert 'label.startsWith("PALLET 1/4")' in renderer
+assert 'state.carryingPallet=golem.carryingPalletPose();' in renderer
+assert 'golem.crewIndex()==0' in renderer
 assert "for(int i=0;i<state.visibleCargo;i++)" in renderer
 assert "Blocks.GLASS" in renderer and "state.palletDeck" in renderer
 model=c("racks/StorageGolemModel.java")
