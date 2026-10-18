@@ -70,6 +70,31 @@ png=(res/"assets/caszual_additions/textures/entity/wool_sensory_gear.png").read_
 assert png.startswith(bytes.fromhex("89504e470d0a1a0a"))
 assert struct.unpack(">II",png[16:24])==(256,256)
 assert len(png)>900
+# Check the ACTUAL PNG chunks, Adler-32 and decompressed pixel rows.
+# IHDR-only checks didn't catch a truncated IDAT that produced huge
+# missing-texture magenta panels in-game.
+import zlib
+chunks={}
+offset=8
+while offset<len(png):
+    length=struct.unpack(">I",png[offset:offset+4])[0]
+    kind=png[offset+4:offset+8]
+    payload=png[offset+8:offset+8+length]
+    stored_crc=struct.unpack(">I",png[offset+8+length:offset+12+length])[0]
+    assert zlib.crc32(kind+payload)==stored_crc,(kind,offset)
+    chunks.setdefault(kind,[]).append(payload)
+    offset+=12+length
+assert offset==len(png)
+assert b"IDAT" in chunks and b"PLTE" in chunks and b"IEND" in chunks
+pixels=zlib.decompress(b"".join(chunks[b"IDAT"]))
+assert len(pixels)==256*257
+assert all(pixels[y*257]==0 for y in range(256))
+assert len(set(pixels))>=8
+# The custom atlas is cream/gray/green. Never include magenta UV areas.
+palette=chunks[b"PLTE"][0]
+for i in range(0,len(palette),3):
+    red,green,blue=palette[i:i+3]
+    assert not (red>130 and blue>130 and green<40)
 for name,minimum in [("wool_helmet",12),("wool_boots",10)]:
     model=json.loads((res/f"assets/caszual_additions/models/item/{name}.json").read_text())
     assert len(model["elements"])>=minimum
