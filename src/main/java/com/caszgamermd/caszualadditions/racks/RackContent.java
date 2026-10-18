@@ -65,6 +65,7 @@ public final class RackContent {
     }
     public static void initialize() {
         WarehouseRemoteTickets.initialize();
+        WarehouseRackAccess.initialize();
         for(String color:java.util.List.of("white","orange","magenta","light_blue",
                 "yellow","lime","pink","gray","light_gray","cyan","purple",
                 "blue","brown","green","red","black")){
