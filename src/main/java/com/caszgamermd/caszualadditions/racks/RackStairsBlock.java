@@ -126,6 +126,69 @@ public final class RackStairsBlock extends Block implements EntityBlock {
         }
         return false;
     }
+    /**
+     * All nine occupied cells belong to ONE selectable stair unit.
+     * Keep the per-cell tread collision below for movement, but make
+     * highlighting and breaking any section target the entire assembly.
+     */
+    private static VoxelShape assemblyOutline(BlockPos pos,BlockState state){
+        BlockPos origin=root(pos,state);
+        Direction face=state.getValue(FACING);
+        int minX=Integer.MAX_VALUE,minZ=Integer.MAX_VALUE;
+        for(int part=0;part<3;part++){
+            BlockPos at=cell(origin,face,part);
+            minX=Math.min(minX,at.getX());
+            minZ=Math.min(minZ,at.getZ());
+        }
+        int width=face.getAxis()==Direction.Axis.X?3:1;
+        int depth=face.getAxis()==Direction.Axis.Z?3:1;
+        return box(16.0*(minX-pos.getX()),
+                16.0*(origin.getY()-pos.getY()),
+                16.0*(minZ-pos.getZ()),
+                16.0*(minX+width-pos.getX()),
+                16.0*(origin.getY()+3-pos.getY()),
+                16.0*(minZ+depth-pos.getZ()));
+    }
+
+    private static boolean validAssembly(Level world,BlockPos origin,Direction face){
+        for(int i=0;i<9;i++){
+            BlockState part=world.getBlockState(cell(origin,face,i));
+            if(!part.is(RackContent.RACK_STAIRS)
+                    ||part.getValue(PART)!=i
+                    ||part.getValue(FACING)!=face)return false;
+        }
+        return true;
+    }
+
+    /**
+     * Rotate the entire single-item stair assembly clockwise on its
+     * existing root. The new footprint must be clear and rider-free;
+     * rotation preserves its controller, saved location and assignments.
+     */
+    public static boolean rotate(ServerLevel world,BlockPos origin){
+        BlockState original=world.getBlockState(origin);
+        if(!(original.getBlock() instanceof RackStairsBlock)
+                ||original.getValue(PART)!=0)return false;
+        Direction face=original.getValue(FACING);
+        Direction turned=face.getClockWise();
+        RackStairsBlockEntity before=controller(world,origin);
+        if(before==null||before.reserved()||!validAssembly(world,origin,face)
+                ||occupied(world,origin,face)
+                ||occupied(world,origin,turned))return false;
+        java.util.Set<BlockPos> previous=new java.util.HashSet<>();
+        for(int i=0;i<9;i++)previous.add(cell(origin,face,i));
+        if(!fits(world,origin,turned,previous))return false;
+        var snapshot=before.snapshot();
+        for(int i=0;i<9;i++)
+            world.setBlock(cell(origin,face,i),Blocks.AIR.defaultBlockState(),2);
+        for(int i=0;i<9;i++)
+            world.setBlock(cell(origin,turned,i),
+                    original.setValue(FACING,turned).setValue(PART,i),3);
+        if(world.getBlockEntity(origin) instanceof RackStairsBlockEntity moved)
+            moved.restore(snapshot,origin);
+        return true;
+    }
+
     /** Called from player pushing and escorted Golem motion. */
     public static boolean move(ServerLevel world,BlockPos oldRoot,
             BlockPos to,boolean byPlayer){
@@ -133,6 +196,9 @@ public final class RackStairsBlock extends Block implements EntityBlock {
         if(!(first.getBlock() instanceof RackStairsBlock)
                 ||first.getValue(PART)!=0)return false;
         Direction face=first.getValue(FACING);
+        RackStairsBlockEntity controller=controller(world,oldRoot);
+        if(controller==null||!validAssembly(world,oldRoot,face)
+                ||(byPlayer&&controller.reserved()))return false;
         // Never roll the stairs under an existing rider OR into an
         // entity standing in the intended destination footprint.
         if(occupied(world,oldRoot,face)||occupied(world,to,face))return false;
@@ -200,7 +266,7 @@ public final class RackStairsBlock extends Block implements EntityBlock {
         };
     }
     @Override protected VoxelShape getShape(BlockState state,BlockGetter level,
-            BlockPos pos,CollisionContext ctx){return shape(state);}
+            BlockPos pos,CollisionContext ctx){return assemblyOutline(pos,state);}
     @Override protected VoxelShape getCollisionShape(BlockState state,BlockGetter level,
             BlockPos pos,CollisionContext ctx){return shape(state);}
     @Override protected InteractionResult useWithoutItem(BlockState state,
@@ -209,9 +275,11 @@ public final class RackStairsBlock extends Block implements EntityBlock {
         RackStairsBlockEntity be=controller(server,pos);
         if(be==null)return InteractionResult.SUCCESS;
         if(player.isShiftKeyDown()){
-            be.setHome(be.getBlockPos());
-            player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                    "Rack Stairs: saved this position as home."));
+            if(!rotate(server,be.getBlockPos()))
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                        "Rack Stairs cannot rotate: someone is using them or the new footprint is blocked."));
+            else player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                    "Rack Stairs rotated clockwise. Home position saved."));
         }else{
             BlockPos current=be.getBlockPos();
             if(!move(server,current,current.relative(player.getDirection()),true))
