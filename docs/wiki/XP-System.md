@@ -58,6 +58,16 @@ I I I
 
 I = iron ingot, E = experience bottle (spaces represent empty slots).
 
+### XP Collector
+
+```text
+  G
+G B G
+  I
+```
+
+G = glass, B = experience bottle, I = iron ingot. Place the collector on a solid floor in the work area. It automatically absorbs loose XP orbs within six blocks (and three blocks vertically). It does not draw XP directly from players or connected XP tanks. XP is preserved on the block and on its dropped item.
+
 ## Charger operation
 
 Use a damaged Mending item on an empty charger to place it inside. Use the charger again to retrieve the item. An on-screen status shows the item and connected XP network levels.
