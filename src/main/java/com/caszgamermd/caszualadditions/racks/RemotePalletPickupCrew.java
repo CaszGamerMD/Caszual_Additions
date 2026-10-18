@@ -142,6 +142,10 @@ public final class RemotePalletPickupCrew {
                 leader.remotePickupHomes(),leader.remotePickupCourier(),
                 leader.remotePickupTarget(),leader.remotePickupWarehouse()))
             return;
+        for(StorageGolem member:trio)rig.setCrewName(
+                member.remotePickupIndex(),member.golemName());
+        if(level.getEntity(leader.remotePickupCourier()) instanceof StorageGolem courier)
+            rig.setCrewName(3,courier.golemName());
         rig.setPos(aisle.getX()+.5,aisle.getY(),aisle.getZ()+.5);
         if(!level.addFreshEntity(rig))return;
         // Existing transaction copies 216 slots into the ONE rig then
