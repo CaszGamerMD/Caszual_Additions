@@ -66,6 +66,10 @@ public final class IndustrialFinishEntity extends Entity {
         entityData.set(PRIMED,in.getBooleanOr("primed",true));
         entityData.set(TARGET,in.getStringOr("target_block",""));
     }
+    @Override public boolean hurtServer(ServerLevel level,
+            net.minecraft.world.damagesource.DamageSource damage,float amount){
+        return false; // Cosmetic coating is not an attackable world object.
+    }
     @Override public boolean isPickable(){return false;}
     @Override public boolean isPushable(){return false;}
 }
