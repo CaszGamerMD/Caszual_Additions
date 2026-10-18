@@ -31,7 +31,7 @@ public final class CaszualAdditions implements ModInitializer {
         ColorfulRods.initialize();
 
         XpBlocks.initialize();
-        com.caszgamermd.caszualadditions.xp.XpCollectorItem.initialize();
+
         XpBlockEntities.initialize();
         UnbreakableContent.initialize();
         PlayerPlushies.initialize();
