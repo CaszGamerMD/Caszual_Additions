@@ -47,6 +47,7 @@ public final class StorageGolemShelfEntity extends BlockEntity {
         debugChat=chat;debugStatuses=statuses;setChanged();
     }
     public String nextName(){return storedNames.peekFirst();}
+    public String newestName(){return storedNames.peekLast();}
     /** Adding a new golem token assigns a friendly name once. Returning
      * entities pass their existing name and keep it across redocking. */
     public boolean add(){return addNamed(null);}
