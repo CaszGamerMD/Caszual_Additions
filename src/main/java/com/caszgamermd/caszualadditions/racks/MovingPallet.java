@@ -1231,7 +1231,8 @@ public final class MovingPallet extends PathfinderMob {
             var route=MovingPalletFloorPath.route(current,playerFloor,higher,
                     position->safePlatformFloor(level,position)
                             &&(tickCount>=avoidFloorCellUntil
-                                ||!position.equals(obstructedFloorCell)));
+                                ||!position.equals(obstructedFloorCell)),
+                    (from,to)->WarehouseTerrain.smoothHalfStep(level,from,to));
             nextFloorFollowPlan=tickCount+24;
             if(route!=null)floorFollowRoute.addAll(route);
             lastFollowDistance=Double.POSITIVE_INFINITY;
@@ -1275,7 +1276,7 @@ public final class MovingPallet extends PathfinderMob {
         // Move control handles stepping off a supported ledge and falling
         // exactly one block down, instead of jumping back to level ground.
         getMoveControl().setWantedPosition(next.getX()+.5,
-                next.getY(),next.getZ()+.5,1.0);
+                WarehouseTerrain.standingY(level,next),next.getZ()+.5,1.0);
     }
 
     private void updateCrewLabel(){
