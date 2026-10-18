@@ -24,6 +24,12 @@ Place the trap as a low-profile metal plate on a solid floor. Only a **living Wa
 
 The trap does **not** catch other monsters, players, or animals. The Warden can still attack nearby players, so trapping it does not make it harmless.
 
+## Trap acoustic suppression
+
+While the trap has a living Warden captive, the Warden is silenced and sculk vibration listeners inside a nine-block radius ignore triggers. Outside that radius, ordinary Warden and sculk behavior continues. When the trap releases its Warden, the prior silent state is restored. This is distinct from the wool slippers' wearer-specific seven-block vibration protection.
+
+The helmet is styled as cushioned earmuffs with dual green night-vision-looking goggles. Its night-vision lenses are cosmetic; the gameplay effect continues to prevent Darkness and Blindness. The boots look like padded wool slippers.
+
 ## Technical notes
 
 - Protection is applied server-side for multiplayer. The client also sees the helmet equipment/appearance.
