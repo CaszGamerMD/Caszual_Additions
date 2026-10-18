@@ -53,6 +53,11 @@ public final class RackPickupPlan {
     public static RackPickupPlan find(ServerLevel level,RackBlockEntity rack){
         BlockPos root=rack.getBlockPos();
         Direction direction=rack.facing();
+        // The loading crew waits if a mobile staircase is parked across
+        // the pallet bay or a person is using a deployed scaffold. Empty
+        // scaffolds retract with their safety railings before extraction.
+        if(!WarehouseRackAccess.clearOfStairs(level,rack)
+                ||!WarehouseRackAccess.prepare(level,rack))return null;
         // Pull out horizontally FIRST: need a two-wide clear channel from
         // the open rack face. A raised load then lowers within that channel.
         for(int col=0;col<2;col++)
