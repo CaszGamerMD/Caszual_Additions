@@ -74,4 +74,82 @@ public final class WarehouseRackAccess {
             }
         return true;
     }
+    /** Find a moving stair controller by its assigned worker. Called by the
+     * mover every tick, only within the previously known 12-block area. */
+    public static RackStairsBlockEntity findAssignedStairs(ServerLevel world,
+            java.util.UUID mover,BlockPos around){
+        if(mover==null||around.equals(BlockPos.ZERO))return null;
+        for(int y=-2;y<=2;y++)for(int x=-12;x<=12;x++)
+            for(int z=-12;z<=12;z++){
+                BlockPos pos=around.offset(x,y,z);
+                if(!world.hasChunkAt(pos))continue;
+                if(world.getBlockEntity(pos) instanceof RackStairsBlockEntity stairs
+                        &&mover.equals(stairs.mover()))return stairs;
+            }
+        return null;
+    }
+    /** Ask for one free worker to shepherd the mobile stairs to an upper
+     * rack. The warehouse retains all four pallet Golems as separate tasks;
+     * this worker comes from another stocked shelf, NEVER from the
+     * already assigned cargo group.
+     */
+    public static boolean requestStairs(ServerLevel world,RackBlockEntity rack){
+        BlockPos rackPos=rack.getBlockPos();
+        if(rackPos.getY()<=world.getMinY()+2)return false;
+        Direction front=rack.facing();
+        // Need steps to point TOWARD the rack. Three treads occupy the
+        // outside aisle; the highest ends at the elevated access level.
+        Direction up=front.getOpposite();
+        BlockPos desired=rackPos.relative(front,3).below(3);
+        RackStairsBlockEntity stairs=null;
+        for(int dx=-16;dx<=16&&stairs==null;dx++)
+            for(int dz=-16;dz<=16&&stairs==null;dz++)
+                for(int dy=-3;dy<=3;dy++){
+                    BlockPos pos=desired.offset(dx,dy,dz);
+                    if(!world.hasChunkAt(pos))continue;
+                    if(world.getBlockEntity(pos) instanceof RackStairsBlockEntity found
+                            &&found.getBlockState().getValue(RackStairsBlock.FACING)==up
+                            &&!found.reserved()){stairs=found;break;}
+                }
+        if(stairs==null)return false;
+        // The stairs themselves may be elsewhere; a shelf Golem must
+        // physically travel to them, then escort them to this rack.
+        for(int dx=-18;dx<=18;dx++)for(int dz=-18;dz<=18;dz++){
+            BlockPos pos=rackPos.offset(dx,-3,dz);
+            if(!world.hasChunkAt(pos))continue;
+            if(!(world.getBlockEntity(pos) instanceof StorageGolemShelfEntity shelf)
+                    ||shelf.docked()==0)continue;
+            BlockPos exit=StorageGolemShelfDoor.exit(world,shelf);
+            if(exit==null)continue;
+            StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(world,
+                    net.minecraft.world.entity.EntitySpawnReason.EVENT);
+            if(worker==null)return false;
+            String name=shelf.takeNamed();
+            if(name==null)return false;
+            worker.assignRackStairMover(shelf.getBlockPos(),stairs.getBlockPos());
+            worker.setGolemName(name);
+            StorageGolemShelfDoor.emerge(worker,exit,StorageGolemShelfDoor.front(shelf));
+            if(!world.addFreshEntity(worker)){
+                shelf.addNamed(name);return false;
+            }
+            if(!stairs.assign(desired,worker.getUUID())){
+                worker.discard();shelf.addNamed(name);return false;
+            }
+            return true;
+        }
+        return false;
+    }
+    /** Finished work triggers an independent RETURN order, which moves
+     * the stairs back to where the player LAST positioned them. */
+    public static void finishStairAccess(ServerLevel world,BlockPos rackRoot,
+            Direction rackFacing){
+        BlockPos desired=rackRoot.relative(rackFacing,3).below(3);
+        for(int dx=-3;dx<=3;dx++)for(int dz=-3;dz<=3;dz++){
+            BlockPos at=desired.offset(dx,0,dz);
+            if(!world.hasChunkAt(at))continue;
+            if(world.getBlockEntity(at) instanceof RackStairsBlockEntity stair
+                    &&stair.reserved())stair.release();
+        }
+    }
+
 }
