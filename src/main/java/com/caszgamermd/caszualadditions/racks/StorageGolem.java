@@ -483,9 +483,14 @@ public final class StorageGolem extends PathfinderMob {
             resetCourierRoute();
             courierRouteGoal=goal.immutable();
         }
-        double finalDistance=distanceToSqr(goal.getX()+.5,goal.getY(),
-                goal.getZ()+.5);
-        if(finalDistance<1.15){
+        // Require arrival at the actual reserved tile. The previous
+        // distance-only test accepted adjacent tiles and left the courier
+        // waiting for a placement that could never be committed.
+        double finalDistance=distanceToSqr(goal.getX()+.5,
+                WarehouseTerrain.standingY(level,goal),goal.getZ()+.5);
+        if(blockPosition().getX()==goal.getX()
+                &&blockPosition().getZ()==goal.getZ()
+                &&finalDistance<.85){
             getNavigation().stop();
             courierRoute.clear();
             courierStalls=0;
@@ -512,7 +517,9 @@ public final class StorageGolem extends PathfinderMob {
                 getNavigation().stop();
                 return false;
             }
-            if(distanceToSqr(cell.getX()+.5,cell.getY(),cell.getZ()+.5)<.38){
+            if(distanceToSqr(cell.getX()+.5,
+                    WarehouseTerrain.standingY(level,cell),
+                    cell.getZ()+.5)<.38){
                 courierRoute.removeFirst();
                 courierProgressDistance=Double.POSITIVE_INFINITY;
                 lastCourierProgress=tickCount;
