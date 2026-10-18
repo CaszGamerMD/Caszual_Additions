@@ -198,6 +198,8 @@ public final class StorageGolem extends PathfinderMob {
     // the station, not invisibly inside the worker.
     private boolean stationOrder;
     private boolean palletStackJob;
+    private boolean rackStairMover;
+    private BlockPos rackStairLast=BlockPos.ZERO;
     private BlockPos orderPoint=BlockPos.ZERO;
     private NonNullList<ItemStack> orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
     // Four workers are independently saved and physically navigate both
@@ -782,6 +784,37 @@ public final class StorageGolem extends PathfinderMob {
         }
     }
 
+    /** A second Golem is dispatched specifically to shepherd a mobile
+     * stair unit when an elevated rack needs worker access. No cargo. */
+    public void assignRackStairMover(BlockPos shelf,BlockPos stairs){
+        home=shelf.immutable();markCurrentRecall();
+        rackStairLast=stairs.immutable();rackStairMover=true;
+        stage=6;cargo=ItemStack.EMPTY;emptyBox=ItemStack.EMPTY;
+    }
+    private void tickRackStairs(ServerLevel level){
+        RackStairsBlockEntity stairs=WarehouseRackAccess.findAssignedStairs(
+                level,getUUID(),rackStairLast);
+        if(stairs==null){
+            rackStairMover=false;stage=2;getNavigation().stop();
+            return;
+        }
+        BlockPos current=stairs.getBlockPos();
+        rackStairLast=current.immutable();
+        if(!stairs.reserved()){
+            rackStairMover=false;stage=2;getNavigation().stop();
+            return;
+        }
+        // Work from alongside the equipment, NEVER stand on its steps:
+        // standing on it would activate the occupant safety interlock.
+        Direction face=stairs.getBlockState().getValue(RackStairsBlock.FACING);
+        BlockPos aside=current.relative(face.getClockWise(),1);
+        if(!StorageGolemReturnPath.walkable(level,aside))
+            aside=current.relative(face.getCounterClockWise(),1);
+        if(StorageGolemReturnPath.walkable(level,aside)
+                &&distanceToSqr(aside.getX()+.5,aside.getY(),
+                        aside.getZ()+.5)>2.25)walkTo(level,aside,1.10);
+        else getNavigation().stop();
+    }
     public void assign(BlockPos home,BlockPos source,BlockPos dest,ItemStack sample){
         this.home=home.immutable();markCurrentRecall();
         this.source=source.immutable();
@@ -965,7 +998,9 @@ public final class StorageGolem extends PathfinderMob {
      * The PALLET prefix is preserved for the existing pallet renderer. */
     private void updateTaskLabel(){
         String label;
-        if(remotePickup){
+        if(rackStairMover){
+            label="ESCORT | RACK STAIRS";
+        }else if(remotePickup){
             label="REMOTE PICKUP "+(haulIndex+1)+"/3 | EMPTY HANDED"
                     +(routeIssue.isBlank()?"":" | "+routeIssue);
         }else if(remoteCourier){
@@ -2009,6 +2044,7 @@ public final class StorageGolem extends PathfinderMob {
         syncPalletAction();
         if(remotePickup){tickRemotePickup(level);return;}
         if(remoteCourier){tickRemoteCourier(level);return;}
+        if(rackStairMover){tickRackStairs(level);return;}
         // Movement controls expire after each mob AI tick. Drive the next
         // checked aisle cell EVERY server tick; previously the one-shot
         // commands were sent only once per ten ticks, causing stop/go
@@ -2318,6 +2354,8 @@ public final class StorageGolem extends PathfinderMob {
         out.putInt("stage",stage);out.putString("item",itemId);out.putInt("wait",waitTicks);
         out.putBoolean("output_job",outputJob);
         out.putBoolean("pallet_stack_job",palletStackJob);
+        out.putBoolean("rack_stair_mover",rackStairMover);
+        out.store("rack_stair_last",BlockPos.CODEC,rackStairLast);
         out.putInt("output_ticket",outputTicket);
         out.putInt("pickup_limit",pickupLimit);
         if(!requestedSample.isEmpty())out.store("requested_sample",ItemStack.CODEC,requestedSample);
@@ -2375,6 +2413,9 @@ public final class StorageGolem extends PathfinderMob {
         waitTicks=Math.max(0,in.getIntOr("wait",0));
         outputJob=in.getBooleanOr("output_job",false);
         palletStackJob=in.getBooleanOr("pallet_stack_job",false);
+        rackStairMover=in.getBooleanOr("rack_stair_mover",false);
+        rackStairLast=in.read("rack_stair_last",BlockPos.CODEC)
+                .orElse(BlockPos.ZERO);
         outputTicket=Math.max(0,in.getIntOr("output_ticket",0));
         pickupLimit=Math.clamp(in.getIntOr("pickup_limit",64),1,27*64);
         requestedSample=in.read("requested_sample",ItemStack.CODEC).orElse(ItemStack.EMPTY);
