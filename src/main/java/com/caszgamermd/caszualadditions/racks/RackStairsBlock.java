@@ -381,6 +381,18 @@ public final class RackStairsBlock extends Block implements EntityBlock {
             result=Shapes.or(result,sideShape(facing,true,support));
         if(state.getValue(RAIL_RIGHT))
             result=Shapes.or(result,sideShape(facing,false,support));
+        // The elevated dock lip is real collision, not a cosmetic plate:
+        // its upper face matches the adjacent scaffold's 3px-tall deck.
+        if(part==8){
+            if(state.getValue(DOCK_NORTH))
+                result=Shapes.or(result,box(3,16,0,13,19,3));
+            if(state.getValue(DOCK_SOUTH))
+                result=Shapes.or(result,box(3,16,13,13,19,16));
+            if(state.getValue(DOCK_WEST))
+                result=Shapes.or(result,box(0,16,3,3,19,13));
+            if(state.getValue(DOCK_EAST))
+                result=Shapes.or(result,box(13,16,3,16,19,13));
+        }
         return result;
     }
     @Override protected VoxelShape getShape(BlockState state,BlockGetter level,
