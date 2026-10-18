@@ -1,0 +1,75 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "grip": "minecraft:block/gray_concrete",
+    "metal": "minecraft:block/iron_block",
+    "warn": "minecraft:block/yellow_concrete"
+  },
+  "elements": [
+    {
+      "from": [
+        13,
+        16,
+        3
+      ],
+      "to": [
+        16,
+        19,
+        13
+      ],
+      "faces": {
+        "north": {
+          "texture": "#grip"
+        },
+        "south": {
+          "texture": "#grip"
+        },
+        "east": {
+          "texture": "#grip"
+        },
+        "west": {
+          "texture": "#grip"
+        },
+        "up": {
+          "texture": "#grip"
+        },
+        "down": {
+          "texture": "#grip"
+        }
+      }
+    },
+    {
+      "from": [
+        15,
+        15,
+        4
+      ],
+      "to": [
+        16,
+        16,
+        12
+      ],
+      "faces": {
+        "north": {
+          "texture": "#warn"
+        },
+        "south": {
+          "texture": "#warn"
+        },
+        "east": {
+          "texture": "#warn"
+        },
+        "west": {
+          "texture": "#warn"
+        },
+        "up": {
+          "texture": "#warn"
+        },
+        "down": {
+          "texture": "#warn"
+        }
+      }
+    }
+  ],
+  "ambientocclusion": false
+}
