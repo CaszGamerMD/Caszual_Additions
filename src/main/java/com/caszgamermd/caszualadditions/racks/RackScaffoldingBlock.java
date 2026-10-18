@@ -14,7 +14,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -27,7 +27,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * removal. Occupied walkways never fold out from under entities. */
 public final class RackScaffoldingBlock extends Block {
     public static final BooleanProperty FOLDED=BooleanProperty.create("folded");
-    public static final DirectionProperty FACING=BlockStateProperties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
     private final MapCodec<RackScaffoldingBlock> codec=MapCodec.unit(this);
     private static final VoxelShape DECK=box(0,0,0,16,3,16);
     private static final VoxelShape STOWED=box(0,0,0,16,2,2);
