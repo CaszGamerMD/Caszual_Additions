@@ -129,24 +129,32 @@ public final class StoragePalletCrew {
                 +available.size()+" currently available.";
         List<StorageGolem> spawned=new ArrayList<>();
         List<StorageGolemShelfEntity> withdrawn=new ArrayList<>();
+        List<String> withdrawnNames=new ArrayList<>();
         for(int i=0;i<4;i++){
             StorageGolemShelfEntity shelf=available.get(i);
             BlockPos shelfDoor=StorageGolemShelfDoor.exit(level,shelf);
             if(shelfDoor==null){
-                rollback(spawned,withdrawn);
+                rollback(spawned,withdrawn,withdrawnNames);
                 return "Shelf front opening is blocked; clear the aisle before dispatching the crew.";
             }
             StorageGolem golem=RackContent.STORAGE_GOLEM_TYPE.create(level,EntitySpawnReason.EVENT);
-            if(golem==null||!shelf.take()){
-                rollback(spawned,withdrawn);
+            if(golem==null){
+                rollback(spawned,withdrawn,withdrawnNames);
+                return "Unable to create worker; no shelf stock consumed.";
+            }
+            String name=shelf.takeNamed();
+            if(name==null){
+                rollback(spawned,withdrawn,withdrawnNames);
                 return "Unable to assign four workers; no shelf stock consumed.";
             }
             withdrawn.add(shelf);
+            withdrawnNames.add(name);
             golem.assignPlayerCrew(shelf.getBlockPos(),i,player.getUUID());
+            golem.setGolemName(name);
             StorageGolemShelfDoor.emerge(golem,shelfDoor,
                     StorageGolemShelfDoor.front(shelf));
             if(!level.addFreshEntity(golem)){
-                rollback(spawned,withdrawn);
+                rollback(spawned,withdrawn,withdrawnNames);
                 return "Worker spawn failed; existing assignments rolled back.";
             }
             spawned.add(golem);
@@ -157,9 +165,10 @@ public final class StoragePalletCrew {
                 +"rack or block face for them to place it.";
     }
     private static void rollback(List<StorageGolem> workers,
-            List<StorageGolemShelfEntity> shelves){
+            List<StorageGolemShelfEntity> shelves,List<String> names){
         for(StorageGolem golem:workers)golem.discard();
-        for(StorageGolemShelfEntity shelf:shelves)shelf.add();
+        for(int i=0;i<shelves.size();i++)
+            shelves.get(i).addNamed(names.get(i));
     }
     /** PTPs behave like racks: occupied = source; empty = destination
      * when holding cargo. Both actions use a protected exterior aisle. */
