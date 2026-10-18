@@ -133,7 +133,9 @@ public final class RackStairsBlock extends Block implements EntityBlock {
         if(!(first.getBlock() instanceof RackStairsBlock)
                 ||first.getValue(PART)!=0)return false;
         Direction face=first.getValue(FACING);
-        if(occupied(world,oldRoot,face))return false;
+        // Never roll the stairs under an existing rider OR into an
+        // entity standing in the intended destination footprint.
+        if(occupied(world,oldRoot,face)||occupied(world,to,face))return false;
         java.util.Set<BlockPos> previous=new java.util.HashSet<>();
         for(int i=0;i<9;i++)previous.add(cell(oldRoot,face,i));
         if(!fits(world,to,face,previous))return false;
