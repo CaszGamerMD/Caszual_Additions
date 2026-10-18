@@ -37,12 +37,13 @@ public final class StorageGolemRenderer
     @Override public void extractRenderState(StorageGolem golem,
             StorageGolemRenderState state,float partialTick){
         super.extractRenderState(golem,state,partialTick);
-        var name=golem.getCustomName();
-        String label=name==null?"":name.getString();
-        state.carryingPallet=label.startsWith("PALLET ");
-        state.pushingEmptyPallet=label.startsWith("EMPTY PALLET")&&!golem.displayPallet().isEmpty();
+        // Animation is governed by real cargo/missions, never by the
+        // custom name. A crew member whose task label still says PALLET
+        // must not stand idle with both arms permanently raised.
+        state.carryingPallet=golem.carryingPalletPose();
+        state.pushingEmptyPallet=golem.pushingPalletPose();
         state.showSharedPallet=state.carryingPallet
-                &&label.startsWith("PALLET 1/4")
+                &&golem.crewIndex()==0
                 &&!golem.displayPallet().isEmpty();
         state.visibleCargo=state.showSharedPallet?golem.visibleCargoCount():0;
         state.heldSlots=state.carryingPallet?0:golem.displayedLoadSlots();
