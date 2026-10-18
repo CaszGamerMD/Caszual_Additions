@@ -1995,7 +1995,9 @@ public final class StorageGolem extends PathfinderMob {
         super.tick();
         if(!(level() instanceof ServerLevel level))return;
         if(!remoteCourier&&!remotePickup)checkPendingRecall(level);
-        if(tickCount%10==0)updateTaskLabel();
+        // Status strings from task transitions should not leak into
+        // player-visible nameplates for 10 ticks when debug is disabled.
+        updateTaskLabel();
         syncHeldVisual();
         syncPalletAction();
         if(remotePickup){tickRemotePickup(level);return;}
@@ -2456,18 +2458,18 @@ public final class StorageGolem extends PathfinderMob {
         if(player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
                 &&(remotePickup||remoteCourier)){
             if(resumeRemotePath())
-                player.sendSystemMessage(Component.literal(
+                WarehouseGolemDebug.message(player,home,Component.literal(
                         "Scanner: Golem resumed dry-land pathfinding. "
                         +"If the obstruction remains, it will pause again."));
             else if(remoteCourier)
-                player.sendSystemMessage(Component.literal(
+                WarehouseGolemDebug.message(player,home,Component.literal(
                         "Scanner: courier is locked to pallet at "
                         +remoteCourierTarget.toShortString()
                         +" | Service aisle: "+remoteCourierAisle.toShortString()
                         +" | Waypoint: "+(courierRoute.isEmpty()
                                 ?"NOT PLANNED":courierRoute.peekFirst().toShortString())
                         +" | "+routeIssue));
-            else player.sendSystemMessage(Component.literal(
+            else WarehouseGolemDebug.message(player,home,Component.literal(
                     "Scanner: pickup worker's target "
                     +remotePickupTarget.toShortString()
                     +" | Rally: "+remotePickupRally.toShortString()
@@ -2483,13 +2485,13 @@ public final class StorageGolem extends PathfinderMob {
             // independent crew home. No Rack Computer interaction or nearby
             // shelf is needed. The coordinator first checks the entire
             // group to avoid splitting four Golems around live cargo.
-            player.sendSystemMessage(Component.literal(
+            WarehouseGolemDebug.message(player,home,Component.literal(
                     StoragePalletCrew.recallFollowing((ServerLevel)level(),user)));
             return InteractionResult.SUCCESS;
         }
         if(!player.isShiftKeyDown())return InteractionResult.PASS;
         if(remotePickup||remoteCourier){
-            player.sendSystemMessage(Component.literal(
+            WarehouseGolemDebug.message(player,home,Component.literal(
                     "This Golem is completing an assigned remote pallet exchange."));
             return InteractionResult.SUCCESS;
         }
