@@ -67,7 +67,7 @@ assert "full-face" in render or "full face" in render
 # regions (offwhite wool, slate, rim, lens, sole) are present in PNG.
 import struct
 png=(res/"assets/caszual_additions/textures/entity/wool_sensory_gear.png").read_bytes()
-assert png.startswith(b"\\x89PNG\\r\\n\\x1a\\n")
+assert png.startswith(bytes.fromhex("89504e470d0a1a0a"))
 assert struct.unpack(">II",png[16:24])==(256,256)
 assert len(png)>900
 for name,minimum in [("wool_helmet",12),("wool_boots",10)]:
