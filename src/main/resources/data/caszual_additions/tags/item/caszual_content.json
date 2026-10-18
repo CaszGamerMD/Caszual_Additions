@@ -86,6 +86,11 @@
     "caszual_additions:pallet_car",
     "caszual_additions:passenger_car",
     "caszual_additions:pallet_drone",
-    "caszual_additions:transport_controller"
+    "caszual_additions:transport_controller",
+    "caszual_additions:conveyor_hold",
+    "caszual_additions:conveyor_logic",
+    "caszual_additions:train_station_post",
+    "caszual_additions:pallet_pressure_plate",
+    "caszual_additions:pallet_transit_computer"
   ]
 }

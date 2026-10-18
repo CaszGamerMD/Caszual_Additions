@@ -16,14 +16,15 @@ import net.minecraft.world.phys.shapes.*;
 import java.util.*;
 
 /** Nine occupied cells per module. No overhanging, non-colliding side artwork. */
-public final class GuidewayBlock extends Block {
+public final class GuidewayBlock extends Block implements EntityBlock {
     public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
+    public static final BooleanProperty POWERED=BlockStateProperties.POWERED;
     public static final IntegerProperty PART=IntegerProperty.create("part",0,8);
     public final String kind;
     private boolean removing;
-    public GuidewayBlock(String kind,Properties properties){super(properties);this.kind=kind;registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH).setValue(PART,4));}
+    public GuidewayBlock(String kind,Properties properties){super(properties);this.kind=kind;registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH).setValue(PART,4).setValue(POWERED,false));}
     @Override protected MapCodec<? extends Block> codec(){return MapCodec.unit(this);}
-    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> b){b.add(FACING,PART);}
+    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> b){b.add(FACING,PART,POWERED);}
     public static BlockPos cell(BlockPos root,Direction facing,int part){return root.relative(facing.getClockWise(),part%3-1).relative(facing,1-part/3);}
     public static BlockPos root(BlockPos pos,BlockState s){return pos.relative(s.getValue(FACING).getClockWise(),1-s.getValue(PART)%3).relative(s.getValue(FACING),s.getValue(PART)/3-1);}
     public boolean rail(){return kind.startsWith("pallet_rail");}
@@ -49,7 +50,23 @@ public final class GuidewayBlock extends Block {
     }
     @Override public void setPlacedBy(Level l,BlockPos p,BlockState s,LivingEntity e,ItemStack stack){
         super.setPlacedBy(l,p,s,e,stack);
+        if(l instanceof ServerLevel server && bay())TransitWorldData.get(server).station(p,"bay");
         if(!l.isClientSide())for(int i=0;i<9;i++)if(i!=4)l.setBlock(cell(p,s.getValue(FACING),i),s.setValue(PART,i),3);
+    }
+    @Override public net.minecraft.world.level.block.entity.BlockEntity newBlockEntity(BlockPos p,BlockState s){return kind.equals("conveyor_logic")&&s.getValue(PART)==4?new LogicConveyorEntity(p,s):null;}
+    public static boolean powered(Level l,BlockPos r){
+        var s=l.getBlockState(r);if(!(s.getBlock() instanceof GuidewayBlock))return false;
+        for(int i=0;i<9;i++)if(l.hasNeighborSignal(cell(r,s.getValue(FACING),i)))return true;return false;
+    }
+    @Override protected void neighborChanged(BlockState s,Level l,BlockPos p,Block b,net.minecraft.world.level.redstone.Orientation o,boolean moved){
+        if(l.isClientSide()||(!kind.equals("conveyor_hold")&&!kind.equals("conveyor_logic")))return;
+        BlockPos r=root(p,s);boolean power=powered(l,r);
+        for(int i=0;i<9;i++){BlockPos q=cell(r,s.getValue(FACING),i);var a=l.getBlockState(q);if(a.is(this)&&a.getValue(POWERED)!=power)l.setBlock(q,a.setValue(POWERED,power),2);}
+    }
+    @Override protected net.minecraft.world.InteractionResult useWithoutItem(BlockState s,Level l,BlockPos p,net.minecraft.world.entity.player.Player player,net.minecraft.world.phys.BlockHitResult hit){
+        if(!kind.equals("conveyor_logic"))return net.minecraft.world.InteractionResult.PASS;
+        if(!l.isClientSide()&&l.getBlockEntity(root(p,s)) instanceof LogicConveyorEntity logic){logic.cycle(player.isShiftKeyDown());player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Logic conveyor: LOW = "+LogicConveyorEntity.label(logic.unpowered)+" / HIGH = "+LogicConveyorEntity.label(logic.powered)+". Click edits LOW; sneak-click edits HIGH."));}
+        return net.minecraft.world.InteractionResult.SUCCESS;
     }
     private void removeModule(ServerLevel l,BlockPos p,BlockState s,boolean drop){
         if(removing)return;

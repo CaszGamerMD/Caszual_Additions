@@ -16,17 +16,23 @@ public final class TransportContent {
     public static final Map<String,Block> MODELS=new LinkedHashMap<>();
     public static final Map<String,Item> ITEMS=new LinkedHashMap<>();
     public static EntityType<TransportVehicle> VEHICLE;
-    public static Block BAY;
+    public static Block BAY,STATION,PLATE,COMPUTER;
+    public static net.minecraft.world.level.block.entity.BlockEntityType<LogicConveyorEntity> LOGIC_ENTITY;
     public static Item CONTROLLER;
     public static final String[] VEHICLES={"conveyor_pallet","pallet_engine","pallet_car","passenger_car","pallet_drone"};
     public static void initialize(){
-        for(String name:List.of("conveyor_straight","conveyor_left","conveyor_right","conveyor_up","conveyor_down","pallet_rail","pallet_rail_left","pallet_rail_right")){
+        for(String name:List.of("conveyor_hold","conveyor_logic","conveyor_straight","conveyor_left","conveyor_right","conveyor_up","conveyor_down","pallet_rail","pallet_rail_left","pallet_rail_right")){
             var key=ResourceKey.create(Registries.BLOCK,CaszualAdditions.id(name));
             var block=new GuidewayBlock(name,BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(4).pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK).noOcclusion().setId(key));
             Registry.register(BuiltInRegistries.BLOCK,key,block); WAYS.put(name,block);
             var ik=ResourceKey.create(Registries.ITEM,CaszualAdditions.id(name));
             ITEMS.put(name,Registry.register(BuiltInRegistries.ITEM,ik,new BlockItem(block,new Item.Properties().setId(ik).useBlockDescriptionPrefix())));
         }
+        LOGIC_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,CaszualAdditions.id("logic_conveyor"),net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder.create(LogicConveyorEntity::new,WAYS.get("conveyor_logic")).build());
+        STATION=block("train_station_post",StationPostBlock::new);
+        PLATE=block("pallet_pressure_plate",PalletPlateBlock::new);
+        COMPUTER=block("pallet_transit_computer",TransitComputerBlock::new);
+        DroneChunkLoading.initialize();TransitNet.initialize();
         var bayKey=ResourceKey.create(Registries.BLOCK,CaszualAdditions.id("drone_parking_bay"));
         BAY=Registry.register(BuiltInRegistries.BLOCK,bayKey,new GuidewayBlock("drone_parking_bay",BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(4).pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK).noOcclusion().setId(bayKey)));
         var bik=ResourceKey.create(Registries.ITEM,CaszualAdditions.id("drone_parking_bay"));
@@ -44,6 +50,10 @@ public final class TransportContent {
         var ek=ResourceKey.create(Registries.ENTITY_TYPE,CaszualAdditions.id("pallet_transport"));
         VEHICLE=Registry.register(BuiltInRegistries.ENTITY_TYPE,ek,EntityType.Builder.<TransportVehicle>of(TransportVehicle::new,MobCategory.MISC).sized(2.4f,2.5f).build(ek));
         FabricDefaultAttributeRegistry.register(VEHICLE,TransportVehicle.attributes());
+    }
+    private static Block block(String name,java.util.function.Function<BlockBehaviour.Properties,Block> factory){
+        var key=ResourceKey.create(Registries.BLOCK,CaszualAdditions.id(name));var b=Registry.register(BuiltInRegistries.BLOCK,key,factory.apply(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(4).noOcclusion().pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK).setId(key)));
+        var ik=ResourceKey.create(Registries.ITEM,CaszualAdditions.id(name));ITEMS.put(name,Registry.register(BuiltInRegistries.ITEM,ik,new BlockItem(b,new Item.Properties().setId(ik).useBlockDescriptionPrefix())));return b;
     }
     private TransportContent(){}
 }

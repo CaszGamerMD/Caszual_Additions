@@ -44,6 +44,7 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         CaszUtilsClient.initialize();
         HeadVendingClient.initialize();
         RackComputerClient.initialize();
+        com.caszgamermd.caszualadditions.transport.TransitComputerClient.initialize();
         EntityRenderers.register(com.caszgamermd.caszualadditions.transport.TransportContent.VEHICLE,com.caszgamermd.caszualadditions.transport.TransportRenderer::new);
         ModelLayerRegistry.registerModelLayer(StorageGolemRenderer.LAYER,StorageGolemModel::layer);
         EntityRenderers.register(RackContent.STORAGE_GOLEM_TYPE,StorageGolemRenderer::new);

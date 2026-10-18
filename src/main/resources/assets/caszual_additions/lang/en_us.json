@@ -136,5 +136,10 @@
   "item.caszual_additions.passenger_car": "Passenger Car",
   "item.caszual_additions.pallet_drone": "Pallet Drone",
   "item.caszual_additions.transport_controller": "Pallet Transport Controller",
-  "entity.caszual_additions.pallet_transport": "Pallet Transport"
+  "entity.caszual_additions.pallet_transport": "Pallet Transport",
+  "block.caszual_additions.conveyor_hold": "Pallet Conveyor — Redstone Hold Bar",
+  "block.caszual_additions.conveyor_logic": "Pallet Conveyor — Logic Switch",
+  "block.caszual_additions.train_station_post": "Train Station Post",
+  "block.caszual_additions.pallet_pressure_plate": "Pallet Pressure Plate",
+  "block.caszual_additions.pallet_transit_computer": "Pallet Transit Computer"
 }
