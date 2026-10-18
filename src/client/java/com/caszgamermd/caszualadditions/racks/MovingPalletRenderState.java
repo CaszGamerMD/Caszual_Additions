@@ -7,6 +7,9 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 public final class MovingPalletRenderState extends LivingEntityRenderState {
     public int cargo;
     public int crewSize=4;
+    public final float[] footHeight=new float[4];
+    public int groundedMask=15;
+    public float platformPitch,platformRoll;
     public boolean visible;
     public float liftProgress;
     public float releaseProgress;
