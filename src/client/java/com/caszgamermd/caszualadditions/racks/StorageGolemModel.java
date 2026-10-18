@@ -65,6 +65,18 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
                 PartPose.offset(-3,16,0));
         return LayerDefinition.create(mesh,64,64);
     }
+    /** Called from the entity's item render LAYER, after Minecraft has
+     * applied the mob's world translation and body rotation. Follow the
+     * articulated right forearm into its wrist, then move the real item
+     * inward between BOTH hands. No world-space tray or stationary cargo.
+     */
+    public void translateToCargoHand(com.mojang.blaze3d.vertex.PoseStack pose){
+        rightArm.translateAndRotate(pose);
+        rightForearm.translateAndRotate(pose);
+        // Arm pivot is 7 px right of the chest, so center between wrists.
+        // Keep the sample pressed into the cupped gloves.
+        pose.translate(7f/16f,4f/16f,-.06f);
+    }
     @Override public void setupAnim(StorageGolemRenderState state){
         super.setupAnim(state);
         head.xRot=state.xRot*Mth.DEG_TO_RAD;
@@ -98,8 +110,8 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
             leftArm.zRot=-.16f;
             rightArm.zRot=.16f;
         }else if(state.heldSlots>0&&!state.carryingPallet){
-            // A one-Golem warehouse runner actually cradles the cargo
-            // tray at its wrists; cartons no longer float above its head.
+            // A runner cups the real picked-up item between both wrists.
+            // The model's right forearm is the attachment anchor.
             leftArm.xRot=-1.36f;
             rightArm.xRot=-1.36f;
             leftForearm.xRot=-.38f;
