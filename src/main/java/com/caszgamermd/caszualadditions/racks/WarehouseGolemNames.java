@@ -12,6 +12,19 @@ public final class WarehouseGolemNames {
         "Mochi","Toaster","Cricket","Zippy","Bumble","Button","Whiskers","Pogo",
         "Scooter","Mopsy","Cogs","Dusty","Scraps","Marbles","Bop","Fidget"
     };
+    public static net.minecraft.world.item.ItemStack namedToken(String name){
+        net.minecraft.world.item.ItemStack item=new net.minecraft.world.item.ItemStack(
+                RackContent.STORAGE_GOLEM_ITEM);
+        if(name!=null&&!name.isBlank())
+            item.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                    net.minecraft.network.chat.Component.literal(name));
+        return item;
+    }
+    public static String fromToken(net.minecraft.world.item.ItemStack item){
+        net.minecraft.network.chat.Component label=item.get(
+                net.minecraft.core.component.DataComponents.CUSTOM_NAME);
+        return label==null?"":label.getString();
+    }
     public static String random(RandomSource random){
         return POOL[random.nextInt(POOL.length)];
     }
