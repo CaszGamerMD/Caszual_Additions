@@ -218,8 +218,12 @@ public final class RemotePalletDispatch {
             }
         }
         int consumed=0;
+        java.util.ArrayList<String> deployedNames=new java.util.ArrayList<>(4);
         for(StorageGolemShelfEntity shelf:shelves){
-            if(!shelf.take())break;
+            String name=shelf.takeNamed();
+            if(name==null)break;
+            identities.get(consumed).setGolemName(name);
+            deployedNames.add(name);
             consumed++;
         }
         java.util.ArrayList<StorageGolem> spawned=new java.util.ArrayList<>(4);
@@ -244,7 +248,8 @@ public final class RemotePalletDispatch {
         // If the courier was spawned but another entity failed, it would
         // have been last; there is no partially committed four-worker party.
 
-        for(int i=0;i<consumed;i++)shelves.get(i).add();
+        for(int i=0;i<consumed;i++)
+            shelves.get(i).addNamed(deployedNames.get(i));
         // Roll back the warehouse's ONE withdrawn empty pallet on failure.
         if(sourceRack!=null)sourceRack.setItem(sourceSlot,previous);
         else if(sourceMagazine!=null&&!sourceMagazine.put(fresh)){
