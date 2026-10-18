@@ -285,6 +285,34 @@ public final class MovingPallet extends PathfinderMob {
         getNavigation().stop();
         return "Return assigned: INPUT PTP first, vacant PTP second, then free rack.";
     }
+    /** The loaded carrier represents all four attached Golems. Clicking
+     * its physical body with a DIRECT scanner safely assigns a warehouse
+     * return instead of despawning a pallet with all 216 slots. */
+    @Override protected net.minecraft.world.InteractionResult mobInteract(
+            net.minecraft.world.entity.player.Player player,
+            net.minecraft.world.InteractionHand hand){
+        if(!player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
+                ||StorageScannerItem.mode(player.getItemInHand(hand))
+                        !=StorageScannerItem.Mode.DIRECT)
+            return net.minecraft.world.InteractionResult.PASS;
+        if(level().isClientSide())return net.minecraft.world.InteractionResult.SUCCESS;
+        if(!(player instanceof net.minecraft.server.level.ServerPlayer user)
+                ||!owns(user.getUUID()))return net.minecraft.world.InteractionResult.PASS;
+        var server=(ServerLevel)level();
+        BlockPos linked=StorageScannerItem.linkedComputer(
+                player.getItemInHand(hand),server);
+        if(linked==null){
+            user.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                    "DIRECT: link the scanner to your Rack Computer first."));
+        }else if(!fromWarehouse(WarehouseConnections.shelvesForComputer(server,linked))){
+            user.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                    "DIRECT: this loaded crew belongs to a different warehouse."));
+        }else{
+            user.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                    "DIRECT: "+returnToWarehouse(server,linked)));
+        }
+        return net.minecraft.world.InteractionResult.SUCCESS;
+    }
     public boolean owns(UUID player){return owner.equals(player.toString());}
     public boolean loaded(){return !pallet.isEmpty();}
     public boolean fromWarehouse(List<StorageGolemShelfEntity> group){
