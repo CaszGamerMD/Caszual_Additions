@@ -123,10 +123,11 @@ public final class RackScaffoldingBlock extends Block {
         if(!level.isClientSide())scheduleElevatedStairRefresh(level,pos);
     }
 
-    @Override protected void onRemove(BlockState state,Level level,BlockPos pos,
-            BlockState nextState,boolean moved){
-        super.onRemove(state,level,pos,nextState,moved);
-        if(!level.isClientSide())scheduleElevatedStairRefresh(level,pos);
+    public static void refreshConnections(ServerLevel level,BlockPos pos){
+        BlockState current=level.getBlockState(pos);
+        if(!(current.getBlock() instanceof RackScaffoldingBlock))return;
+        BlockState corrected=connectionState(current,level,pos);
+        if(!corrected.equals(current))level.setBlock(pos,corrected,3);
     }
 
     @Override protected void tick(BlockState state,ServerLevel level,BlockPos pos,
