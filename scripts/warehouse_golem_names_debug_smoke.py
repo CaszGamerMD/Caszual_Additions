@@ -56,8 +56,9 @@ assert 'root.addProperty("debugStatuses"' in net
 assert "for(StorageGolemShelfEntity shelf:shelves)" in net
 assert "shelf.setDebug(control.chat(),control.statuses())" in net
 assert "debugChat" in debug
-assert "player.displayClientMessage(message,!verbose);" in debug
-assert "player.displayClientMessage(Component.literal(text),!chat)" in scanner
+assert "ClientboundSetActionBarTextPacket(message)" in debug
+assert "if(verbose)player.sendSystemMessage(message);" in debug
+assert "WarehouseGolemDebug.actionBar(player,Component.literal(text))" in scanner
 assert "Debug chat is OFF." in net
 assert "WarehouseDiagnostics.audit(level,computer)" in net
 print("PASS: forty unique names, named shelf tokens, four-worker persistence, Debug UI and quiet chat defaults")
