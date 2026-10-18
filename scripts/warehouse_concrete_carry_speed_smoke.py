@@ -7,10 +7,12 @@ base=root/"src/main/java/com/caszgamermd/caszualadditions/racks"
 speed=(base/"WarehouseCarrySpeed.java").read_text()
 rig=(base/"MovingPallet.java").read_text()
 registration=(base/"RackContent.java").read_text()
-for name in ("WHITE","ORANGE","MAGENTA","LIGHT_BLUE","YELLOW","LIME",
-             "PINK","GRAY","LIGHT_GRAY","CYAN","PURPLE","BLUE",
-             "BROWN","GREEN","RED","BLACK"):
-    assert f"Blocks.{name}_CONCRETE" in speed,name
+# 26.2 color blocks have dynamic registry IDs rather than Blocks.COLOR_CONCRETE
+# constants. All sixteen vanilla ids are recognized by the shared suffix.
+assert "BuiltInRegistries.BLOCK.getKey(block)" in speed
+assert 'id.getNamespace().equals("minecraft")' in speed
+assert 'id.getPath().endsWith("_concrete")' in speed
+assert 'concrete_powder' in speed.lower()
 assert "instanceof IndustrialGradeConcreteBlock" in speed
 assert "CONCRETE_MULTIPLIER=1.35" in speed
 assert "CORNER=0.70" in speed
