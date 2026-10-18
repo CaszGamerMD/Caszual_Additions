@@ -24,7 +24,13 @@ public final class TransitWorldData extends SavedData {
     private static TransitWorldData decode(String text){
         TransitWorldData d=new TransitWorldData();
         try{JsonObject o=JsonParser.parseString(text).getAsJsonObject();
-            if(o.has("vehicles"))o.getAsJsonObject("vehicles").entrySet().forEach(e->d.vehicles.put(e.getKey(),e.getValue().getAsJsonObject()));
+            if(o.has("vehicles"))o.getAsJsonObject("vehicles").entrySet().forEach(e->{
+                JsonObject vehicle=e.getValue().getAsJsonObject();
+                // NBT represents booleans as bytes; restore the JSON boolean explicitly.
+                JsonElement active=vehicle.get("active");
+                if(active!=null&&active.isJsonPrimitive()&&active.getAsJsonPrimitive().isNumber())vehicle.addProperty("active",active.getAsInt()!=0);
+                d.vehicles.put(e.getKey(),vehicle);
+            });
             if(o.has("stations"))o.getAsJsonObject("stations").entrySet().forEach(e->d.stations.put(e.getKey(),e.getValue().getAsJsonObject()));
             if(o.has("terrain"))o.getAsJsonObject("terrain").entrySet().forEach(e->d.terrain.put(e.getKey(),e.getValue().getAsInt()));
         }catch(RuntimeException ignored){}return d;
