@@ -5,6 +5,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 public final class XpBlockEntities {
+ public static BlockEntityType<XpCollectorBlockEntity> COLLECTOR;
  public static BlockEntityType<XpTankBlockEntity> TANK; public static BlockEntityType<XpChargerBlockEntity> CHARGER; public static BlockEntityType<XpDrainBlockEntity> DRAIN; public static BlockEntityType<XpShowerBlockEntity> SHOWER;
  private XpBlockEntities(){}
  public static void initialize(){
