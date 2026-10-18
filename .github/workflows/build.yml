@@ -94,6 +94,8 @@ jobs:
         run: python3 scripts/warehouse_idle_slab_texture_smoke.py
       - name: Verify visible remote empty pallet and safe direct scanner Golem recall
         run: python3 scripts/warehouse_remote_pallet_visual_direct_recall_smoke.py
+      - name: Verify unloading Golems hold actual items in wrists with no cargo tray
+        run: python3 scripts/warehouse_golem_handheld_item_smoke.py
       - name: Verify Direct scanner recalls all personal followers without Rack Computer proximity
         run: python3 scripts/warehouse_personal_direct_recall_smoke.py
       - name: Verify Golems physically swim across water and can rendezvous at waterline
