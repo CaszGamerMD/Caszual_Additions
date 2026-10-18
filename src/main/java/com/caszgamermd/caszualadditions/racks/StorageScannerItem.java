@@ -24,7 +24,7 @@ import net.minecraft.world.level.Level;
 public final class StorageScannerItem extends Item {
     public StorageScannerItem(Properties props){super(props);}
 
-    private static BlockPos linkedComputer(ItemStack scanner,ServerLevel world){
+    static BlockPos linkedComputer(ItemStack scanner,ServerLevel world){
         CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
         if(data==null)return null;
         CompoundTag tag=data.copyTag();
