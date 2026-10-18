@@ -10,6 +10,7 @@ Caszual Additions has four connected XP devices plus one independent, portable *
 | **XP Charger** | Accepts a damaged Mending item and uses nearby network XP for repairs |
 | **XP Drain** | A floor-level device that takes XP from players above it and feeds the network |
 | **XP Shower** | Delivers available stored XP to a player underneath; right-click to start or stop |
+| **XP Collector** | Place it on the ground; vacuums nearby dropped XP orbs (6-block radius) and stores up to 30,970 points. Right-click with an empty hand to transfer its XP to yourself; sneak-right-click to read its fill. When broken, the collector keeps its stored XP for re-placement. |
 
 Tanks have visible proportional fill states and connect with neighboring XP components.
 
