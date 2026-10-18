@@ -199,6 +199,8 @@ public final class StorageGolem extends PathfinderMob {
     private boolean stationOrder;
     private boolean palletStackJob;
     private boolean rackStairMover;
+    private boolean rackStairRequestChecked,rackStairRequestActive;
+    private long rackStairDeadline;
     private BlockPos rackStairLast=BlockPos.ZERO;
     private BlockPos orderPoint=BlockPos.ZERO;
     private NonNullList<ItemStack> orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
@@ -816,6 +818,8 @@ public final class StorageGolem extends PathfinderMob {
         else getNavigation().stop();
     }
     public void assign(BlockPos home,BlockPos source,BlockPos dest,ItemStack sample){
+        rackStairRequestChecked=false;
+        rackStairRequestActive=false;
         this.home=home.immutable();markCurrentRecall();
         this.source=source.immutable();
         this.destination=dest.immutable();
@@ -2045,6 +2049,25 @@ public final class StorageGolem extends PathfinderMob {
         if(remotePickup){tickRemotePickup(level);return;}
         if(remoteCourier){tickRemoteCourier(level);return;}
         if(rackStairMover){tickRackStairs(level);return;}
+        if(stage==0&&level.getBlockEntity(source) instanceof RackBlockEntity elevated
+                &&source.getY()>=home.getY()+3){
+            if(!rackStairRequestChecked){
+                rackStairRequestChecked=true;
+                rackStairRequestActive=WarehouseRackAccess.requestStairs(level,elevated);
+                rackStairDeadline=level.getGameTime()+650;
+            }
+            if(rackStairRequestActive&&level.getGameTime()<rackStairDeadline
+                    &&!WarehouseRackAccess.stairsReady(level,elevated)){
+                routeIssue="WAITING FOR RACK STAIRS AND HELPER GOLEM";
+                getNavigation().stop();
+                return;
+            }
+        }else if(rackStairRequestActive&&stage!=0){
+            if(level.getBlockEntity(source) instanceof RackBlockEntity finished)
+                WarehouseRackAccess.finishStairAccess(level,finished.getBlockPos(),
+                        finished.facing());
+            rackStairRequestActive=false;
+        }
         // Movement controls expire after each mob AI tick. Drive the next
         // checked aisle cell EVERY server tick; previously the one-shot
         // commands were sent only once per ten ticks, causing stop/go
@@ -2355,6 +2378,9 @@ public final class StorageGolem extends PathfinderMob {
         out.putBoolean("output_job",outputJob);
         out.putBoolean("pallet_stack_job",palletStackJob);
         out.putBoolean("rack_stair_mover",rackStairMover);
+        out.putBoolean("rack_stair_request_checked",rackStairRequestChecked);
+        out.putBoolean("rack_stair_request_active",rackStairRequestActive);
+        out.putLong("rack_stair_deadline",rackStairDeadline);
         out.store("rack_stair_last",BlockPos.CODEC,rackStairLast);
         out.putInt("output_ticket",outputTicket);
         out.putInt("pickup_limit",pickupLimit);
@@ -2414,6 +2440,9 @@ public final class StorageGolem extends PathfinderMob {
         outputJob=in.getBooleanOr("output_job",false);
         palletStackJob=in.getBooleanOr("pallet_stack_job",false);
         rackStairMover=in.getBooleanOr("rack_stair_mover",false);
+        rackStairRequestChecked=in.getBooleanOr("rack_stair_request_checked",false);
+        rackStairRequestActive=in.getBooleanOr("rack_stair_request_active",false);
+        rackStairDeadline=in.getLongOr("rack_stair_deadline",0);
         rackStairLast=in.read("rack_stair_last",BlockPos.CODEC)
                 .orElse(BlockPos.ZERO);
         outputTicket=Math.max(0,in.getIntOr("output_ticket",0));
