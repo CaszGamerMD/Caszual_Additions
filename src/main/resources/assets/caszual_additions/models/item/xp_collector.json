@@ -1,6 +1,3 @@
 {
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "minecraft:item/experience_bottle"
-  }
+  "parent": "caszual_additions:block/xp_collector"
 }
