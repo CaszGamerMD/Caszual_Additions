@@ -79,6 +79,9 @@ assert "WarehouseRackAccess.prepare(" in rack
 assert "WarehouseRackAccess.release(world,this)" in rack
 assert "WarehouseRackAccess.clearOfStairs" in plan
 assert "WarehouseRackAccess.clearOfStairs" in rack
+# Elevated pallet shafts include space below the rack lip, where the
+# top of a three-high stair unit would otherwise block lowering.
+assert "for(int h=-4;h<=2;h++)" in access
 
 for name in ("rack_stairs","rack_ladder","rack_scaffolding"):
     for path in (
