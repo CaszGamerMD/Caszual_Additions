@@ -139,6 +139,13 @@ public final class WarehouseRackAccess {
         }
         return false;
     }
+    public static boolean stairsReady(ServerLevel world,RackBlockEntity rack){
+        BlockPos desired=rack.getBlockPos().relative(rack.facing(),3).below(3);
+        if(!world.hasChunkAt(desired))return false;
+        if(world.getBlockEntity(desired) instanceof RackStairsBlockEntity stair
+                &&stair.reserved())return true;
+        return false;
+    }
     /** Finished work triggers an independent RETURN order, which moves
      * the stairs back to where the player LAST positioned them. */
     public static void finishStairAccess(ServerLevel world,BlockPos rackRoot,
