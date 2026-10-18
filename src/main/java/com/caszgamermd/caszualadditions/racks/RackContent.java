@@ -22,6 +22,11 @@ import net.minecraft.world.level.block.Block;
 
 public final class RackContent {
     public static RackBlock RACK;
+    public static RackStairsBlock RACK_STAIRS;
+    public static RackLadderBlock RACK_LADDER;
+    public static RackScaffoldingBlock RACK_SCAFFOLDING;
+    public static Item RACK_STAIRS_ITEM,RACK_LADDER_ITEM,RACK_SCAFFOLDING_ITEM;
+    public static BlockEntityType<RackStairsBlockEntity> RACK_STAIRS_ENTITY;
     public static final java.util.Map<String,Item> INDUSTRIAL_CONCRETE_ITEMS=new java.util.LinkedHashMap<>();
     public static RackConnectorBlock CONNECTOR_BLOCK;
     public static StorageGolemShelfBlock STORAGE_SHELF;
@@ -78,6 +83,28 @@ public final class RackContent {
                 new RackBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
                         .strength(4.0f).noOcclusion().setId(key)));
         RACK_ITEM=blockItem("pallet_rack",RACK);
+        ResourceKey<Block> stairsKey=ResourceKey.create(Registries.BLOCK,
+                CaszualAdditions.id("rack_stairs"));
+        RACK_STAIRS=Registry.register(BuiltInRegistries.BLOCK,stairsKey,
+                new RackStairsBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
+                        .strength(2.6f).noOcclusion().setId(stairsKey)));
+        RACK_STAIRS_ITEM=blockItem("rack_stairs",RACK_STAIRS);
+        RACK_STAIRS_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
+                CaszualAdditions.id("rack_stairs"),
+                FabricBlockEntityTypeBuilder.create(RackStairsBlockEntity::new,
+                        RACK_STAIRS).build());
+        ResourceKey<Block> ladderKey=ResourceKey.create(Registries.BLOCK,
+                CaszualAdditions.id("rack_ladder"));
+        RACK_LADDER=Registry.register(BuiltInRegistries.BLOCK,ladderKey,
+                new RackLadderBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.LADDER)
+                        .strength(1.7f).noOcclusion().setId(ladderKey)));
+        RACK_LADDER_ITEM=blockItem("rack_ladder",RACK_LADDER);
+        ResourceKey<Block> scaffoldKey=ResourceKey.create(Registries.BLOCK,
+                CaszualAdditions.id("rack_scaffolding"));
+        RACK_SCAFFOLDING=Registry.register(BuiltInRegistries.BLOCK,scaffoldKey,
+                new RackScaffoldingBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
+                        .strength(2.5f).noOcclusion().setId(scaffoldKey)));
+        RACK_SCAFFOLDING_ITEM=blockItem("rack_scaffolding",RACK_SCAFFOLDING);
 
         Identifier computerId=CaszualAdditions.id("rack_computer");
         ResourceKey<Block> computerKey=ResourceKey.create(Registries.BLOCK,computerId);
