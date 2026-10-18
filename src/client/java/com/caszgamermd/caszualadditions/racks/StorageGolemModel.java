@@ -40,19 +40,19 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
                 // A one-pixel overlap closes the old floating-head gap.
                 PartPose.offset(0,6,0));
         PartDefinition left=root.addOrReplaceChild("left_arm",
-                CubeListBuilder.create().texOffs(28,20)
+                CubeListBuilder.create().texOffs(0,40)
                         .addBox(-2,-1,-2,4,6,4),
                 PartPose.offset(7,11,0));
         left.addOrReplaceChild("forearm",
-                CubeListBuilder.create().texOffs(28,26)
+                CubeListBuilder.create().texOffs(16,40)
                         .addBox(-2,-1,-2,4,6,4),
                 PartPose.offset(0,5,0));
         PartDefinition right=root.addOrReplaceChild("right_arm",
-                CubeListBuilder.create().texOffs(28,20)
+                CubeListBuilder.create().texOffs(0,40)
                         .addBox(-2,-1,-2,4,6,4),
                 PartPose.offset(-7,11,0));
         right.addOrReplaceChild("forearm",
-                CubeListBuilder.create().texOffs(28,26)
+                CubeListBuilder.create().texOffs(16,40)
                         .addBox(-2,-1,-2,4,6,4),
                 PartPose.offset(0,5,0));
         root.addOrReplaceChild("left_leg",
@@ -69,13 +69,25 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
         super.setupAnim(state);
         head.xRot=state.xRot*Mth.DEG_TO_RAD;
         head.yRot=state.yRot*Mth.DEG_TO_RAD;
-        float phase=state.walkAnimationPos*.55f,amount=state.walkAnimationSpeed;
+        float phase=state.walkAnimationPos*.55f;
+        // Vanilla can retain a tiny residual limb-swing value even after
+        // navigation stops. Zero it out so an idle worker is truly neutral.
+        float amount=Mth.clamp(state.walkAnimationSpeed,0f,1f);
+        if(amount<.045f)amount=0f;
         leftLeg.xRot=Mth.cos(phase)*1.1f*amount;
         rightLeg.xRot=Mth.cos(phase+Mth.PI)*1.1f*amount;
+        // Reset ALL joints each frame. A carrying pose must never linger
+        // after unloading, returning to a shelf, or finishing a task.
+        leftArm.x=7f;rightArm.x=-7f;
+        leftArm.y=rightArm.y=11f;
+        leftArm.z=rightArm.z=0f;
         leftArm.xRot=rightLeg.xRot*.6f;
         rightArm.xRot=leftLeg.xRot*.6f;
-        leftForearm.xRot=0;
-        rightForearm.xRot=0;
+        leftArm.yRot=rightArm.yRot=0f;
+        leftArm.zRot=rightArm.zRot=0f;
+        leftForearm.xRot=rightForearm.xRot=0f;
+        leftForearm.yRot=rightForearm.yRot=0f;
+        leftForearm.zRot=rightForearm.zRot=0f;
         if(state.pushingEmptyPallet){
             // Arms reach forward to physically TOUCH the upright pallet
             // instead of swinging empty-handed through its surface.
