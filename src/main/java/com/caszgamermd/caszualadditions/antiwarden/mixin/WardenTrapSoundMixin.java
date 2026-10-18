@@ -20,8 +20,13 @@ import org.jspecify.annotations.Nullable;
 @Mixin(ServerLevel.class)
 public abstract class WardenTrapSoundMixin {
     private boolean caszual$mute(Holder<SoundEvent> sound,Vec3 position){
-        String id=BuiltInRegistries.SOUND_EVENT.getKey(sound.value()).toString();
-        return WardenTrapSilence.sculkOrWardenSound(id)
+        // Some third-party mobs emit direct/unregistered SoundEvents. The
+        // registry legitimately returns null for those (e.g. Animal Garden
+        // mouse footsteps). Never dereference their missing registry IDs.
+        if(sound==null||sound.value()==null)return false;
+        var soundId=BuiltInRegistries.SOUND_EVENT.getKey(sound.value());
+        if(soundId==null)return false; // Not a known Warden/sculk sound.
+        return WardenTrapSilence.sculkOrWardenSound(soundId.toString())
                 &&WardenTrapSilence.near((ServerLevel)(Object)this,position);
     }
     @Inject(method="playSeededSound(Lnet/minecraft/world/entity/Entity;DDDLnet/minecraft/core/Holder;Lnet/minecraft/sounds/SoundSource;FFJ)V",
