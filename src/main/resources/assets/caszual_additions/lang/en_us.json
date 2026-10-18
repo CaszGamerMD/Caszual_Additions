@@ -128,5 +128,10 @@
   "block.caszual_additions.rack_stairs": "Rack Stairs",
   "block.caszual_additions.rack_ladder": "Rack Ladder",
   "block.caszual_additions.rack_scaffolding": "Rack Scaffolding",
-  "block.caszual_additions.xp_collector": "XP Collector"
+  "block.caszual_additions.xp_collector": "XP Collector",
+  "block.caszual_additions.industrial_paint_can": "Industrial Paint Can",
+  "block.caszual_additions.industrial_primer_can": "Industrial Primer Can",
+  "item.caszual_additions.industrial_paint_brush": "Industrial Paint Brush",
+  "item.caszual_additions.industrial_paint_remover": "Industrial Paint Remover",
+  "block.caszual_additions.industrial_paint_surface": "Industrial Paint Surface"
 }
