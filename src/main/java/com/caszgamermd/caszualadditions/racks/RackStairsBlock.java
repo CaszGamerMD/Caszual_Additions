@@ -108,6 +108,17 @@ public final class RackStairsBlock extends Block implements EntityBlock {
         return state.setValue(RAIL_LEFT,!leftConnected)
                 .setValue(RAIL_RIGHT,!rightConnected);
     }
+    /** Poll only the actual top step (not all nine cells) for a dock change.
+     *  This also handles scaffold removal, whose diagonal neighbor cannot
+     *  trigger vanilla updateShape at the stair block. */
+    public static void refreshTopDockState(ServerLevel level,BlockPos topPos){
+        BlockState state=level.getBlockState(topPos);
+        if(!(state.getBlock() instanceof RackStairsBlock)||state.getValue(PART)!=8)return;
+        BlockState corrected=withRails(state,level,topPos);
+        if(!corrected.equals(state))level.setBlock(topPos,corrected,3);
+        for(Direction side:Direction.Plane.HORIZONTAL)
+            RackScaffoldingBlock.refreshConnections(level,topPos.above().relative(side));
+    }
     // Diagonal Y+1 neighbors do NOT invoke vanilla updateShape. The scaffold
     // and the stair schedule a one-tick refresh when either structure changes.
     public static void notifyTopDockChange(Level world,BlockPos at){
