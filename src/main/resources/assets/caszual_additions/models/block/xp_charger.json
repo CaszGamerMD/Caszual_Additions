@@ -102,9 +102,6 @@
         },
         "up": {
           "texture": "#dark"
-        },
-        "down": {
-          "texture": "#frame"
         }
       }
     },
