@@ -1765,6 +1765,22 @@ public final class StorageGolem extends PathfinderMob {
      * hop straight over a one-block obstruction. Paths are rechecked when
      * the warehouse changes; nothing loads chunks out of range. */
     private void returnToShelf(ServerLevel level){
+        // A personal DIRECT recall is useful precisely when the player is
+        // NOT at the Rack Computer. Keep the worker, its home shelf, and
+        // the next forward leg simulated while the Golem WALKS home. Never
+        // teleport or redock at distance; each worker must physically
+        // reach its original shelf. These bounded tickets automatically
+        // expire once the Golem docks and stops refreshing them.
+        if(playerHaul&&stage==2&&tickCount%20==0){
+            WarehouseRemoteTickets.keep(level,blockPosition());
+            WarehouseRemoteTickets.keep(level,home);
+            BlockPos feet=blockPosition();
+            int dx=home.getX()-feet.getX(),dz=home.getZ()-feet.getZ();
+            double length=Math.sqrt((double)dx*dx+(double)dz*dz);
+            if(length>8)WarehouseRemoteTickets.keep(level,new BlockPos(
+                    feet.getX()+(int)Math.round(dx/length*16),
+                    feet.getY(),feet.getZ()+(int)Math.round(dz/length*16)));
+        }
         if(!level.hasChunkAt(home)
                 ||!(level.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf))
             return;
