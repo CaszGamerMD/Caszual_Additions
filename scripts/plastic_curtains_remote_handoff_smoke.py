@@ -9,6 +9,7 @@ src=root/"src/main/java/com/caszgamermd/caszualadditions"
 resources=root/"src/main/resources"
 curtain=(src/"curtains/PlasticCurtainsBlock.java").read_text()
 registration=(src/"curtains/PlasticCurtainsContent.java").read_text()
+extension=(src/"curtains/PlasticCurtainsExtensionBlock.java").read_text()
 courier=(src/"racks/StorageGolem.java").read_text()
 rig=(src/"racks/MovingPallet.java").read_text()
 main=(src/"CaszualAdditions.java").read_text()
@@ -27,10 +28,48 @@ assert "PlasticCurtainsContent.ITEM" in creative
 assert 'CaszualAdditions.id("plastic_curtains")' in registration
 state=json.loads((resources/"assets/caszual_additions/blockstates/plastic_curtains.json").read_text())
 parts=state["multipart"]
-assert len(parts)==8
+assert len(parts)==12
 assert {(x["when"]["facing"],x["when"]["half"]) for x in parts}=={
  (side,half) for side in ("north","south","east","west") for half in ("lower","upper")
 }
+assert {(x["when"]["facing"],x["when"].get("top_rail")) for x in parts
+        if x["when"]["half"]=="upper"}=={
+ (side,cap) for side in ("north","south","east","west") for cap in ("true","false")
+}
+for part in parts:
+    if part["when"]["half"]=="upper":
+        model=part["apply"]["model"]
+        assert model.endswith("plastic_curtains_upper" if part["when"]["top_rail"]=="true"
+                              else "plastic_curtains_lower")
+# Existing two-high placement stays intact; each right-click with the same item
+# grows the stack by exactly one segment, moving the cap with no horizontal seam.
+assert "public static final BooleanProperty TOP_RAIL" in curtain
+assert "super.createBlockStateDefinition(builder)" in curtain
+assert "PlasticCurtainsExtensionBlock" in curtain
+assert "if(held.is(PlasticCurtainsContent.ITEM))" in curtain
+assert "top=top.above()" in curtain
+assert "BlockPos target=top.above()" in curtain
+assert "world.getBlockState(target).canBeReplaced()" in curtain
+assert "held.shrink(1)" in curtain
+assert "PlasticCurtainsContent.EXTENSION.defaultBlockState()" in curtain
+assert "instanceof PlasticCurtainsBlock" in extension
+assert "instanceof PlasticCurtainsExtensionBlock" in extension
+assert "DoubleBlockHalf.UPPER" in extension
+assert "getValue(TOP_RAIL" in extension or "setValue(TOP_RAIL" in extension
+assert "EntityCollisionContext" in extension
+assert "PlasticCurtainsBlock.hostile(entity)" in extension
+assert "return PlasticCurtainsBlock.sheet(state)" in extension
+assert "return List.of(new ItemStack(PlasticCurtainsContent.ITEM))" in extension
+assert 'CaszualAdditions.id("plastic_curtains_extension")' in registration
+ext_state=json.loads((resources/"assets/caszual_additions/blockstates/plastic_curtains_extension.json").read_text())
+ext_parts=ext_state["multipart"]
+assert len(ext_parts)==8
+assert {(x["when"]["facing"],x["when"]["top_rail"]) for x in ext_parts}=={
+ (side,cap) for side in ("north","south","east","west") for cap in ("true","false")
+}
+for part in ext_parts:
+    assert part["apply"]["model"].endswith("plastic_curtains_upper" if
+           part["when"]["top_rail"]=="true" else "plastic_curtains_lower")
 for half in ("upper","lower"):
     model=json.loads((resources/f"assets/caszual_additions/models/block/plastic_curtains_{half}.json").read_text())
     assert model["render_type"]=="minecraft:translucent"
@@ -71,4 +110,4 @@ assert "route.get(route.size()-1).equals(cell)" in rig
 assert "remoteMoveAside=BlockPos.ZERO;" in rig
 assert "if(remoteFootprintClear()){" in rig
 assert "readyForCourierPlacement()" in rig
-print("PASS: seamless translucent two-high hostile-blocking curtains, real-route pallet parking and exact courier handoff")
+print("PASS: seamlessly growable translucent hostile-blocking curtains (2+ height), real-route pallet parking and courier handoff")
