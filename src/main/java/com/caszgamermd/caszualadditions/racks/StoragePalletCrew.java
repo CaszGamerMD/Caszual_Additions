@@ -316,6 +316,44 @@ public final class StoragePalletCrew {
         }
         return "Need a clear loaded 2x2 space for a pallet; crew retains its cargo.";
     }
+    /**
+     * DIRECT scanner: click ANY of the player's FOLLOWING Golems to send
+     * their whole independently walking crew back to their own shelves.
+     *
+     * This is intentionally NOT the Rack Computer's warehouse-wide recall:
+     * it only touches workers personally assigned to the clicking player,
+     * never unrelated inventory sorters or another player's crew. No
+     * proximity to a Rack Computer, shelf, or even a loaded home chunk is
+     * needed to issue the instruction.
+     */
+    public static String recallFollowing(ServerLevel level,ServerPlayer player){
+        java.util.ArrayList<StorageGolem> members=new java.util.ArrayList<>();
+        for(var entity:level.getAllEntities()){
+            if(entity instanceof StorageGolem golem
+                    &&golem.ownedBy(player.getUUID()))
+                members.add(golem);
+        }
+        if(members.isEmpty())
+            return "DIRECT: no personally assigned Golems are following you.";
+
+        // Validate the WHOLE crew first: recalling 3 of 4 while the
+        // remaining leader holds 216 slots abandons the loaded pallet.
+        if(members.stream().anyMatch(w->w.holdsPallet()
+                ||w.escorting(player.getUUID())))
+            return "DIRECT: crew is carrying a pallet. Place the pallet first, "
+                    +"then right-click any follower to send the whole crew home.";
+
+        int sent=0,alreadyReturning=0;
+        for(StorageGolem worker:members){
+            if(worker.recallToShelf(level))sent++;
+            else alreadyReturning++;
+        }
+        return "DIRECT: "+sent+" Golem"+(sent==1?"":"s")
+                +" sent to their original shelves"
+                +(alreadyReturning>0?"; "+alreadyReturning
+                    +" already returning or unavailable":"")+".";
+    }
+
     /** Operator recall covers EVERY loaded worker whose home is a linked
      * warehouse shelf, regardless of its player owner or current task.
      * Rigs retain their 216 real cargo slots until they physically unload. */
