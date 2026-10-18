@@ -281,6 +281,12 @@ public final class StorageGolem extends PathfinderMob {
         return true;
     }
     public boolean remoteCourierActive(){return remoteCourier;}
+    /** Real carrying stage, not a lingering client-visible name.
+     * Stage 4 is idle/awaiting orders and MUST have arms at the sides. */
+    public boolean carryingPalletPose(){return playerHaul&&stage==1;}
+    public boolean pushingPalletPose(){
+        return remoteCourier&&remoteCourierPhase==0&&!remoteFresh.isEmpty();
+    }
 
     public void beginRemotePickup(UUID mission,UUID courier,BlockPos target,
             BlockPos warehouse,BlockPos rally,BlockPos[] fourHomes){
@@ -934,9 +940,12 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         String label;
-        if(playerHaul&&stage!=2){
-            label="PALLET "+(haulIndex+1)+"/4 | "
-                    +(stage==0?"COLLECT":"WITH PLAYER");
+        if(playerHaul&&stage==1){
+            label="PALLET "+(haulIndex+1)+"/4 | WITH PLAYER";
+        }else if(playerHaul&&stage==0){
+            label="RALLY "+(haulIndex+1)+"/4 | COLLECT";
+        }else if(playerHaul&&stage==4){
+            label="CREW "+(haulIndex+1)+"/4 | IDLE";
         }else if(stage==2){
             label=routeIssue.isBlank()?"RETURN | SHELF":
                     "RETURN | "+routeIssue;
