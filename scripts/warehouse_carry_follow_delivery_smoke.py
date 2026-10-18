@@ -19,7 +19,9 @@ golem_model=client("StorageGolemModel.java")
 rig_renderer=client("MovingPalletRenderer.java")
 
 assert ".add(Attributes.MOVEMENT_SPEED,0.2625)" in golem
-assert ".add(Attributes.MOVEMENT_SPEED,.144)" in rig
+assert "CARRY_WALK_SPEED=.144" in rig
+assert ".add(Attributes.MOVEMENT_SPEED,CARRY_WALK_SPEED)" in rig
+assert "updateCarrySurfaceSpeed(server);" in rig
 player_follow=golem[golem.index("        // An empty crew stays"):golem.index("    private PtpBlockEntity haulSource")]
 assert "player.getDirection()" not in player_follow
 assert "getNavigation().stop()" in player_follow
