@@ -56,7 +56,13 @@ assert "checkPendingRecall(level);" in worker
 assert 'out.putLong("observed_recall_serial",observedRecallSerial);' in worker
 assert "recallAfterDelivery=true;" in moving
 assert 'out.putBoolean("recall_after_delivery",recallAfterDelivery);' in moving
-assert "glowBoard(state.highlightEdge" in file(client+"racks/RackBlockEntityRenderer.java")
+rack_renderer=file(client+"racks/RackBlockEntityRenderer.java")
+assert "palletOutline(RackRenderState state)" in rack_renderer
+assert "state.outlined?0xFF55FFFF:0" in rack_renderer
+assert "state.boards[index].submit(poses,collector,state.lightCoords,OverlayTexture.NO_OVERLAY,palletOutline(state));" in rack_renderer
+assert "state.items[i].submit(poses,collector,state.lightCoords,OverlayTexture.NO_OVERLAY,palletOutline(state));" in rack_renderer
+assert "glowBoard(state.highlightEdge" not in rack_renderer
+assert "Blocks.SEA_LANTERN" not in rack_renderer
 # Front door faces the placer and is the ONLY spawn path.
 assert "context.getHorizontalDirection().getOpposite()" in shelf
 assert "StorageGolemShelfBlock.FACING" in door
