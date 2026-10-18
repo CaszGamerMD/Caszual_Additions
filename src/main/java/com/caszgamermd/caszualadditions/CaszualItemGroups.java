@@ -56,7 +56,7 @@ public final class CaszualItemGroups {
                                 add.accept(item);
                             add.accept(RackContent.PORTABLE_WRAPPER);
                             add.accept(RackContent.STACK_OF_PALLETS);
-                            add.accept(com.caszgamermd.caszualadditions.xp.XpCollectorItem.ITEM);
+                            add.accept(com.caszgamermd.caszualadditions.xp.XpBlocks.XP_COLLECTOR.asItem());
                             add.accept(AntiWardenContent.WOOL_HELMET);
                             add.accept(AntiWardenContent.WOOL_BOOTS);
                             add.accept(AntiWardenContent.WARDEN_TRAP.asItem());
