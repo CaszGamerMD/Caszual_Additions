@@ -97,9 +97,6 @@
         },
         "up": {
           "texture": "#metal"
-        },
-        "down": {
-          "texture": "#metal"
         }
       }
     },
