@@ -20,6 +20,14 @@ public final class PortablePalletWrapperItem extends Item {
         Player player=context.getPlayer();
         if(player==null)return InteractionResult.PASS;
         BlockPos clicked=context.getClickedPos();
+        // Cargo selection proxies are part of the SAME ground pallet.
+        // Preserve wrapper/scanner/stack actions when clicking loaded cargo.
+        if(level.getBlockState(clicked).getBlock()
+                instanceof com.caszgamermd.caszualadditions.pallet.PalletCargoCollisionBlock){
+            BlockPos owner=com.caszgamermd.caszualadditions.pallet
+                    .PalletCargoCollisionBlock.owningPallet(level,clicked);
+            if(owner!=null)clicked=owner;
+        }
         if(level.getBlockState(clicked).getBlock() instanceof PalletBlock){
             var state=level.getBlockState(clicked);
             BlockPos root=PalletBlock.rootPos(clicked,state);
