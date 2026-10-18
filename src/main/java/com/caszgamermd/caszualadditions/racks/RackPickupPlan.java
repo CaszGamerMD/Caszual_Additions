@@ -65,7 +65,10 @@ public final class RackPickupPlan {
                 for(int y=root.getY();y<=root.getY()+1;y++){
                     BlockPos position=withY(RackBlock.cell(root,direction,col)
                             .relative(direction,depth),y);
-                    if(!air(level,position))return null;
+                    if(!air(level,position)){
+                        WarehouseRackAccess.release(level,rack);
+                        return null;
+                    }
                 }
         for(int y=root.getY();y>=root.getY()-MAX_DROP;y--){
             boolean clear=true;
@@ -86,6 +89,9 @@ public final class RackPickupPlan {
                 }
             if(clear)return new RackPickupPlan(root,y,direction);
         }
+        // Nobody actually started lifting this pallet. Re-open any
+        // scaffolding we tentatively folded during route inspection.
+        WarehouseRackAccess.release(level,rack);
         return null;
     }
     private static BlockPos withY(BlockPos pos,int y){
