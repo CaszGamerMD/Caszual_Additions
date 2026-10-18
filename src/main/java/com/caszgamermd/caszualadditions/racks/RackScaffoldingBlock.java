@@ -46,7 +46,10 @@ public final class RackScaffoldingBlock extends Block {
     private static final VoxelShape HATCH_DECK = Shapes.or(
             box(0, 0, 0, 2, 3, 16), box(14, 0, 0, 16, 3, 16),
             box(2, 0, 0, 14, 3, 2), box(2, 0, 14, 14, 3, 16));
-    private static final VoxelShape STOWED = box(0, 0, 0, 16, 4, 2);
+    private static final VoxelShape STOWED_NORTH = box(0, 0, 0, 16, 4, 2);
+    private static final VoxelShape STOWED_SOUTH = box(0, 0, 14, 16, 4, 16);
+    private static final VoxelShape STOWED_WEST = box(0, 0, 0, 2, 4, 16);
+    private static final VoxelShape STOWED_EAST = box(14, 0, 0, 16, 4, 16);
     private static final VoxelShape NORTH = box(0, 3, 0, 16, 16, 2);
     private static final VoxelShape SOUTH = box(0, 3, 14, 16, 16, 16);
     private static final VoxelShape WEST = box(0, 3, 0, 2, 16, 16);
@@ -138,8 +141,14 @@ public final class RackScaffoldingBlock extends Block {
 
     @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
         BlockPos pos = context.getClickedPos();
-        BlockState state = defaultBlockState().setValue(FACING,
-                context.getHorizontalDirection().getOpposite());
+        // Attach the collapsed cassette to the block we clicked, not
+        // to an arbitrary edge based on where the player stands.
+        // The cassette geometry points inward: rotate the hit face 180.
+        Direction clicked=context.getClickedFace();
+        Direction mount=clicked.getAxis().isHorizontal()
+                ?clicked.getOpposite()
+                :context.getHorizontalDirection();
+        BlockState state = defaultBlockState().setValue(FACING,mount);
         return connectionState(state, context.getLevel(), pos);
     }
 
@@ -153,7 +162,13 @@ public final class RackScaffoldingBlock extends Block {
     }
 
     private static VoxelShape shape(BlockState state) {
-        if (state.getValue(FOLDED)) return STOWED;
+        if (state.getValue(FOLDED)) return switch(state.getValue(FACING)){
+            case NORTH -> STOWED_NORTH;
+            case SOUTH -> STOWED_SOUTH;
+            case WEST -> STOWED_WEST;
+            case EAST -> STOWED_EAST;
+            default -> STOWED_NORTH;
+        };
         VoxelShape result = state.getValue(LADDER_HATCH) ? HATCH_DECK : DECK;
         if (state.getValue(RAIL_NORTH)) result = Shapes.or(result, NORTH);
         if (state.getValue(RAIL_SOUTH)) result = Shapes.or(result, SOUTH);
