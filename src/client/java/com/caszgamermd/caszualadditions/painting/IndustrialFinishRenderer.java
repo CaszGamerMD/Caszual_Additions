@@ -9,7 +9,6 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 
 /** Shape-attached finish: each visible voxel/model outline element is
@@ -61,8 +60,5 @@ public final class IndustrialFinishRenderer extends EntityRenderer<
                     OverlayTexture.NO_OVERLAY,0);
             pose.popPose();
         }
-    }
-    @Override public Identifier getTextureLocation(IndustrialFinishRenderState state){
-        return Identifier.withDefaultNamespace("textures/block/white_concrete.png");
     }
 }
