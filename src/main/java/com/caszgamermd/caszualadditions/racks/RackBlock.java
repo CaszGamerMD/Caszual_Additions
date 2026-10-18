@@ -173,6 +173,12 @@ public final class RackBlock extends Block implements EntityBlock {
                     server.openMenu(rack);
                     return InteractionResult.SUCCESS;
                 }
+                if(!WarehouseRackAccess.clearOfStairs(server.level(),rack)
+                        ||!WarehouseRackAccess.prepare(server.level(),rack)){
+                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                            "Pallet access obstructed by occupied Rack Stairs or Scaffolding."));
+                    return InteractionResult.SUCCESS;
+                }
                 rack.install(held.copyWithCount(1));
                 if (!player.getAbilities().instabuild) held.shrink(1);
                 server.sendSystemMessage(net.minecraft.network.chat.Component.literal("Pallet installed."));
