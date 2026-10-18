@@ -10,7 +10,7 @@ Craft three wool across the top crafting row and one wool at each end of the sec
 
 While worn, the hood **prevents both Darkness and Blindness** from being applied. The Warden's attack still deals damage; the hood only guards against the screen-darkening effects.
 
-## Silent Wool Boots
+## Silent Wool Slippers
 
 Craft with wool in the ordinary boot pattern. Equip in the **boots armor slot**.
 
