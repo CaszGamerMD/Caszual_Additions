@@ -4,7 +4,7 @@
 
 Three survival-craftable tools for navigating the Deep Dark. All three are included in the Caszual creative tab and the Barrel of Caszual Fun.
 
-## Wool Hood
+## Wool Night-Vision Earmuffs
 
 Craft three wool across the top crafting row and one wool at each end of the second row (helmet shape). Equip in the **helmet armor slot**.
 
