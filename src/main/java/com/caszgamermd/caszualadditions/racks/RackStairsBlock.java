@@ -22,7 +22,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
@@ -44,7 +44,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class RackStairsBlock extends Block implements EntityBlock {
     public static final IntegerProperty PART=IntegerProperty.create("part",0,8);
-    public static final DirectionProperty FACING=BlockStateProperties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
     private final MapCodec<RackStairsBlock> codec=MapCodec.unit(this);
     public RackStairsBlock(BlockBehaviour.Properties p){
         super(p);
