@@ -22,7 +22,8 @@ assert "occupiedAisle(level,shelfPlane)" in g
 assert "routeIssue=\"REROUTING\"" in g
 assert "routeIssue=\"WAITING FOR SAFE WALKABLE ROUTE\"" in g
 assert "private void updateTaskLabel()" in g
-assert 'label="PALLET "+(haulIndex+1)+"/4 | "' in g
+assert 'label="PALLET "+(haulIndex+1)+"/4 | WITH PLAYER";' in g
+assert 'label="CREW "+(haulIndex+1)+"/4 | IDLE";' in g
 assert "setCustomNameVisible(true)" in g
 assert "if(tickCount%10==0)updateTaskLabel()" in g
 assert "if(tickCount%2!=0)return" not in g
