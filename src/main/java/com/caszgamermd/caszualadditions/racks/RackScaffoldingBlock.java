@@ -3,6 +3,7 @@ package com.caszgamermd.caszualadditions.racks;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -88,13 +89,50 @@ public final class RackScaffoldingBlock extends Block {
         };
     }
 
+    private static boolean isElevatedStairLanding(BlockGetter level,BlockPos pos,Direction side) {
+        // The stair's top tread (part 8) finishes at Y+3. The scaffold
+        // placed one block above that tread is its connected upper walkway.
+        BlockState below=level.getBlockState(pos.relative(side).below());
+        return below.getBlock() instanceof RackStairsBlock
+                && below.getValue(RackStairsBlock.PART)==8;
+    }
+
     private static BlockState connectionState(BlockState state, BlockGetter level, BlockPos pos) {
         for (Direction side : Direction.Plane.HORIZONTAL) {
             state = state.setValue(sideProperty(side),
-                    !isWalkwayConnection(level.getBlockState(pos.relative(side))));
+                    !(isWalkwayConnection(level.getBlockState(pos.relative(side)))
+                       || isElevatedStairLanding(level,pos,side)));
         }
         return state.setValue(LADDER_HATCH,
                 level.getBlockState(pos.below()).getBlock() instanceof LadderBlock);
+    }
+
+    private static void scheduleElevatedStairRefresh(Level level,BlockPos at) {
+        if(!(level instanceof ServerLevel server))return;
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            BlockPos candidate=at.relative(side).below();
+            BlockState stair=server.getBlockState(candidate);
+            if(stair.getBlock() instanceof RackStairsBlock&&stair.getValue(RackStairsBlock.PART)==8)
+                server.scheduleTick(candidate,stair.getBlock(),1);
+        }
+    }
+
+    @Override protected void onPlace(BlockState state,Level level,BlockPos pos,
+            BlockState oldState,boolean moved){
+        super.onPlace(state,level,pos,oldState,moved);
+        if(!level.isClientSide())scheduleElevatedStairRefresh(level,pos);
+    }
+
+    @Override protected void onRemove(BlockState state,Level level,BlockPos pos,
+            BlockState nextState,boolean moved){
+        super.onRemove(state,level,pos,nextState,moved);
+        if(!level.isClientSide())scheduleElevatedStairRefresh(level,pos);
+    }
+
+    @Override protected void tick(BlockState state,ServerLevel level,BlockPos pos,
+            RandomSource random){
+        BlockState corrected=connectionState(state,level,pos);
+        if(!corrected.equals(state))level.setBlock(pos,corrected,3);
     }
 
     @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
@@ -108,12 +146,8 @@ public final class RackScaffoldingBlock extends Block {
             BlockState state, LevelReader level, ScheduledTickAccess ticks,
             BlockPos pos, Direction direction, BlockPos neighborPos,
             BlockState neighborState, RandomSource random) {
-        if (direction == Direction.DOWN)
-            return state.setValue(LADDER_HATCH,
-                    neighborState.getBlock() instanceof LadderBlock);
-        if (direction.getAxis().isHorizontal())
-            return state.setValue(sideProperty(direction),
-                    !isWalkwayConnection(neighborState));
+        if (direction == Direction.DOWN || direction.getAxis().isHorizontal())
+            return connectionState(state,level,pos);
         return state;
     }
 
@@ -152,6 +186,7 @@ public final class RackScaffoldingBlock extends Block {
         if (state.getValue(FOLDED) == folded) return true;
         if (occupied(world, pos)) return false;
         world.setBlock(pos, state.setValue(FOLDED, folded), 3);
+        scheduleElevatedStairRefresh(world,pos);
         return true;
     }
 
