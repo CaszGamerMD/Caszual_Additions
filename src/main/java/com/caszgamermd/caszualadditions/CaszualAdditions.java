@@ -26,6 +26,7 @@ public final class CaszualAdditions implements ModInitializer {
     public void onInitialize() {
         CaszUtils.initialize();
         AntiWardenContent.initialize();
+        com.caszgamermd.caszualadditions.curtains.PlasticCurtainsContent.initialize();
 
         QuarterBlocks.initialize();
         ColorfulRods.initialize();
