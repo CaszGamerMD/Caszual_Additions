@@ -25,6 +25,8 @@ jobs:
         run: python3 scripts/head_db_api_smoke.py
       - name: Audit all block and item models for coplanar faces (blocking)
         run: python3 scripts/model_zfight_audit.py
+      - name: Audit rotated and connected Rack Stairs for overlapping faces (blocking)
+        run: python3 scripts/warehouse_stair_zfight_audit.py
       - name: Verify warehouse visual and network foundations (blocking)
         run: python3 scripts/warehouse_foundations_smoke.py
       - name: Verify compact trigger-free handheld Warehouse Scanner (blocking)
