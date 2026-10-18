@@ -61,7 +61,12 @@ public final class StorageGolemReturnPath {
                 ||headState.is(com.caszgamermd.caszualadditions.pallet.PalletContent.PALLET_CARGO_COLLISION)
                 ||below.is(com.caszgamermd.caszualadditions.pallet.PalletContent.PALLET_CARGO_COLLISION))
             return false;
-        boolean clearBody=feetState.getCollisionShape(level,feet).isEmpty()
+        // A genuine BOTTOM SLAB occupies the lower half of the feet
+        // cell. It is a support surface, not a full-height obstacle.
+        // Upper slabs still use normal below-floor support.
+        boolean slabFloor=WarehouseTerrain.bottomSlab(level,feet);
+        boolean clearBody=(slabFloor
+                ||feetState.getCollisionShape(level,feet).isEmpty())
                 &&headState.getCollisionShape(level,feet.above()).isEmpty();
         if(!clearBody)return false;
         // Ice (including packed/blue ice) has a REAL solid collision floor:
@@ -70,6 +75,11 @@ public final class StorageGolemReturnPath {
         // Reject waterlogged body cells as well: Golems must stay dry.
         if(!level.getFluidState(feet).isEmpty()
                 ||!level.getFluidState(feet.above()).isEmpty())return false;
+        if(slabFloor)return true;
+        // A bottom slab BELOW our feet has its standing height half a
+        // block lower, which belongs to the slab's own BlockPos, not this
+        // air cell. Excluding it prevents duplicate phantom waypoints.
+        if(WarehouseTerrain.bottomSlab(level,ground))return false;
         return !below.getCollisionShape(level,ground).isEmpty();
     }
 
