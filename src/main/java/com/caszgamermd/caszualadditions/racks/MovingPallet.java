@@ -876,13 +876,14 @@ public final class MovingPallet extends PathfinderMob {
                 minZ-.5,maxX+1.5,deliveryPosition.getY()+2.6,maxZ+1.5);
         BlockPos start=blockPosition(),best=BlockPos.ZERO;
         double score=Double.POSITIVE_INFINITY;
-        // Explore the current 3-wide staging aisle and adjacent lanes.
+        // Prefer a nearby full-width aisle. Scan 12 positions per ring
+        // (rather than hundreds of BFS calls in a single server tick).
         // A successful route must end EXACTLY at the selected parking spot.
-        for(int radius=2;radius<=8;radius++)
-            for(int dx=-radius;dx<=radius;dx++)
-                for(int dz=-radius;dz<=radius;dz++){
-                    if(Math.max(Math.abs(dx),Math.abs(dz))!=radius)continue;
-                    BlockPos cell=start.offset(dx,0,dz);
+        for(int radius=2;radius<=7;radius++)
+            for(Direction side:Direction.Plane.HORIZONTAL)
+                for(int offset=-1;offset<=1;offset++){
+                    BlockPos cell=start.relative(side,radius)
+                            .relative(side.getClockWise(),offset);
                     if(!safePlatformFloor(level,cell))continue;
                     AABB moved=getBoundingBox().move(
                             cell.getX()+.5-getX(),
