@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions.racks;
 
 import net.minecraft.client.renderer.block.BlockModelRenderState;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 
 /** Four raised-arm Golems move in a square; ONLY the lead submits one
@@ -11,11 +12,10 @@ public final class StorageGolemRenderState extends LivingEntityRenderState {
     public boolean pushingEmptyPallet;
     public int visibleCargo;
     public int heldSlots;
-    public final BlockModelRenderState[] held=new BlockModelRenderState[9];
-    public StorageGolemRenderState(){
-        for(int i=0;i<held.length;i++)held[i]=new BlockModelRenderState();
-    }
-    public final BlockModelRenderState heldTray=new BlockModelRenderState();
+    // One real item model held between the worker's wrists. All nine
+    // actual inventory slots remain synced independently server-side;
+    // rendering never substitutes a fake tray or cardboard proxy.
+    public final ItemStackRenderState heldItem=new ItemStackRenderState();
     public final BlockModelRenderState palletDeck=new BlockModelRenderState();
     public final BlockModelRenderState[] courierBoards={new BlockModelRenderState(),new BlockModelRenderState(),new BlockModelRenderState(),new BlockModelRenderState()};
     public final BlockModelRenderState palletSupport=new BlockModelRenderState();
