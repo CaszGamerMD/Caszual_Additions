@@ -36,7 +36,8 @@ assert "box(0,0,8,16,8,16)" in stairs
 assert "box(0,0,0,16,16,8)" in stairs
 assert "box(0,0,0,1,16,16)" in stairs
 assert "public static boolean occupied(" in stairs
-assert "if(occupied(world,oldRoot,face))return false;" in stairs
+assert "occupied(world,oldRoot,face)||occupied(world,to,face)" in stairs
+assert "stair.destination().equals(desired)" in access
 assert "getWorldBorder().isWithinBounds(cell)" in stairs
 assert "moved.restore(snapshot,byPlayer?to:snapshot.home());" in stairs
 assert "current.relative(player.getDirection())" in stairs
