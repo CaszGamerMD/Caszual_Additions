@@ -76,7 +76,8 @@ public final class StorageScannerItem extends Item {
         boolean chat=computer!=null
                 &&RackComputerNet.nearbyShelves(player.level(),computer).stream()
                         .anyMatch(StorageGolemShelfEntity::debugChat);
-        player.displayClientMessage(Component.literal(text),!chat);
+        if(chat)player.sendSystemMessage(Component.literal(text));
+        else WarehouseGolemDebug.actionBar(player,Component.literal(text));
     }
 
     /** Persist remote pickup requests on the linked scanner item. */
