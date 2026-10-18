@@ -21,12 +21,12 @@ def front_rails(elements):
 def grill(elements):
     return [e for e in elements
             if e["from"][1]==1 and e["to"][1]==2
-            and e["to"][2]-e["from"][2]==16
+            and e["to"][2]-e["from"][2] in (7.5,6.5)
             and e["to"][0]-e["from"][0]==1]
 def crosses(elements):
     return [e for e in elements
             if e["from"][1]==1 and e["to"][1]==2
-            and e["from"][0]==0 and e["to"][0]==16
+            and e["to"][0]-e["from"][0]>=15
             and e["to"][2]-e["from"][2]==1]
 variants=json.loads((ASSETS/"blockstates/pallet_rack.json").read_text())["variants"]
 for facing in ("north","east","south","west"):
@@ -47,11 +47,11 @@ for local in (0,1):
             assert all(e["from"][1]==0 for e in front_rails(elements))
         if tier=="upper":
             assert all(e["from"][1]==15 for e in front_rails(elements))
-        assert (len(grill(elements))==3)==(tier=="lower"),(local,tier)
+        assert (len(grill(elements))==6)==(tier=="lower"),(local,tier)
         assert (len(crosses(elements))==2)==(tier=="lower"),(local,tier)
 for local in (2,3):
     elements=model(local,"lower")["elements"]
-    assert len(grill(elements))==3
+    assert len(grill(elements))==6
     assert len(crosses(elements))==2
 
 pallet=read("pallet/PalletBlock.java")
@@ -75,4 +75,4 @@ frame=read("racks/RackFrameShapes.java")
 assert "double[][][] ELEMENTS" in frame
 assert "CELLS[orientation][part]=combined.optimize()" in frame
 assert "Block.box(a,y1,b,c,y2,d)" in frame
-print("PASS: single-rack selection; precise 12-part collision; continuous grill + cross beams")
+print("PASS: single-rack selection; precise 12-part collision; joined z-clip-free grill + cross beams")
