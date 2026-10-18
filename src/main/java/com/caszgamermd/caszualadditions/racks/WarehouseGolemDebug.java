@@ -13,9 +13,15 @@ public final class WarehouseGolemDebug {
                 &&world.getBlockEntity(home) instanceof StorageGolemShelfEntity shelf
                 &&shelf.debugChat();
     }
+    public static void actionBar(Player player,Component message){
+        if(player instanceof net.minecraft.server.level.ServerPlayer user)
+            user.connection.send(
+                    new net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket(message));
+        else player.sendSystemMessage(message);
+    }
     public static void message(Player player,BlockPos home,Component message){
         boolean verbose=player.level() instanceof ServerLevel world&&chat(world,home);
-        // true = transient action bar, false = permanent chat log.
-        player.displayClientMessage(message,!verbose);
+        if(verbose)player.sendSystemMessage(message);
+        else actionBar(player,message);
     }
 }
