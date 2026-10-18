@@ -32,7 +32,7 @@ public final class XpDrainBlock extends Block implements EntityBlock {
     String status=moved>0?"Deposited "+moved+" XP. "
             :player.isCrouching()&&XpNetwork.space(server,pos)==0?
                     "XP Tank network is full. ":"";
-    player.displayClientMessage(Component.literal(status+"XP Drain: "+
+    ((net.minecraft.server.level.ServerPlayer)player).sendSystemMessage(Component.literal(status+"XP Drain: "+
             XpNetwork.stored(server,pos)+" / "+XpNetwork.capacity(server,pos)+" XP"),true);
    }
   }
