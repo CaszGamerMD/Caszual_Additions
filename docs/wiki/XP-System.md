@@ -2,7 +2,7 @@
 
 [← Home](Home.md) · [Recipes](Recipes.md)
 
-Caszual Additions has four connected XP devices.
+Caszual Additions has four connected XP devices plus one independent, portable **ground-placed XP Collector**.
 
 | Device | Purpose |
 | --- | --- |
