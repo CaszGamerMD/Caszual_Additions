@@ -53,18 +53,18 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             // the whole arm backwards through the torso ("broken arm").
             // Both shoulders are now ALWAYS at their real body anchors.
             PartDefinition left=corner.addOrReplaceChild("left_arm",
-                    CubeListBuilder.create().texOffs(28,20)
+                    CubeListBuilder.create().texOffs(0,40)
                             .addBox(-2,-1,-2,4,6,4),
                     PartPose.offset(7,11,0));
             left.addOrReplaceChild("forearm",CubeListBuilder.create()
-                    .texOffs(28,26).addBox(-2,-1,-2,4,6,4),
+                    .texOffs(16,40).addBox(-2,-1,-2,4,6,4),
                     PartPose.offset(0,5,0));
             PartDefinition right=corner.addOrReplaceChild("right_arm",
-                    CubeListBuilder.create().texOffs(28,20)
+                    CubeListBuilder.create().texOffs(0,40)
                             .addBox(-2,-1,-2,4,6,4),
                     PartPose.offset(-7,11,0));
             right.addOrReplaceChild("forearm",CubeListBuilder.create()
-                    .texOffs(28,26).addBox(-2,-1,-2,4,6,4),
+                    .texOffs(16,40).addBox(-2,-1,-2,4,6,4),
                     PartPose.offset(0,5,0));
             corner.addOrReplaceChild("left_leg",CubeListBuilder.create()
                     .texOffs(44,0).addBox(-2,0,-2,4,8,4),
@@ -78,7 +78,8 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
     @Override public void setupAnim(MovingPalletRenderState state){
         super.setupAnim(state);
         float phase=state.walkAnimationPos*.55f;
-        float amount=state.walkAnimationSpeed;
+        float amount=Mth.clamp(state.walkAnimationSpeed,0f,1f);
+        if(amount<.045f)amount=0f;
         for(int i=0;i<4;i++){
             corner[i].visible=i<state.crewSize;
             // Alternating diagonal steps; all four animate from identical
@@ -94,7 +95,11 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             // platform with bent elbows and connected hands.
             leftArm[i].x=7f;
             rightArm[i].x=-7f;
+            leftArm[i].y=rightArm[i].y=11f;
             leftArm[i].z=rightArm[i].z=0f;
+            leftArm[i].yRot=rightArm[i].yRot=0f;
+            leftForearm[i].yRot=rightForearm[i].yRot=0f;
+            leftForearm[i].zRot=rightForearm[i].zRot=0f;
             if(!state.visible){
                 leftArm[i].xRot=Mth.cos(phase+offset+Mth.PI)*.7f*amount;
                 rightArm[i].xRot=Mth.cos(phase+offset)*.7f*amount;
