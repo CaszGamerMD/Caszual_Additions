@@ -87,12 +87,14 @@ public final class RemotePalletCourierRoute {
             // the destination; a "best effort" partial route to a
             // nearby wall is the exact circling bug being fixed.
             var stairs=WarehousePreferredPath.leg(
-                    start,destination,passable,avoid);
+                    start,destination,passable,avoid,
+                    pos->WarehouseTerrain.standingY(level,pos));
             return stairs!=null&&!stairs.isEmpty()
                     &&stairs.get(stairs.size()-1).equals(destination)
                     ?stairs:null;
         }
-        return WarehousePreferredPath.leg(start,destination,passable,avoid);
+        return WarehousePreferredPath.leg(start,destination,passable,avoid,
+                pos->WarehouseTerrain.standingY(level,pos));
     }
 
     /**
