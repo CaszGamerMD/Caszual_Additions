@@ -307,13 +307,13 @@ public final class MovingPallet extends PathfinderMob {
         BlockPos linked=StorageScannerItem.linkedComputer(
                 player.getItemInHand(hand),server);
         if(linked==null){
-            user.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+            WarehouseGolemDebug.message(user,shelves[0],net.minecraft.network.chat.Component.literal(
                     "DIRECT: link the scanner to your Rack Computer first."));
         }else if(!fromWarehouse(WarehouseConnections.shelvesForComputer(server,linked))){
-            user.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+            WarehouseGolemDebug.message(user,shelves[0],net.minecraft.network.chat.Component.literal(
                     "DIRECT: this loaded crew belongs to a different warehouse."));
         }else{
-            user.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+            WarehouseGolemDebug.message(user,shelves[0],net.minecraft.network.chat.Component.literal(
                     "DIRECT: "+returnToWarehouse(server,linked)));
         }
         return net.minecraft.world.InteractionResult.SUCCESS;
