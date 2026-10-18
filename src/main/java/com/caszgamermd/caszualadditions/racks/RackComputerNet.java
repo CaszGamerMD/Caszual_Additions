@@ -84,6 +84,16 @@ public final class RackComputerNet {
                         ByteBufCodecs.BOOL,GolemControl::enabled,GolemControl::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
+    public record DebugControl(BlockPos computer,boolean chat,boolean statuses)
+            implements CustomPacketPayload {
+        public static final Type<DebugControl> TYPE=new Type<>(
+                CaszualAdditions.id("rack_golem_debug"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,DebugControl> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,DebugControl::computer,
+                        ByteBufCodecs.BOOL,DebugControl::chat,
+                        ByteBufCodecs.BOOL,DebugControl::statuses,DebugControl::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
     public record GolemWork(BlockPos computer,int action) implements CustomPacketPayload {
         public static final Type<GolemWork> TYPE=new Type<>(
                 CaszualAdditions.id("rack_golem_work"));
@@ -136,6 +146,7 @@ public final class RackComputerNet {
         PayloadTypeRegistry.serverboundPlay().register(GolemControl.TYPE,GolemControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(PtpControl.TYPE,PtpControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GolemWork.TYPE,GolemWork.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(DebugControl.TYPE,DebugControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(HighlightRequest.TYPE,HighlightRequest.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(HighlightChanged.TYPE,HighlightChanged.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(Query.TYPE,(payload,context)->
@@ -150,6 +161,8 @@ public final class RackComputerNet {
                 context.server().execute(()->controlPtp(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(GolemWork.TYPE,(payload,context)->
                 context.server().execute(()->requestGolemWork(context.player(),payload)));
+        ServerPlayNetworking.registerGlobalReceiver(DebugControl.TYPE,(payload,context)->
+                context.server().execute(()->setDebug(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(HighlightRequest.TYPE,(payload,context)->
                 context.server().execute(()->requestHighlight(context.player(),payload)));
 
@@ -213,6 +226,26 @@ public final class RackComputerNet {
                 +" highlighted for all players for 10 seconds.");
     }
 
+    private static void setDebug(ServerPlayer player,DebugControl control){
+        ServerLevel level=player.level();
+        BlockPos pos=control.computer();
+        if(!level.hasChunkAt(pos)
+                ||!level.getBlockState(pos).is(RackContent.RACK_COMPUTER)
+                ||player.distanceToSqr(pos.getX()+.5,pos.getY()+.5,pos.getZ()+.5)>100)
+            return;
+        List<StorageGolemShelfEntity> shelves=nearbyShelves(level,pos);
+        if(shelves.isEmpty()){
+            reply(player,"Connect a Golem Shelf before changing debug options.");
+            return;
+        }
+        for(StorageGolemShelfEntity shelf:shelves)
+            shelf.setDebug(control.chat(),control.statuses());
+        reply(player,"Debug settings saved: Chat "
+                +(control.chat()?"ON":"OFF")+", Status nameplates "
+                +(control.statuses()?"ON":"OFF"));
+        answer(player,new Query(pos,"",BlockPos.ZERO));
+    }
+
     private static void requestGolemWork(ServerPlayer player,GolemWork request){
         ServerLevel level=player.level();
         BlockPos computer=request.computer();
@@ -229,10 +262,15 @@ public final class RackComputerNet {
             case 3 -> {
                 // Diagnostics are a computer action now, NOT a shift-scanner
                 // shortcut. Every line is server-authoritative and read-only.
-                for(String row:WarehouseDiagnostics.audit(level,computer))
-                    player.sendSystemMessage(
-                            net.minecraft.network.chat.Component.literal(row));
-                result="Warehouse diagnostics sent to chat.";
+                if(nearbyShelves(level,computer).stream()
+                        .anyMatch(StorageGolemShelfEntity::debugChat)){
+                    for(String row:WarehouseDiagnostics.audit(level,computer))
+                        player.sendSystemMessage(
+                                net.minecraft.network.chat.Component.literal(row));
+                    result="Warehouse diagnostics sent to chat (Debug enabled).";
+                }else{
+                    result="Debug chat is OFF. Open DEBUG to enable diagnostic logs.";
+                }
             }
             case 2 -> {
                 int deployed=0;
@@ -377,6 +415,8 @@ public final class RackComputerNet {
         root.addProperty("networkSize",racks.size());
         List<StorageGolemShelfEntity> shelves=nearbyShelves(level,computer);
         root.addProperty("shelfCount",shelves.size());
+        root.addProperty("debugChat",!shelves.isEmpty()&&shelves.getFirst().debugChat());
+        root.addProperty("debugStatuses",!shelves.isEmpty()&&shelves.getFirst().debugStatuses());
         JsonArray transferPoints=new JsonArray();
         for(PtpBlockEntity point:StoragePtpNetwork.attached(level,computer,shelves)){
             JsonObject cell=new JsonObject();
@@ -432,6 +472,7 @@ public final class RackComputerNet {
         for(StorageGolem worker:active.values()){
             JsonObject job=new JsonObject();
             job.addProperty("id",worker.getStringUUID());
+            job.addProperty("name",worker.golemName());
             job.addProperty("work",worker.currentWork());
             job.addProperty("cargo",worker.carriedDescription());
             job.addProperty("owner",worker.assignedOwner());
