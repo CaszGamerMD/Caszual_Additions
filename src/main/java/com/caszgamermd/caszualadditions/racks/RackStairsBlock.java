@@ -212,7 +212,7 @@ public final class RackStairsBlock extends Block implements EntityBlock {
                     "Rack Stairs: saved this position as home."));
         }else{
             BlockPos current=be.getBlockPos();
-            if(!move(server,current,current.relative(state.getValue(FACING)),true))
+            if(!move(server,current,current.relative(player.getDirection()),true))
                 player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
                         "Rack Stairs cannot move: someone is using them, or the path is blocked."));
         }
