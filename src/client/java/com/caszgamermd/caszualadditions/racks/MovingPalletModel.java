@@ -82,11 +82,17 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
         if(amount<.045f)amount=0f;
         for(int i=0;i<4;i++){
             corner[i].visible=i<state.crewSize;
+            // Golem roots stay vertical while the carried pallet tilts.
+            // Model coordinates are in pixels (positive Y is downward).
+            float elevation=state.footHeight[i];
+            corner[i].y=Mth.clamp(-elevation*16f,-14f,21f);
+            boolean supported=(state.groundedMask&(1<<i))!=0;
             // Alternating diagonal steps; all four animate from identical
             // entity velocity, while each remains fixed to its corner.
             float offset=(i==0||i==3)?0:Mth.PI;
-            leftLeg[i].xRot=Mth.cos(phase+offset)*1.15f*amount;
-            rightLeg[i].xRot=Mth.cos(phase+offset+Mth.PI)*1.15f*amount;
+            float footGait=supported?amount:0f;
+            leftLeg[i].xRot=Mth.cos(phase+offset)*1.15f*footGait;
+            rightLeg[i].xRot=Mth.cos(phase+offset+Mth.PI)*1.15f*footGait;
             // Three outbound Golems are EMPTY HANDED until the wrapped
             // pallet is actually lifted. Swing their arms naturally while
             // walking; supporting arms only rise once the pallet exists.
