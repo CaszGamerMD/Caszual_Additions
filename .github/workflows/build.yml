@@ -23,6 +23,8 @@ jobs:
       - name: Verify HeadDB head-search API (nonblocking)
         continue-on-error: true
         run: python3 scripts/head_db_api_smoke.py
+      - name: Verify XP Drain crouch transfers, hardware art and Collector localization (blocking)
+        run: python3 scripts/xp_drain_collector_charger_smoke.py
       - name: Audit all block and item models for coplanar faces (blocking)
         run: python3 scripts/model_zfight_audit.py
       - name: Audit rotated and connected Rack Stairs for overlapping faces (blocking)
