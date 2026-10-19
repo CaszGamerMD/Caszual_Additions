@@ -21,11 +21,20 @@ public final class XpDrainBlockEntity extends BlockEntity {
           ||player.getBoundingBox().minX>=pos.getX()+.875
           ||player.getBoundingBox().maxZ<=pos.getZ()+.125
           ||player.getBoundingBox().minZ>=pos.getZ()+.875)return 0;
+  // Take only points that actually exist in the visible XP level/bar.
+  // A transfer is bounded by the network's remaining capacity to avoid
+  // negative balances even when several players stand on the same grate.
   int available=XpPlayer.total(player);
-  if(available<=0)return 0;
-  int moved=XpNetwork.insert(level,pos,Math.min(available,40));
-  if(moved>0)XpPlayer.remove(player,moved);
-  return moved;
+  int requested=Math.min(40,Math.min(available,XpNetwork.space(level,pos)));
+  if(requested<=0)return 0;
+  int removed=XpPlayer.remove(player,requested);
+  if(removed<=0)return 0;
+  int stored=XpNetwork.insert(level,pos,removed);
+  // Defensive refund if another mod changes storage while this executes:
+  // never destroy XP or deposit XP that the player did not lose.
+  if(stored<removed)XpPlayer.setTotal(player,
+          (int)Math.min(Integer.MAX_VALUE,(long)XpPlayer.total(player)+removed-stored));
+  return stored;
  }
  public static void tick(ServerLevel level,BlockPos pos,XpDrainBlockEntity drain){
   if(XpNetwork.space(level,pos)<=0)return;
