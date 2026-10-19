@@ -70,6 +70,12 @@ public final class IndustrialFinishEntity extends Entity {
             net.minecraft.world.damagesource.DamageSource damage,float amount){
         return false; // Cosmetic coating is not an attackable world object.
     }
+    /** The block (not entity) decides whether the finish is visible.
+     *  Remove vanilla distance-scaled entity hiding. Server still only
+     *  sends coatings in its chunk/view tracking horizon. */
+    @Override public boolean shouldRenderAtSqrDistance(double distance){
+        return true;
+    }
     @Override public boolean isPickable(){return false;}
     @Override public boolean isPushable(){return false;}
 }
