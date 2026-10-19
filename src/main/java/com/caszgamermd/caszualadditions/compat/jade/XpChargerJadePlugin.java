@@ -39,10 +39,6 @@ public final class XpChargerJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(Server.INSTANCE,XpChargerBlockEntity.class);
     }
 
-    @Override public void registerClient(IWailaClientRegistration registration){
-        registration.registerBlockComponent(Client.INSTANCE,XpChargerBlock.class);
-    }
-
     public enum Server implements IServerDataProvider<BlockAccessor> {
         INSTANCE;
         private static final String PREFIX="caszual_xp_charger_";
