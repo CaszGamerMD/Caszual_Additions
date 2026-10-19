@@ -33,7 +33,7 @@ assert "XpNetwork.tanks(level,accessor.getPosition())" in source
 assert "tanks.size()*XpTankBlockEntity.CAPACITY" in source
 assert "XpRepair.hasMending(item)" in source
 assert "Math.round(100f*remaining/max)" in client
-assert 'int needed=(damage+1)/2' in source
+assert 'int needed=(damage+1)/2' in client
 assert "Math.min(4,(s.getDamageValue()+1)/2)" in repair
 assert "charger.setChanged()" in repair
 for name in ["empty","item","durability","complete","no_mending","no_tank",
