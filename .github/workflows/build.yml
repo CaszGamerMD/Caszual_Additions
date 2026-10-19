@@ -23,6 +23,8 @@ jobs:
       - name: Verify HeadDB head-search API (nonblocking)
         continue-on-error: true
         run: python3 scripts/head_db_api_smoke.py
+      - name: Check wooden pallet 3x3 JEI sample using any planks
+        run: python3 scripts/wooden_pallet_jei_preview_smoke.py
       - name: Verify XP Charger WAILA/Jade progress tooltip and optional registration
         run: python3 scripts/xp_charger_jade_tooltip_smoke.py
       - name: Verify XP Drain crouch transfers, hardware art and Collector localization (blocking)
