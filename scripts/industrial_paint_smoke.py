@@ -39,7 +39,26 @@ assert "ClientPlayNetworking.send(new IndustrialPaintNet.Request(" in screen
 assert "text.matches(\"[0-9a-fA-F]{6}\")" in screen
 assert "IndustrialPaintContent.SURFACE.defaultBlockState()" in renderer
 assert "state.finish.tintLayers().add(entity.color())" in renderer
-assert "target.getShape(world,at).toAabbs()" in renderer
+assert "IndustrialPaintModelGeometry.elements(target)" in renderer
+assert "target.getShape(world,at)" not in renderer
+assert "pose.mulPose(Axis.YP.rotationDegrees(-part.yaw()))" in renderer
+assert "for(int face=0;face<6;face++)" in renderer
+assert "part.faces()&(1<<face)" in renderer
+assert "OFFSET=.0016f,THICK=.001f" in renderer
+geometry=read(c/"IndustrialPaintModelGeometry.java")
+assert "blockstates/" in geometry and "models" in geometry
+assert 'blockstate.has("multipart")' in geometry
+assert 'blockstate.has("variants")' in geometry
+assert '"rotation"' in geometry and '"faces"' in geometry
+assert "getResourceManager().getResource(" in geometry
+assert "CACHE.clear();" in geometry
+assert "clientTrackingRange(512)" in registry
+assert "shouldRenderAtSqrDistance(double distance)" in entity
+assert "return true;" in entity[entity.index("shouldRenderAtSqrDistance"):entity.index("isPickable")]
+assert "DataComponents.CUSTOM_NAME" in brush
+assert '"Industrial Primer Brush"' in brush
+assert '"Industrial Paint Brush #"' in brush
+assert 'String.format("%06X",rgb&0xffffff)' in brush
 assert "state.finish.submit(" in renderer
 assert "IndustrialPaintClient.initialize();" in read(root/"src/client/java/com/caszgamermd/caszualadditions/CaszualAdditionsClient.java")
 assert "IndustrialPaintContent.initialize();" in read(root/"src/main/java/com/caszgamermd/caszualadditions/CaszualAdditions.java")
