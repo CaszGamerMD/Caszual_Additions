@@ -28,7 +28,7 @@ public final class StackOfPalletsBlockEntity extends BlockEntity implements Cont
     public StackOfPalletsBlockEntity(BlockPos pos,BlockState state){
         super(RackContent.PALLET_STACK_ENTITY,pos,state);
     }
-    @Override public Component getDisplayName(){return Component.literal("Stack of Pallets");}
+    @Override public Component getDisplayName(){return Component.literal("Pallet Dispenser");}
     @Override public @Nullable AbstractContainerMenu createMenu(int id,Inventory inventory,Player player){
         return new StackOfPalletsMenu(id,inventory,this);
     }
