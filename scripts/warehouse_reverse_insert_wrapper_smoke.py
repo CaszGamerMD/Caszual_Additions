@@ -24,7 +24,7 @@ assert "RACK_INSERT_Y" in moving and "RACK_INSERT_Z" in moving
 assert "releaseDuration=deliveryMode==1?RackPickupPlan.PULL_TICKS:20" in moving
 assert moving.index("if(releaseTicks<releaseDuration)") < moving.index("boolean ok=deliveryMode==1")
 assert 'entityData.set(RACK_INSERT_ACTIVE,false);' in moving
-assert 'entityData.set(RACK_INSERT_ACTIVE,deliveryMode==1);' in moving
+assert 'entityData.set(RACK_INSERT_ACTIVE,deliveryMode==1||deliveryMode==3);' in moving
 assert "state.bodyRot=180.0f" in renderer
 assert "state.rackInsertX*slide" in renderer
 assert "state.rackInsertY*lift" in renderer

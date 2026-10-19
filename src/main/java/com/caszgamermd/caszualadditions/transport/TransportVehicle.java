@@ -96,7 +96,7 @@ public final class TransportVehicle extends PathfinderMob {
         if(a==b)return "Select a different train car.";
         if(a.kind()<1||a.kind()>3||b.kind()<1||b.kind()>3)return "Only train cars can couple.";
         // Infer front/rear from track direction, so selection order is irrelevant.
-        Direction d=a.heading;
+        Direction d=a.getDirection();
         double forward=(b.getX()-a.getX())*d.getStepX()+(b.getZ()-a.getZ())*d.getStepZ();
         return forward>0?a.couple(b):b.couple(a);
     }
@@ -118,7 +118,7 @@ public final class TransportVehicle extends PathfinderMob {
             if(i==15)return "Maximum train length reached.";
         }
         if(!leader.stationary()||!stationary())return "Stop the entire train before coupling.";
-        if(heading!=leader.heading)return "Place both cars facing the same track direction.";
+        if(getDirection()!=leader.getDirection())return "Place both cars facing the same track direction.";
         // Coupling is established on a straight, fully loaded stretch of warehouse rail.
         Vec3 offset=position().subtract(leader.position());
         if(Math.abs(offset.y)>.1||(Math.abs(offset.x)>.1&&Math.abs(offset.z)>.1))return "Align both cars on a straight rail before coupling.";
