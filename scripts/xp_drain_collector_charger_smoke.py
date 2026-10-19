@@ -26,8 +26,22 @@ assert "XpDrainBlockEntity.tick(" in block
 assert "transferPlayer(ServerLevel level,BlockPos pos,Player player)" in entity
 assert "player.isCrouching()" in entity
 assert "player.getBoundingBox()" in entity
-assert "XpNetwork.insert(level,pos,Math.min(available,40))" in entity
-assert "XpPlayer.remove(player,moved)" in entity
+player_xp=read("XpPlayer.java")
+assert "pointsToLevel(int level)" in player_xp
+assert "pointsForNextLevel(int level)" in player_xp
+assert "levelForPoints(int points)" in player_xp
+assert "p.experienceLevel" in player_xp
+assert "p.experienceProgress" in player_xp
+assert "player.experienceLevel=level;" in player_xp
+assert "player.experienceProgress=(float)within/pointsForNextLevel(level);" in player_xp
+assert "player.totalExperience=points;" in player_xp
+assert "return Math.max(0,p.totalExperience)" not in player_xp
+assert "giveExperiencePoints(-" not in player_xp
+assert "int requested=Math.min(40,Math.min(available,XpNetwork.space(level,pos)))" in entity
+assert "int removed=XpPlayer.remove(player,requested);" in entity
+assert "XpNetwork.insert(level,pos,removed)" in entity
+assert "if(stored<removed)XpPlayer.setTotal(player," in entity
+assert "return stored;" in entity
 assert "transferPlayer(level,pos,p)" in entity
 assert "XpNetwork.space(level,pos)<=0" in entity
 assert "ExperienceOrb.class" in entity
