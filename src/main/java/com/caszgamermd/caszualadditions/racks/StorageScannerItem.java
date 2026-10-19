@@ -45,6 +45,22 @@ public final class StorageScannerItem extends Item {
         scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
     }
 
+    /** Removing a warehouse link must clear the full saved location and any
+     * queued Remote request. Scanner mode is intentionally retained.
+     * The same action can be used to recover a scanner bound to a destroyed
+     * computer; no old Computer needs to be loaded.
+     */
+    private static void unlink(ItemStack scanner){
+        CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
+        if(data==null)return;
+        CompoundTag tag=data.copyTag();
+        for(String key:new String[]{"warehouse_dimension","warehouse_x",
+                "warehouse_y","warehouse_z","remote_pickup_pending",
+                "remote_pickup_x","remote_pickup_y","remote_pickup_z"})
+            tag.remove(key);
+        scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
+    }
+
     /** A single saved mode belongs to the SCANNER ItemStack, so switching
      * modes cannot silently dispatch four warehouse workers later. */
     public enum Mode { REMOTE, DIRECT }
@@ -142,16 +158,37 @@ public final class StorageScannerItem extends Item {
                 ||!level.hasChunkAt(computer)
                 ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER))return;
         BlockPos previous=linkedComputer(scanner,level);
-        if(previous!=null&&!previous.equals(computer)
-                &&!StoragePalletCrew.status(level,player).startsWith("No linked crew")
-                &&!StoragePalletCrew.assignedToComputer(level,player,computer)){
-            message(player,"Current direct Golem crew is linked to another warehouse. "
-                    +"Deliver its pallet and dismiss it before relinking.");
+        boolean same=computer.equals(previous);
+        String crew=StoragePalletCrew.status(level,player);
+        // Loaded manual cargo belongs to the old warehouse. Never redirect
+        // its return/delivery route to a newly selected computer.
+        boolean carrying=crew.contains("carry one shared pallet")
+                ||crew.contains("carrying wrapped pallet: yes")
+                ||crew.contains("heading to assigned pallet placement");
+        if(same){
+            if(carrying){
+                message(player,"Scanner still linked: deliver the carried pallet "
+                        +"before unlinking, so its crew can return safely.");
+                return;
+            }
+            StoragePalletCrew.recallFollowing(level,player);
+            unlink(scanner);
+            message(player,"Scanner UNLINKED from "+computer.toShortString()
+                    +". Sneak-right-click a different Rack Computer to link it. "
+                    +"Mode remains "+mode(scanner)+".");
             return;
         }
-        // Rebinding always cancels an older queued remote job to prevent
-        // accidentally dispatching a different warehouse after switching.
-        if(previous==null||!previous.equals(computer))clearPickup(scanner);
+        if(previous!=null&&!previous.equals(computer)){
+            if(carrying){
+                message(player,"Scanner cannot relink while your direct crew "
+                        +"carries a pallet. Deliver it first, then relink.");
+                return;
+            }
+            // Unloaded/idle followers can safely return to their own original
+            // shelves while a new warehouse takes over this scanner.
+            StoragePalletCrew.recallFollowing(level,player);
+        }
+        clearPickup(scanner);
         bind(scanner,level,computer);
         java.util.List<StorageGolemShelfEntity> shelves=
                 RackComputerNet.nearbyShelves(level,computer);
@@ -159,7 +196,8 @@ public final class StorageScannerItem extends Item {
         message(player,"Scanner linked to Rack Computer "+computer.toShortString()
                 +" | "+shelves.size()+" shelves, "+docked+" docked Golems"
                 +" | "+mode(scanner)+" MODE. "
-                +"Shift-right-click air to toggle Remote / Direct. "
+                +"Sneak-click this Computer again to UNLINK, or another to RELINK. "
+                +"Sneak-click air to toggle Remote / Direct. "
                 +"Diagnostics are in the Rack Computer GUI.");
     }
 
