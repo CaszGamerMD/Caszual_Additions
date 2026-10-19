@@ -153,6 +153,19 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         sync();
     }
 
+    /** Atomic cargo restoration for a player's Pallet Jack. Restoring 216
+     * slots individually would broadcast hundreds of block updates and
+     * rebuild upper cargo collisions after EVERY stack.
+     */
+    public void restoreJackCargo(NonNullList<ItemStack> packed){
+        if(!isRoot()||packed.size()!=SLOTS)
+            throw new IllegalArgumentException("Pallet jack cargo must be 216 slots");
+        PalletBlockEntity root=controller();
+        for(int i=0;i<SLOTS;i++)
+            root.items.set(i,packed.get(i).copy());
+        root.sync();
+    }
+
     /** Preserve all slot indices of a loaded carrier in ONE pallet item.
      * The CONTAINER component is read on placement by initialize(). */
     public static ItemStack packedCarrierDrop(ItemStack pallet,
