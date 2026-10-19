@@ -47,7 +47,7 @@ assert "model.head.translateAndRotate(pose)" in render
 assert "model.rightLeg.translateAndRotate(pose)" in render
 assert "model.leftLeg.translateAndRotate(pose)" in render
 assert "WoolGearLayer::layer" in client
-assert "new com.caszgamermd.caszualadditions.antiwarden.WoolGearLayer(this,context)" in avatar
+assert "newcom.caszgamermd.caszualadditions.antiwarden.WoolGearLayer(this,context)" in "".join(avatar.split())
 assert (res/"assets/caszual_additions/textures/entity/wool_sensory_gear.png").exists()
 # Equipped armor is ONLY the custom articulated 3D layer. Vanilla's
 # full helmet/leg armor shell previously covered the skin in a giant
