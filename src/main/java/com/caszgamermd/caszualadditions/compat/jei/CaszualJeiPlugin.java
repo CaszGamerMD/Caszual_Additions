@@ -6,6 +6,7 @@ import mezz.jei.api.IModPlugin;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.registration.IRecipeRegistration;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -44,8 +45,8 @@ public final class CaszualJeiPlugin implements IModPlugin {
                 .createShapedRecipeBuilder(
                         CraftingBookCategory.MISC,
                         new SlotDisplay.ItemStackSlotDisplay(
-                                new ItemStack(PalletContent.WOODEN_PALLET_ITEM)))
-                .define('P',Ingredient.of(ItemTags.PLANKS))
+                                new ItemStackTemplate(PalletContent.WOODEN_PALLET_ITEM)))
+                .define('P',Ingredient.of(BuiltInRegistries.ITEM.getOrThrow(ItemTags.PLANKS)))
                 .define('C',Ingredient.of(Items.CHEST))
                 .pattern("PCP")
                 .pattern("CCC")
