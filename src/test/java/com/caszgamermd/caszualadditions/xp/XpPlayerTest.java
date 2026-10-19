@@ -35,7 +35,7 @@ final class XpPlayerTest {
             int within=(int)(after-XpPlayer.pointsToLevel(lower));
             assertTrue(within>=0&&within<XpPlayer.pointsForNextLevel(lower));
         }
-        assertEquals(15,XpPlayer.levelForPoints(352-40));
+        assertEquals(14,XpPlayer.levelForPoints(352-40));
         assertEquals(16,XpPlayer.levelForPoints(394-40));
         assertEquals(0,XpPlayer.levelForPoints(0));
         assertEquals(0,XpPlayer.levelForPoints(6));
