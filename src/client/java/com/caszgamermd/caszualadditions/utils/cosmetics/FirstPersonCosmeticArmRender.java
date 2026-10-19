@@ -38,7 +38,7 @@ public final class FirstPersonCosmeticArmRender {
         var mesh=new MeshDefinition();
         mesh.getRoot().addOrReplaceChild("cosmetic_arm",
                 CubeListBuilder.create().texOffs(40,16)
-                        .addBox(-2f-width/2f,-2,-2,width,12,4),
+                        .addBox(-1f-width/2f,-2,-2,width,12,4),
                 PartPose.ZERO);
         return LayerDefinition.create(mesh,texW,texH)
                 .bakeRoot().getChild("cosmetic_arm");
