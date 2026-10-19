@@ -55,6 +55,8 @@ assert "CACHE.clear();" in geometry
 assert "clientTrackingRange(512)" in registry
 assert "shouldRenderAtSqrDistance(double distance)" in entity
 assert "return true;" in entity[entity.index("shouldRenderAtSqrDistance"):entity.index("isPickable")]
+assert "public Component getName(ItemStack stack)" in brush
+assert 'data.copyTag()' in brush
 assert "DataComponents.CUSTOM_NAME" in brush
 assert '"Industrial Primer Brush"' in brush
 assert '"Industrial Paint Brush #"' in brush
