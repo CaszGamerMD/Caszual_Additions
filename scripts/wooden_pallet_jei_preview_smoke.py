@@ -11,8 +11,8 @@ assert "registerRecipes(IRecipeRegistration registration)" in plugin
 assert "createShapedRecipeBuilder(" in plugin
 assert "CraftingBookCategory.MISC" in plugin
 assert "new SlotDisplay.ItemStackSlotDisplay(" in plugin
-assert "new ItemStack(PalletContent.WOODEN_PALLET_ITEM)" in plugin
-assert ".define('P',Ingredient.of(ItemTags.PLANKS))" in plugin
+assert "new ItemStackTemplate(PalletContent.WOODEN_PALLET_ITEM)" in plugin
+assert ".define('P',Ingredient.of(BuiltInRegistries.ITEM.getOrThrow(ItemTags.PLANKS)))" in plugin
 assert ".define('C',Ingredient.of(Items.CHEST))" in plugin
 assert '.pattern("PCP")' in plugin
 assert '.pattern("CCC")' in plugin
