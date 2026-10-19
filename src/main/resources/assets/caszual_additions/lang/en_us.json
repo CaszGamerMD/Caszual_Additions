@@ -143,5 +143,6 @@
   "jade.caszual_additions.xp_charger.no_xp": "Status: Waiting for XP",
   "jade.caszual_additions.xp_charger.repairing": "Status: Repairing",
   "jade.caszual_additions.xp_charger.xp_needed": "XP needed to finish: %s",
-  "jade.caszual_additions.xp_charger.xp": "XP available: %s / %s"
+  "jade.caszual_additions.xp_charger.xp": "XP available: %s / %s",
+  "item.caszual_additions.pallet_jack": "Pallet Jack"
 }
