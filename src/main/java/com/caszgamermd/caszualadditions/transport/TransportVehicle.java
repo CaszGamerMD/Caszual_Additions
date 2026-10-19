@@ -37,6 +37,15 @@ public final class TransportVehicle extends PathfinderMob {
     @Override protected void registerGoals(){}
     @Override protected void defineSynchedData(SynchedEntityData.Builder b){super.defineSynchedData(b);b.define(KIND,0);b.define(DECK0,ItemStack.EMPTY);b.define(DECK1,ItemStack.EMPTY);b.define(DECK2,ItemStack.EMPTY);b.define(LOAD,0);}
     public int kind(){return entityData.get(KIND);}
+    @Override protected AABB makeBoundingBox(Vec3 pos){
+        // Entity's default square only covered the center of a long flatbed.
+        // During the superclass constructor synchronized data is not ready yet.
+        if(entityData==null)return super.makeBoundingBox(pos);
+        double yaw=Math.toRadians(getYRot()),w=kind()==4?1.66:1.2,h=length()*.5;
+        double x=Math.abs(Math.cos(yaw))*w+Math.abs(Math.sin(yaw))*h;
+        double z=Math.abs(Math.sin(yaw))*w+Math.abs(Math.cos(yaw))*h;
+        return new AABB(pos.x-x,pos.y,pos.z-z,pos.x+x,pos.y+2.8,pos.z+z);
+    }
     public int capacity(){return kind()==2?3:kind()==0||kind()==4?1:0;}
     public ItemStack deck(int i){return entityData.get(i==0?DECK0:i==1?DECK1:DECK2);}
     public int visible(int i){return (entityData.get(LOAD)>>(i*5))&31;}
@@ -76,6 +85,21 @@ public final class TransportVehicle extends PathfinderMob {
         }
         return false;
     }
+    public int freePalletSlot(){if(kind()!=2||!stationary())return -1;for(int i=0;i<capacity();i++)if(cargo[i].empty())return i;return -1;}
+    public Vec3 palletSlotPosition(int slot){double yaw=Math.toRadians(getYRot()),offset=(slot-1)*2.2;return position().add(-Math.sin(yaw)*offset,.71,Math.cos(yaw)*offset);}
+    /** Called on the server only; caller relinquishes its shipment immediately on success. */
+    public boolean acceptCrewPallet(ItemStack deck,List<ItemStack> contents){
+        int slot=freePalletSlot();if(slot<0||deck.isEmpty()||contents.size()!=216)return false;
+        PalletCargo load=new PalletCargo();load.deck=deck.copy();for(int i=0;i<216;i++)load.items.set(i,contents.get(i).copy());cargo[slot]=load;sync();return true;
+    }
+    public static String couplePair(TransportVehicle a,TransportVehicle b){
+        if(a==b)return "Select a different train car.";
+        if(a.kind()<1||a.kind()>3||b.kind()<1||b.kind()>3)return "Only train cars can couple.";
+        // Infer front/rear from track direction, so selection order is irrelevant.
+        Direction d=a.heading;
+        double forward=(b.getX()-a.getX())*d.getStepX()+(b.getZ()-a.getZ())*d.getStepZ();
+        return forward>0?a.couple(b):b.couple(a);
+    }
     public boolean hasCargo(){return Arrays.stream(cargo).anyMatch(c->!c.empty());}
     public boolean linkBay(BlockPos p){if(kind()!=4||!stationary()||p.equals(home))return false;destination=p;linkedBay=true;flightStage=0;returning=false;return true;}
     public boolean flightActive(){return kind()==4&&linkedBay&&(running||traveling);}
@@ -93,7 +117,8 @@ public final class TransportVehicle extends PathfinderMob {
             scan=find(scan.ahead);if(scan==null)return "Lead car is unloaded.";
             if(i==15)return "Maximum train length reached.";
         }
-        if(leader.running||running)return "Stop both cars before coupling.";
+        if(!leader.stationary()||!stationary())return "Stop the entire train before coupling.";
+        if(heading!=leader.heading)return "Place both cars facing the same track direction.";
         // Coupling is established on a straight, fully loaded stretch of warehouse rail.
         Vec3 offset=position().subtract(leader.position());
         if(Math.abs(offset.y)>.1||(Math.abs(offset.x)>.1&&Math.abs(offset.z)>.1))return "Align both cars on a straight rail before coupling.";
@@ -103,7 +128,7 @@ public final class TransportVehicle extends PathfinderMob {
         leader.trail.clear();
         for(int i=0;i<=samples;i++){
             Vec3 point=position().lerp(leader.position(),i/(double)samples);
-            BlockPos floor=BlockPos.containing(point.x,point.y-.26,point.z);
+            BlockPos floor=BlockPos.containing(point.x,point.y-.20,point.z);
             if(!server.hasChunkAt(floor)||!(server.getBlockState(floor).getBlock() instanceof GuidewayBlock way)||!way.rail()){
                 leader.trail.clear();return "Couplers need continuous warehouse rail between the cars.";
             }
@@ -164,7 +189,7 @@ public final class TransportVehicle extends PathfinderMob {
         var it=leader.trail.descendingIterator();
         while(it.hasNext()){Vec3 point=it.next();distance+=previous.distanceTo(point);if(distance>=spacing){goal=point;break;}previous=point;}
         if(goal==null){status="Taking up coupling slack";return;}
-        BlockPos floor=BlockPos.containing(goal.x,goal.y-.26,goal.z);
+        BlockPos floor=BlockPos.containing(goal.x,goal.y-.20,goal.z);
         if(!l.hasChunkAt(floor)||!(l.getBlockState(floor).getBlock() instanceof GuidewayBlock way)||!way.rail()){status="Trailing rail missing";return;}
         // Rejoining a train never teleports through walls or unloaded chunks.
         step(l,goal,.11);running=false;
@@ -213,6 +238,9 @@ public final class TransportVehicle extends PathfinderMob {
     }
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(level().isClientSide())return InteractionResult.SUCCESS;
+        if(player.getItemInHand(hand).is(com.caszgamermd.caszualadditions.racks.RackContent.STORAGE_SCANNER_ITEM)&&player instanceof net.minecraft.server.level.ServerPlayer sp){
+            sp.sendSystemMessage(Component.literal(com.caszgamermd.caszualadditions.racks.StoragePalletCrew.deliverTrain((ServerLevel)level(),sp,this)));return InteractionResult.SUCCESS;
+        }
         if(player.getItemInHand(hand).is(TransportContent.CONTROLLER))return TransportController.useVehicle(player,hand,this);
         if(!player.getItemInHand(hand).isEmpty())return InteractionResult.PASS;
         if(player.isShiftKeyDown()){

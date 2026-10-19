@@ -89,6 +89,11 @@ public final class StorageScannerItem extends Item {
         player.sendSystemMessage(Component.literal(result));
     }
 
+    @Override public InteractionResult interactLivingEntity(ItemStack stack,Player player,net.minecraft.world.entity.LivingEntity entity,InteractionHand hand){
+        if(!(entity instanceof com.caszgamermd.caszualadditions.transport.TransportVehicle train))return InteractionResult.PASS;
+        if(player instanceof ServerPlayer user&&player.level() instanceof ServerLevel level)user.sendSystemMessage(Component.literal(StoragePalletCrew.deliverTrain(level,user,train)));
+        return InteractionResult.SUCCESS;
+    }
     @Override public InteractionResult useOn(UseOnContext context){
         Player player=context.getPlayer();
         if(player==null)return InteractionResult.PASS;

@@ -63,7 +63,8 @@ public final class MovingPallet extends PathfinderMob {
     private int deliveryMode,releaseTicks;
     private BlockPos deliveryPosition=BlockPos.ZERO;
     private Direction deliveryFacing=Direction.NORTH;
-    private String deliveryFailure="";
+    private String deliveryFailure="",deliveryTrain="";
+    private int trainSlot=-1;
     // A nearly two-block-wide mob can stop pathing before reaching a
     // precise point. Align locally after navigation and detect real stalls.
     private int deliveryStallTicks;
@@ -223,6 +224,42 @@ public final class MovingPallet extends PathfinderMob {
         return "Golems carrying pallet to "+location.toShortString()
                 +"; they will release it only after positioning.";
     }
+    public String requestTrainDelivery(com.caszgamermd.caszualadditions.transport.TransportVehicle train){
+        if(!loaded()||delivered)return "No pallet ready to deliver.";
+        if(train.freePalletSlot()<0)return "Train must be stopped with a free pallet slot.";
+        deliveryTrain=train.getStringUUID();deliveryPosition=train.blockPosition();deliveryMode=3;trainSlot=-1;
+        releaseTicks=0;entityData.set(RELEASE_TICKS,0);entityData.set(RACK_INSERT_ACTIVE,true);
+        rackFrontRoute.clear();nextRackFrontPlan=0;deliveryFailure="MOVING TO FLATBED";
+        return "Golems will carry the pallet to the stopped flatbed and load a free slot. Keep a clear three-block aisle beside the train.";
+    }
+    private void tickTrainDelivery(ServerLevel level){
+        com.caszgamermd.caszualadditions.transport.TransportVehicle train=null;
+        try{if(level.getEntity(UUID.fromString(deliveryTrain)) instanceof com.caszgamermd.caszualadditions.transport.TransportVehicle v)train=v;}catch(IllegalArgumentException ignored){}
+        if(train==null||!train.isAlive()){waitForDelivery("WAITING: TRAIN UNLOADED OR REMOVED");return;}
+        int slot=train.freePalletSlot();
+        if(slot<0){waitForDelivery("WAITING: STOP TRAIN / FREE A PALLET SLOT");return;}
+        Vec3 cargoTarget=train.palletSlotPosition(slot);
+        double yaw=Math.toRadians(train.getYRot()),sideX=Math.cos(yaw),sideZ=Math.sin(yaw);
+        double side=(getX()-cargoTarget.x)*sideX+(getZ()-cargoTarget.z)*sideZ<0?-1:1;
+        double x=cargoTarget.x+side*sideX*2.8,z=cargoTarget.z+side*sideZ*2.8;
+        int y=(int)Math.floor(train.getY());
+        // Search a supported aisle at rail level or one block above/below.
+        BlockPos approach=null;
+        for(int dy:new int[]{0,1,-1}){BlockPos candidate=BlockPos.containing(x,y+dy,z);if(StorageGolemReturnPath.walkable(level,candidate)&&level.noCollision(this,getBoundingBox().move(x-getX(),y+dy-getY(),z-getZ()))){approach=candidate;break;}}
+        if(approach==null){waitForDelivery("WAITING: CLEAR SUPPORTED AISLE BESIDE FLATBED");return;}
+        double distance=Math.hypot(x-getX(),z-getZ());
+        if(trainSlot!=slot){trainSlot=slot;releaseTicks=0;entityData.set(RELEASE_TICKS,0);}
+        if(distance>.5||Math.abs(getY()-approach.getY())>.65){
+            releaseTicks=0;entityData.set(RELEASE_TICKS,0);
+            navigateToRackFront(level,approach,x,z);deliveryFailure="MOVING TO FLATBED";return;
+        }
+        getNavigation().stop();entityData.set(RACK_INSERT_ACTIVE,true);
+        entityData.set(RACK_INSERT_X,(float)(cargoTarget.x-getX()));entityData.set(RACK_INSERT_Z,(float)(cargoTarget.z-getZ()));entityData.set(RACK_INSERT_Y,(float)(cargoTarget.y-(getY()+1.48)));
+        deliveryFailure="LOADING FLATBED";
+        if(releaseTicks<RackPickupPlan.PULL_TICKS){entityData.set(RELEASE_TICKS,++releaseTicks);return;}
+        if(!train.acceptCrewPallet(pallet,contents)){waitForDelivery("WAITING: FLATBED NO LONGER AVAILABLE");return;}
+        clearCargo();deliveryMode=0;deliveryTrain="";deliveryFailure="";entityData.set(RACK_INSERT_ACTIVE,false);restoreWorkers(level);
+    }
     private boolean groundClear(ServerLevel level,BlockPos pos,Direction facing){
         if(!(pallet.getItem() instanceof BlockItem bi)
                 ||!(bi.getBlock() instanceof PalletBlock block))return false;
@@ -324,6 +361,7 @@ public final class MovingPallet extends PathfinderMob {
                 next.getY(),next.getZ()+.5,1.0);
     }
     private void tickDelivery(ServerLevel level){
+        if(deliveryMode==3){tickTrainDelivery(level);return;}
         if(!level.hasChunkAt(deliveryPosition))return;
         BlockPos target=deliveryPosition;
         double targetX,targetZ;
@@ -710,7 +748,7 @@ public final class MovingPallet extends PathfinderMob {
         out.putString("owner",owner);
         out.putBoolean("delivered",delivered);
         out.putInt("lift_ticks",liftTicks);
-        out.putInt("delivery_mode",deliveryMode);
+        out.putInt("delivery_mode",deliveryMode);out.putString("delivery_train",deliveryTrain);
         out.putInt("release_ticks",releaseTicks);
         out.store("delivery_position",BlockPos.CODEC,deliveryPosition);
         out.putString("delivery_facing",deliveryFacing.getName());
@@ -729,7 +767,7 @@ public final class MovingPallet extends PathfinderMob {
         }
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
-        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,2);
+        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,3);deliveryTrain=in.getStringOr("delivery_train","");
         releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,20);
         deliveryPosition=in.read("delivery_position",BlockPos.CODEC).orElse(BlockPos.ZERO);
         try{deliveryFacing=Direction.valueOf(
@@ -738,7 +776,7 @@ public final class MovingPallet extends PathfinderMob {
         catch(IllegalArgumentException ex){deliveryFacing=Direction.NORTH;}
         deliveryFailure=in.getStringOr("delivery_failure","");
         entityData.set(RELEASE_TICKS,releaseTicks);
-        entityData.set(RACK_INSERT_ACTIVE,deliveryMode==1);
+        entityData.set(RACK_INSERT_ACTIVE,deliveryMode==1||deliveryMode==3);
         for(int i=0;i<4;i++)
             shelves[i]=in.read("shelf_"+i,BlockPos.CODEC).orElse(BlockPos.ZERO);
         pallet=in.read("pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);
