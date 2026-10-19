@@ -23,6 +23,8 @@ jobs:
       - name: Verify HeadDB head-search API (nonblocking)
         continue-on-error: true
         run: python3 scripts/head_db_api_smoke.py
+      - name: Check Scanner unlink/relink, Pallet Dispenser floor and Pallet Jack cargo
+        run: python3 scripts/warehouse_scanner_dispenser_jack_smoke.py
       - name: Check wooden pallet 3x3 JEI sample using any planks
         run: python3 scripts/wooden_pallet_jei_preview_smoke.py
       - name: Verify XP Charger WAILA/Jade progress tooltip and optional registration
