@@ -20,7 +20,10 @@ for text in ("NonNullList.withSize(216","ContainerHelper.saveAllItems",
              "deliverToRack(", "deliverToGround(", "restoreWorkers(",
              "EntityDataSerializers.ITEM_STACK","EntityDataSerializers.INT"):
     assert text in entity,text
-assert entity.index("if(!verify(rack))") < entity.index("clearCargo();"),"No early cargo deletion"
+rack_delivery=entity[entity.index("public boolean deliverToRack("):entity.index("public boolean deliverToGround(")]
+assert rack_delivery.index("if(!verify(rack))") < rack_delivery.index("clearCargo();"),"No early rack cargo deletion"
+train_delivery=entity[entity.index("private void tickTrainDelivery("):entity.index("private boolean groundClear(")]
+assert train_delivery.index("if(!train.acceptCrewPallet(pallet,contents))") < train_delivery.index("clearCargo();"),"No early train cargo deletion"
 assert entity.index("complete=verify(dest);") < entity.index("clearCargo();",entity.index("public boolean deliverToGround("))
 assert "layer()" in model and "PartPose.offset(x,0,z)" in model
 assert "state.walkAnimationPos" in model and "leftLeg[i].xRot" in model

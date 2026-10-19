@@ -16,13 +16,14 @@ Target: Fabric 26.2. This branch adds transport without merging the feature into
 2. Click the pallet with the Transport Controller, then click a conveyor module or a stopped freight car/drone.
 3. Empty-hand click a carrier to pause/start. Wait a moment after stopping.
 4. Select the carrier with the controller, then click supported ground with a clear 2×2 footprint and three blocks of headroom to unload the first pallet. The destination must be within 12 blocks.
-5. To hand off between transport types, select the loaded carrier and then another stopped carrier with a free slot.
+5. To hand off between transport types, select the loaded carrier and then another stopped carrier with a free slot. Two train cars instead use the coupling action.
+6. To load a train with your Golems, finish lifting a pallet with your four-worker scanner crew, stop the whole train, then click a pallet flatbed with the **Warehouse Scanner**. The crew walks beside the first free slot, animates the pallet onto the car, and only then hands over its complete inventory. Leave a supported three-block-wide aisle alongside the flatbed. If the train moves, unloads or fills up, the crew waits with its cargo; scanning another destination retargets the order.
 
 All 216 inventory slots, four wood selections/plastic tint, filter settings, and wrapping are retained per pallet. A destroyed carrier drops its pallet decks and contents once. Breaking any part of a guideway removes the module as one unit.
 
 ## Trains
 
-Place an engine and cars on a continuous straight rail stretch. Leave six blocks between an engine and its first flatbed center, or nine between long flatbeds when coupling. Select the leading vehicle with the controller, then sneak-click the following car. Repeat from front to back. Empty-hand click the engine to start or pause. Empty-hand click a passenger car to board; use the normal dismount key to leave.
+Place an engine and cars on a continuous straight rail stretch. Leave six blocks between an engine and its first flatbed center, or nine between long flatbeds when coupling. Click the two cars with the Transport Controller, in either order. The track direction determines front/rear; both must face the same way, be stopped, have free couplers and sit on continuous straight rail within ten blocks. Failed attempts keep the first selection, so adjust the cars and retry. Repeat from front to back. Empty-hand click the engine to start or pause. Empty-hand click a passenger car to board; use the normal dismount key to leave.
 
 Pause the engine before loading or uncoupling. Sneak-click a stopped car with an empty hand to uncouple; sneak-click an empty, uncoupled vehicle again to pick it up. Redstone alongside any rail cell stops the engine. Place a **Train Station Post** two blocks to either side of a rail module center, at rail height or one block higher. The engine stops at that module center and stays stopped until you click the engine or post with an empty hand. Use a straight track module for stations.
 

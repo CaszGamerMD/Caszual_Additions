@@ -86,7 +86,7 @@ public final class TransportVehicle extends PathfinderMob {
         return false;
     }
     public int freePalletSlot(){if(kind()!=2||!stationary())return -1;for(int i=0;i<capacity();i++)if(cargo[i].empty())return i;return -1;}
-    public Vec3 palletSlotPosition(int slot){double yaw=Math.toRadians(getYRot()),offset=(slot-1)*2.2;return position().add(-Math.sin(yaw)*offset,.71,Math.cos(yaw)*offset);}
+    public Vec3 palletSlotPosition(int slot){double yaw=Math.toRadians(getYRot()),offset=(slot-1)*2.2;return position().add(Math.sin(yaw)*offset,.68,-Math.cos(yaw)*offset);}
     /** Called on the server only; caller relinquishes its shipment immediately on success. */
     public boolean acceptCrewPallet(ItemStack deck,List<ItemStack> contents){
         int slot=freePalletSlot();if(slot<0||deck.isEmpty()||contents.size()!=216)return false;
@@ -138,7 +138,7 @@ public final class TransportVehicle extends PathfinderMob {
     }
     private TransportVehicle find(String id){if(!(level() instanceof ServerLevel l)||id.isEmpty())return null;try{return l.getEntity(UUID.fromString(id)) instanceof TransportVehicle v?v:null;}catch(IllegalArgumentException e){return null;}}
     @Override public void tick(){
-        super.tick();setDeltaMovement(Vec3.ZERO);
+        super.tick();setBoundingBox(makeBoundingBox(position()));setDeltaMovement(Vec3.ZERO);
         if(!(level() instanceof ServerLevel l)||!isAlive())return;
         if(tickCount%10==0)TransitWorldData.get(l).record(this);
         if(!ahead.isEmpty()){follow(l);return;}
