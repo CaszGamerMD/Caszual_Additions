@@ -232,10 +232,28 @@ public final class MovingPallet extends PathfinderMob {
         rackFrontRoute.clear();nextRackFrontPlan=0;deliveryFailure="MOVING TO FLATBED";
         return "Golems will carry the pallet to the stopped flatbed and load a free slot. Keep a clear three-block aisle beside the train.";
     }
+    public String requestConveyorDelivery(ServerLevel level,BlockPos root){
+        if(!loaded()||delivered)return "No pallet ready to deliver.";
+        if(!com.caszgamermd.caszualadditions.transport.GuidewayBlock.complete(level,root))return "Choose a complete conveyor module.";
+        deliveryPosition=root.immutable();deliveryMode=4;deliveryTrain="";trainSlot=-1;
+        releaseTicks=0;entityData.set(RELEASE_TICKS,0);entityData.set(RACK_INSERT_ACTIVE,true);rackFrontRoute.clear();nextRackFrontPlan=0;
+        return "Golems will load this conveyor when its deck is clear. Keep a supported three-block aisle beside it.";
+    }
     private void tickTrainDelivery(ServerLevel level){
         com.caszgamermd.caszualadditions.transport.TransportVehicle train=null;
         try{if(level.getEntity(UUID.fromString(deliveryTrain)) instanceof com.caszgamermd.caszualadditions.transport.TransportVehicle v)train=v;}catch(IllegalArgumentException ignored){}
-        if(train==null||!train.isAlive()){waitForDelivery("WAITING: TRAIN UNLOADED OR REMOVED");return;}
+        boolean conveyor=deliveryMode==4;
+        if(conveyor){
+            if(!com.caszgamermd.caszualadditions.transport.GuidewayBlock.complete(level,deliveryPosition)){waitForDelivery("WAITING: CONVEYOR MISSING OR UNLOADED");return;}
+            var state=level.getBlockState(deliveryPosition);var way=(com.caszgamermd.caszualadditions.transport.GuidewayBlock)state.getBlock();
+            if(way.rail()||way.bay()){waitForDelivery("WAITING: CONVEYOR REPLACED");return;}
+            if(!level.getEntitiesOfClass(com.caszgamermd.caszualadditions.transport.TransportVehicle.class,new net.minecraft.world.phys.AABB(deliveryPosition).inflate(1.5,2,1.5)).isEmpty()){waitForDelivery("WAITING: CONVEYOR OCCUPIED");return;}
+            // An unspawned staging carrier computes the exact turn/ramp pose.
+            train=com.caszgamermd.caszualadditions.transport.TransportContent.VEHICLE.create(level,EntitySpawnReason.EVENT);
+            if(train==null)return;
+            train.configure(0,deliveryPosition,state.getValue(com.caszgamermd.caszualadditions.transport.GuidewayBlock.FACING));
+        }
+        if(train==null||!train.isAlive()){waitForDelivery("WAITING: TRANSPORT UNLOADED OR REMOVED");return;}
         int slot=train.freePalletSlot();
         if(slot<0){waitForDelivery("WAITING: STOP TRAIN / FREE A PALLET SLOT");return;}
         Vec3 cargoTarget=train.palletSlotPosition(slot);
@@ -251,13 +269,14 @@ public final class MovingPallet extends PathfinderMob {
         if(trainSlot!=slot){trainSlot=slot;releaseTicks=0;entityData.set(RELEASE_TICKS,0);}
         if(distance>.5||Math.abs(getY()-approach.getY())>.65){
             releaseTicks=0;entityData.set(RELEASE_TICKS,0);
-            navigateToRackFront(level,approach,x,z);deliveryFailure="MOVING TO FLATBED";return;
+            navigateToRackFront(level,approach,x,z);deliveryFailure=conveyor?"MOVING TO CONVEYOR":"MOVING TO FLATBED";return;
         }
         getNavigation().stop();entityData.set(RACK_INSERT_ACTIVE,true);
         entityData.set(RACK_INSERT_X,(float)(cargoTarget.x-getX()));entityData.set(RACK_INSERT_Z,(float)(cargoTarget.z-getZ()));entityData.set(RACK_INSERT_Y,(float)(cargoTarget.y-(getY()+1.48)));
-        deliveryFailure="LOADING FLATBED";
+        deliveryFailure=conveyor?"LOADING CONVEYOR":"LOADING FLATBED";
         if(releaseTicks<RackPickupPlan.PULL_TICKS){entityData.set(RELEASE_TICKS,++releaseTicks);return;}
-        if(!train.acceptCrewPallet(pallet,contents)){waitForDelivery("WAITING: FLATBED NO LONGER AVAILABLE");return;}
+        if(conveyor&&(!level.noCollision(train)||!level.addFreshEntity(train))){waitForDelivery("WAITING: CONVEYOR BLOCKED");return;}
+        if(!train.acceptCrewPallet(pallet,contents)){if(conveyor)train.discard();waitForDelivery("WAITING: FLATBED NO LONGER AVAILABLE");return;}
         clearCargo();deliveryMode=0;deliveryTrain="";deliveryFailure="";entityData.set(RACK_INSERT_ACTIVE,false);restoreWorkers(level);
     }
     private boolean groundClear(ServerLevel level,BlockPos pos,Direction facing){
@@ -361,7 +380,7 @@ public final class MovingPallet extends PathfinderMob {
                 next.getY(),next.getZ()+.5,1.0);
     }
     private void tickDelivery(ServerLevel level){
-        if(deliveryMode==3){tickTrainDelivery(level);return;}
+        if(deliveryMode==3||deliveryMode==4){tickTrainDelivery(level);return;}
         if(!level.hasChunkAt(deliveryPosition))return;
         BlockPos target=deliveryPosition;
         double targetX,targetZ;
@@ -767,7 +786,7 @@ public final class MovingPallet extends PathfinderMob {
         }
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
-        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,3);deliveryTrain=in.getStringOr("delivery_train","");
+        deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,4);deliveryTrain=in.getStringOr("delivery_train","");
         releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,20);
         deliveryPosition=in.read("delivery_position",BlockPos.CODEC).orElse(BlockPos.ZERO);
         try{deliveryFacing=Direction.valueOf(
@@ -776,7 +795,7 @@ public final class MovingPallet extends PathfinderMob {
         catch(IllegalArgumentException ex){deliveryFacing=Direction.NORTH;}
         deliveryFailure=in.getStringOr("delivery_failure","");
         entityData.set(RELEASE_TICKS,releaseTicks);
-        entityData.set(RACK_INSERT_ACTIVE,deliveryMode==1||deliveryMode==3);
+        entityData.set(RACK_INSERT_ACTIVE,deliveryMode==1||deliveryMode==3||deliveryMode==4);
         for(int i=0;i<4;i++)
             shelves[i]=in.read("shelf_"+i,BlockPos.CODEC).orElse(BlockPos.ZERO);
         pallet=in.read("pallet",ItemStack.CODEC).orElse(ItemStack.EMPTY);

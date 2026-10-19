@@ -225,6 +225,11 @@ public final class StoragePalletCrew {
         }
         return "Rack must be empty and have no installed pallet; carried cargo is unchanged.";
     }
+    public static String deliverConveyor(ServerLevel level,ServerPlayer player,BlockPos root){
+        MovingPallet rig=moving(level,player);
+        if(rig==null)return "Wait for all four Golems to finish lifting the pallet, then scan the conveyor.";
+        return rig.requestConveyorDelivery(level,root);
+    }
     public static String deliverTrain(ServerLevel level,ServerPlayer player,com.caszgamermd.caszualadditions.transport.TransportVehicle train){
         if(train.kind()!=2)return "Choose a pallet flatbed car, not an engine or passenger car.";
         if(train.freePalletSlot()<0)return "Stop the train and leave a free pallet slot on this car.";

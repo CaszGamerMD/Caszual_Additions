@@ -131,6 +131,10 @@ public final class StorageScannerItem extends Item {
             user.sendSystemMessage(Component.literal(StoragePalletCrew.interactRack(server,user,rack)));
             return InteractionResult.SUCCESS;
         }
+        if(server.getBlockState(clicked).getBlock() instanceof com.caszgamermd.caszualadditions.transport.GuidewayBlock way&&!way.rail()&&!way.bay()){
+            BlockPos root=com.caszgamermd.caszualadditions.transport.GuidewayBlock.root(clicked,server.getBlockState(clicked));
+            user.sendSystemMessage(Component.literal(StoragePalletCrew.deliverConveyor(server,user,root)));return InteractionResult.SUCCESS;
+        }
         // Place on the block face the player clicked; only a 2x2 clear,
         // replaceable horizontal footprint is accepted by the leader.
         BlockPos placement=clicked.relative(context.getClickedFace());
