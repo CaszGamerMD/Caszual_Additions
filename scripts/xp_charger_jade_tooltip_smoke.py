@@ -11,7 +11,7 @@ gradle=(r/"build.gradle").read_text()
 fabric=json.loads((r/"src/main/resources/fabric.mod.json").read_text())
 lang=json.loads((r/"src/main/resources/assets/caszual_additions/lang/en_us.json").read_text())
 
-assert 'modCompileOnly "maven.modrinth:jade:26.2.11+fabric"' in gradle
+assert 'compileOnly "maven.modrinth:jade:26.2.11+fabric"' in gradle
 assert "https://api.modrinth.com/maven" in gradle
 assert "jade" not in fabric["depends"]
 assert fabric["entrypoints"]["jade"]==["com.caszgamermd.caszualadditions.compat.jade.XpChargerJadePlugin"]
