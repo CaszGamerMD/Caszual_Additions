@@ -19,6 +19,11 @@ public final class IndustrialBrushItem extends Item {
         tag.putBoolean("industrial_primer",primer);
         tag.putInt("industrial_color",rgb&0xffffff);
         stack.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
+        // CUSTOM_NAME is carried by the ItemStack, so inventory, tooltip,
+        // hotbar and dropped-brush labels show the actual chemical/color.
+        stack.set(DataComponents.CUSTOM_NAME,Component.literal(primer
+                ?"Industrial Primer Brush"
+                :"Industrial Paint Brush #"+String.format("%06X",rgb&0xffffff)));
         return stack;
     }
     @Override public InteractionResult useOn(UseOnContext context){
