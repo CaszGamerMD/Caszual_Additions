@@ -62,7 +62,11 @@ public final class IndustrialPaintContent {
         FINISH=Registry.register(BuiltInRegistries.ENTITY_TYPE,key,
                 EntityType.Builder.<IndustrialFinishEntity>of(
                         IndustrialFinishEntity::new,MobCategory.MISC)
-                        .sized(.05f,.05f).clientTrackingRange(64).build(key));
+                        // The old 64-block tracking cap made paint vanish
+                        // while its *block* was still being rendered. Track
+                        // up to the maximal vanilla view horizon (32 chunks),
+                        // and let normal view/frustum visibility cull it.
+                        .sized(1.0f,1.0f).clientTrackingRange(512).build(key));
         IndustrialPaintNet.initialize();
         // A broken block's coat must go immediately, even before the entity's
         // periodic check. This also handles Creative block breaking.
