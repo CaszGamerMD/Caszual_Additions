@@ -16,7 +16,6 @@ import snownee.jade.api.config.IPluginConfig;
 public final class XpChargerJadeTooltip implements IBlockComponentProvider {
     private static final Identifier UID=CaszualAdditions.id("xp_charger_repair");
 
-        INSTANCE;
         private static final String PREFIX="caszual_xp_charger_";
 
         @Override public Identifier getUid(){return UID;}
