@@ -6,6 +6,8 @@ import mezz.jei.api.IModPlugin;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.registration.IRecipeRegistration;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
@@ -54,7 +56,8 @@ public final class CaszualJeiPlugin implements IModPlugin {
                 .group("caszual_additions_wooden_pallet")
                 .build();
         registration.addRecipes(RecipeTypes.CRAFTING,
-                List.of(new RecipeHolder<>(CaszualAdditions.id("wooden_pallet_jei_preview"),preview)));
+                List.of(new RecipeHolder<>(ResourceKey.create(Registries.RECIPE,
+                        CaszualAdditions.id("wooden_pallet_jei_preview")),preview)));
     }
 
     @Override
