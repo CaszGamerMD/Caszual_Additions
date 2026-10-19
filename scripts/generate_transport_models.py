@@ -26,24 +26,65 @@ for name in names:
   def add(a,b,t='steel'):els.append(cube(a,b,t))
   if name.endswith('_left') or name.endswith('_right'):
    rail=name.startswith('pallet_rail');right=name.endswith('_right')
-   add([0,0,0],[16,1,16],'dark')
-   # Quarter-circle radial rollers and twin curved rails, split into owned cells.
-   for z in range(16):
-    run=None;start=0
-    for x in range(17):
-     tex=None
-     if x<16:
-      gx=col*16+x+.5;gz=row*16+z+.5
-      dx=48-gx if right else gx;dz=48-gz
-      radius=math.hypot(dx,dz);angle=math.atan2(dz,dx)
-      if rail:
-       if abs(radius-14)<1.2 or abs(radius-34)<1.2:tex='edge'
-       elif 9<radius<39 and int(angle*20)%3==0:tex='wood'
-      elif 3<radius<45:
-       tex=('yellow' if int(angle*22)%2==0 else 'steel') if radius<5 or radius>43 else ('edge' if int(angle*32)%2==0 else 'dark')
-     if tex!=run:
-      if run:add([start,1,z],[x,3.8 if run=='edge' else 3.3,z+1],run)
-      run=tex;start=x
+   def band(inner,outer,bottom,top,texture):
+    # Analytic circle edges, quarter-pixel strips. One continuous UV field
+    # prevents a whole iron/wood texture repeating on every tiny slice.
+    step=.25;last=None
+    for iz in range(64):
+     z=iz*step;global_z=row*16+z+step*.5;distance=48-global_z
+     if distance>=outer:continue
+     lo=math.sqrt(max(0,inner*inner-distance*distance));hi=math.sqrt(outer*outer-distance*distance)
+     if right:lo,hi=48-hi,48-lo
+     lo=max(0,lo-col*16);hi=min(16,hi-col*16)
+     if hi-lo<.0001:continue
+     e=cube([lo,bottom,z],[hi,top,z+step],texture)
+     for face in ('up','down'):
+      e['faces'][face]['uv']=[(col*16+lo)/3,(row*16+z)/3,(col*16+hi)/3,(row*16+z+step)/3]
+     if last is not None and last['from'][0]==e['from'][0] and last['to'][0]==e['to'][0] and last['to'][2]==e['from'][2]:
+      last['to'][2]=e['to'][2]
+      for face in ('up','down'):last['faces'][face]['uv'][3]=e['faces'][face]['uv'][3]
+     else:els.append(e);last=e
+   def radial(theta,radius,length,width,bottom,top,texture,tangent=0):
+    # Solid sleepers/cleats use vanilla-supported element rotations.
+    if part!=4:return
+    angle=math.radians(theta);cx=radius*math.cos(angle)+tangent*math.sin(angle);cz=48-radius*math.sin(angle)+tangent*math.cos(angle)
+    if right:cx=48-cx
+    rotation=-theta if right else theta
+    w,d=length,width
+    if rotation>45:rotation-=90;w,d=d,w
+    if rotation<-45:rotation+=90;w,d=d,w
+    cx-=16;cz-=16
+    if min(cx-w/2,cz-d/2)<-16 or max(cx+w/2,cz+d/2)>32:
+     radial(theta,radius-length/4,length/2,width,bottom,top,texture,tangent)
+     radial(theta,radius+length/4,length/2,width,bottom,top,texture,tangent)
+     return
+    e=cube([cx-w/2,bottom,cz-d/2],[cx+w/2,top,cz+d/2],texture)
+    if rotation:e['rotation']={'origin':[round(cx,4),0,round(cz,4)],'axis':'y','angle':rotation,'rescale':False}
+    els.append(e)
+   if rail:
+    # Gauge matches straight rails exactly, including the asymmetric
+    # 10/37-pixel centers after a clockwise/counterclockwise rotation.
+    radii=(11,38) if right else (10,37)
+    for theta in (0,22.5,45,67.5,90):
+     tangent=-1.5 if theta==0 else 1.5 if theta==90 else 0
+     radial(theta,24,34,2.4,0,1.2,'wood',tangent)
+     for radius in radii:
+      radial(theta,radius,5,2.6,1.2,1.65,'dark',tangent)
+    for radius in radii:
+     band(radius-1,radius+1,1.2,3,'steel')
+     band(radius-1.6,radius+1.6,3,3.7,'edge')
+   else:
+    # A continuous curved belt avoids the old serrated roller fan.
+    band(0,48,0,1.4,'steel')
+    band(2,46,1.4,3.7,'rubber')
+    band(0,2,1.4,4.4,'steel');band(46,48,1.4,4.4,'steel')
+    band(.5,1.5,4.4,4.65,'yellow');band(46.5,47.5,4.4,4.65,'yellow')
+    for theta in (0,22.5,45,67.5,90):
+     tangent=-.7 if theta==0 else .7 if theta==90 else 0
+     radial(theta,24,42,1,3.7,4,'dark',tangent)
+    # Full-width end rollers match the straight deck's material and height.
+    radial(0,24,44,1.2,2.5,4,'edge',-1)
+    radial(90,24,44,1.2,2.5,4,'edge',1)
   elif name=='drone_parking_bay':
    add([0,0,0],[16,2.5,16],'steel');add([.2,2.5,.2],[15.8,3,15.8],'dark')
    if col in (0,2):
@@ -92,7 +133,9 @@ for name in names:
     for x in range(1,16,4):raised.append(cube([x,7.3,3.96],[x+2,8.7,4],'rubber'))
    model(f'{name}_{part}_raised',raised)
   for e in els:
-   q=json.loads(json.dumps(e));q['from']=[e['from'][0]+(col-1)*16,e['from'][1],e['from'][2]+(row-1)*16];q['to']=[e['to'][0]+(col-1)*16,e['to'][1],e['to'][2]+(row-1)*16];full.append(q)
+   q=json.loads(json.dumps(e));q['from']=[e['from'][0]+(col-1)*16,e['from'][1],e['from'][2]+(row-1)*16];q['to']=[e['to'][0]+(col-1)*16,e['to'][1],e['to'][2]+(row-1)*16]
+   if 'rotation' in q:q['rotation']['origin']=[q['rotation']['origin'][0]+(col-1)*16,q['rotation']['origin'][1],q['rotation']['origin'][2]+(row-1)*16]
+   full.append(q)
   for facing,rot in [('north',0),('east',90),('south',180),('west',270)]:
    if name=='conveyor_hold':
     for power in (False,True):variants[f'facing={facing},part={part},powered={str(power).lower()}']={'model':f'caszual_additions:block/transport/{name}_{part}'+('_raised' if power else ''),'y':rot}
@@ -101,6 +144,8 @@ for name in names:
  # A reduced whole-module inventory model keeps every element inside vanilla bounds.
  for e in full:
   for key in ('from','to'):e[key]=[(e[key][0]-8)/3+8,e[key][1]/3+5,(e[key][2]-8)/3+8]
+  if 'rotation' in e:
+   o=e['rotation']['origin'];e['rotation']['origin']=[(o[0]-8)/3+8,o[1]/3+5,(o[2]-8)/3+8]
  model(name+'_item',full,DISPLAY);item(name,name+'_item')
 
 # Chassis models authored in world units, divided by three for block model bounds.

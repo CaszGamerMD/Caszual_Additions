@@ -7,7 +7,7 @@ COLORS={'steel':'#555e68','dark':'#394149','rubber':'#1c2024','edge':'#bfc7cb','
 font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',22)
 small=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',14)
 canvas=Image.new('RGB',(1500,1470),'#141b24');draw=ImageDraw.Draw(canvas)
-entries=[('pallet_engine','Train engine'),('pallet_car','Three-pallet flatbed'),('passenger_car','Passenger carriage'),('pallet_drone','Pallet drone'),('conveyor_straight_item','Straight conveyor'),('conveyor_left_item','Left conveyor'),('conveyor_up_item','Ascending conveyor'),('drone_parking_bay_item','Drone parking bay'),('conveyor_hold_item','Redstone hold conveyor'),('conveyor_logic_item','Logic conveyor'),('train_station_post','Train station post'),('pallet_transit_computer','Pallet transit computer')]
+entries=[('pallet_engine','Train engine'),('pallet_car','Three-pallet flatbed'),('passenger_car','Passenger carriage'),('pallet_drone','Pallet drone'),('conveyor_straight_item','Straight conveyor'),('conveyor_left_item','Left conveyor'),('pallet_rail_left_item','Left corner rail'),('drone_parking_bay_item','Drone parking bay'),('conveyor_right_item','Right corner conveyor'),('pallet_rail_right_item','Right corner rail'),('train_station_post','Train station post'),('pallet_transit_computer','Pallet transit computer')]
 for idx,(name,label) in enumerate(entries):
  col,row=idx%4,idx//4;x0,y0=col*375,row*470+50
  model=json.loads((ROOT/f'src/main/resources/assets/caszual_additions/models/block/transport/{name}.json').read_text())
@@ -20,6 +20,9 @@ for idx,(name,label) in enumerate(entries):
   coords={'up':[(x,Y,z),(X,Y,z),(X,Y,Z),(x,Y,Z)],'south':[(x,y,Z),(X,y,Z),(X,Y,Z),(x,Y,Z)],'east':[(X,y,z),(X,y,Z),(X,Y,Z),(X,Y,z)]}
   for face,verts in coords.items():
    color=COLORS[element['faces'][face]['texture'][1:]];rgb=tuple(int(color[i:i+2],16) for i in (1,3,5));shade={'up':1.12,'south':.8,'east':.98}[face];rgb=tuple(min(255,int(v*shade)) for v in rgb)
+   if 'rotation' in element:
+    rot=element['rotation'];ox,oy,oz=rot['origin'];a=math.radians(rot['angle']);co,si=math.cos(a),math.sin(a)
+    verts=[(ox+(vx-ox)*co+(vz-oz)*si,vy,oz-(vx-ox)*si+(vz-oz)*co) for vx,vy,vz in verts]
    proj=[project(v) for v in verts];points+=proj
    depth=sum(v[0]+v[2]+v[1]*.6 for v in verts)/4
    faces.append((depth,proj,rgb))
