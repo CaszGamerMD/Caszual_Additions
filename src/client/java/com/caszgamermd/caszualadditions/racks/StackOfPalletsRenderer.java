@@ -41,6 +41,7 @@ public final class StackOfPalletsRenderer implements
             ModelFeatureRenderer.@org.jspecify.annotations.Nullable CrumblingOverlay cracks){
         BlockEntityRenderer.super.extractRenderState(magazine,state,partial,camera,cracks);
         blocks.update(state.glass,Blocks.GLASS.defaultBlockState(),DISPLAY);
+        blocks.update(state.floorGrill,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
         int displaySlot=0;
         for(int slot=0;slot<12;slot++){
             ItemStack palletItem=magazine.getItem(slot);
@@ -70,9 +71,9 @@ public final class StackOfPalletsRenderer implements
             }
             for(int i=0;i<4;i++){
                 blocks.update(state.boards[index][i],deck[i].defaultBlockState(),DISPLAY);
-                state.boards[slot][i].tintLayers().clear();
+                state.boards[index][i].tintLayers().clear();
                 if(plastic)
-                    state.boards[slot][i].tintLayers().add(
+                    state.boards[index][i].tintLayers().add(
                             PalletData.plasticColor(palletItem));
             }
         }
@@ -92,6 +93,21 @@ public final class StackOfPalletsRenderer implements
     }
     @Override public void submit(StackOfPalletsRenderState state,PoseStack poses,
             SubmitNodeCollector collector,CameraRenderState camera){
+        // A thin 2x2 steel floor grate remains visible EVEN when the
+        // dispenser holds zero pallets. It is a physical 1px base, and
+        // the lattice is raised only ~.01 blocks above the dark frame.
+        var grille=state.floorGrill;
+        for(float x:new float[]{.015f,1.93f})
+            cube(grille,state,poses,collector,x,.008f,.015f,.055f,.052f,1.97f);
+        for(float z:new float[]{.015f,1.93f})
+            cube(grille,state,poses,collector,.015f,.008f,z,1.97f,.052f,.055f);
+        for(int line=1;line<8;line++){
+            float at=line*.25f;
+            cube(grille,state,poses,collector,at-.018f,.012f,.07f,
+                    .036f,.027f,1.86f);
+            cube(grille,state,poses,collector,.07f,.012f,at-.018f,
+                    1.86f,.027f,.036f);
+        }
         for(int i=0;i<12;i++){
             if(!state.occupied[i])continue;
             // Each individual real pallet fills the ENTIRE 2x2 footprint.
