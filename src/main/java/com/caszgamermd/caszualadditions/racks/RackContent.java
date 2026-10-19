@@ -35,7 +35,7 @@ public final class RackContent {
     public static EntityType<StorageGolem> STORAGE_GOLEM_TYPE;
     public static EntityType<MovingPallet> MOVING_PALLET_TYPE;
     public static Block RACK_COMPUTER;
-    public static Item STORAGE_SCANNER_ITEM,PORTABLE_WRAPPER,STACK_OF_PALLETS;
+    public static Item STORAGE_SCANNER_ITEM,PORTABLE_WRAPPER,STACK_OF_PALLETS,PALLET_JACK;
     public static StackOfPalletsBlock PALLET_STACK_BLOCK;
     public static BlockEntityType<StackOfPalletsBlockEntity> PALLET_STACK_ENTITY;
     public static ShulkerTankBlock SHULKER_TANK;
@@ -120,6 +120,11 @@ public final class RackContent {
                 new StorageScannerItem(new Item.Properties()
                         .stacksTo(1).setId(scannerKey)));
         StorageScannerItem.initialize();
+        ResourceKey<Item> jackKey=ResourceKey.create(Registries.ITEM,
+                CaszualAdditions.id("pallet_jack"));
+        PALLET_JACK=Registry.register(BuiltInRegistries.ITEM,jackKey,
+                new PalletJackItem(new Item.Properties().stacksTo(1).setId(jackKey)));
+        PalletJackItem.initialize();
         ResourceKey<Item> portableWrapKey=ResourceKey.create(Registries.ITEM,
                 CaszualAdditions.id("portable_pallet_wrapper"));
         PORTABLE_WRAPPER=Registry.register(BuiltInRegistries.ITEM,portableWrapKey,
