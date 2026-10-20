@@ -94,6 +94,7 @@ public final class MovingPallet extends PathfinderMob {
     private int lastFollowProgressTick,obstacleSide;
     // The one physical load follows a checked footprint-wide path, not
     // unrestricted vanilla ground navigation that climbs nearby crates.
+    private static final double CARRY_WALK_SPEED=.144;
     private final ArrayDeque<BlockPos> floorFollowRoute=new ArrayDeque<>();
     private BlockPos lastFloorPlayer=BlockPos.ZERO;
     private int nextFloorFollowPlan;
@@ -118,7 +119,7 @@ public final class MovingPallet extends PathfinderMob {
     public static AttributeSupplier.Builder attributes(){
         return PathfinderMob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH,40)
-                .add(Attributes.MOVEMENT_SPEED,.144)
+                .add(Attributes.MOVEMENT_SPEED,CARRY_WALK_SPEED)
                 .add(Attributes.FOLLOW_RANGE,48);
     }
     @Override protected void registerGoals(){}
@@ -1399,9 +1400,23 @@ public final class MovingPallet extends PathfinderMob {
                 &&shelf.debugStatuses();
         if(isCustomNameVisible()!=debug)setCustomNameVisible(debug);
     }
+    /** The entire pallet and the four animated Golems use ONE movement
+     *  attribute. Apply the concrete bonus to that single entity, so the
+     *  team stays locked to its load. Never affect unloaded or lifting rigs.
+     *  Adjusting the base attribute preserves the same obstacle-aware
+     *  follow, remote pickup and rack-delivery navigation paths. */
+    private void updateCarrySurfaceSpeed(ServerLevel level){
+        boolean fast=!pallet.isEmpty()&&!delivered&&liftTicks>=12&&onGround()
+                &&WarehouseCarrySpeed.onConcrete(level,getX(),getY(),getZ());
+        double wanted=CARRY_WALK_SPEED*(fast?WarehouseCarrySpeed.CONCRETE_MULTIPLIER:1.0);
+        var attribute=getAttribute(Attributes.MOVEMENT_SPEED);
+        if(attribute!=null&&Math.abs(attribute.getBaseValue()-wanted)>1e-6)
+            attribute.setBaseValue(wanted);
+    }
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel server))return;
+        updateCarrySurfaceSpeed(server);
         if(tickCount%10==0)updateCrewLabel();
         if((deliveryMode>=3&&deliveryMode<=6)&&tickCount%40==0){
             // Keep a short, expiring simulation corridor around the actual
