@@ -152,6 +152,14 @@ public final class MovingPallet extends PathfinderMob {
     public boolean isDelivering(){return deliveryMode!=0;}
     public boolean returningToWarehouse(){return deliveryMode==3;}
     public boolean remoteExchangeActive(){return deliveryMode>=4&&deliveryMode<=6;}
+    /** Only live remote exchanges claim a target; ordinary direct carriers
+     * owned by the same player must not block unrelated warehouse missions. */
+    public BlockPos remoteExchangeTarget(){
+        return remoteExchangeActive()?deliveryPosition:null;
+    }
+    /** This remains true after a successful exchange returns toward home;
+     * direct scanner controls must never select the remote-owned carrier. */
+    public boolean remoteMission(){return !remoteWarehouse.equals(BlockPos.ZERO);}
     public boolean freshPalletOnly(){
         if(pallet.isEmpty())return false;
         for(ItemStack content:contents)if(!content.isEmpty())return false;

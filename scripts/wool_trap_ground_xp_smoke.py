@@ -31,6 +31,15 @@ assert "RADIUS=9.0" in trap_silence
 assert "sculkOrWardenSound" in trap_silence
 assert "WardenTrapSilence.near" in sounds
 assert "playSeededSound" in sounds
+# Animal Garden and other mods may play direct SoundEvent values for which
+# BuiltInRegistries.SOUND_EVENT.getKey(value) returns null. These must NOT
+# crash the server or be canceled, even when a trap is nearby.
+assert "if(sound==null||sound.value()==null" in sounds
+assert "var key=BuiltInRegistries.SOUND_EVENT.getKey(sound.value());" in sounds
+assert "return key!=null" in sounds
+assert "key.toString()" in sounds
+assert "getKey(sound.value()).toString()" not in sounds
+assert sounds.index("WardenTrapSilence.near((ServerLevel)(Object)this,position)") < sounds.index("var key=BuiltInRegistries.SOUND_EVENT.getKey(sound.value())")
 assert "WardenTrapSilence.near(level,position)" in boots
 assert "distanceToSqr(player.position())<=49.0" in boots
 assert "rightSlipper" in render and "leftSlipper" in render
@@ -40,6 +49,52 @@ assert "model.leftLeg.translateAndRotate(pose)" in render
 assert "WoolGearLayer::layer" in client
 assert "new com.caszgamermd.caszualadditions.antiwarden.WoolGearLayer(this,context)" in avatar
 assert (res/"assets/caszual_additions/textures/entity/wool_sensory_gear.png").exists()
+# Equipped armor is ONLY the custom articulated 3D layer. Vanilla's
+# full helmet/leg armor shell previously covered the skin in a giant
+# purple panel / overlaid the actual earmuffs and slipper geometry.
+asset=json.loads((res/"assets/caszual_additions/equipment/wool_armor.json").read_text())
+assert all(len(layers)==0 for layers in asset["layers"].values())
+assert all(k in asset["layers"] for k in ("humanoid","humanoid_baby","humanoid_leggings"))
+assert "return LayerDefinition.create(mesh,256,256);" in render
+assert "texOffs(0,64)" in render and "texOffs(48,64)" in render
+assert "addOrReplaceChild(\"left_slipper\",slipper" in render
+assert "addOrReplaceChild(\"right_slipper\",slipper" in render
+assert "model.head.translateAndRotate(pose)" in render
+assert "model.leftLeg.translateAndRotate(pose)" in render
+assert "model.rightLeg.translateAndRotate(pose)" in render
+assert "full-face" in render or "full face" in render
+# UV atlas and model texture dimensions must MATCH; all five material
+# regions (offwhite wool, slate, rim, lens, sole) are present in PNG.
+import struct
+png=(res/"assets/caszual_additions/textures/entity/wool_sensory_gear.png").read_bytes()
+assert png.startswith(bytes.fromhex("89504e470d0a1a0a"))
+assert struct.unpack(">II",png[16:24])==(256,256)
+assert len(png)>900
+# Check the ACTUAL PNG chunks, Adler-32 and decompressed pixel rows.
+# IHDR-only checks didn't catch a truncated IDAT that produced huge
+# missing-texture magenta panels in-game.
+import zlib
+chunks={}
+offset=8
+while offset<len(png):
+    length=struct.unpack(">I",png[offset:offset+4])[0]
+    kind=png[offset+4:offset+8]
+    payload=png[offset+8:offset+8+length]
+    stored_crc=struct.unpack(">I",png[offset+8+length:offset+12+length])[0]
+    assert zlib.crc32(kind+payload)==stored_crc,(kind,offset)
+    chunks.setdefault(kind,[]).append(payload)
+    offset+=12+length
+assert offset==len(png)
+assert b"IDAT" in chunks and b"PLTE" in chunks and b"IEND" in chunks
+pixels=zlib.decompress(b"".join(chunks[b"IDAT"]))
+assert len(pixels)==256*257
+assert all(pixels[y*257]==0 for y in range(256))
+assert len(set(pixels))>=8
+# The custom atlas is cream/gray/green. Never include magenta UV areas.
+palette=chunks[b"PLTE"][0]
+for i in range(0,len(palette),3):
+    red,green,blue=palette[i:i+3]
+    assert not (red>130 and blue>130 and green<40)
 for name,minimum in [("wool_helmet",12),("wool_boots",10)]:
     model=json.loads((res/f"assets/caszual_additions/models/item/{name}.json").read_text())
     assert len(model["elements"])>=minimum

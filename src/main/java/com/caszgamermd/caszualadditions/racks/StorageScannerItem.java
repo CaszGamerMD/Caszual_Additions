@@ -68,8 +68,8 @@ public final class StorageScannerItem extends Item {
                 ||response.startsWith("Four Golems dispatched");
     }
     private static void message(ServerPlayer player,String text){
-        // Routine scanner traffic belongs in the action bar, not the
-        // permanent chat log. The DEBUG switch can opt into chat output.
+        // Keep routine Scanner output in the action bar. Rack Computer
+        // DEBUG can opt in to persistent chat while multi-job queue stays.
         ItemStack hand=player.getMainHandItem();
         BlockPos computer=hand.is(RackContent.STORAGE_SCANNER_ITEM)
                 ?linkedComputer(hand,player.level()):null;
@@ -80,39 +80,114 @@ public final class StorageScannerItem extends Item {
         else WarehouseGolemDebug.actionBar(player,Component.literal(text));
     }
 
-    /** Persist remote pickup requests on the linked scanner item. */
-    private static void queuePickup(ItemStack scanner,BlockPos target){
+    /** Persistent per-scanner FIFO. Every requested pallet represents a
+     * separate four-Golem crew, never an additional order for one crew. */
+    private static final int MAX_PENDING_REMOTE=64;
+
+    private static List<BlockPos> queuedPickups(CompoundTag tag){
+        List<BlockPos> targets=new java.util.ArrayList<>();
+        // Old worlds store a single pending pickup. Migrate it in memory and
+        // drop the legacy keys on the next successful queue write.
+        if(tag.getBooleanOr("remote_pickup_pending",false))
+            targets.add(new BlockPos(tag.getIntOr("remote_pickup_x",0),
+                    tag.getIntOr("remote_pickup_y",0),
+                    tag.getIntOr("remote_pickup_z",0)));
+        int size=Math.clamp(tag.getIntOr("remote_pickup_queue_size",0),
+                0,MAX_PENDING_REMOTE);
+        for(int i=0;i<size;i++){
+            BlockPos target=new BlockPos(tag.getIntOr("remote_pickup_"+i+"_x",0),
+                    tag.getIntOr("remote_pickup_"+i+"_y",0),
+                    tag.getIntOr("remote_pickup_"+i+"_z",0));
+            if(!targets.contains(target))targets.add(target);
+        }
+        return targets;
+    }
+
+    private static void storePickups(ItemStack scanner,List<BlockPos> targets){
         CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
         CompoundTag tag=data==null?new CompoundTag():data.copyTag();
-        tag.putBoolean("remote_pickup_pending",true);
-        tag.putInt("remote_pickup_x",target.getX());
-        tag.putInt("remote_pickup_y",target.getY());
-        tag.putInt("remote_pickup_z",target.getZ());
-        scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
-    }
-    private static void clearPickup(ItemStack scanner){
-        CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
-        if(data==null)return;
-        CompoundTag tag=data.copyTag();
         tag.remove("remote_pickup_pending");
         tag.remove("remote_pickup_x");
         tag.remove("remote_pickup_y");
         tag.remove("remote_pickup_z");
+        int prior=Math.clamp(tag.getIntOr("remote_pickup_queue_size",0),
+                0,MAX_PENDING_REMOTE);
+        for(int i=0;i<Math.max(prior,targets.size());i++){
+            tag.remove("remote_pickup_"+i+"_x");
+            tag.remove("remote_pickup_"+i+"_y");
+            tag.remove("remote_pickup_"+i+"_z");
+        }
+        tag.putInt("remote_pickup_queue_size",targets.size());
+        for(int i=0;i<targets.size();i++){
+            BlockPos target=targets.get(i);
+            tag.putInt("remote_pickup_"+i+"_x",target.getX());
+            tag.putInt("remote_pickup_"+i+"_y",target.getY());
+            tag.putInt("remote_pickup_"+i+"_z",target.getZ());
+        }
         scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
     }
-    private static String pendingPickup(ItemStack scanner,ServerLevel world,
-            ServerPlayer player){
+
+    private static String queuePickup(ItemStack scanner,BlockPos target){
         CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
-        if(data==null||mode(scanner)!=Mode.REMOTE)return "";
-        CompoundTag tag=data.copyTag();
-        if(!tag.getBooleanOr("remote_pickup_pending",false))return "";
-        BlockPos computer=linkedComputer(scanner,world);
-        if(computer==null)return "INVALID: scanner link lost.";
-        WarehouseRemoteTickets.keep(world,computer);
-        BlockPos target=new BlockPos(tag.getIntOr("remote_pickup_x",0),
-                tag.getIntOr("remote_pickup_y",0),tag.getIntOr("remote_pickup_z",0));
-        return RemotePalletDispatch.request(world,player,computer,target);
+        List<BlockPos> targets=queuedPickups(
+                data==null?new CompoundTag():data.copyTag());
+        if(targets.contains(target))
+            return "REMOTE: target "+target.toShortString()+" is already queued.";
+        if(targets.size()>=MAX_PENDING_REMOTE)
+            return "REMOTE: scanner queue full ("+MAX_PENDING_REMOTE+" targets).";
+        targets.add(target.immutable());
+        storePickups(scanner,targets);
+        return "REMOTE: queued "+target.toShortString()+"; "
+                +targets.size()+" job(s) awaiting dispatch.";
     }
+
+    private static void clearPickup(ItemStack scanner){
+        if(scanner.get(DataComponents.CUSTOM_DATA)!=null)
+            storePickups(scanner,java.util.List.of());
+    }
+
+    /** Try all queued targets. Failure to dispatch one crew must not block
+     * independent jobs with clear aisles and their own four free workers.
+     * The four shelf tokens are consumed atomically by the dispatcher and
+     * returned on spawn failure. No partial (1-3 worker) team runs a job. */
+    private static String dispatchPending(ItemStack scanner,ServerLevel world,
+            ServerPlayer player,boolean includeWaiting){
+        if(mode(scanner)!=Mode.REMOTE)return "";
+        CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
+        if(data==null)return "";
+        List<BlockPos> pending=queuedPickups(data.copyTag());
+        if(pending.isEmpty())return "";
+        BlockPos computer=linkedComputer(scanner,world);
+        if(computer==null){
+            clearPickup(scanner);
+            return "INVALID: scanner link lost; queued jobs cleared.";
+        }
+        WarehouseRemoteTickets.keep(world,computer);
+        List<BlockPos> remaining=new java.util.ArrayList<>();
+        List<String> reports=new java.util.ArrayList<>();
+        String waitReason="";
+        for(int i=0;i<pending.size();i++){
+            BlockPos target=pending.get(i);
+            String result=RemotePalletDispatch.request(world,player,computer,target);
+            if(dispatched(result)||result.startsWith("INVALID:")){
+                reports.add(result);
+            }else{
+                remaining.add(target);
+                if(waitReason.isEmpty())waitReason=result;
+                // All queued jobs use the same warehouse. Without four
+                // docked Golems there is no full crew for a later job.
+                if(result.equals("WAITING: four docked Golems required.")){
+                    remaining.addAll(pending.subList(i+1,pending.size()));
+                    break;
+                }
+            }
+        }
+        if(!remaining.equals(pending))storePickups(scanner,remaining);
+        if(includeWaiting&&!remaining.isEmpty())
+            reports.add("REMOTE: "+remaining.size()+" job(s) queued. "+waitReason);
+        return String.join("\n",reports);
+    }
+
     public static void initialize(){
         ServerTickEvents.END_SERVER_TICK.register(server->{
             if(server.getTickCount()%100!=0)return;
@@ -122,11 +197,8 @@ public final class StorageScannerItem extends Item {
                 for(int i=0;i<inventory.getContainerSize();i++){
                     ItemStack scanner=inventory.getItem(i);
                     if(!scanner.is(RackContent.STORAGE_SCANNER_ITEM))continue;
-                    String status=pendingPickup(scanner,level,player);
-                    if(dispatched(status)||status.startsWith("INVALID:")){
-                        clearPickup(scanner);
-                        player.sendSystemMessage(Component.literal(status));
-                    }
+                    String status=dispatchPending(scanner,level,player,false);
+                    if(!status.isEmpty())player.sendSystemMessage(Component.literal(status));
                 }
             }
         });
@@ -217,13 +289,11 @@ public final class StorageScannerItem extends Item {
                             +"2x2 ground pallet. Wrap it before requesting a swap.");
                     return InteractionResult.SUCCESS;
                 }
-                queuePickup(scanner,old.getBlockPos());
-                String result=pendingPickup(scanner,server,user);
-                if(dispatched(result)||result.startsWith("INVALID:")){
-                    clearPickup(scanner);
-                    message(user,result);
-                }else message(user,"REMOTE queued: "+result
-                        +". Scanner retries without forgetting the target.");
+                String queued=queuePickup(scanner,old.getBlockPos());
+                if(queued.startsWith("REMOTE: queued")){
+                    String result=dispatchPending(scanner,server,user,true);
+                    message(user,result.isEmpty()?queued:result);
+                }else message(user,queued);
                 return InteractionResult.SUCCESS;
             }
             message(user,"REMOTE mode only requests a swap of a glass-wrapped "
