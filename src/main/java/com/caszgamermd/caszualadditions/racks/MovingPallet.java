@@ -70,6 +70,8 @@ public final class MovingPallet extends PathfinderMob {
     private ItemStack pallet=ItemStack.EMPTY;
     private NonNullList<ItemStack> contents=NonNullList.withSize(216,ItemStack.EMPTY);
     private boolean delivered,deathDropsReleased,recallAfterDelivery;
+    // Persist the owner-death pause with the actual pallet entity and cargo.
+    private boolean waitingForPlayer;
     private int liftTicks;
     private int deliveryMode,releaseTicks;
     private BlockPos deliveryPosition=BlockPos.ZERO;
@@ -1391,6 +1393,7 @@ public final class MovingPallet extends PathfinderMob {
                 :deliveryMode==5?"3 GOLEMS | MOVING ASIDE"
                 :deliveryMode==6?"3 GOLEMS | COURIER HANDOFF"
                 :liftTicks<12?"4 GOLEMS | LIFTING"
+                :waitingForPlayer?"4 GOLEMS | WAITING FOR PLAYER"
                 :"4 GOLEMS | FOLLOWING PLAYER";
         if(getCustomName()==null||!getCustomName().getString().equals(text))
             setCustomName(net.minecraft.network.chat.Component.literal(text));
@@ -1452,7 +1455,24 @@ public final class MovingPallet extends PathfinderMob {
         // or location, even if the player walks away after selecting it.
         if(isDelivering()){tickDelivery(server);return;}
         var player=server.getPlayerByUUID(id);
-        if(player==null||player.isSpectator())return;
+        if(player==null||!player.isAlive()||player.isSpectator()){
+            waitingForPlayer=true;
+            getNavigation().stop();
+            setDeltaMovement(0,getDeltaMovement().y,0);
+            floorFollowRoute.clear();
+            return;
+        }
+        if(waitingForPlayer){
+            if(player.distanceToSqr(getX(),getY(),getZ())>16.0*16.0){
+                getNavigation().stop();
+                setDeltaMovement(0,getDeltaMovement().y,0);
+                return;
+            }
+            waitingForPlayer=false;
+            floorFollowRoute.clear();
+            lastFloorPlayer=BlockPos.ZERO;
+            nextFloorFollowPlan=0;
+        }
         // The four attached robots are one 1.85-wide load. Prefer level
         // warehouse aisles; allow one-block drops; only climb when the
         // followed PLAYER has actually moved up.
@@ -1491,6 +1511,7 @@ public final class MovingPallet extends PathfinderMob {
         super.addAdditionalSaveData(out);
         out.putString("owner",owner);
         out.putBoolean("delivered",delivered);
+        out.putBoolean("waiting_for_player",waitingForPlayer);
         out.putBoolean("recall_after_delivery",recallAfterDelivery);
         out.putInt("lift_ticks",liftTicks);
         out.putInt("delivery_mode",deliveryMode);
@@ -1517,6 +1538,7 @@ public final class MovingPallet extends PathfinderMob {
         super.readAdditionalSaveData(in);
         owner=in.getStringOr("owner","");
         delivered=in.getBooleanOr("delivered",false);
+        waitingForPlayer=in.getBooleanOr("waiting_for_player",false);
         recallAfterDelivery=in.getBooleanOr("recall_after_delivery",false);
         if(delivered){
             setNoGravity(true);
