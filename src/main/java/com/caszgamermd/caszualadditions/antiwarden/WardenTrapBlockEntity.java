@@ -21,6 +21,7 @@ public final class WardenTrapBlockEntity extends BlockEntity {
     private static final int DAMAGE_INTERVAL=20;
     private static final float DAMAGE_PER_TICK=2.0F;
     private UUID captive;
+    private boolean wasSilent;
     private int harmTicks;
 
     public WardenTrapBlockEntity(BlockPos pos,BlockState state){
@@ -34,6 +35,8 @@ public final class WardenTrapBlockEntity extends BlockEntity {
                 :level.getEntity(captive) instanceof Warden w ?w:null;
         if(warden==null||!warden.isAlive()){
             if(captive!=null){
+                if(warden!=null&&warden.isAlive())warden.setSilent(wasSilent);
+                WardenTrapSilence.update(level,worldPosition,false);
                 captive=null;
                 harmTicks=0;
                 setChanged();
@@ -42,6 +45,10 @@ public final class WardenTrapBlockEntity extends BlockEntity {
             if(level.getGameTime()%10==0)tryCapture(level);
             return;
         }
+        // Persist suppression after reload, and prevent the captive from
+        // emitting ambient, attack and heartbeat sound events.
+        WardenTrapSilence.update(level,worldPosition,true);
+        warden.setSilent(true);
         // Reassert the restraint before the Warden's next AI movement.
         Vec3 center=new Vec3(worldPosition.getX()+.5,
                 worldPosition.getY()+.125,worldPosition.getZ()+.5);
@@ -67,6 +74,9 @@ public final class WardenTrapBlockEntity extends BlockEntity {
         if(targets.isEmpty())return;
         Warden caught=targets.getFirst();
         captive=caught.getUUID();
+        wasSilent=caught.isSilent();
+        caught.setSilent(true);
+        WardenTrapSilence.update(level,worldPosition,true);
         harmTicks=0;
         caught.getNavigation().stop();
         caught.setDeltaMovement(Vec3.ZERO);
@@ -74,6 +84,14 @@ public final class WardenTrapBlockEntity extends BlockEntity {
         level.playSound(null,pos,SoundEvents.IRON_TRAPDOOR_CLOSE,
                 SoundSource.BLOCKS,.9f,.7f);
         setChanged();
+    }
+    @Override public void setRemoved(){
+        if(level instanceof ServerLevel world){
+            WardenTrapSilence.update(world,worldPosition,false);
+            if(captive!=null&&world.getEntity(captive) instanceof Warden warden
+                    &&warden.isAlive())warden.setSilent(wasSilent);
+        }
+        super.setRemoved();
     }
     private void setTripped(ServerLevel level,boolean value){
         BlockState state=getBlockState();
@@ -86,6 +104,7 @@ public final class WardenTrapBlockEntity extends BlockEntity {
         super.saveAdditional(out);
         if(captive!=null)out.putString("warden",captive.toString());
         out.putInt("damage_ticks",harmTicks);
+        out.putBoolean("was_silent",wasSilent);
     }
     @Override protected void loadAdditional(ValueInput in){
         super.loadAdditional(in);
@@ -94,5 +113,6 @@ public final class WardenTrapBlockEntity extends BlockEntity {
             captive=id.isBlank()?null:UUID.fromString(id);
         }catch(IllegalArgumentException ex){captive=null;}
         harmTicks=Math.max(0,in.getIntOr("damage_ticks",0));
+        wasSilent=in.getBooleanOr("was_silent",false);
     }
 }

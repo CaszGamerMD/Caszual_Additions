@@ -23,6 +23,13 @@ public abstract class WoolBootsVibrationMixin {
     @Shadow public abstract PositionSource getListenerSource();
     private boolean caszual_additions$silent(ServerLevel level,
             GameEvent.Context context){
+        // A triggered Warden Snare has a 9-block acoustic dead zone.
+        // Sensors and shriekers INSIDE it must not schedule vibrations,
+        // regardless of who or what emitted the game event.
+        if(getListenerSource().getPosition(level)
+                .map(position->com.caszgamermd.caszualadditions.antiwarden
+                        .WardenTrapSilence.near(level,position))
+                .orElse(false))return true;
         if(!(context.sourceEntity() instanceof Player player)
                 ||!player.getItemBySlot(EquipmentSlot.FEET).is(AntiWardenContent.WOOL_BOOTS))
             return false;

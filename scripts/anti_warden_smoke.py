@@ -32,7 +32,8 @@ assert "getGameTime()%2" in trap
 assert 'out.putString("warden",captive.toString())' in trap
 assert "TRIPPED" in trapblock
 mix=json.loads((resources/"caszual_additions.antiwarden.mixins.json").read_text())
-assert len(mix["mixins"])==2
+assert len(mix["mixins"])==3
+assert "WardenTrapSoundMixin" in mix["mixins"]
 assert mix["package"]=="com.caszgamermd.caszualadditions.antiwarden.mixin"
 fabric=json.loads((resources/"fabric.mod.json").read_text())
 assert "caszual_additions.antiwarden.mixins.json" in fabric["mixins"]
