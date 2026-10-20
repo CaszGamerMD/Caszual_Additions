@@ -133,5 +133,15 @@
   "block.caszual_additions.industrial_primer_can": "Industrial Primer Can",
   "item.caszual_additions.industrial_paint_brush": "Industrial Paint Brush",
   "item.caszual_additions.industrial_paint_remover": "Industrial Paint Remover",
-  "block.caszual_additions.industrial_paint_surface": "Industrial Paint Surface"
+  "block.caszual_additions.industrial_paint_surface": "Industrial Paint Surface",
+  "jade.caszual_additions.xp_charger.empty": "Slot: Empty",
+  "jade.caszual_additions.xp_charger.item": "Repairing: %s",
+  "jade.caszual_additions.xp_charger.durability": "Durability: %s / %s (%s%%)",
+  "jade.caszual_additions.xp_charger.complete": "Status: Fully Repaired",
+  "jade.caszual_additions.xp_charger.no_mending": "Status: Missing Mending",
+  "jade.caszual_additions.xp_charger.no_tank": "Status: No XP Tank Connected",
+  "jade.caszual_additions.xp_charger.no_xp": "Status: Waiting for XP",
+  "jade.caszual_additions.xp_charger.repairing": "Status: Repairing",
+  "jade.caszual_additions.xp_charger.xp_needed": "XP needed to finish: %s",
+  "jade.caszual_additions.xp_charger.xp": "XP available: %s / %s"
 }

@@ -20,6 +20,8 @@ base { archivesName = project.archives_base_name }
 
 repositories {
     mavenCentral()
+    // Optional Jade/WAILA tooltip API for Fabric 26.2.
+    maven { name = "Modrinth"; url = uri("https://api.modrinth.com/maven") }
     maven { name = "BlameJared"; url = "https://maven.blamejared.com" }
     maven { url = uri('https://maven.gegy.dev') }
 }
@@ -29,6 +31,7 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     clientCompileOnly 'dev.lambdaurora.lambdynamiclights:lambdynamiclights-api:4.12.4+26.2'
+    compileOnly "maven.modrinth:jade:26.2.11+fabric"
     testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.12.2'
 

@@ -24,6 +24,9 @@
     ],
     "lambdynlights:initializer": [
       "com.caszgamermd.caszualadditions.utils.cosmetics.CosmeticDynamicLights"
+    ],
+    "jade": [
+      "com.caszgamermd.caszualadditions.compat.jade.XpChargerJadePlugin"
     ]
   },
   "depends": {
@@ -40,6 +43,7 @@
   "suggests": {
     "jei": "*",
     "linked_aquariums": ">=0.8.0",
-    "lambdynlights": ">=4.12.0"
+    "lambdynlights": ">=4.12.0",
+    "jade": ">=26.2.11"
   }
 }

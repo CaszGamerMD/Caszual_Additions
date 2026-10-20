@@ -23,6 +23,8 @@ jobs:
       - name: Verify HeadDB head-search API (nonblocking)
         continue-on-error: true
         run: python3 scripts/head_db_api_smoke.py
+      - name: Verify XP Charger WAILA/Jade progress tooltip and optional registration
+        run: python3 scripts/xp_charger_jade_tooltip_smoke.py
       - name: Verify XP Drain crouch transfers, hardware art and Collector localization (blocking)
         run: python3 scripts/xp_drain_collector_charger_smoke.py
       - name: Verify clipboard, collapsed scaffold placement, and owner-death Golem wait
