@@ -124,5 +124,8 @@
   "item.caszual_additions.wool_helmet": "Wool Hood",
   "item.caszual_additions.wool_boots": "Silent Wool Boots",
   "block.caszual_additions.warden_trap": "Warden Snare Trap",
-  "block.caszual_additions.plastic_curtains": "Plastic Curtains"
+  "block.caszual_additions.plastic_curtains": "Plastic Curtains",
+  "block.caszual_additions.rack_stairs": "Rack Stairs",
+  "block.caszual_additions.rack_ladder": "Rack Ladder",
+  "block.caszual_additions.rack_scaffolding": "Rack Scaffolding"
 }

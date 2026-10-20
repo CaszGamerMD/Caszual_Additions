@@ -58,6 +58,9 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
      * Stale reservations expire so interrupted jobs cannot lock a rack. */
     public boolean startPull(java.util.UUID owner,int floorY){
         if(level==null||level.isClientSide()||!hasPallet()||!glassWrapped())return false;
+        if(!WarehouseRackAccess.clearOfStairs((net.minecraft.server.level.ServerLevel)level,this)
+                ||!WarehouseRackAccess.prepare((net.minecraft.server.level.ServerLevel)level,this))
+            return false;
         long now=level.getGameTime();
         String id=owner.toString();
         if(!pullOwner.isBlank()&&now-pullLastTick>200)resetPull();
@@ -78,7 +81,11 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     }
     public int pullFloorY(){return pullFloorY;}
     public void cancelPull(java.util.UUID owner){
-        if(pulling(owner))resetPull();
+        if(pulling(owner)){
+            resetPull();
+            if(level instanceof net.minecraft.server.level.ServerLevel world)
+                WarehouseRackAccess.release(world,this);
+        }
     }
     private void resetPull(){
         if(pullOwner.isBlank())return;
@@ -104,6 +111,11 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     }
     public void install(ItemStack item) {
         if (hasPallet()) return;
+        // The RackBlock checks the safety corridor BEFORE consuming an
+        // item, and entry here remains safe for Golem-driven installs.
+        if(level instanceof net.minecraft.server.level.ServerLevel world
+                &&(!WarehouseRackAccess.clearOfStairs(world,this)
+                    ||!WarehouseRackAccess.prepare(world,this)))return;
         resetPull();
         pallet = item.copyWithCount(1);
         filterItem=com.caszgamermd.caszualadditions.pallet.PalletData.filter(item);
@@ -113,6 +125,8 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         filterUpgrade=com.caszgamermd.caszualadditions.pallet.PalletData.filterInstalled(item)
                 ?new ItemStack(RackContent.PALLET_FILTER):ItemStack.EMPTY;
         setChanged();
+        if(level instanceof net.minecraft.server.level.ServerLevel world)
+            WarehouseRackAccess.release(world,this);
     }
     /**
      * Transfer the entire installed pallet, its filter and all 216 slots to
@@ -123,6 +137,9 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
     public boolean liftToCarrier(StorageGolem leader) {
         if (leader == null || !hasPallet() || !glassWrapped() || leader.holdsPallet()
                 ||pullProgress()<RackPickupPlan.PULL_TICKS)return false;
+        if(level instanceof net.minecraft.server.level.ServerLevel world
+                &&(!WarehouseRackAccess.clearOfStairs(world,this)
+                    ||!WarehouseRackAccess.prepare(world,this)))return false;
         ItemStack deck = com.caszgamermd.caszualadditions.pallet.GlassPalletWrap.withWrap(
                 com.caszgamermd.caszualadditions.pallet.PalletData.applyFilterSettings(pallet,this),
                 true);
@@ -141,6 +158,8 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         filterScope=0;
         resetPull();
         setChanged();
+        if(level instanceof net.minecraft.server.level.ServerLevel world)
+            WarehouseRackAccess.release(world,this);
         return true;
     }
 

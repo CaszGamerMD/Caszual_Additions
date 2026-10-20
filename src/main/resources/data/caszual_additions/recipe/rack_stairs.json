@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "I  ",
+    "III",
+    "IHI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "H": "minecraft:heavy_weighted_pressure_plate"
+  },
+  "result": {
+    "id": "caszual_additions:rack_stairs",
+    "count": 1
+  }
+}

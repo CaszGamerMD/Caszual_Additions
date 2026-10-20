@@ -53,6 +53,11 @@ public final class RackPickupPlan {
     public static RackPickupPlan find(ServerLevel level,RackBlockEntity rack){
         BlockPos root=rack.getBlockPos();
         Direction direction=rack.facing();
+        // The loading crew waits if a mobile staircase is parked across
+        // the pallet bay or a person is using a deployed scaffold. Empty
+        // scaffolds retract with their safety railings before extraction.
+        if(!WarehouseRackAccess.clearOfStairs(level,rack)
+                ||!WarehouseRackAccess.prepare(level,rack))return null;
         // Pull out horizontally FIRST: need a two-wide clear channel from
         // the open rack face. A raised load then lowers within that channel.
         for(int col=0;col<2;col++)
@@ -60,7 +65,10 @@ public final class RackPickupPlan {
                 for(int y=root.getY();y<=root.getY()+1;y++){
                     BlockPos position=withY(RackBlock.cell(root,direction,col)
                             .relative(direction,depth),y);
-                    if(!air(level,position))return null;
+                    if(!air(level,position)){
+                        WarehouseRackAccess.release(level,rack);
+                        return null;
+                    }
                 }
         for(int y=root.getY();y>=root.getY()-MAX_DROP;y--){
             boolean clear=true;
@@ -81,6 +89,9 @@ public final class RackPickupPlan {
                 }
             if(clear)return new RackPickupPlan(root,y,direction);
         }
+        // Nobody actually started lifting this pallet. Re-open any
+        // scaffolding we tentatively folded during route inspection.
+        WarehouseRackAccess.release(level,rack);
         return null;
     }
     private static BlockPos withY(BlockPos pos,int y){
