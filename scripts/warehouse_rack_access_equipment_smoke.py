@@ -145,7 +145,7 @@ assert "WarehouseRackAccess.prepare(" in rack
 assert "WarehouseRackAccess.release(world,this)" in rack
 assert "WarehouseRackAccess.clearOfStairs" in plan
 assert "WarehouseRackAccess.clearOfStairs" in rack
-assert "for(int h=-4;h<=2;h++)" in access
+assert "for(int h=-RackPickupPlan.FORKLIFT_MAX_HEIGHT;h<=2;h++)" in access
 
 # A single Stair item, single 3x1x3 outline, and safely rotated 9-part rig.
 assert "IntegerProperty.create(\"part\",0,8)" in stairs
