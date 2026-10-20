@@ -84,6 +84,8 @@ jobs:
         run: python3 scripts/warehouse_remote_courier_navigation_smoke.py
       - name: Verify courier departure clearance and no dancing pickup trio
         run: python3 scripts/warehouse_remote_crew_deadlock_smoke.py
+      - name: Verify parallel full-size warehouse crews and scanner queue (blocking)
+        run: python3 scripts/warehouse_parallel_remote_crews_smoke.py
       - name: Verify courier avoids nearby pallet decks and retains its assigned target
         run: python3 scripts/warehouse_nearby_pallet_courier_smoke.py
       - name: Verify remote handoff transitions and connected carrying arm joints

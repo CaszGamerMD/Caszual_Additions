@@ -15,13 +15,15 @@ audit=j("WarehouseDiagnostics.java")
 assert "public enum Mode { REMOTE, DIRECT }" in scanner
 assert 'tag.putString("scanner_mode",next.name());' in scanner
 assert "if(next==Mode.DIRECT)clearPickup(scanner);" in scanner
-assert "if(data==null||mode(scanner)!=Mode.REMOTE)return" in scanner
+assert 'if(mode(scanner)!=Mode.REMOTE)return "";' in scanner
 assert 'if(player.isShiftKeyDown())onComputerClick(server,user,scanner,clicked);' in scanner
 assert "if(player.isShiftKeyDown())" in scanner
 assert "Mode next=toggleMode(scanner);" in scanner
 assert "REMOTE mode only requests a swap" in scanner
 assert "queuePickup(scanner,old.getBlockPos());" in scanner
-assert "if(dispatched(status)||status.startsWith(\"INVALID:\"))" in scanner
+assert "dispatchPending(scanner,server,user,true)" in scanner
+assert 'if(dispatched(result)||result.startsWith("INVALID:"))' in scanner
+assert "remaining.add(target);" in scanner
 assert "if(server.getBlockEntity(clicked) instanceof StorageGolemShelfEntity)" in scanner
 assert "StoragePalletCrew.enlistFromShelf(level,player,home,shelf)" in scanner
 assert "StoragePalletCrew.pickupGround(server,user,clicked)" in scanner
