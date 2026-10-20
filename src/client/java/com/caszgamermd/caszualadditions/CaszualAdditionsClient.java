@@ -3,6 +3,7 @@ package com.caszgamermd.caszualadditions;
 import com.caszgamermd.caszualadditions.headvending.HeadVendingClient;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntityRenderer;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
+import com.caszgamermd.caszualadditions.painting.IndustrialPaintClient;
 import com.caszgamermd.caszualadditions.racks.RackContent;
 import com.caszgamermd.caszualadditions.racks.ShulkerStationScreen;
 import com.caszgamermd.caszualadditions.racks.StackOfPalletsScreen;
@@ -47,6 +48,7 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         CaszUtilsClient.initialize();
         HeadVendingClient.initialize();
         RackComputerClient.initialize();
+        IndustrialPaintClient.initialize();
         ModelLayerRegistry.registerModelLayer(
                 com.caszgamermd.caszualadditions.antiwarden.WoolGearLayer.LAYER,
                 com.caszgamermd.caszualadditions.antiwarden.WoolGearLayer::layer);

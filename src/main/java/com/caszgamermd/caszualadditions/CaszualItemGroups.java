@@ -12,6 +12,7 @@ import net.minecraft.world.item.Items;
 import com.caszgamermd.caszualadditions.funbarrel.FunBarrelContent;
 import com.caszgamermd.caszualadditions.antiwarden.AntiWardenContent;
 import com.caszgamermd.caszualadditions.racks.RackContent;
+import com.caszgamermd.caszualadditions.painting.IndustrialPaintContent;
 
 public final class CaszualItemGroups {
     public static final ResourceKey<CreativeModeTab> MAIN = ResourceKey.create(
@@ -57,6 +58,11 @@ public final class CaszualItemGroups {
                                     RackContent.PTP_WRAP_ITEM,
                                     RackContent.STORAGE_SHELF_ITEM,RackContent.STORAGE_GOLEM_ITEM))
                                 add.accept(item);
+                            for(var paintItem:java.util.List.of(
+                                    IndustrialPaintContent.PAINT_CAN_ITEM,
+                                    IndustrialPaintContent.PRIMER_CAN_ITEM,
+                                    IndustrialPaintContent.BRUSH,
+                                    IndustrialPaintContent.REMOVER))add.accept(paintItem);
                             add.accept(RackContent.PORTABLE_WRAPPER);
                             add.accept(RackContent.STACK_OF_PALLETS);
                             add.accept(com.caszgamermd.caszualadditions.xp.XpBlocks.XP_COLLECTOR.asItem());

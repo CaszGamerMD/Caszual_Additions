@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " I ",
+    "IWI",
+    " I "
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "W": "minecraft:water_bucket"
+  },
+  "result": {
+    "id": "caszual_additions:industrial_paint_remover",
+    "count": 1
+  }
+}
