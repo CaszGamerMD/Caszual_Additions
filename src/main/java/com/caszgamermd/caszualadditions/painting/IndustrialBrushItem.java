@@ -19,7 +19,26 @@ public final class IndustrialBrushItem extends Item {
         tag.putBoolean("industrial_primer",primer);
         tag.putInt("industrial_color",rgb&0xffffff);
         stack.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
+        // CUSTOM_NAME is carried by the ItemStack, so inventory, tooltip,
+        // hotbar and dropped-brush labels show the actual chemical/color.
+        stack.set(DataComponents.CUSTOM_NAME,Component.literal(primer
+                ?"Industrial Primer Brush"
+                :"Industrial Paint Brush #"+String.format("%06X",rgb&0xffffff)));
         return stack;
+    }
+    /** Also identifies brushes dipped before this update; their original
+     * custom data already records primer/pigment even without CUSTOM_NAME.
+     */
+    @Override public Component getName(ItemStack stack){
+        CustomData data=stack.get(DataComponents.CUSTOM_DATA);
+        if(data==null)return Component.literal("Industrial Brush (Unloaded)");
+        CompoundTag tag=data.copyTag();
+        if(tag.getBooleanOr("industrial_primer",false))
+            return Component.literal("Industrial Primer Brush");
+        if(tag.contains("industrial_color"))
+            return Component.literal("Industrial Paint Brush #"
+                    +String.format("%06X",tag.getIntOr("industrial_color",0)&0xffffff));
+        return Component.literal("Industrial Brush (Unloaded)");
     }
     @Override public InteractionResult useOn(UseOnContext context){
         if(!(context.getLevel() instanceof ServerLevel world))
