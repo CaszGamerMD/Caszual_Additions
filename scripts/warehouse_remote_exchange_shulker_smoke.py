@@ -18,7 +18,9 @@ stationScreen=read(client/"racks/ShulkerStationScreen.java")
 stationBlock=read(main/"ShulkerTankBlock.java")
 registration=read(main/"RackContent.java")
 clientReg=read(client/"CaszualAdditionsClient.java")
-assert 'tag.putBoolean("remote_pickup_pending",true)' in scanner
+assert 'tag.putInt("remote_pickup_queue_size",targets.size())' in scanner
+assert 'queuedPickups(CompoundTag tag)' in scanner
+assert 'remote_pickup_pending' in scanner  # legacy one-target migration
 # Linking never enlists: Direct now only summons via a linked shelf.
 assert "onComputerClick(ServerLevel level,ServerPlayer player," in scanner
 assert "if(player.isShiftKeyDown())onComputerClick(server,user,scanner,clicked);" in scanner
