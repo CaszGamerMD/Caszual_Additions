@@ -74,7 +74,7 @@ public final class WarehouseForklift extends PathfinderMob {
     /** Dispatch requires one docked, named Golem driver from a real shelf. */
     private boolean hire(ServerLevel world){
         if(driver!=null&&world.getEntity(driver) instanceof StorageGolem)return true;
-        for(int dx=-20;dx<=20;dx+=2)for(int dz=-20;dz<=20;dz+=2)
+        for(int dx=-20;dx<=20;dx++)for(int dz=-20;dz<=20;dz++)
             for(int dy=-2;dy<=2;dy++){
                 BlockPos at=blockPosition().offset(dx,dy,dz);
                 if(!world.hasChunkAt(at)
