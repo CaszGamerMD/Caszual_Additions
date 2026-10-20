@@ -233,7 +233,9 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
                     front.getCounterClockWise()}){
                 if(state.aisleEndFaces[side.get3DDataValue()])
                     submitFacingPlate(state,poses,collector,state.aisleLabel,
-                            side,x,z,2.61f,0xffffde9b);
+                            side,x,z,2.61f,
+                            WarehouseAislePriority.isInput(state.aisleLabel)
+                                    ?0xffff9933:0xffffde9b);
             }
         }
     }
