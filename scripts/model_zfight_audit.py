@@ -6,7 +6,8 @@ volumes alone are often intentional and should not be treated as z-fighting.
 
 Rotated model elements, separate variants placed side-by-side, animated entity
 models, and runtime/multipart renderers require in-game visual inspection.
-This script reports potential issues, never removes geometry automatically.
+This script reports overlapping faces and fails CI until they are addressed.
+It never removes geometry automatically.
 
 Usage: python3 scripts/model_zfight_audit.py
 """
@@ -66,11 +67,13 @@ def collisions(elements: list[dict]) -> list[tuple[str, str, str, float]]:
 def main() -> None:
     inspected = 0
     suspects = []
+    invalid = []
     for file in sorted(MODEL_DIR.rglob("*.json")):
         try:
             data = json.loads(file.read_text(encoding="utf-8"))
         except (OSError, ValueError) as error:
             print(f"INVALID MODEL: {file.relative_to(ROOT)}: {error}")
+            invalid.append(file)
             continue
         elements = data.get("elements")
         if not isinstance(elements, list):
@@ -89,10 +92,13 @@ def main() -> None:
             print(f"  {face:5} {a} / {b}: {area} pixel²")
         if len(hits) > 8:
             print(f"  ... {len(hits) - 8} more")
-    print(f"\nReview {len(suspects)} model(s) with coplanar faces. "
-          "Reported overlaps can be hidden internal geometry; check in-game.")
-    # This is an audit, not a hard build failure. Avoid breaking releases
-    # because a decorative multiblock intentionally shares a hidden face.
+    print(f"\nAudit: {len(suspects)} model(s) with coplanar faces; "
+          f"{len(invalid)} invalid JSON model(s).")
+    print("This checks static axis-aligned geometry only. Rotated elements, "
+          "entity renderers, and adjacent independent blocks still need "
+          "in-game z-fighting inspection.")
+    if suspects or invalid:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

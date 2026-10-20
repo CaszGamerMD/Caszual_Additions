@@ -57,9 +57,6 @@
         "up": {
           "texture": "#iron"
         },
-        "down": {
-          "texture": "#iron"
-        },
         "north": {
           "texture": "#iron"
         },
@@ -89,9 +86,6 @@
         "up": {
           "texture": "#dark"
         },
-        "down": {
-          "texture": "#dark"
-        },
         "north": {
           "texture": "#dark"
         },
@@ -108,7 +102,7 @@
     },
     {
       "from": [
-        2,
+        2.03,
         2,
         4
       ],
@@ -119,9 +113,6 @@
       ],
       "faces": {
         "up": {
-          "texture": "#iron"
-        },
-        "down": {
           "texture": "#iron"
         },
         "north": {
@@ -145,15 +136,12 @@
         4
       ],
       "to": [
-        14,
+        13.97,
         5,
         12
       ],
       "faces": {
         "up": {
-          "texture": "#iron"
-        },
-        "down": {
           "texture": "#iron"
         },
         "north": {
@@ -183,9 +171,6 @@
       ],
       "faces": {
         "up": {
-          "texture": "#dark"
-        },
-        "down": {
           "texture": "#dark"
         },
         "north": {
