@@ -162,7 +162,8 @@ public final class RackBlock extends Block implements EntityBlock {
                 ||held.is(RackContent.PORTABLE_WRAPPER)
                 ||held.is(RackContent.STORAGE_SCANNER_ITEM)
                 ||held.is(RackContent.PALLET_JACK)
-                ||held.is(RackContent.FORKLIFT_ITEM))
+                ||held.is(RackContent.FORKLIFT_ITEM)
+                ||held.is(RackContent.FORKLIFT_CONTROLLER))
             return InteractionResult.PASS;
         if(held.is(net.minecraft.world.item.Items.SHEARS)&&rack.glassWrapped()){
             if(!level.isClientSide())rack.unwrapGlass();

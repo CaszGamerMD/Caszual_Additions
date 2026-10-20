@@ -40,7 +40,10 @@ assert "finishForkliftDriving()" in golem
 assert "world.getEntity(driver)" in fork
 assert "if(PalletJackItem.loaded(jack))" in fork
 assert "if(!drive(world,landing))return;" in fork
-assert "busy()" in item and "nearest.order(level,rack)" in item
+assert "busy()" in item and "nearest.order(level,rack,selectedSource)" in item
+assert "FORKLIFT_CONTROLLER" in read("RackContent.java")
+assert "selectedFloorPallet" in fork
+assert "StorageGroundPalletTransfer.wrappedController(level,clicked)" in item
 assert "WarehouseForkliftModel::layer" in (
  root/"src/client/java/com/caszgamermd/caszualadditions/CaszualAdditionsClient.java").read_text()
 assert "mastMiddle.y=22f-height*5.5f" in (client/"WarehouseForkliftModel.java").read_text()

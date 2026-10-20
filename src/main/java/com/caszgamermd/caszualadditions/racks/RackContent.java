@@ -35,7 +35,7 @@ public final class RackContent {
     public static EntityType<StorageGolem> STORAGE_GOLEM_TYPE;
     public static EntityType<MovingPallet> MOVING_PALLET_TYPE;
     public static EntityType<WarehouseForklift> FORKLIFT_TYPE;
-    public static Item FORKLIFT_ITEM;
+    public static Item FORKLIFT_ITEM,FORKLIFT_CONTROLLER;
     public static Block RACK_COMPUTER;
     public static Item STORAGE_SCANNER_ITEM,PORTABLE_WRAPPER,STACK_OF_PALLETS,PALLET_JACK;
     public static StackOfPalletsBlock PALLET_STACK_BLOCK;
@@ -250,6 +250,11 @@ public final class RackContent {
         FORKLIFT_ITEM=Registry.register(BuiltInRegistries.ITEM,forkliftItemKey,
                 new WarehouseForkliftItem(new Item.Properties().stacksTo(1)
                         .setId(forkliftItemKey)));
+        ResourceKey<Item> forkliftControllerKey=ResourceKey.create(Registries.ITEM,
+                CaszualAdditions.id("forklift_controller"));
+        FORKLIFT_CONTROLLER=Registry.register(BuiltInRegistries.ITEM,forkliftControllerKey,
+                new WarehouseForkliftItem(new Item.Properties().stacksTo(1)
+                        .setId(forkliftControllerKey),false));
         ResourceKey<EntityType<?>> forkliftKey=ResourceKey.create(Registries.ENTITY_TYPE,
                 CaszualAdditions.id("warehouse_forklift"));
         FORKLIFT_TYPE=Registry.register(BuiltInRegistries.ENTITY_TYPE,forkliftKey,

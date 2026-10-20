@@ -146,5 +146,6 @@
   "jade.caszual_additions.xp_charger.xp": "XP available: %s / %s",
   "item.caszual_additions.pallet_jack": "Pallet Jack",
   "item.caszual_additions.warehouse_forklift": "Warehouse Forklift",
-  "entity.caszual_additions.warehouse_forklift": "Warehouse Forklift"
+  "entity.caszual_additions.warehouse_forklift": "Warehouse Forklift",
+  "item.caszual_additions.forklift_controller": "Forklift Controller"
 }

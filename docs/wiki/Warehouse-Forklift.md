@@ -13,17 +13,21 @@ Four-Golem pallet crews load only ground racks. For stacked racks, use the
 1. Craft the Warehouse Forklift and right-click a free solid floor to place it.
 2. Keep at least one docked Storage Golem in a shelf within 20 blocks. A
    free Golem walks to and mounts the forklift as its actual driver.
-3. With another Warehouse Forklift item, right-click an elevated rack:
+3. Craft a reusable **Forklift Controller** (compass, redstone and iron).
+   To designate an exact ground pallet for storage, right-click it with the
+   Controller first. Then click the desired rack. Without a selection the
+   nearest wrapped floor pallet is used.
+4. With the Controller, right-click an elevated rack:
    - **Occupied wrapped rack:** forklift drives to the aisle, raises forks,
      removes exactly one wrapped pallet with all 216 slots, and stages it on
      a clear 2×2 pallet-sized floor area nearby.
    - **Empty rack:** forklift finds the nearest wrapped pallet on the ground,
      collects it, drives to the rack, lifts it, and inserts all saved cargo.
-4. Forklift waits instead of consuming/dropping a load if the target rack,
+5. Forklift waits instead of consuming/dropping a load if the target rack,
    mast clearance, service lane, staging floor, or driver is unavailable.
-5. The driver returns to its own Golem Shelf after work. Right-click the
+6. The driver returns to its own Golem Shelf after work. Right-click the
    forklift with an empty hand to see its status.
-6. If destroyed, the forklift drops its intact cargo in a loaded Pallet Jack
+7. If destroyed, the forklift drops its intact cargo in a loaded Pallet Jack
    item and a new forklift item.
 
 For delivery, Golem crews may stage a wrapped pallet in a ground aisle using

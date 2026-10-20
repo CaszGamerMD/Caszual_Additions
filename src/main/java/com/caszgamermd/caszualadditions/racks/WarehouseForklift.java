@@ -102,11 +102,23 @@ public final class WarehouseForklift extends PathfinderMob {
     /** Source or destination is selected by a player using the forklift item
      * on the desired rack. No warehouse racks are rearranged without orders. */
     public boolean order(ServerLevel world,RackBlockEntity rack){
+        return order(world,rack,null);
+    }
+    public boolean order(ServerLevel world,RackBlockEntity rack,BlockPos selectedFloorPallet){
         if(busy()||!world.hasChunkAt(rack.getBlockPos()))return false;
         RackPickupPlan plan=RackPickupPlan.forklift(world,rack);
         if(plan==null||plan.height()>RackPickupPlan.FORKLIFT_MAX_HEIGHT)return false;
         boolean pickup=rack.hasPallet();
-        BlockPos src=pickup?rack.getBlockPos():nearestFloorPallet(world,plan.rigCenter());
+        BlockPos src=pickup?rack.getBlockPos()
+                :selectedFloorPallet!=null?selectedFloorPallet
+                :nearestFloorPallet(world,plan.rigCenter());
+        if(!pickup&&selectedFloorPallet!=null){
+            PalletBlockEntity selected=StorageGroundPalletTransfer.wrappedController(
+                    world,selectedFloorPallet);
+            if(selected==null||!selected.getBlockPos().equals(selectedFloorPallet)
+                    ||selectedFloorPallet.distSqr(rack.getBlockPos())>24*24)
+                return false;
+        }
         if(src==null||(!pickup&&plan.height()<1))return false;
         if(pickup&&!rack.glassWrapped())return false;
         this.retrieving=pickup;
