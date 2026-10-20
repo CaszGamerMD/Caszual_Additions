@@ -13,6 +13,7 @@ carrier = source("MovingPallet.java")
 worker = source("StorageGolem.java")
 pickup = source("RemotePalletPickupCrew.java")
 shelf = source("StorageGolemShelfEntity.java")
+direct = source("StoragePalletCrew.java")
 
 # Do not serialize EVERY job owned by one player; serialize only pickup
 # claims for the SAME physical wrapped pallet.
@@ -22,6 +23,10 @@ assert "old.getBlockPos().equals(rig.remoteExchangeTarget())" in dispatch
 assert "old.getBlockPos().equals(worker.remotePickupTarget())" in dispatch
 assert "public BlockPos remoteExchangeTarget()" in carrier
 assert "remoteExchangeActive()?deliveryPosition:null" in carrier
+assert "public boolean remoteMission()" in carrier
+assert "!golem.remotePickupActive()" in direct
+assert "!golem.remoteCourierActive()" in direct
+assert "!rig.remoteMission()" in direct
 assert "remotePickupMission=mission;" in worker
 assert "id.equals(worker.remotePickupMission())" in pickup
 
