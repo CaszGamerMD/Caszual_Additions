@@ -13,7 +13,8 @@ import net.minecraft.server.level.ServerLevel;
  * loaded pallet to an entity inside a wall or spawning an invisible lift.
  */
 public final class RackPickupPlan {
-    public static final int MAX_DROP = 12;
+    public static final int MAX_DROP = 2;
+    public static final int FORKLIFT_MAX_HEIGHT = 12;
     public static final int PULL_TICKS = 40;
     private final BlockPos root;
     private final int floorY;
@@ -51,6 +52,12 @@ public final class RackPickupPlan {
     }
 
     public static RackPickupPlan find(ServerLevel level,RackBlockEntity rack){
+        return find(level,rack,MAX_DROP);
+    }
+    public static RackPickupPlan forklift(ServerLevel level,RackBlockEntity rack){
+        return find(level,rack,FORKLIFT_MAX_HEIGHT);
+    }
+    private static RackPickupPlan find(ServerLevel level,RackBlockEntity rack,int maxDrop){
         BlockPos root=rack.getBlockPos();
         Direction direction=rack.facing();
         // The loading crew waits if a mobile staircase is parked across
@@ -70,7 +77,7 @@ public final class RackPickupPlan {
                         return null;
                     }
                 }
-        for(int y=root.getY();y>=root.getY()-MAX_DROP;y--){
+        for(int y=root.getY();y>=root.getY()-maxDrop;y--){
             boolean clear=true;
             for(int col=0;col<2&&clear;col++)
                 for(int depth=1;depth<=AISLE_DEPTH&&clear;depth++){
