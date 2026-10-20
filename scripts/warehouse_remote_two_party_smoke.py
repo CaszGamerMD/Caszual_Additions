@@ -34,7 +34,9 @@ assert "deliveryMode=6;" in carrier
 assert "deliveryMode=3;" in carrier
 assert "remoteReplacementPlaced=true;" in carrier
 assert "remoteAisle=remoteAisle(level,target,3,5)" in carrier
-assert "remoteMoveAside=remoteAisle(level,deliveryPosition,4,7)" in carrier
+assert "remoteMoveAside=remoteClearParking(level);" in carrier
+assert "if(moved.intersects(occupied))continue;" in carrier
+assert "route.get(route.size()-1).equals(cell)" in carrier
 assert "if(remoteFootprintClear()){" in carrier
 assert "carrier.remoteFootprintClear()" in swap
 assert "liftForRemoteExchange(level,target,this)" in carrier

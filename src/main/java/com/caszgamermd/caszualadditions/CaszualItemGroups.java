@@ -60,6 +60,7 @@ public final class CaszualItemGroups {
                             add.accept(AntiWardenContent.WOOL_HELMET);
                             add.accept(AntiWardenContent.WOOL_BOOTS);
                             add.accept(AntiWardenContent.WARDEN_TRAP.asItem());
+                            add.accept(com.caszgamermd.caszualadditions.curtains.PlasticCurtainsContent.ITEM);
                             for(var blockItem:RackContent.INDUSTRIAL_CONCRETE_ITEMS.values())
                                 add.accept(blockItem);
                             BuiltInRegistries.ITEM.forEach(item -> {
