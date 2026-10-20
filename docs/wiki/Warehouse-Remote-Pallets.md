@@ -1,15 +1,18 @@
 # Warehouse Remote Pallet Exchange & Tools
 
 ## Remote pickup with the Storage Scanner
-1. Right-click your warehouse Rack Computer with a Storage Scanner to link it. The scanner stores the dimension and Rack Computer position and keeps the link at any distance in that dimension.
-2. Stock the warehouse with **four docked Storage Golems** and a fresh **empty pallet**. Store the fresh pallet in a Stack of Pallets inside a rack, or as an empty pallet mounted on an INPUT PTP.
-3. At the remote site, **sneak-right-click a plastic-wrapped, intact 2×2 pallet** with the linked Scanner. This saves a remote pickup request on the Scanner (no GUI and no physical crew required beside the player).
-4. When both the warehouse and pickup site chunks are loaded, the server dispatches one moving pallet entity with four attached golem models. The crew carries the fresh empty pallet to the remote site. Once next to the wrapped pallet, it places the fresh pallet in the same four-block footprint and takes ownership of the old pallet's entire 216-slot inventory.
-5. The crew returns the old pallet to its home Rack Computer's network and unloads it at a vacant **INPUT PTP** first, then any vacant PTP (switched to INPUT), or an accessible vacant rack as a fallback. The PTP removes plastic wrap only after a successful transfer. Rack fallback preserves the existing wrap. The four workers then physically return to their shelves.
+1. **Shift-right-click** your Rack Computer with a Scanner to bind it. The scanner remembers the dimension and Rack Computer.
+2. Keep four **docked** Storage Golems and one fresh empty pallet available **per remote job**. For example, 12 docked workers and three fresh pallets can dispatch three independent crews together.
+3. With the Scanner in **REMOTE** mode, right-click each intact, glass-wrapped ground pallet you want to swap. Each target is added to the scanner's persistent FIFO queue (up to 64 targets). Shift-right-click **in the air** to toggle Remote/Direct; switching to Direct cancels queued *undispatched* remote requests.
+4. The dispatcher tries all queued targets, creating independent missions whenever it can reserve a **complete four-Golem crew**, an empty replacement pallet, and usable aisles. Jobs that cannot launch stay queued and are retried. A crew already servicing one target does **not** prevent the same player from dispatching another crew to a different pallet.
+5. Three real Golems walk empty-handed to the pickup area. The fourth pushes the fresh pallet. The trio joins only after reaching the old pallet, then swaps the full 216-slot pallet for the empty one and returns its cargo to an accessible warehouse INPUT PTP or rack. Workers ultimately return to shelves.
+6. The same wrapped pallet cannot be assigned to two active remote missions; both the three-Golem pickup party and the lifted pallet rig hold an exclusive claim while active. An already claimed or removed target is reported as invalid and removed from the pending scanner queue.
 
-A loaded player-directed crew can also be recalled: **sneak-right-click in the air** with the linked Scanner. The crew then tries the same PTP/rack home-return sequence.
+**Crew isolation:** REMOTE crews are independent of each other and of the player's DIRECT crew. Direct-mode manual controls still select only one player-led crew, so a remote worker cannot accidentally be counted as a direct squad member.
 
-**Chunk-loading limitation:** No blocks or entities are teleported, and this mod deliberately does not force-load long routes. Requests persist on the scanner when either endpoint is unloaded. A traveling crew waits if the intervening path is unloaded or blocked. Ensure the route chunks remain loaded (e.g. nearby players or a chunk-loader) for a long-distance trip to actually progress. The status label describes the wait reason.
+**No half-crews:** Having one to three docked workers does not launch a partial team. Dispatch withdraws four shelf tokens for each mission; spawn failure returns all four and restores the empty pallet.
+
+**Chunk-loading limitation:** No blocks or entities teleport along long-distance routes. Pending requests retry when relevant chunks are loaded; dispatched workers may pause where routes are unloaded or blocked. Keep corridors loaded if you expect long-haul travel to progress.
 
 ## Stack of Pallets
 - Holds **12 individually saved empty pallet ItemStacks**, including wood combinations, plastic colors, copper aging, wrap state and filter settings.
