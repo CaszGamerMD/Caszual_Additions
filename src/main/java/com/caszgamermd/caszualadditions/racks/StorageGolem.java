@@ -816,7 +816,7 @@ public final class StorageGolem extends PathfinderMob {
         double distance=distanceToSqr(lift);
         if(distance<3.24){
             getNavigation().stop();
-            startRiding(lift,true);
+            startRiding(lift);
             return;
         }
         walkTo(level,lift.blockPosition(),1.08);
