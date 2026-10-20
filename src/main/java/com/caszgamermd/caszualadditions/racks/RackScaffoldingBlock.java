@@ -69,8 +69,13 @@ public final class RackScaffoldingBlock extends Block {
     }
 
     private static boolean isWalkwayConnection(BlockState neighbor) {
-        return neighbor.getBlock() instanceof RackScaffoldingBlock
-                || neighbor.getBlock() instanceof RackBlock;
+        if (neighbor.getBlock() instanceof RackScaffoldingBlock
+                || neighbor.getBlock() instanceof RackBlock) return true;
+        // A staircase is three steps high, but only the diagonal (0, 4, 8)
+        // cells have actual treads; below-step support cells are NOT exits.
+        return neighbor.getBlock() instanceof RackStairsBlock
+                && neighbor.getValue(RackStairsBlock.PART) % 3
+                        == neighbor.getValue(RackStairsBlock.PART) / 3;
     }
 
     private static BooleanProperty sideProperty(Direction direction) {

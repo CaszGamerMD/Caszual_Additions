@@ -34,7 +34,7 @@ assert "IntegerProperty.create(\"part\",0,8)" in stairs
 assert "for(int i=1;i<9;i++)" in stairs
 assert "box(0,0,8,16,8,16)" in stairs
 assert "box(0,0,0,16,16,8)" in stairs
-assert "box(0,0,0,1,16,16)" in stairs
+assert "box(0,3,0,1,16,16)" in stairs
 assert "public static boolean occupied(" in stairs
 assert "occupied(world,oldRoot,face)||occupied(world,to,face)" in stairs
 assert "stair.destination().equals(desired)" in access
@@ -79,6 +79,37 @@ assert "Shapes.or(result, WEST)" in scaff
 assert "Shapes.or(result, EAST)" in scaff
 assert "if (occupied(world, pos)) return false;" in scaff
 assert "Shapes.empty() : shape(state)" in scaff
+# Rail connections dynamically open on connected sides: no invisible rail collisions
+# or clipping when a staircase, another scaffold, or a rack meets the walkway.
+assert "instanceof RackStairsBlock" in scaff
+assert "getValue(RackStairsBlock.PART) % 3" in scaff
+assert "hasSideConnection(" in stairs
+assert "instanceof RackScaffoldingBlock" in stairs
+assert "instanceof RackBlock" in stairs
+assert "BooleanProperty RAIL_LEFT" in stairs
+assert "BooleanProperty RAIL_RIGHT" in stairs
+assert "if(state.getValue(RAIL_LEFT))" in stairs
+assert "if(state.getValue(RAIL_RIGHT))" in stairs
+assert "withRails(original.setValue(FACING,turned)" in stairs
+assert "withRails(first.setValue(PART,i)" in stairs
+assert "updateShape(BlockState state" in stairs
+stair_parts=json.loads((res/"assets/caszual_additions/blockstates/rack_stairs.json").read_text())["multipart"]
+assert len(stair_parts)==84, len(stair_parts)
+for i in range(9):
+    for face in ("north","south","east","west"):
+        assert any(p.get("when",{})=={"part":str(i),"facing":face}
+                   for p in stair_parts)
+for part in (0,4,8):
+    for side,edge in (("rail_left","west"),("rail_right","east")):
+        assert any(p.get("when",{}).get("part")==str(part)
+                   and p.get("when",{}).get(side)=="true"
+                   and f"rack_scaffolding_rail_{edge}" in p["apply"]["model"]
+                   for p in stair_parts)
+for i in (0,4,8):
+    base=json.loads((res/f"assets/caszual_additions/models/block/rack_stairs_{i}.json").read_text())
+    assert all(e["from"][0]>0 and e["to"][0]<16 for e in base["elements"])
+for edge in ("west","east"):
+    assert (res/f"assets/caszual_additions/models/block/rack_stairs_support_{edge}.json").exists()
 assert "RackScaffoldingBlock.setFolded(level,at,true)" in access
 assert "RackScaffoldingBlock.setFolded(level,at,false)" in access
 assert "WarehouseRackAccess.prepare(level,rack)" in plan
@@ -94,7 +125,7 @@ assert "IntegerProperty.create(\"part\",0,8)" in stairs
 assert "for(int i=1;i<9;i++)" in stairs
 assert "box(0,0,8,16,8,16)" in stairs
 assert "box(0,0,0,16,16,8)" in stairs
-assert "box(0,0,0,1,16,16)" in stairs
+assert "box(0,3,0,1,16,16)" in stairs
 assert "assemblyOutline(" in stairs
 assert "return assemblyOutline(pos,state);" in stairs
 assert "public static boolean rotate(" in stairs
