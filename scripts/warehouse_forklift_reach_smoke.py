@@ -35,7 +35,7 @@ assert "StorageGroundPalletTransfer.wrappedController" in io
 assert "driver=worker.getUUID()" in fork
 assert "worker.assignForkliftDriver" in fork
 assert "if(forkliftDriver){tickForkliftDriver(level);return;}" in golem
-assert "startRiding(lift,true)" in golem
+assert "startRiding(lift)" in golem
 assert "finishForkliftDriving()" in golem
 assert "world.getEntity(driver)" in fork
 assert "if(PalletJackItem.loaded(jack))" in fork
