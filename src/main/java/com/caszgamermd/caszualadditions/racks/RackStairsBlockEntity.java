@@ -51,6 +51,11 @@ public final class RackStairsBlockEntity extends BlockEntity {
         returning=true;target=home;setChanged();
     }
     public static void tick(ServerLevel level,BlockPos root,RackStairsBlockEntity be){
+        // Minecraft doesn't notify diagonal blocks on removal. Reconcile the
+        // upper stair and any scaffolds once per second, even when idle.
+        if(level.getGameTime()%20==0)
+            RackStairsBlock.refreshTopDockState(level,
+                    RackStairsBlock.cell(root,be.getBlockState().getValue(RackStairsBlock.FACING),8));
         if(!be.requested||level.getGameTime()<be.nextMove)return;
         if(root.equals(be.target)){
             if(be.returning){be.requested=false;be.mover=null;be.setChanged();}

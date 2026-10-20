@@ -367,7 +367,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 0
       }
     },
@@ -378,7 +378,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 0
       }
     },
@@ -389,7 +389,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 90
       }
     },
@@ -400,7 +400,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 90
       }
     },
@@ -411,7 +411,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 180
       }
     },
@@ -422,7 +422,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 180
       }
     },
@@ -433,7 +433,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 270
       }
     },
@@ -444,183 +444,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
-        "y": 270
-      }
-    },
-    {
-      "when": {
-        "part": "1",
-        "facing": "north",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 0
-      }
-    },
-    {
-      "when": {
-        "part": "1",
-        "facing": "north",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
-        "y": 0
-      }
-    },
-    {
-      "when": {
-        "part": "1",
-        "facing": "east",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 90
-      }
-    },
-    {
-      "when": {
-        "part": "1",
-        "facing": "east",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
-        "y": 90
-      }
-    },
-    {
-      "when": {
-        "part": "1",
-        "facing": "south",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 180
-      }
-    },
-    {
-      "when": {
-        "part": "1",
-        "facing": "south",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
-        "y": 180
-      }
-    },
-    {
-      "when": {
-        "part": "1",
-        "facing": "west",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 270
-      }
-    },
-    {
-      "when": {
-        "part": "1",
-        "facing": "west",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
-        "y": 270
-      }
-    },
-    {
-      "when": {
-        "part": "2",
-        "facing": "north",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 0
-      }
-    },
-    {
-      "when": {
-        "part": "2",
-        "facing": "north",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
-        "y": 0
-      }
-    },
-    {
-      "when": {
-        "part": "2",
-        "facing": "east",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 90
-      }
-    },
-    {
-      "when": {
-        "part": "2",
-        "facing": "east",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
-        "y": 90
-      }
-    },
-    {
-      "when": {
-        "part": "2",
-        "facing": "south",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 180
-      }
-    },
-    {
-      "when": {
-        "part": "2",
-        "facing": "south",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
-        "y": 180
-      }
-    },
-    {
-      "when": {
-        "part": "2",
-        "facing": "west",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 270
-      }
-    },
-    {
-      "when": {
-        "part": "2",
-        "facing": "west",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 270
       }
     },
@@ -631,7 +455,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 0
       }
     },
@@ -642,7 +466,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 0
       }
     },
@@ -653,7 +477,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 90
       }
     },
@@ -664,7 +488,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 90
       }
     },
@@ -675,7 +499,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 180
       }
     },
@@ -686,7 +510,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 180
       }
     },
@@ -697,7 +521,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 270
       }
     },
@@ -708,95 +532,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
-        "y": 270
-      }
-    },
-    {
-      "when": {
-        "part": "5",
-        "facing": "north",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 0
-      }
-    },
-    {
-      "when": {
-        "part": "5",
-        "facing": "north",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
-        "y": 0
-      }
-    },
-    {
-      "when": {
-        "part": "5",
-        "facing": "east",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 90
-      }
-    },
-    {
-      "when": {
-        "part": "5",
-        "facing": "east",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
-        "y": 90
-      }
-    },
-    {
-      "when": {
-        "part": "5",
-        "facing": "south",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 180
-      }
-    },
-    {
-      "when": {
-        "part": "5",
-        "facing": "south",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
-        "y": 180
-      }
-    },
-    {
-      "when": {
-        "part": "5",
-        "facing": "west",
-        "rail_left": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_west",
-        "y": 270
-      }
-    },
-    {
-      "when": {
-        "part": "5",
-        "facing": "west",
-        "rail_right": "true"
-      },
-      "apply": {
-        "model": "caszual_additions:block/rack_stairs_support_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 270
       }
     },
@@ -807,7 +543,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 0
       }
     },
@@ -818,7 +554,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 0
       }
     },
@@ -829,7 +565,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 90
       }
     },
@@ -840,7 +576,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 90
       }
     },
@@ -851,7 +587,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 180
       }
     },
@@ -862,7 +598,7 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 180
       }
     },
@@ -873,7 +609,7 @@
         "rail_left": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_west",
+        "model": "caszual_additions:block/rack_stairs_slope_west",
         "y": 270
       }
     },
@@ -884,8 +620,44 @@
         "rail_right": "true"
       },
       "apply": {
-        "model": "caszual_additions:block/rack_scaffolding_rail_east",
+        "model": "caszual_additions:block/rack_stairs_slope_east",
         "y": 270
+      }
+    },
+    {
+      "when": {
+        "part": "8",
+        "dock_north": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_stairs_dock_north"
+      }
+    },
+    {
+      "when": {
+        "part": "8",
+        "dock_east": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_stairs_dock_east"
+      }
+    },
+    {
+      "when": {
+        "part": "8",
+        "dock_south": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_stairs_dock_south"
+      }
+    },
+    {
+      "when": {
+        "part": "8",
+        "dock_west": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/rack_stairs_dock_west"
       }
     }
   ]

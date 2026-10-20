@@ -51,42 +51,98 @@ public final class RackStairsBlock extends Block implements EntityBlock {
     public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
     public static final BooleanProperty RAIL_LEFT=BooleanProperty.create("rail_left");
     public static final BooleanProperty RAIL_RIGHT=BooleanProperty.create("rail_right");
+    // Top landing is one cell below the scaffold floor: check all four
+    // neighbors at Y+1, not only blocks touching this stair's Y level.
+    public static final BooleanProperty DOCK_NORTH=BooleanProperty.create("dock_north");
+    public static final BooleanProperty DOCK_SOUTH=BooleanProperty.create("dock_south");
+    public static final BooleanProperty DOCK_WEST=BooleanProperty.create("dock_west");
+    public static final BooleanProperty DOCK_EAST=BooleanProperty.create("dock_east");
     private final MapCodec<RackStairsBlock> codec=MapCodec.unit(this);
     public RackStairsBlock(BlockBehaviour.Properties p){
         super(p);
         registerDefaultState(stateDefinition.any().setValue(PART,0)
                 .setValue(FACING,Direction.NORTH)
-                .setValue(RAIL_LEFT,true).setValue(RAIL_RIGHT,true));
+                .setValue(RAIL_LEFT,true).setValue(RAIL_RIGHT,true)
+                .setValue(DOCK_NORTH,false).setValue(DOCK_SOUTH,false)
+                .setValue(DOCK_WEST,false).setValue(DOCK_EAST,false));
     }
     @Override protected MapCodec<? extends Block> codec(){return codec;}
     @Override protected void createBlockStateDefinition(
             StateDefinition.Builder<Block,BlockState> builder){
-        builder.add(PART,FACING,RAIL_LEFT,RAIL_RIGHT);
+        builder.add(PART,FACING,RAIL_LEFT,RAIL_RIGHT,DOCK_NORTH,DOCK_SOUTH,DOCK_WEST,DOCK_EAST);
     }
-    /** Rails are individual per footprint cell, keeping all nine pieces a single stair.
-     *  Connected rack/scaffold edges remain open, including after a push or rotation. */
+    /** Stair tread cell 8 is the top landing, at floor height Y+3. */
+    private static boolean upperScaffold(BlockGetter world,BlockPos at,Direction side){
+        BlockState top=world.getBlockState(at.above().relative(side));
+        return top.getBlock() instanceof RackScaffoldingBlock
+                && !top.getValue(RackScaffoldingBlock.FOLDED);
+    }
+    private static BooleanProperty dockProperty(Direction side){
+        return switch(side){
+            case NORTH->DOCK_NORTH;
+            case SOUTH->DOCK_SOUTH;
+            case WEST->DOCK_WEST;
+            case EAST->DOCK_EAST;
+            default->throw new IllegalArgumentException("Dock side must be horizontal: "+side);
+        };
+    }
     private static boolean hasSideConnection(BlockState neighbor,int part,Direction facing){
-        if(neighbor.getBlock() instanceof RackScaffoldingBlock
-                ||neighbor.getBlock() instanceof RackBlock)return true;
+        if(neighbor.getBlock() instanceof RackScaffoldingBlock)
+            return !neighbor.getValue(RackScaffoldingBlock.FOLDED);
+        if(neighbor.getBlock() instanceof RackBlock)return true;
         return neighbor.getBlock() instanceof RackStairsBlock
-                &&neighbor.getValue(PART)==part&&neighbor.getValue(FACING)==facing;
+                && neighbor.getValue(PART)==part&&neighbor.getValue(FACING)==facing;
     }
-    private static BlockState withRails(BlockState state,BlockGetter level,BlockPos at){
-        Direction facing=state.getValue(FACING);
+    private static BlockState withRails(BlockState state,BlockGetter world,BlockPos at){
         int part=state.getValue(PART);
-        return state.setValue(RAIL_LEFT,!hasSideConnection(
-                        level.getBlockState(at.relative(facing.getCounterClockWise())),part,facing))
-                .setValue(RAIL_RIGHT,!hasSideConnection(
-                        level.getBlockState(at.relative(facing.getClockWise())),part,facing));
+        Direction facing=state.getValue(FACING);
+        boolean isTop=part==8;
+        for(Direction side:Direction.Plane.HORIZONTAL)
+            state=state.setValue(dockProperty(side),isTop&&upperScaffold(world,at,side));
+        Direction left=facing.getCounterClockWise();
+        Direction right=facing.getClockWise();
+        boolean leftConnected=hasSideConnection(world.getBlockState(at.relative(left)),part,facing)
+                ||(isTop&&state.getValue(dockProperty(left)));
+        boolean rightConnected=hasSideConnection(world.getBlockState(at.relative(right)),part,facing)
+                ||(isTop&&state.getValue(dockProperty(right)));
+        return state.setValue(RAIL_LEFT,!leftConnected)
+                .setValue(RAIL_RIGHT,!rightConnected);
+    }
+    /** Poll only the actual top step (not all nine cells) for a dock change.
+     *  This also handles scaffold removal, whose diagonal neighbor cannot
+     *  trigger vanilla updateShape at the stair block. */
+    public static void refreshTopDockState(ServerLevel level,BlockPos topPos){
+        BlockState state=level.getBlockState(topPos);
+        if(!(state.getBlock() instanceof RackStairsBlock)||state.getValue(PART)!=8)return;
+        BlockState corrected=withRails(state,level,topPos);
+        if(!corrected.equals(state))level.setBlock(topPos,corrected,3);
+        for(Direction side:Direction.Plane.HORIZONTAL)
+            RackScaffoldingBlock.refreshConnections(level,topPos.above().relative(side));
+    }
+    // Diagonal Y+1 neighbors do NOT invoke vanilla updateShape. The scaffold
+    // and the stair schedule a one-tick refresh when either structure changes.
+    public static void notifyTopDockChange(Level world,BlockPos at){
+        if(!(world instanceof ServerLevel level))return;
+        BlockState stair=level.getBlockState(at);
+        if(stair.getBlock() instanceof RackStairsBlock&&stair.getValue(PART)==8)
+            level.scheduleTick(at,stair.getBlock(),1);
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            BlockPos scaffold=at.above().relative(side);
+            BlockState state=level.getBlockState(scaffold);
+            if(state.getBlock() instanceof RackScaffoldingBlock)
+                level.scheduleTick(scaffold,state.getBlock(),1);
+        }
+    }
+    @Override protected void tick(BlockState state,ServerLevel level,
+            BlockPos at,RandomSource random){
+        BlockState corrected=withRails(state,level,at);
+        if(!corrected.equals(state))level.setBlock(at,corrected,3);
     }
     @Override protected BlockState updateShape(BlockState state,LevelReader level,
             ScheduledTickAccess ticks,BlockPos at,Direction side,BlockPos neighborPos,
             BlockState neighbor,RandomSource random){
-        Direction facing=state.getValue(FACING);
-        if(side==facing.getCounterClockWise())
-            return state.setValue(RAIL_LEFT,!hasSideConnection(neighbor,state.getValue(PART),facing));
-        if(side==facing.getClockWise())
-            return state.setValue(RAIL_RIGHT,!hasSideConnection(neighbor,state.getValue(PART),facing));
+        if(side.getAxis().isHorizontal()||side==Direction.UP)
+            return withRails(state,level,at);
         return state;
     }
     public static BlockPos cell(BlockPos root,Direction facing,int part){
@@ -131,6 +187,7 @@ public final class RackStairsBlock extends Block implements EntityBlock {
             BlockPos at=cell(pos,state.getValue(FACING),i);
             level.setBlock(at,withRails(state.setValue(PART,i),level,at),3);
         }
+        notifyTopDockChange(level,cell(pos,state.getValue(FACING),8));
     }
     @Override public @Nullable BlockEntity newBlockEntity(BlockPos pos,BlockState state){
         return state.getValue(PART)==0?new RackStairsBlockEntity(pos,state):null;
@@ -219,6 +276,8 @@ public final class RackStairsBlock extends Block implements EntityBlock {
             BlockPos at=cell(origin,turned,i);
             world.setBlock(at,withRails(original.setValue(FACING,turned).setValue(PART,i),world,at),3);
         }
+        notifyTopDockChange(world,cell(origin,face,8));
+        notifyTopDockChange(world,cell(origin,turned,8));
         if(world.getBlockEntity(origin) instanceof RackStairsBlockEntity moved)
             moved.restore(snapshot,origin);
         return true;
@@ -251,6 +310,8 @@ public final class RackStairsBlock extends Block implements EntityBlock {
             BlockPos at=cell(to,face,i);
             world.setBlock(at,withRails(first.setValue(PART,i),world,at),3);
         }
+        notifyTopDockChange(world,cell(oldRoot,face,8));
+        notifyTopDockChange(world,cell(to,face,8));
         if(world.getBlockEntity(to) instanceof RackStairsBlockEntity moved)
             moved.restore(snapshot,byPlayer?to:snapshot.home());
         return true;
@@ -259,6 +320,7 @@ public final class RackStairsBlock extends Block implements EntityBlock {
             BlockState state,Player player){
         if(!level.isClientSide()){
             BlockPos root=root(pos,state);
+            notifyTopDockChange(level,cell(root,state.getValue(FACING),8));
             for(int i=0;i<9;i++){
                 BlockPos part=cell(root,state.getValue(FACING),i);
                 if(!part.equals(pos)&&level.getBlockState(part).is(this))
@@ -319,6 +381,18 @@ public final class RackStairsBlock extends Block implements EntityBlock {
             result=Shapes.or(result,sideShape(facing,true,support));
         if(state.getValue(RAIL_RIGHT))
             result=Shapes.or(result,sideShape(facing,false,support));
+        // The elevated dock lip is real collision, not a cosmetic plate:
+        // its upper face matches the adjacent scaffold's 3px-tall deck.
+        if(part==8){
+            if(state.getValue(DOCK_NORTH))
+                result=Shapes.or(result,box(3,16,0,13,19,3));
+            if(state.getValue(DOCK_SOUTH))
+                result=Shapes.or(result,box(3,16,13,13,19,16));
+            if(state.getValue(DOCK_WEST))
+                result=Shapes.or(result,box(0,16,3,3,19,13));
+            if(state.getValue(DOCK_EAST))
+                result=Shapes.or(result,box(13,16,3,16,19,13));
+        }
         return result;
     }
     @Override protected VoxelShape getShape(BlockState state,BlockGetter level,
