@@ -1,5 +1,6 @@
 package com.caszgamermd.caszualadditions;
 
+import com.caszgamermd.caszualadditions.doors.VoxelDoorsClient;
 import com.caszgamermd.caszualadditions.headvending.HeadVendingClient;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntityRenderer;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
@@ -45,6 +46,7 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
                 PlayerPlushieSpecialRenderer.Unbaked.MAP_CODEC
         );
 
+        VoxelDoorsClient.initialize();
         CaszUtilsClient.initialize();
         HeadVendingClient.initialize();
         RackComputerClient.initialize();
