@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.state.properties.BlockSetType;
  * plastic warehouse entrance. Side by side blocks have no divider rails. */
 public final class PlasticCurtainsContent {
     public static PlasticCurtainsBlock CURTAINS;
+    public static PlasticCurtainsExtensionBlock EXTENSION;
     public static Item ITEM;
     private PlasticCurtainsContent(){}
     public static void initialize(){
@@ -25,6 +26,15 @@ public final class PlasticCurtainsContent {
                         BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_DOOR)
                                 .strength(.7f).noOcclusion()
                                 .setId(key)));
+        // Internal segment with no separate item: right-clicking a curtain
+        // with its original item builds a tower one block taller at a time.
+        var extensionId=CaszualAdditions.id("plastic_curtains_extension");
+        var extensionKey=ResourceKey.create(Registries.BLOCK,extensionId);
+        EXTENSION=Registry.register(BuiltInRegistries.BLOCK,extensionKey,
+                new PlasticCurtainsExtensionBlock(
+                        BlockBehaviour.Properties.ofFullCopy(Blocks.OAK_DOOR)
+                                .strength(.7f).noOcclusion()
+                                .setId(extensionKey)));
         var itemKey=ResourceKey.create(Registries.ITEM,id);
         ITEM=Registry.register(BuiltInRegistries.ITEM,itemKey,
                 new BlockItem(CURTAINS,new Item.Properties()

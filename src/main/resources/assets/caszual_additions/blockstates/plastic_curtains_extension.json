@@ -1,0 +1,84 @@
+{
+  "multipart": [
+    {
+      "when": {
+        "facing": "north",
+        "top_rail": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/plastic_curtains_upper",
+        "y": 0
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "top_rail": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/plastic_curtains_lower",
+        "y": 0
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "top_rail": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/plastic_curtains_upper",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "top_rail": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/plastic_curtains_lower",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "top_rail": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/plastic_curtains_upper",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "top_rail": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/plastic_curtains_lower",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "top_rail": "true"
+      },
+      "apply": {
+        "model": "caszual_additions:block/plastic_curtains_upper",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "top_rail": "false"
+      },
+      "apply": {
+        "model": "caszual_additions:block/plastic_curtains_lower",
+        "y": 270
+      }
+    }
+  ]
+}
