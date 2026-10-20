@@ -1,12 +1,13 @@
 {
   "type": "minecraft:crafting_shaped",
+  "category": "building",
   "pattern": [
-    "I I",
+    "III",
     "I I",
     "III"
   ],
   "key": {
-    "I": "minecraft:iron_ingot"
+    "I": "minecraft:iron_bars"
   },
   "result": {
     "id": "caszual_additions:pallet_rack",
