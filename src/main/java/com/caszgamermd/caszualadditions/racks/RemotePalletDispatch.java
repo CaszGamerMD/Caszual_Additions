@@ -30,16 +30,20 @@ public final class RemotePalletDispatch {
             return "INVALID: linked Rack Computer was removed.";
         PalletBlockEntity old=StorageGroundPalletTransfer.wrappedController(
                 level,target);
-        if(old==null)return "WAITING: target is no longer a wrapped ground pallet.";
-        // Across the loaded dimension, do not spawn a second crew with the
-        // same owner while another delivery/recovery rig exists.
+        if(old==null)return "INVALID: target is no longer a wrapped ground pallet.";
+        // A player can own many independent missions, each with four
+        // distinct workers. Reserve the TARGET instead of reserving the
+        // entire player: one pallet must never be collected by two crews.
+        // The mission UUID is already persisted by all three pickup Golems
+        // and by the replacement-pallet courier.
         for(var entity:level.getAllEntities()){
-            if(entity instanceof MovingPallet rig&&rig.owns(player.getUUID()))
-                return "WAITING: existing remote or direct carrier already assigned.";
+            if(entity instanceof MovingPallet rig
+                    &&old.getBlockPos().equals(rig.remoteExchangeTarget()))
+                return "INVALID: this pallet already has an active remote crew.";
             if(entity instanceof StorageGolem worker
-                    &&worker.ownedBy(player.getUUID())
-                    &&(worker.remotePickupActive()||worker.remoteCourierActive()))
-                return "WAITING: existing independent remote pickup crew assigned.";
+                    &&worker.remotePickupActive()
+                    &&old.getBlockPos().equals(worker.remotePickupTarget()))
+                return "INVALID: this pallet already has an active remote crew.";
         }
 
         var network=WarehouseNetwork.fromComputer(level,computer);
