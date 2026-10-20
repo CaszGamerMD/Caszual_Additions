@@ -6,6 +6,10 @@ import java.util.ArrayList;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemContainerContents;
+import com.caszgamermd.caszualadditions.pallet.GlassPalletWrap;
+import com.caszgamermd.caszualadditions.pallet.PalletData;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -161,6 +165,76 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         if(level instanceof net.minecraft.server.level.ServerLevel world)
             WarehouseRackAccess.release(world,this);
         return true;
+    }
+
+    /**
+     * Manual rack-to-Jack transfer, preserving the complete pallet deck,
+     * filter settings, wrapping and all 216 cargo slot positions.
+     *
+     * A Golem currently extracting this rack owns its pallet: the Jack may
+     * not interrupt an active pull. Reuse the same physical rack-access
+     * validation as a Golem's pickup, including occupied stairs/scaffolds.
+     *
+     * The Jack acquires the payload BEFORE the rack removes its copy.
+     * Neither ordinary takePallet() nor dropPallet() can transfer full cargo.
+     */
+    public boolean liftToJack(ItemStack jack){
+        if(!(level instanceof net.minecraft.server.level.ServerLevel world)
+                ||!jack.is(RackContent.PALLET_JACK)
+                ||PalletJackItem.loaded(jack)||!hasPallet()||!glassWrapped())return false;
+        if(!pullOwner.isBlank()&&world.getGameTime()-pullLastTick<=200)return false;
+        if(RackPickupPlan.find(world,this)==null)return false;
+        try{
+            // Golem pull could have completed during a prior tick; do not
+            // extract a rack reserved by another carrier.
+            if(!pullOwner.isBlank()&&world.getGameTime()-pullLastTick<=200)return false;
+            ItemStack deck=GlassPalletWrap.withWrap(
+                    PalletData.applyFilterSettings(pallet,this),true);
+            if(deck.isEmpty())return false;
+            NonNullList<ItemStack> packed=NonNullList.withSize(217,ItemStack.EMPTY);
+            packed.set(0,deck.copyWithCount(1));
+            for(int i=0;i<CAPACITY;i++)packed.set(i+1,items.get(i).copy());
+            jack.set(DataComponents.CONTAINER,ItemContainerContents.fromItems(packed));
+
+            items=NonNullList.withSize(CAPACITY,ItemStack.EMPTY);
+            pallet=ItemStack.EMPTY;
+            filterItem="";
+            filterUpgrade=ItemStack.EMPTY;
+            filterSignature="";
+            filterMode=0;
+            filterScope=0;
+            resetPull();
+            setChanged();
+            return true;
+        }finally{
+            WarehouseRackAccess.release(world,this);
+        }
+    }
+
+    /** Restore the same pallet directly into another vacant rack. Only
+     * clear the Jack AFTER the new rack owns every original cargo slot.
+     * The restored stacks are already part of this pallet and must not be
+     * rejected merely because its saved filter currently excludes them.
+     */
+    public boolean installFromJack(ItemStack jack){
+        if(!(level instanceof net.minecraft.server.level.ServerLevel world)
+                ||!PalletJackItem.loaded(jack)||hasPallet()||!isEmpty())return false;
+        NonNullList<ItemStack> packed=PalletJackItem.unpack(jack);
+        ItemStack deck=packed.get(0);
+        if(deck.isEmpty()||!GlassPalletWrap.wrapped(deck))return false;
+        if(!WarehouseRackAccess.clearOfStairs(world,this)
+                ||!WarehouseRackAccess.prepare(world,this))return false;
+        try{
+            if(hasPallet()||!isEmpty())return false;
+            install(deck.copyWithCount(1));
+            if(!hasPallet())return false;
+            for(int i=0;i<CAPACITY;i++)items.set(i,packed.get(i+1).copy());
+            setChanged();
+            jack.remove(DataComponents.CONTAINER);
+            return true;
+        }finally{
+            WarehouseRackAccess.release(world,this);
+        }
     }
 
     public ItemStack takePallet() {

@@ -27,7 +27,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * Player-operated pallet jack. Owns exactly ONE intact, glass-wrapped 2x2
- * ground pallet and ALL of its 216 original cargo slots.
+ * ground or racked pallet and ALL of its 216 original cargo slots.
  *
  * Stored layout in Jack's CONTAINER component: slot 0 = pallet deck item
  * (wood/plastic/filter/wrapping kept), slots 1..216 = cargo. No nested
@@ -43,7 +43,7 @@ public final class PalletJackItem extends Item {
 
     public PalletJackItem(Properties settings){super(settings);}
 
-    private static NonNullList<ItemStack> unpack(ItemStack jack){
+    static NonNullList<ItemStack> unpack(ItemStack jack){
         NonNullList<ItemStack> slots=NonNullList.withSize(SIZE,ItemStack.EMPTY);
         jack.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY)
                 .copyInto(slots);
@@ -87,8 +87,8 @@ public final class PalletJackItem extends Item {
     @Override public InteractionResult use(Level level,Player player,InteractionHand hand){
         if(!level.isClientSide()){
             player.sendSystemMessage(Component.literal(loaded(player.getItemInHand(hand))
-                    ?"Pallet Jack loaded. Right-click a clear floor to unload the wrapped pallet."
-                    :"Pallet Jack empty. Right-click a glass-wrapped ground pallet to lift it."));
+                    ?"Pallet Jack loaded. Right-click an empty rack or a clear 2x2 floor to unload."
+                    :"Pallet Jack empty. Right-click a wrapped pallet in a rack or on the ground."));
         }
         return InteractionResult.SUCCESS;
     }
@@ -104,6 +104,47 @@ public final class PalletJackItem extends Item {
             if(owner!=null)clicked=owner;
         }
         if(!(level instanceof ServerLevel server))return InteractionResult.SUCCESS;
+
+        // Route rack interactions before ground placement. The RackBlock
+        // explicitly passes Pallet Jack clicks through to this item, so
+        // the normal inventory GUI cannot steal the interaction.
+        RackBlockEntity rack=RackBlock.controller(server,clicked);
+        if(rack!=null){
+            BlockPos root=rack.getBlockPos();
+            if(!server.mayInteract(player,root)
+                    ||!player.mayUseItemAt(root,context.getClickedFace(),jack))
+                return InteractionResult.FAIL;
+            if(loaded(jack)){
+                if(rack.hasPallet()||!rack.isEmpty()){
+                    player.sendSystemMessage(Component.literal(
+                            "Pallet Jack: destination rack must be empty. Load retained."));
+                    return InteractionResult.SUCCESS;
+                }
+                if(rack.installFromJack(jack))
+                    player.sendSystemMessage(Component.literal(
+                            "Pallet Jack: wrapped pallet and all 216 cargo slots placed in rack."));
+                else
+                    player.sendSystemMessage(Component.literal(
+                            "Pallet Jack: clear the rack access aisle and move any occupied stairs "
+                            +"or scaffolding. Load retained."));
+            }else{
+                if(!rack.hasPallet()||!rack.glassWrapped()){
+                    player.sendSystemMessage(Component.literal(
+                            "Pallet Jack: rack must contain a wrapped pallet."));
+                    return InteractionResult.SUCCESS;
+                }
+                if(rack.liftToJack(jack))
+                    player.sendSystemMessage(Component.literal(
+                            "Pallet Jack loaded from rack. Walking speed -40%. "
+                            +"Right-click another empty rack or clear floor to unload."));
+                else
+                    player.sendSystemMessage(Component.literal(
+                            "Pallet Jack: rack pickup unavailable. Another crew may be "
+                            +"extracting it, or the approach aisle is obstructed."));
+            }
+            return InteractionResult.SUCCESS;
+        }
+
         if(loaded(jack))
             return unload(server,player,jack,clicked.relative(context.getClickedFace()),
                     context.getClickedFace());
