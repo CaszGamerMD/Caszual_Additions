@@ -94,6 +94,14 @@ public final class StackOfPalletsItem extends BlockItem {
         Player player=context.getPlayer();
         if(player==null)return InteractionResult.PASS;
         BlockPos clicked=context.getClickedPos();
+        // Cargo selection proxies are part of the SAME ground pallet.
+        // Preserve wrapper/scanner/stack actions when clicking loaded cargo.
+        if(level.getBlockState(clicked).getBlock()
+                instanceof com.caszgamermd.caszualadditions.pallet.PalletCargoCollisionBlock){
+            BlockPos owner=com.caszgamermd.caszualadditions.pallet
+                    .PalletCargoCollisionBlock.owningPallet(level,clicked);
+            if(owner!=null)clicked=owner;
+        }
         ItemStack container=context.getItemInHand();
         // Sneak-click a vacant rack/PTP to use the next stored pallet.
         if(player.isShiftKeyDown()){

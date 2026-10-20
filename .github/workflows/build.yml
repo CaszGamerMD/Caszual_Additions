@@ -31,6 +31,8 @@ jobs:
         run: python3 scripts/industrial_paint_smoke.py
       - name: Verify four-Golem forward carry formation and supported-foot pallet tilt
         run: python3 scripts/warehouse_pallet_terrain_gait_smoke.py
+      - name: Verify 3D pallet cargo hitbox and tool interactions
+        run: python3 scripts/warehouse_ground_pallet_cargo_hitbox_smoke.py
       - name: Audit all block and item models for coplanar faces (blocking)
         run: python3 scripts/model_zfight_audit.py
       - name: Audit rotated and connected Rack Stairs for overlapping faces (blocking)

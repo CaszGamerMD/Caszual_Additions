@@ -38,15 +38,62 @@ public final class PalletCargoCollisionBlock extends Block {
     @Override protected MapCodec<? extends Block> codec() { return codec; }
     @Override protected RenderShape getRenderShape(BlockState state) { return RenderShape.INVISIBLE; }
 
-    // No outline, so the floating collision faces do not intercept pallet UI clicks.
+    // Match selection to the *visible* cargo cuboids, not a full cube
+    // that would obscure gaps between boxes or an adjacent pallet.
     @Override protected VoxelShape getShape(BlockState state, BlockGetter level,
                                             BlockPos pos, CollisionContext context) {
-        return Shapes.empty();
+        return shapeFor(level,pos);
     }
 
     @Override protected VoxelShape getCollisionShape(BlockState state, BlockGetter level,
                                                      BlockPos pos, CollisionContext context) {
         return shapeFor(level, pos);
+    }
+    /** Cargo right-clicks behave like clicking the same underlying pallet.
+     *  Inventory remains one 216-slot controller even for 3-level stacks.
+     */
+    @Override protected net.minecraft.world.InteractionResult useWithoutItem(
+            BlockState state,net.minecraft.world.level.Level level,BlockPos pos,
+            net.minecraft.world.entity.player.Player player,
+            net.minecraft.world.phys.BlockHitResult hit){
+        BlockPos root=owner(level,pos);
+        if(root==null)return net.minecraft.world.InteractionResult.PASS;
+        return PalletBlock.openPallet(level,root,level.getBlockState(root),player);
+    }
+    @Override protected net.minecraft.world.InteractionResult useItemOn(
+            net.minecraft.world.item.ItemStack stack,BlockState state,
+            net.minecraft.world.level.Level level,BlockPos pos,
+            net.minecraft.world.entity.player.Player player,
+            net.minecraft.world.InteractionHand hand,net.minecraft.world.phys.BlockHitResult hit){
+        // The wrapper, Scanner and Stack of Pallets must still receive their
+        // own item.useOn call. Each now resolves this proxy to its root.
+        if(player.isShiftKeyDown()
+                ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.PORTABLE_WRAPPER)
+                ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.STORAGE_SCANNER_ITEM)
+                ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.STACK_OF_PALLETS))
+            return net.minecraft.world.InteractionResult.PASS;
+        BlockPos root=owner(level,pos);
+        if(root==null)return net.minecraft.world.InteractionResult.PASS;
+        return PalletBlock.openPallet(level,root,level.getBlockState(root),player);
+    }
+
+    /** Mining a cargo-facing hitbox breaks the ONE placed pallet, rather
+     *  than silently deleting a temporary invisible collision cell.
+     *  Preserve the existing single-drop and all-slots cargo-drop logic.
+     */
+    @Override public BlockState playerWillDestroy(net.minecraft.world.level.Level level,
+            BlockPos pos,BlockState state,net.minecraft.world.entity.player.Player player){
+        if(level instanceof ServerLevel server){
+            BlockPos root=owner(level,pos);
+            if(root!=null){
+                BlockState home=level.getBlockState(root);
+                if(home.getBlock() instanceof PalletBlock pallet){
+                    pallet.playerWillDestroy(level,root,home,player);
+                    level.removeBlock(root,false);
+                }
+            }
+        }
+        return super.playerWillDestroy(level,pos,state,player);
     }
 
     /**
@@ -71,6 +118,52 @@ public final class PalletCargoCollisionBlock extends Block {
             }
         }
         return Math.min(count, layers * CELLS_PER_LAYER);
+    }
+
+    /** Resolve the real shared pallet controller behind an upper cargo
+     *  selection cell. Never open an unrelated pallet beneath an air gap.
+     */
+    public static BlockPos owningPallet(BlockGetter level,BlockPos at){
+        if(!(level.getBlockState(at).getBlock() instanceof PalletCargoCollisionBlock))
+            return null;
+        return owner(level,at);
+    }
+
+    private static BlockPos owner(BlockGetter level,BlockPos at){
+        for(int down=1;down<=2;down++){
+            BlockPos partPos=at.below(down);
+            BlockState part=level.getBlockState(partPos);
+            if(!(part.getBlock() instanceof PalletBlock))continue;
+            BlockPos root=PalletBlock.rootPos(partPos,part);
+            if(!(level.getBlockEntity(root) instanceof PalletBlockEntity pallet)
+                    ||!pallet.isRoot())continue;
+            BlockState home=level.getBlockState(root);
+            if(!(home.getBlock() instanceof PalletBlock))continue;
+            if(!cargoShape(level,at,root,home,pallet).isEmpty())return root;
+        }
+        return null;
+    }
+
+    /** Combine the real cargo cuboids of every part and upper proxy cell into
+     *  the selection of ANY of the four pallet deck blocks. Shapes are
+     *  transformed relative to the selected block, not the anchor corner.
+     */
+    public static VoxelShape selectionShape(BlockGetter level,BlockPos selected,
+            BlockPos root,BlockState state){
+        if(!(level.getBlockEntity(root) instanceof PalletBlockEntity pallet)
+                ||!pallet.isRoot())return Shapes.empty();
+        VoxelShape shape=Shapes.empty();
+        for(int part=0;part<4;part++){
+            BlockPos floor=PalletBlock.partPos(root,part,state);
+            for(int height=0;height<=2;height++){
+                BlockPos at=floor.above(height);
+                VoxelShape section=cargoShape(level,at,root,state,pallet);
+                if(!section.isEmpty())shape=Shapes.or(shape,section.move(
+                        at.getX()-selected.getX(),at.getY()-selected.getY(),
+                        at.getZ()-selected.getZ()));
+            }
+        }
+        return shape;
     }
 
     public static VoxelShape shapeFor(BlockGetter level, BlockPos at) {

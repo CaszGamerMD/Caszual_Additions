@@ -262,6 +262,14 @@ public final class StorageScannerItem extends Item {
         if(!(level instanceof ServerLevel server))return InteractionResult.SUCCESS;
         if(!(player instanceof ServerPlayer user))return InteractionResult.PASS;
         BlockPos clicked=context.getClickedPos();
+        // Cargo selection proxies are part of the SAME ground pallet.
+        // Preserve wrapper/scanner/stack actions when clicking loaded cargo.
+        if(level.getBlockState(clicked).getBlock()
+                instanceof com.caszgamermd.caszualadditions.pallet.PalletCargoCollisionBlock){
+            BlockPos owner=com.caszgamermd.caszualadditions.pallet
+                    .PalletCargoCollisionBlock.owningPallet(level,clicked);
+            if(owner!=null)clicked=owner;
+        }
         ItemStack scanner=context.getItemInHand();
         // Right-clicking a computer without crouching opens the terminal
         // (handled by RackComputerBlock); only crouching alters the link.
