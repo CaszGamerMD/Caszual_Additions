@@ -60,6 +60,20 @@ public final class MovingPallet extends PathfinderMob {
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> RACK_INSERT_Z=
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.FLOAT);
+    // Four terrain heights and grounded bits are cosmetic only, synced by
+    // the real pallet carrier. Missing corner = idle suspended Golem.
+    private static final EntityDataAccessor<Float> TERRAIN_0=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> TERRAIN_1=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> TERRAIN_2=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> TERRAIN_3=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Integer> TERRAIN_SUPPORT=
+            SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Float>[] TERRAIN_KEYS=new EntityDataAccessor[]{
+            TERRAIN_0,TERRAIN_1,TERRAIN_2,TERRAIN_3};
     private String owner="";
     private final BlockPos[] shelves={BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO,BlockPos.ZERO};
     private final String[] crewNames={"","","",""};
@@ -72,6 +86,8 @@ public final class MovingPallet extends PathfinderMob {
     private boolean delivered,deathDropsReleased,recallAfterDelivery;
     // Persist the owner-death pause with the actual pallet entity and cargo.
     private boolean waitingForPlayer;
+    private double lastHeadingX,lastHeadingZ;
+    private boolean headingInitialized;
     private int liftTicks;
     private int deliveryMode,releaseTicks;
     private BlockPos deliveryPosition=BlockPos.ZERO;
@@ -137,6 +153,8 @@ public final class MovingPallet extends PathfinderMob {
         builder.define(RACK_INSERT_X,0.0f);
         builder.define(RACK_INSERT_Y,0.0f);
         builder.define(RACK_INSERT_Z,0.0f);
+        for(var terrainKey:TERRAIN_KEYS)builder.define(terrainKey,0.0f);
+        builder.define(TERRAIN_SUPPORT,15);
     }
     public ItemStack displayPallet(){return entityData.get(DISPLAY_PALLET);}
     public int visibleCargo(){return entityData.get(DISPLAY_CARGO);}
@@ -152,6 +170,35 @@ public final class MovingPallet extends PathfinderMob {
     public float rackInsertX(){return entityData.get(RACK_INSERT_X);}
     public float rackInsertY(){return entityData.get(RACK_INSERT_Y);}
     public float rackInsertZ(){return entityData.get(RACK_INSERT_Z);}
+    public float cornerTerrainHeight(int index){
+        return index>=0&&index<4?entityData.get(TERRAIN_KEYS[index]):0f;
+    }
+    public int cornerSupportMask(){return entityData.get(TERRAIN_SUPPORT);}
+    /** Smooth heading is inherited by the Golem models AND the pallet
+     * platform; no longer allow four sideways-sliding workers. */
+    private void updateCrewFacingAndFeet(ServerLevel level){
+        double x=getX(),z=getZ();
+        if(!headingInitialized){lastHeadingX=x;lastHeadingZ=z;headingInitialized=true;}
+        double dx=x-lastHeadingX,dz=z-lastHeadingZ;
+        lastHeadingX=x;lastHeadingZ=z;
+        if(dx*dx+dz*dz>.00004&&releaseTicks==0&&!delivered){
+            float toward=(float)Math.toDegrees(Math.atan2(-dx,dz));
+            float yaw=getYRot();
+            float diff=net.minecraft.util.Mth.wrapDegrees(toward-yaw);
+            setYRot(yaw+Math.clamp(diff,-12f,12f));
+            setYBodyRot(getYRot());
+        }
+        if(tickCount%3==0&&level.hasChunkAt(blockPosition())){
+            MovingPalletTerrain.Ground ground=MovingPalletTerrain.probe(
+                    level,x,getY(),z,getYRot());
+            entityData.set(TERRAIN_SUPPORT,ground.mask());
+            for(int i=0;i<4;i++){
+                float height=ground.height()[i];
+                if(Math.abs(entityData.get(TERRAIN_KEYS[i])-height)>.025f)
+                    entityData.set(TERRAIN_KEYS[i],height);
+            }
+        }
+    }
     public boolean isDelivering(){return deliveryMode!=0;}
     public boolean returningToWarehouse(){return deliveryMode==3;}
     public boolean remoteExchangeActive(){return deliveryMode>=4&&deliveryMode<=6;}
@@ -1420,6 +1467,7 @@ public final class MovingPallet extends PathfinderMob {
         super.tick();
         if(!(level() instanceof ServerLevel server))return;
         updateCarrySurfaceSpeed(server);
+        updateCrewFacingAndFeet(server);
         if(tickCount%10==0)updateCrewLabel();
         if((deliveryMode>=3&&deliveryMode<=6)&&tickCount%40==0){
             // Keep a short, expiring simulation corridor around the actual
