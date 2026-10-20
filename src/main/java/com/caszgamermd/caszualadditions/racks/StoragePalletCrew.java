@@ -27,7 +27,7 @@ public final class StoragePalletCrew {
     private static MovingPallet moving(ServerLevel level,ServerPlayer player){
         List<MovingPallet> carriers=level.getEntitiesOfClass(MovingPallet.class,
                 new AABB(player.blockPosition()).inflate(96),
-                rig->rig.owns(player.getUUID()));
+                rig->rig.owns(player.getUUID())&&!rig.remoteMission());
         return carriers.isEmpty()?null:carriers.getFirst();
     }
     /** Converts four physically assembled workers into one navigable body.
