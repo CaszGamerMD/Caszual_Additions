@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -146,7 +147,19 @@ public final class IndustrialPaintModelGeometry {
                 if(result.size()>=LIMIT)break;
             }
         }
-        return List.copyOf(result);
+        // Multipart model pieces can reference the SAME cuboid multiple
+        // times. Two paints on exactly the same plane z-fight and produce
+        // black seams; eliminate duplicate part+transform definitions once,
+        // at resource reload, rather than checking on every rendered frame.
+        List<Part> unique=new ArrayList<>();
+        Set<String> seen=new HashSet<>();
+        for(Part part:result){
+            String key=Arrays.toString(part.from())+Arrays.toString(part.to())
+                    +part.faces()+Arrays.toString(part.pivot())
+                    +part.axis()+part.angle()+part.pitch()+part.yaw();
+            if(seen.add(key))unique.add(part);
+        }
+        return List.copyOf(unique);
     }
     private static float[] floats(JsonArray a,float[] fallback){
         if(a==null||a.size()!=3)return fallback;

@@ -18,6 +18,13 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 
 public final class IndustrialPaintContent {
     public static Block PAINT_CAN,PRIMER_CAN,SURFACE;
+    /** Six distinct one-quad baked model proxies. A painted face must NOT
+     * be a 0.001-thick FULL CUBE: the backface overlaps and turns black,
+     * and opposite faces z-fight against each other on full blocks. */
+    public static final Block[] SURFACE_FACES=new Block[6];
+    public static final String[] FACE_NAMES={
+            "west","east","down","up","north","south"};
+
     public static Item PAINT_CAN_ITEM,PRIMER_CAN_ITEM,BRUSH,REMOVER;
     public static EntityType<IndustrialFinishEntity> FINISH;
     public static BlockEntityType<IndustrialPaintCanBlockEntity> PAINT_CAN_ENTITY;
@@ -43,6 +50,8 @@ public final class IndustrialPaintContent {
         // Proxy isn't obtainable: renderer samples the actual target's
         // voxel/model outline and tints this subtle textured surface.
         SURFACE=registered("industrial_paint_surface",Block::new);
+        for(int i=0;i<FACE_NAMES.length;i++)
+            SURFACE_FACES[i]=registered("industrial_paint_face_"+FACE_NAMES[i],Block::new);
         PAINT_CAN_ITEM=blockItem("industrial_paint_can",PAINT_CAN);
         PRIMER_CAN_ITEM=blockItem("industrial_primer_can",PRIMER_CAN);
         Identifier brushId=CaszualAdditions.id("industrial_paint_brush");
