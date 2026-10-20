@@ -70,7 +70,8 @@ public final class PalletCargoCollisionBlock extends Block {
         if(player.isShiftKeyDown()
                 ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.PORTABLE_WRAPPER)
                 ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.STORAGE_SCANNER_ITEM)
-                ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.STACK_OF_PALLETS))
+                ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.STACK_OF_PALLETS)
+                ||stack.is(com.caszgamermd.caszualadditions.racks.RackContent.PALLET_JACK))
             return net.minecraft.world.InteractionResult.PASS;
         BlockPos root=owner(level,pos);
         if(root==null)return net.minecraft.world.InteractionResult.PASS;
