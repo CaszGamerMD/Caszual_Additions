@@ -84,6 +84,9 @@ public final class MovingPallet extends PathfinderMob {
     private ItemStack pallet=ItemStack.EMPTY;
     private NonNullList<ItemStack> contents=NonNullList.withSize(216,ItemStack.EMPTY);
     private boolean delivered,deathDropsReleased,recallAfterDelivery;
+    // Only remote pickups get Input-aisle-rack priority over warehouse PTPs.
+    // Persist this across world saves and chunk unloads.
+    private boolean remotePickupReturn;
     // Persist the owner-death pause with the actual pallet entity and cargo.
     private boolean waitingForPlayer;
     private double lastHeadingX,lastHeadingZ;
@@ -292,6 +295,7 @@ public final class MovingPallet extends PathfinderMob {
         entityData.set(CREW_SIZE,4);
         deliveryMode=3;
         recallAfterDelivery=true;
+        remotePickupReturn=true;
         deliveryPosition=remoteWarehouse;
         remoteFloorRoute.clear();nextRemotePlan=0;
         deliveryFailure="FOUR GOLEMS RETURNING RECOVERED PALLET";
@@ -341,6 +345,7 @@ public final class MovingPallet extends PathfinderMob {
         deliveryPosition=computer.immutable();
         deliveryMode=3;
         recallAfterDelivery=true;
+        remotePickupReturn=false;
         releaseTicks=0;
         entityData.set(RELEASE_TICKS,0);
         entityData.set(RACK_INSERT_ACTIVE,false);
@@ -1023,13 +1028,20 @@ public final class MovingPallet extends PathfinderMob {
             return;
         }
         var warehouse=WarehouseNetwork.fromComputer(level,computer);
+        // Returned REMOTE pickups should enter racks in an aisle literally
+        // tagged "Input" BEFORE the normal PTP receiving queue.
+        // Direct/manual returns keep their existing PTP-first behavior.
+        RackBlockEntity rack=remotePickupReturn
+                ?WarehouseAislePriority.firstAvailableInputRack(level,warehouse.racks())
+                :null;
         PtpBlockEntity point=null;
-        for(PtpBlockEntity candidate:warehouse.points()){
-            if(!candidate.canInstallPallet())continue;
-            if(point==null||candidate.input()&&!point.input())point=candidate;
+        if(rack==null){
+            for(PtpBlockEntity candidate:warehouse.points()){
+                if(!candidate.canInstallPallet())continue;
+                if(point==null||candidate.input()&&!point.input())point=candidate;
+            }
         }
-        RackBlockEntity rack=null;
-        if(point==null){
+        if(rack==null&&point==null){
             for(RackBlockEntity candidate:warehouse.racks())
                 if(!candidate.hasPallet()&&candidate.isEmpty()
                         &&RackPickupPlan.find(level,candidate)!=null){
@@ -1059,7 +1071,11 @@ public final class MovingPallet extends PathfinderMob {
         }
         double dx=service.getX()+.5-getX(),dz=service.getZ()+.5-getZ();
         if(dx*dx+dz*dz>2.25||Math.abs(service.getY()-getY())>.8){
-            deliveryFailure="RETURNING TO "+(point!=null?"INPUT PTP":"RACK");
+            deliveryFailure="RETURNING TO "+(rack!=null
+                    &&remotePickupReturn
+                    &&WarehouseAislePriority.isInputAisle(level,rack)
+                    ?"INPUT AISLE RACK":point!=null
+                        ?point.input()?"INPUT PTP":"EMPTY PTP":"RACK");
             navigateRemoteFloor(level,service);
             return;
         }
@@ -1561,6 +1577,7 @@ public final class MovingPallet extends PathfinderMob {
         out.putBoolean("delivered",delivered);
         out.putBoolean("waiting_for_player",waitingForPlayer);
         out.putBoolean("recall_after_delivery",recallAfterDelivery);
+        out.putBoolean("remote_pickup_return",remotePickupReturn);
         out.putInt("lift_ticks",liftTicks);
         out.putInt("delivery_mode",deliveryMode);
         out.putInt("release_ticks",releaseTicks);
@@ -1588,6 +1605,7 @@ public final class MovingPallet extends PathfinderMob {
         delivered=in.getBooleanOr("delivered",false);
         waitingForPlayer=in.getBooleanOr("waiting_for_player",false);
         recallAfterDelivery=in.getBooleanOr("recall_after_delivery",false);
+        remotePickupReturn=in.getBooleanOr("remote_pickup_return",false);
         if(delivered){
             setNoGravity(true);
             noPhysics=true;

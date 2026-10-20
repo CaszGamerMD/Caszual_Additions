@@ -23,6 +23,8 @@ jobs:
       - name: Verify HeadDB head-search API (nonblocking)
         continue-on-error: true
         run: python3 scripts/head_db_api_smoke.py
+      - name: Check Input aisle orange signs and remote pallet drop-off priority
+        run: python3 scripts/warehouse_input_aisle_priority_smoke.py
       - name: Check Scanner unlink/relink, Pallet Dispenser floor and Pallet Jack cargo
         run: python3 scripts/warehouse_scanner_dispenser_jack_smoke.py
       - name: Check wooden pallet 3x3 JEI sample using any planks
