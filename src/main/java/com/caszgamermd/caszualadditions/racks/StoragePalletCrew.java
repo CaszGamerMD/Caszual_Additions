@@ -20,7 +20,9 @@ public final class StoragePalletCrew {
         UUID owner=player.getUUID();
         return level.getEntitiesOfClass(StorageGolem.class,
                 new AABB(player.blockPosition()).inflate(64),
-                golem->golem.ownedBy(owner));
+                golem->golem.ownedBy(owner)
+                        &&!golem.remotePickupActive()
+                        &&!golem.remoteCourierActive());
     }
     private static MovingPallet moving(ServerLevel level,ServerPlayer player){
         List<MovingPallet> carriers=level.getEntitiesOfClass(MovingPallet.class,
