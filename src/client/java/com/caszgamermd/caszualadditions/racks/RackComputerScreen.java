@@ -23,6 +23,7 @@ public final class RackComputerScreen extends Screen {
     private EditBox search, orderQuantity;
     private final java.util.List<AbstractWidget> rackWidgets=new java.util.ArrayList<>();
     private final java.util.List<AbstractWidget> workerWidgets=new java.util.ArrayList<>();
+    private final java.util.List<AbstractWidget> debugWidgets=new java.util.ArrayList<>();
     private final java.util.List<AbstractWidget> orderWidgets=new java.util.ArrayList<>();
     // A draft belongs to a physical Rack Computer in this loaded world,
     // NOT one temporary Screen instance. The weak world key ensures an
@@ -59,13 +60,18 @@ public final class RackComputerScreen extends Screen {
     private JsonArray workers=new JsonArray();
     private int page,workerScroll,activeGolems,igcCount,refreshTicks;
     private String workerStatus="Choose a work request or inspect active tasks.";
-    private Button workersToggleButton;
+    private Button workersToggleButton,debugChatButton,debugStatusButton;
+    private boolean debugChat,debugStatuses;
     private <T extends AbstractWidget> T addRack(T widget){
         rackWidgets.add(widget);
         return addRenderableWidget(widget);
     }
     private <T extends AbstractWidget> T addWorkers(T widget){
         workerWidgets.add(widget);
+        return addRenderableWidget(widget);
+    }
+    private <T extends AbstractWidget> T addDebug(T widget){
+        debugWidgets.add(widget);
         return addRenderableWidget(widget);
     }
     private <T extends AbstractWidget> T addOrders(T widget){
@@ -77,6 +83,7 @@ public final class RackComputerScreen extends Screen {
         for(AbstractWidget widget:rackWidgets)widget.visible=page==0;
         for(AbstractWidget widget:workerWidgets)widget.visible=page==1;
         for(AbstractWidget widget:orderWidgets)widget.visible=page==2;
+        for(AbstractWidget widget:debugWidgets)widget.visible=page==3;
         sendQuery();
     }
     private String selectedItemId = "";
@@ -105,13 +112,16 @@ public final class RackComputerScreen extends Screen {
         rackWidgets.clear();
         workerWidgets.clear();
         orderWidgets.clear();
-        int tabLeft=Math.max(210,width-353);
+        debugWidgets.clear();
+        int tabLeft=Math.max(160,width-385);
         addRenderableWidget(Button.builder(Component.literal("RACKS & PTPs"),
-                b->showPage(0)).bounds(tabLeft,13,107,20).build());
-        addRenderableWidget(Button.builder(Component.literal("STORAGE GOLEMS"),
-                b->showPage(1)).bounds(tabLeft+110,13,119,20).build());
+                b->showPage(0)).bounds(tabLeft,13,99,20).build());
+        addRenderableWidget(Button.builder(Component.literal("GOLEMS"),
+                b->showPage(1)).bounds(tabLeft+102,13,88,20).build());
         addRenderableWidget(Button.builder(Component.literal("ORDER LIST"),
-                b->showPage(2)).bounds(tabLeft+232,13,114,20).build());
+                b->showPage(2)).bounds(tabLeft+193,13,96,20).build());
+        addRenderableWidget(Button.builder(Component.literal("DEBUG"),
+                b->showPage(3)).bounds(tabLeft+292,13,75,20).build());
         int left=22, y=45;
         search=addRack(new EditBox(font,left,y,
                 Math.max(90,width-270),23,Component.literal("Search rack network")));
@@ -192,7 +202,20 @@ public final class RackComputerScreen extends Screen {
         addOrders(Button.builder(Component.literal("▼"),
                 b->orderScroll=Math.min(Math.max(0,orderList.size()-1),orderScroll+1))
                 .bounds(width-51,height-41,25,21).build());
+        debugChatButton=addDebug(Button.builder(Component.literal("CHAT LOG: OFF"),
+                b->setDebug(!debugChat,debugStatuses))
+                .bounds(30,98,Math.max(150,width/3),26).build());
+        debugStatusButton=addDebug(Button.builder(
+                Component.literal("GOLEM STATUSES: OFF"),
+                b->setDebug(debugChat,!debugStatuses))
+                .bounds(30,160,Math.max(190,width/3),26).build());
         showPage(page);
+    }
+
+    private void setDebug(boolean chat,boolean statuses){
+        ClientPlayNetworking.send(new RackComputerNet.DebugControl(
+                computer,chat,statuses));
+        workerStatus="Updating debug switches...";
     }
 
     private void sendQuery() {
@@ -322,6 +345,19 @@ public final class RackComputerScreen extends Screen {
             dockedGolems=obj.has("dockedGolems")?obj.get("dockedGolems").getAsInt():0;
             golemSorting=obj.has("golemSortingEnabled")
                     &&obj.get("golemSortingEnabled").getAsBoolean();
+            debugChat=obj.has("debugChat")&&obj.get("debugChat").getAsBoolean();
+            debugStatuses=obj.has("debugStatuses")
+                    &&obj.get("debugStatuses").getAsBoolean();
+            if(debugChatButton!=null){
+                debugChatButton.active=shelfCount>0;
+                debugChatButton.setMessage(Component.literal(
+                        "CHAT LOG: "+(debugChat?"ON":"OFF")));
+            }
+            if(debugStatusButton!=null){
+                debugStatusButton.active=shelfCount>0;
+                debugStatusButton.setMessage(Component.literal(
+                        "GOLEM STATUSES: "+(debugStatuses?"ON":"OFF")));
+            }
             if(workersToggleButton!=null){
                 workersToggleButton.active=shelfCount>0;
                 workersToggleButton.setMessage(Component.literal(golemSorting
@@ -360,6 +396,10 @@ public final class RackComputerScreen extends Screen {
         }
         if(page==2){
             drawOrderList(graphics);
+            return;
+        }
+        if(page==3){
+            drawDebug(graphics);
             return;
         }
         graphics.text(font,Component.literal(compact(status,
@@ -462,6 +502,21 @@ public final class RackComputerScreen extends Screen {
         }
     }
 
+    private void drawDebug(GuiGraphicsExtractor graphics){
+        graphics.text(font,Component.literal("WAREHOUSE DEBUG SETTINGS"),
+                30,53,0xffc5ffd0,false);
+        graphics.text(font,Component.literal("Both options default to OFF."),
+                30,75,0xffadcbbb,false);
+        graphics.text(font,Component.literal("Send diagnostic and scanner messages to chat."),
+                30,133,0xffaacbb2,false);
+        graphics.text(font,Component.literal("Show live work / path status above Golems and carriers."),
+                30,196,0xffaacbb2,false);
+        graphics.text(font,Component.literal("With statuses off, individual Golems show their names only."),
+                30,218,0xffa3dbc0,false);
+        graphics.text(font,Component.literal(shelfCount+" connected Golem Shelf blocks"),
+                30,260,0xffa3dbc0,false);
+    }
+
     private void drawWorkers(GuiGraphicsExtractor graphics){
         graphics.text(font,Component.literal("Network: "+shelfCount+" shelves / "
                 +dockedGolems+" docked / "+activeGolems+" active / "
@@ -482,7 +537,9 @@ public final class RackComputerScreen extends Screen {
             graphics.fill(27,y,width-28,y+29,i%2==0?0xff2e4a3b:0xff294236);
             String coordinates=worker.get("x").getAsInt()+","
                     +worker.get("y").getAsInt()+","+worker.get("z").getAsInt();
-            String heading=(i+1)+". "+worker.get("work").getAsString();
+            String label=worker.has("name")?worker.get("name").getAsString():"";
+            String heading=(i+1)+". "+(label.isBlank()?"":label+" • ")
+                    +worker.get("work").getAsString();
             graphics.text(font,Component.literal(compact(heading,
                     Math.max(14,(width-58)/6))),32,y+3,0xffd2f5dc,false);
             String owner=worker.get("owner").getAsString();

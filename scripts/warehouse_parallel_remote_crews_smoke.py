@@ -35,11 +35,14 @@ assert "id.equals(worker.remotePickupMission())" in pickup
 assert "if(shelves.size()<4)" in dispatch
 assert "for(int i=0;i<4;i++)" in dispatch
 assert "if(consumed==4)" in dispatch
-assert "for(int i=0;i<consumed;i++)shelves.get(i).add();" in dispatch
-assert "if(!shelf.take())break;" in dispatch
+assert 'String name=shelf.takeNamed();' in dispatch
+assert "for(int i=0;i<consumed;i++)" in dispatch
+assert "shelves.get(i).addNamed(deployedNames.get(i));" in dispatch
+assert "if(name==null)break;" in dispatch
+assert "deployedNames.add(name);" in dispatch
 assert "if(!level.addFreshEntity(worker))" in dispatch
-assert "public boolean take(){if(docked<=0)return false;" in shelf
-assert "public boolean add(){if(docked>=2)return false;" in shelf
+assert "public String takeNamed()" in shelf
+assert "public boolean addNamed(" in shelf
 for docked, expected in [(0,0),(3,0),(4,1),(7,1),(8,2),(12,3)]:
     assert docked//4 == expected
 

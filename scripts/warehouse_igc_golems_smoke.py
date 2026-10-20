@@ -47,6 +47,6 @@ assert "WarehouseNetwork.fromComputer(level,computer)" in racks
 computer=source("main/java/com/caszgamermd/caszualadditions/racks/RackComputerNet.java")
 assert "GolemWork.TYPE" in computer and 'root.add("workers",workerRows)' in computer
 screen=source("client/java/com/caszgamermd/caszualadditions/racks/RackComputerScreen.java")
-for text in ("STORAGE GOLEMS","RUN QUEUE","SCANNER HELP","RECALL ALL","FOLLOWING"):
+for text in ("GOLEMS","RUN QUEUE","SCANNER HELP","RECALL ALL","FOLLOWING"):
     assert text in (screen+source("main/java/com/caszgamermd/caszualadditions/racks/StorageGolem.java"))
 print("PASS: 16 IGC recipes and models, connected network, Golem task page")

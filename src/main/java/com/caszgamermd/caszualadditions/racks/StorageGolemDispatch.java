@@ -108,9 +108,11 @@ public final class StorageGolemDispatch {
                     output.getBlockPos(),amount);
             StorageGolemShelfDoor.emerge(worker,shelfDoor,
                     StorageGolemShelfDoor.front(shelf));
-            if(!shelf.take()){output.releaseOutput(ticket);return false;}
+            String name=shelf.takeNamed();
+            if(name==null){output.releaseOutput(ticket);return false;}
+            worker.setGolemName(name);
             if(!level.addFreshEntity(worker)){
-                shelf.add();output.releaseOutput(ticket);
+                shelf.addNamed(name);output.releaseOutput(ticket);
             }
             return true;
         }
@@ -241,8 +243,10 @@ public final class StorageGolemDispatch {
             worker.assignPalletStack(shelf.getBlockPos(),source,stockDestination);
             StorageGolemShelfDoor.emerge(worker,door,
                     StorageGolemShelfDoor.front(shelf));
-            if(!shelf.take())return false;
-            if(!level.addFreshEntity(worker))shelf.add();
+            String name=shelf.takeNamed();
+            if(name==null)return false;
+            worker.setGolemName(name);
+            if(!level.addFreshEntity(worker))shelf.addNamed(name);
             return true;
         }
         return false;
@@ -280,7 +284,9 @@ public final class StorageGolemDispatch {
         worker.assign(shelf.getBlockPos(),ptp.getBlockPos(),dest,sample);
         StorageGolemShelfDoor.emerge(worker,shelfDoor,
                 StorageGolemShelfDoor.front(shelf));
-        if(!shelf.take())return;
-        if(!level.addFreshEntity(worker))shelf.add();
+        String name=shelf.takeNamed();
+        if(name==null)return;
+        worker.setGolemName(name);
+        if(!level.addFreshEntity(worker))shelf.addNamed(name);
     }
 }

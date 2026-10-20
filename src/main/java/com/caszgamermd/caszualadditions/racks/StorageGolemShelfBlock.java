@@ -64,10 +64,12 @@ public final class StorageGolemShelfBlock extends Block implements EntityBlock {
         if(!held.is(RackContent.STORAGE_GOLEM_ITEM))return InteractionResult.PASS;
         if(level.isClientSide())return InteractionResult.SUCCESS;
         if(level.getBlockEntity(pos) instanceof StorageGolemShelfEntity be){
-            if(be.add()){
+            if(be.addNamed(WarehouseGolemNames.fromToken(held))){
                 if(!player.getAbilities().instabuild)held.shrink(1);
-                player.sendSystemMessage(Component.literal("Storage Golems docked: "+be.docked()+"/2"));
-            }else player.sendSystemMessage(Component.literal("Storage Golem Shelf is full (2/2)."));
+                WarehouseGolemDebug.message(player,pos,Component.literal(
+                        "Golem "+be.docked()+"/2 docked: "+be.newestName()));
+            }else WarehouseGolemDebug.message(player,pos,Component.literal(
+                    "Storage Golem Shelf is full (2/2)."));
         }
         return InteractionResult.SUCCESS;
     }
@@ -75,12 +77,13 @@ public final class StorageGolemShelfBlock extends Block implements EntityBlock {
             BlockPos pos,Player player,BlockHitResult hit){
         if(!level.isClientSide()&&level.getBlockEntity(pos) instanceof StorageGolemShelfEntity be){
             if(player.isShiftKeyDown()){
-                if(be.take())player.getInventory().placeItemBackInInventory(
-                        new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
+                String name=be.takeNamed();
+                if(name!=null)player.getInventory().placeItemBackInInventory(
+                        WarehouseGolemNames.namedToken(name));
             }else{
                 int linked=StorageGolemShelfEntity.linked(level,pos).stream()
                         .mapToInt(StorageGolemShelfEntity::docked).sum();
-                player.sendSystemMessage(Component.literal("Storage Golem Shelf: "
+                WarehouseGolemDebug.message(player,pos,Component.literal("Storage Golem Shelf: "
                         +be.docked()+"/2 docked | "+linked+" available across linked shelves."));
             }
         }
@@ -91,9 +94,10 @@ public final class StorageGolemShelfBlock extends Block implements EntityBlock {
         if(!level.isClientSide()&&level.getBlockEntity(pos) instanceof StorageGolemShelfEntity be
                 &&!player.getAbilities().instabuild){
             int count=be.docked();
-            be.clearDocked();
-            for(int i=0;i<count;i++)
-                Block.popResource(level,pos,new ItemStack(RackContent.STORAGE_GOLEM_ITEM));
+            for(int i=0;i<count;i++){
+                String name=be.takeNamed();
+                Block.popResource(level,pos,WarehouseGolemNames.namedToken(name));
+            }
             Block.popResource(level,pos,new ItemStack(this));
         }
         return super.playerWillDestroy(level,pos,state,player);

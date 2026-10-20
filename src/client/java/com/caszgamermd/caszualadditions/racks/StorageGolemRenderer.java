@@ -13,6 +13,9 @@ import net.minecraft.client.renderer.block.BlockModelRenderState;
 import net.minecraft.client.renderer.block.model.BlockDisplayContext;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.MobRenderer;
+import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.client.renderer.item.ItemModelResolver;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
@@ -29,35 +32,43 @@ public final class StorageGolemRenderer
     private static final Identifier TEXTURE=CaszualAdditions.id("textures/entity/storage_golem.png");
     private static final BlockDisplayContext DISPLAY=BlockDisplayContext.create();
     private final BlockModelResolver blocks;
+    private final ItemModelResolver items;
 
     public StorageGolemRenderer(EntityRendererProvider.Context ctx){
         super(ctx,new StorageGolemModel(ctx.bakeLayer(LAYER)),.35f);
         blocks=ctx.getBlockModelResolver();
+        items=ctx.getItemModelResolver();
+        // Layers submit inside LivingEntityRenderer's body-yaw transform;
+        // unlike rendering after super.submit(), this stays in the hands
+        // when the worker turns, walks, or rotates at a warehouse shelf.
+        addLayer(new HeldCargoLayer(this));
     }
     @Override public void extractRenderState(StorageGolem golem,
             StorageGolemRenderState state,float partialTick){
         super.extractRenderState(golem,state,partialTick);
-        var name=golem.getCustomName();
-        String label=name==null?"":name.getString();
-        state.carryingPallet=label.startsWith("PALLET ");
-        state.pushingEmptyPallet=label.startsWith("EMPTY PALLET")&&!golem.displayPallet().isEmpty();
+        // Animation is governed by real cargo/missions, never by the
+        // custom name. A crew member whose task label still says PALLET
+        // must not stand idle with both arms permanently raised.
+        state.carryingPallet=golem.carryingPalletPose();
+        state.pushingEmptyPallet=golem.pushingPalletPose();
         state.showSharedPallet=state.carryingPallet
-                &&label.startsWith("PALLET 1/4")
+                &&golem.crewIndex()==0
                 &&!golem.displayPallet().isEmpty();
         state.visibleCargo=state.showSharedPallet?golem.visibleCargoCount():0;
-        state.heldSlots=state.carryingPallet?0:golem.displayedLoadSlots();
+        state.heldSlots=state.carryingPallet||state.pushingEmptyPallet
+                ?0:golem.displayedLoadSlots();
+        // Use the real synced ItemStack and its item model (including
+        // modded non-block items). Only the first non-empty cargo sample
+        // is displayed between the hands, never a fake 3x3 tray.
+        ItemStack held=ItemStack.EMPTY;
         for(int i=0;i<state.heldSlots&&i<9;i++){
-            ItemStack sample=golem.displayedLoad(i);
-            if(sample.isEmpty())continue;
-            Block material=PalletContent.CARDBOARD_RENDER_PROXY;
-            if(sample.getItem() instanceof BlockItem blockItem
-                    &&blockItem.getBlock().defaultBlockState().isSolid())
-                material=blockItem.getBlock();
-            blocks.update(state.held[i],material.defaultBlockState(),DISPLAY);
+            ItemStack candidate=golem.displayedLoad(i);
+            if(!candidate.isEmpty()){held=candidate;break;}
         }
-        if(state.heldSlots>0&&!state.carryingPallet&&!state.pushingEmptyPallet){
-            blocks.update(state.heldTray,Blocks.POLISHED_DEEPSLATE.defaultBlockState(),DISPLAY);
-        }
+        if(!held.isEmpty())
+            items.updateForLiving(state.heldItem,held,
+                    ItemDisplayContext.FIXED,golem);
+        else state.heldItem.clear();
         if(state.showSharedPallet||state.pushingEmptyPallet){
             Block material=Blocks.OAK_PLANKS;
             ItemStack carried=golem.displayPallet();
@@ -102,21 +113,6 @@ public final class StorageGolemRenderer
     @Override public void submit(StorageGolemRenderState state,PoseStack pose,
             SubmitNodeCollector collector,CameraRenderState camera){
         super.submit(state,pose,collector,camera);
-        if(state.heldSlots>0&&!state.carryingPallet&&!state.pushingEmptyPallet){
-            // Physically hold the loaded tray at both extended wrists.
-            // Previously the cartons hovered far above the arms and it
-            // looked as though warehouse Golems never touched their load.
-            pose.pushPose();
-            piece(state.heldTray,state,pose,collector,
-                    -.45f,.675f,-.86f,.90f,.065f,.51f);
-            for(int i=0;i<state.heldSlots&&i<9;i++){
-                int col=i%3,row=i/3;
-                piece(state.held[i],state,pose,collector,
-                        -.37f+col*.255f,.75f+row*.205f,-.80f,
-                        .23f,.205f,.23f);
-            }
-            pose.popPose();
-        }
         if(state.pushingEmptyPallet){
             // The replacement is a FULL-SIZE 2x2 pallet stood on its SIDE:
             // nearly two blocks wide and two blocks tall, not a 1-block
@@ -181,6 +177,33 @@ public final class StorageGolemRenderer
         piece(state.glass,state,pose,collector,1.78f,.23f,.06f,.025f,wallHeight,1.68f);
         pose.popPose();
     }
+    /**
+     * Vanilla-style held-item render layer. Minecraft passes a pose stack
+     * already rotated with the GOLEM body, not the world camera; the model
+     * moves the real item to the articulated wrist location. As the Golem
+     * turns the item turns, and empty hands have zero render nodes.
+     */
+    private static final class HeldCargoLayer
+            extends RenderLayer<StorageGolemRenderState,StorageGolemModel> {
+        HeldCargoLayer(StorageGolemRenderer owner){super(owner);}
+        @Override public void submit(PoseStack pose,SubmitNodeCollector collector,
+                int light,StorageGolemRenderState state,float yRot,float xRot){
+            if(state.heldSlots<=0||state.carryingPallet
+                    ||state.pushingEmptyPallet||state.heldItem.isEmpty())return;
+            pose.pushPose();
+            getParentModel().translateToCargoHand(pose);
+            // The wrist points forwards. These standard hand transforms
+            // orient both flat items and cubic blocks naturally.
+            pose.mulPose(Axis.XP.rotationDegrees(-90f));
+            pose.mulPose(Axis.YP.rotationDegrees(180f));
+            pose.translate(0,.015f,-.075f);
+            pose.scale(.55f,.55f,.55f);
+            state.heldItem.submit(pose,collector,light,
+                    OverlayTexture.NO_OVERLAY,state.outlineColor);
+            pose.popPose();
+        }
+    }
+
     private static void piece(BlockModelRenderState block,StorageGolemRenderState state,
             PoseStack pose,SubmitNodeCollector collector,
             float x,float y,float z,float width,float height,float depth){

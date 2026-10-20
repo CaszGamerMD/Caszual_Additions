@@ -18,7 +18,8 @@ assert "level.addFreshEntity(worker)" in dispatch
 assert "if(accepted&&level.addFreshEntity(courier))" in dispatch
 assert "for(StorageGolem worker:spawned)worker.discard()" in dispatch
 assert "sourceMagazine.put(fresh)" in dispatch
-assert "for(int i=0;i<consumed;i++)shelves.get(i).add()" in dispatch
+assert "for(int i=0;i<consumed;i++)" in dispatch
+assert "shelves.get(i).addNamed(deployedNames.get(i))" in dispatch
 assert "worker.remotePickupActive()" in dispatch
 assert "RemotePalletPickupCrew.rally(" in dispatch
 # Each real worker has persistent UUID, target, shelf, approach and phase.

@@ -10,9 +10,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 
 /**
- * Safe, finite physical warehouse routes. Flat cardinal aisles ALWAYS win:
- * try an all-same-Y path first, then stairs/slopes only when no flat leg
- * exists (or when the actual destination is on another floor).
+ * Safe, finite physical warehouse routes. Prefer a same-height path; allow
+ * occasional, collision-checked one-block climbs/drops only when no level
+ * route reaches the requested goal. Each height change has a large penalty.
  *
  * Long-distance carriers compute 36-block legs in currently loaded chunks,
  * keeping the SAME persisted job and recomputing on obstruction/reload.
@@ -20,6 +20,7 @@ import net.minecraft.core.Direction;
 public final class WarehousePreferredPath {
     private WarehousePreferredPath(){}
     public static final int RADIUS=36,MAX_CELLS=6500;
+    private static final int STEP_HEIGHT_COST=14,MAX_ELEVATION_FROM_START=12;
     private record Node(BlockPos pos,int cost,int estimate){}
     private static int heuristic(BlockPos p,BlockPos target){
         return Math.abs(p.getX()-target.getX())
@@ -28,12 +29,46 @@ public final class WarehousePreferredPath {
     }
     public static java.util.List<BlockPos> leg(BlockPos start,BlockPos target,
             Predicate<BlockPos> passable,BlockPos blocked){
-        var flat=find(start,target,passable,blocked,false);
-        if(flat!=null)return flat;
-        return find(start,target,passable,blocked,true);
+        return leg(start,target,passable,blocked,p->p.getY());
+    }
+    /** Height-aware path for the actual world. A change of one integer
+     * BlockPos Y between a full block and a bottom slab is only 1/2 block,
+     * and must not incur the usual costly one-block climb penalty. */
+    public static java.util.List<BlockPos> leg(BlockPos start,BlockPos target,
+            Predicate<BlockPos> passable,BlockPos blocked,
+            java.util.function.ToDoubleFunction<BlockPos> standingY){
+        // A flat route is cheap and normally ideal, but NOT mandatory:
+        // a giant same-level detour should lose to two short, legal
+        // one-block transitions. Compare its excess distance against the
+        // exact height-change penalty (up + down), rather than forbidding
+        // all climbs merely because a very long flat route exists.
+        var flat=start.getY()==target.getY()
+                ?find(start,target,passable,blocked,false,standingY):null;
+        int direct=Math.abs(start.getX()-target.getX())
+                +Math.abs(start.getZ()-target.getZ());
+        if(flat!=null&&flat.size()<=direct+STEP_HEIGHT_COST*2)
+            return flat;
+        var terrain=find(start,target,passable,blocked,true,standingY);
+        if(flat==null)return terrain;
+        if(terrain==null)return flat;
+        // A partial forward leg must not outrank an exact 3-D arrival.
+        boolean flatExact=flat.getLast().equals(target);
+        boolean terrainExact=terrain.getLast().equals(target);
+        if(flatExact!=terrainExact)return flatExact?flat:terrain;
+        int terrainCost=terrain.size();
+        BlockPos previous=start;
+        for(BlockPos cell:terrain){
+            terrainCost+=(int)Math.round(Math.max(0,
+                    Math.abs(standingY.applyAsDouble(cell)
+                            -standingY.applyAsDouble(previous))-.501)
+                    *STEP_HEIGHT_COST);
+            previous=cell;
+        }
+        return flat.size()<=terrainCost?flat:terrain;
     }
     private static java.util.List<BlockPos> find(BlockPos start,BlockPos target,
-            Predicate<BlockPos> passable,BlockPos blocked,boolean allowElevation){
+            Predicate<BlockPos> passable,BlockPos blocked,boolean allowElevation,
+            java.util.function.ToDoubleFunction<BlockPos> standingY){
         int floor=start.getY();
         if(!allowElevation&&floor!=target.getY())return null;
         PriorityQueue<Node> open=new PriorityQueue<>(
@@ -68,10 +103,18 @@ public final class WarehousePreferredPath {
                     BlockPos next=across.offset(0,delta,0);
                     if(Math.abs(next.getX()-start.getX())>RADIUS
                             ||Math.abs(next.getZ()-start.getZ())>RADIUS
-                            ||Math.abs(next.getY()-floor)>3
+                            ||Math.abs(next.getY()-floor)>MAX_ELEVATION_FROM_START
                             ||next.equals(blocked)
                             ||!passable.test(next))continue;
-                    int cost=node.cost()+1+(delta==0?0:18);
+                    // Multiple changes cost more than a level detour.
+                    // Still allow +1 or -1 where terrain actually requires it.
+                    double rise=Math.abs(standingY.applyAsDouble(next)
+                            -standingY.applyAsDouble(here));
+                    if(rise>1.001)continue;
+                    // Half slabs are smooth floor; they should never
+                    // trigger a jump or a high elevation-routing penalty.
+                    int penalty=rise<=.501?0:STEP_HEIGHT_COST;
+                    int cost=node.cost()+1+penalty;
                     if(cost>=costs.getOrDefault(next,Integer.MAX_VALUE))continue;
                     costs.put(next,cost);
                     parent.put(next,here);
@@ -82,7 +125,12 @@ public final class WarehousePreferredPath {
         }
         // If the actual nearby target cannot be reached on this floor, do
         // not treat a stuck partial leg as a valid alternative repeatedly.
-        if(best==null||best.equals(start)||exact&&bestScore>=heuristic(start,target))
+        // For nearby goals a partial approach is NOT success: it sends a
+        // robot to the same impassable hillside on every replan. The full
+        // 3-D search must reach the real destination, otherwise wait.
+        if(best==null||best.equals(start)
+                ||exact&&!best.equals(target)
+                ||!exact&&bestScore>=heuristic(start,target))
             return null;
         var steps=new ArrayList<BlockPos>();
         for(BlockPos at=best;!at.equals(start);at=parent.get(at))steps.add(at);

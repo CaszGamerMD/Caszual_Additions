@@ -86,6 +86,22 @@ jobs:
         run: python3 scripts/warehouse_remote_crew_deadlock_smoke.py
       - name: Verify parallel full-size warehouse crews and scanner queue (blocking)
         run: python3 scripts/warehouse_parallel_remote_crews_smoke.py
+      - name: Verify courier avoids nearby pallet decks and retains its assigned target
+        run: python3 scripts/warehouse_nearby_pallet_courier_smoke.py
+      - name: Verify remote handoff transitions and connected carrying arm joints
+        run: python3 scripts/warehouse_remote_handoff_arms_smoke.py
+      - name: Verify intact pallet death recovery and scanner mode swapping
+        run: python3 scripts/warehouse_pallet_death_recovery_smoke.py
+      - name: Verify idle golem arms, repaired UV atlas and smooth slab traversal
+        run: python3 scripts/warehouse_idle_slab_texture_smoke.py
+      - name: Verify visible remote empty pallet and safe direct scanner Golem recall
+        run: python3 scripts/warehouse_remote_pallet_visual_direct_recall_smoke.py
+      - name: Verify unloading Golems hold actual items in wrists with no cargo tray
+        run: python3 scripts/warehouse_golem_handheld_item_smoke.py
+      - name: Verify named Golems and Rack Computer debug toggles
+        run: python3 scripts/warehouse_golem_names_debug_smoke.py
+      - name: Verify Direct scanner recalls all personal followers without Rack Computer proximity
+        run: python3 scripts/warehouse_personal_direct_recall_smoke.py
       - name: Verify Golems physically swim across water and can rendezvous at waterline
         run: python3 scripts/warehouse_remote_water_navigation_smoke.py
       - name: Verify full-size 12-pallet tower, height collision and hand retrieval

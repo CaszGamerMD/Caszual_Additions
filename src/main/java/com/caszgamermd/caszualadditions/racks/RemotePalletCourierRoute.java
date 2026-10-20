@@ -1,6 +1,10 @@
 package com.caszgamermd.caszualadditions.racks;
 
 import java.util.List;
+import com.caszgamermd.caszualadditions.pallet.PalletBlock;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -45,11 +49,21 @@ public final class RemotePalletCourierRoute {
      * straight-line instruction or a random walk around the target. */
     public static List<BlockPos> route(ServerLevel level,BlockPos start,
             BlockPos destination,BlockPos avoid,boolean pushing){
+        return route(level,start,destination,avoid,pushing,BlockPos.ZERO);
+    }
+    public static List<BlockPos> route(ServerLevel level,BlockPos start,
+            BlockPos destination,BlockPos avoid,boolean pushing,
+            BlockPos crewRally){
         Predicate<BlockPos> passable=pos->(pushing?clear(level,pos)
                 :StorageGolemReturnPath.walkable(level,pos))
                 // Mark the WHOLE pushed-pallet clearance envelope as
                 // blocked around a stalled waypoint, not just one center
                 // cell that the next plan can graze and collide with.
+                // Don't push a 2-wide pallet through the three independent
+                // lifters' 3x3 assembly. The courier must remain clear until
+                // they physically lift the target and form the shared rig.
+                &&(crewRally.equals(BlockPos.ZERO)||!pushing
+                    ||pos.distSqr(crewRally)>=9)
                 &&(avoid.equals(BlockPos.ZERO)
                     ||!(pushing?Math.abs(pos.getX()-avoid.getX())<=1
                             &&Math.abs(pos.getZ()-avoid.getZ())<=1
@@ -73,53 +87,129 @@ public final class RemotePalletCourierRoute {
             // the destination; a "best effort" partial route to a
             // nearby wall is the exact circling bug being fixed.
             var stairs=WarehousePreferredPath.leg(
-                    start,destination,passable,avoid);
+                    start,destination,passable,avoid,
+                    pos->WarehouseTerrain.standingY(level,pos));
             return stairs!=null&&!stairs.isEmpty()
                     &&stairs.get(stairs.size()-1).equals(destination)
                     ?stairs:null;
         }
-        return WarehousePreferredPath.leg(start,destination,passable,avoid);
+        return WarehousePreferredPath.leg(start,destination,passable,avoid,
+                pos->WarehouseTerrain.standingY(level,pos));
     }
 
-    /** The wrapped 2x2 block is the ITEM target, not the GOLEM waypoint.
-     * Try every outer side; rank actual *route length*, separating the
-     * courier from the THREE independently arriving pickup Golems.
-     * No candidate is selected unless a checked route exists. */
+    /**
+     * The saved remote target is the CORNER of a rotating 2x2 pallet, not
+     * its geometric center. Resolve the four ACTUAL footprint cells first.
+     * Once the old pallet has been lifted its block states are gone, so use
+     * the loaded rig's saved old orientation with the courier's replacement
+     * pallet block. Never infer a different target from a nearby pallet.
+     */
+    public static BlockPos[] targetFootprint(ServerLevel level,BlockPos root,
+            MovingPallet rig,ItemStack replacement){
+        BlockState state=level.getBlockState(root);
+        if(!(state.getBlock() instanceof PalletBlock)){
+            if(rig==null||!rig.loaded()
+                    ||!(replacement.getItem() instanceof BlockItem item)
+                    ||!(item.getBlock() instanceof PalletBlock block))
+                return null;
+            state=block.defaultBlockState()
+                    .setValue(PalletBlock.PART,0)
+                    .setValue(PalletBlock.FACING,rig.remoteOldFacing())
+                    .setValue(PalletBlock.LEGACY,rig.remoteOldLegacy());
+        }
+        int minX=Integer.MAX_VALUE,maxX=Integer.MIN_VALUE;
+        int minZ=Integer.MAX_VALUE,maxZ=Integer.MIN_VALUE;
+        for(int part=0;part<4;part++){
+            BlockPos pos=PalletBlock.partPos(root,part,state);
+            minX=Math.min(minX,pos.getX());maxX=Math.max(maxX,pos.getX());
+            minZ=Math.min(minZ,pos.getZ());maxZ=Math.max(maxZ,pos.getZ());
+        }
+        return new BlockPos[]{
+                new BlockPos(minX,root.getY(),minZ),
+                new BlockPos(maxX,root.getY(),maxZ)};
+    }
+
+    /** Valid waiting/delivery position is TWO or THREE cells outside the
+     * actual assigned pallet's footprint on one cardinal face. This works
+     * even when the target root is the NE/SW/etc corner, and explicitly
+     * rejects the 4-7-block staging points used by older builds.
+     *
+     * Requiring a true perimeter service position also prevents completing
+     * a pallet placement remotely from beside an unrelated nearby pallet.
+     */
+    public static boolean nearTargetService(BlockPos courier,
+            BlockPos[] footprint){
+        if(footprint==null)return false;
+        BlockPos min=footprint[0],max=footprint[1];
+        if(Math.abs(courier.getY()-min.getY())>1)return false;
+        int x=courier.getX(),z=courier.getZ();
+        boolean northSouth=x>=min.getX()&&x<=max.getX()
+                &&(min.getZ()-z>=2&&min.getZ()-z<=3
+                    ||z-max.getZ()>=2&&z-max.getZ()<=3);
+        boolean eastWest=z>=min.getZ()&&z<=max.getZ()
+                &&(min.getX()-x>=2&&min.getX()-x<=3
+                    ||x-max.getX()>=2&&x-max.getX()<=3);
+        return northSouth||eastWest;
+    }
+
+    /** No service target can be valid just because another, unrelated
+     * pallet happens to be near the golem's current position. */
+    public static boolean validServiceAisle(ServerLevel level,BlockPos candidate,
+            BlockPos[] footprint,BlockPos crewRally){
+        return nearTargetService(candidate,footprint)
+                &&clear(level,candidate)
+                &&(crewRally.equals(BlockPos.ZERO)
+                    ||candidate.distSqr(crewRally)>=9);
+    }
+
+    /** Choose an accessible perimeter spot around the fixed old 2x2 deck,
+     * never around the courier or the nearest unrelated pallet. A courier
+     * moved by a player to an already-valid service tile can simply stop.
+     */
     public static BlockPos chooseServiceAisle(ServerLevel level,
-            BlockPos from,BlockPos pallet,BlockPos trioRally,BlockPos excluded){
-        BlockPos chosen=BlockPos.ZERO;
-        double score=Double.POSITIVE_INFINITY;
-        // Evaluate nearer service aisles first. On long journeys the
-        // 36-cell rolling planner is expensive; a route is only computed
-        // for a candidate that already has enough 3-wide clearance.
-        java.util.ArrayList<BlockPos> candidates=new java.util.ArrayList<>();
-        for(Direction face:Direction.Plane.HORIZONTAL)
-            for(int distance=4;distance<=7;distance++)
-                candidates.add(pallet.relative(face,distance));
-        candidates.sort(java.util.Comparator.comparingDouble(from::distSqr));
-        for(int pass=0;pass<2;pass++){
+            BlockPos from,BlockPos pallet,BlockPos trioRally,BlockPos excluded,
+            MovingPallet rig,ItemStack replacement){
+        BlockPos[] footprint=targetFootprint(level,pallet,rig,replacement);
+        if(footprint==null)return BlockPos.ZERO;
+        if(validServiceAisle(level,from,footprint,trioRally)
+                &&(excluded.equals(BlockPos.ZERO)||from.distSqr(excluded)>=9))
+            return from;
+
+        BlockPos min=footprint[0],max=footprint[1];
+        // Same height first, then one legal rise/drop on uneven terrain.
+        // Stay close: TWO or THREE blocks outside the actual deck edge,
+        // rather than FOUR to SEVEN blocks from its arbitrary root corner.
+        for(int dy:new int[]{0,1,-1}){
+            java.util.ArrayList<BlockPos> candidates=new java.util.ArrayList<>();
+            int y=pallet.getY()+dy;
+            for(int distance=2;distance<=3;distance++){
+                for(int x=min.getX();x<=max.getX();x++){
+                    candidates.add(new BlockPos(x,y,min.getZ()-distance));
+                    candidates.add(new BlockPos(x,y,max.getZ()+distance));
+                }
+                for(int z=min.getZ();z<=max.getZ();z++){
+                    candidates.add(new BlockPos(min.getX()-distance,y,z));
+                    candidates.add(new BlockPos(max.getX()+distance,y,z));
+                }
+            }
+            candidates.sort(java.util.Comparator.comparingDouble(from::distSqr));
+            BlockPos chosen=BlockPos.ZERO;
+            double score=Double.POSITIVE_INFINITY;
             for(BlockPos candidate:candidates){
-                int distance=(int)Math.round(Math.sqrt(candidate.distSqr(pallet)));
+                if(!validServiceAisle(level,candidate,footprint,trioRally))continue;
                 if(!excluded.equals(BlockPos.ZERO)
                         &&candidate.distSqr(excluded)<9)continue;
-                if(!clear(level,candidate))continue;
-                // Prefer to stay away from the three-Golem assembly.
-                // However a warehouse with only ONE accessible side must
-                // still be functional: on the second pass, allow its outer
-                // aisle and wait there until the lifters move aside.
-                if(pass==0&&!trioRally.equals(BlockPos.ZERO)
-                        &&candidate.distSqr(trioRally)<36)continue;
-                List<BlockPos> path=route(level,from,candidate,BlockPos.ZERO,true);
+                List<BlockPos> path=route(level,from,candidate,
+                        BlockPos.ZERO,true,trioRally);
                 if(path==null)continue;
                 double cost=path.size()
-                        +.018*Math.abs(candidate.getX()-from.getX())
-                        +.018*Math.abs(candidate.getZ()-from.getZ())
-                        +distance*.2;
-                if(cost<score){chosen=candidate;score=cost;}
+                        +.02*Math.abs(candidate.getX()-from.getX())
+                        +.02*Math.abs(candidate.getZ()-from.getZ());
+                if(cost<score){score=cost;chosen=candidate;}
             }
-            if(!chosen.equals(BlockPos.ZERO))break;
+            if(!chosen.equals(BlockPos.ZERO))return chosen;
         }
-        return chosen;
+        return BlockPos.ZERO;
     }
     /** After installing the replacement the courier is empty handed.
      * Join from a reachable cell beside the loaded rig, not inside it.
@@ -128,13 +218,25 @@ public final class RemotePalletCourierRoute {
             BlockPos rig){
         BlockPos chosen=BlockPos.ZERO;
         double score=Double.POSITIVE_INFINITY;
-        for(Direction face:Direction.Plane.HORIZONTAL){
-            BlockPos cell=rig.relative(face,2);
-            if(!StorageGolemReturnPath.walkable(level,cell))continue;
-            List<BlockPos> path=route(level,from,cell,BlockPos.ZERO,false);
-            if(path==null)continue;
-            double value=path.size();
-            if(value<score){score=value;chosen=cell;}
+        // A loaded team may have moved ONE block up or down while
+        // clearing the old pallet. A fixed same-Y join cell can leave
+        // the courier standing just below it forever. Evaluate genuinely
+        // reachable neighbor cells at the rig's height and +/- one step.
+        for(int dy:new int[]{0,-1,1}){
+            for(Direction face:Direction.Plane.HORIZONTAL){
+                BlockPos cell=rig.relative(face,2).offset(0,dy,0);
+                if(!StorageGolemReturnPath.walkable(level,cell))continue;
+                // Every candidate must actually be within the rig's join
+                // distance. Never plan a route to a waypoint that cannot
+                // trigger the final ownership handoff.
+                double dx=cell.getX()+.5-(rig.getX()+.5);
+                double dz=cell.getZ()+.5-(rig.getZ()+.5);
+                if(dx*dx+dz*dz+dy*dy>9.0)continue;
+                List<BlockPos> path=route(level,from,cell,BlockPos.ZERO,false);
+                if(path==null)continue;
+                double value=path.size()+Math.abs(dy)*2;
+                if(value<score){score=value;chosen=cell;}
+            }
         }
         return chosen;
     }

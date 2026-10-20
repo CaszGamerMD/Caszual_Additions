@@ -18,6 +18,7 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
     private final ModelPart[] leftLeg=new ModelPart[4],rightLeg=new ModelPart[4];
     private final ModelPart[] corner=new ModelPart[4];
     private final ModelPart[] leftArm=new ModelPart[4],rightArm=new ModelPart[4];
+    private final ModelPart[] leftForearm=new ModelPart[4],rightForearm=new ModelPart[4];
     public MovingPalletModel(ModelPart root){
         super(root);
         for(int i=0;i<4;i++){
@@ -27,6 +28,8 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             rightLeg[i]=corner.getChild("right_leg");
             leftArm[i]=corner.getChild("left_arm");
             rightArm[i]=corner.getChild("right_arm");
+            leftForearm[i]=leftArm[i].getChild("forearm");
+            rightForearm[i]=rightArm[i].getChild("forearm");
         }
     }
     public static LayerDefinition layer(){
@@ -45,12 +48,24 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
                     // Head extends from y=1 to y=8; torso starts at y=7.
                 // A one-pixel overlap closes the old floating-head gap.
                 PartPose.offset(0,6,0));
-            corner.addOrReplaceChild("left_arm",CubeListBuilder.create()
-                    .texOffs(28,20).addBox(-2,-1,-2,4,10,4),
+            // Arms articulate at SHOULDER and ELBOW. A previous single
+            // 10-pixel cube was rotated 173 degrees when carrying, sending
+            // the whole arm backwards through the torso ("broken arm").
+            // Both shoulders are now ALWAYS at their real body anchors.
+            PartDefinition left=corner.addOrReplaceChild("left_arm",
+                    CubeListBuilder.create().texOffs(0,40)
+                            .addBox(-2,-1,-2,4,6,4),
                     PartPose.offset(7,11,0));
-            corner.addOrReplaceChild("right_arm",CubeListBuilder.create()
-                    .texOffs(28,20).addBox(-2,-1,-2,4,10,4),
+            left.addOrReplaceChild("forearm",CubeListBuilder.create()
+                    .texOffs(16,40).addBox(-2,-1,-2,4,6,4),
+                    PartPose.offset(0,5,0));
+            PartDefinition right=corner.addOrReplaceChild("right_arm",
+                    CubeListBuilder.create().texOffs(0,40)
+                            .addBox(-2,-1,-2,4,6,4),
                     PartPose.offset(-7,11,0));
+            right.addOrReplaceChild("forearm",CubeListBuilder.create()
+                    .texOffs(16,40).addBox(-2,-1,-2,4,6,4),
+                    PartPose.offset(0,5,0));
             corner.addOrReplaceChild("left_leg",CubeListBuilder.create()
                     .texOffs(44,0).addBox(-2,0,-2,4,8,4),
                     PartPose.offset(3,16,0));
@@ -63,7 +78,8 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
     @Override public void setupAnim(MovingPalletRenderState state){
         super.setupAnim(state);
         float phase=state.walkAnimationPos*.55f;
-        float amount=state.walkAnimationSpeed;
+        float amount=Mth.clamp(state.walkAnimationSpeed,0f,1f);
+        if(amount<.045f)amount=0f;
         for(int i=0;i<4;i++){
             corner[i].visible=i<state.crewSize;
             // Alternating diagonal steps; all four animate from identical
@@ -74,32 +90,31 @@ public final class MovingPalletModel extends EntityModel<MovingPalletRenderState
             // Three outbound Golems are EMPTY HANDED until the wrapped
             // pallet is actually lifted. Swing their arms naturally while
             // walking; supporting arms only rise once the pallet exists.
+            // Never move a shoulder inside the torso. Unloaded workers
+            // swing their two linked segments; loaded workers cup the
+            // platform with bent elbows and connected hands.
+            leftArm[i].x=7f;
+            rightArm[i].x=-7f;
+            leftArm[i].y=rightArm[i].y=11f;
+            leftArm[i].z=rightArm[i].z=0f;
+            leftArm[i].yRot=rightArm[i].yRot=0f;
+            leftForearm[i].yRot=rightForearm[i].yRot=0f;
+            leftForearm[i].zRot=rightForearm[i].zRot=0f;
             if(!state.visible){
-                // No phantom load: reset shoulder attachment points so
-                // outbound Golems walk with empty swinging hands.
-                leftArm[i].x=7f;
-                rightArm[i].x=-7f;
-                leftArm[i].z=0f;
-                rightArm[i].z=0f;
                 leftArm[i].xRot=Mth.cos(phase+offset+Mth.PI)*.7f*amount;
                 rightArm[i].xRot=Mth.cos(phase+offset)*.7f*amount;
+                leftForearm[i].xRot=0f;
+                rightForearm[i].xRot=0f;
                 leftArm[i].zRot=0f;
                 rightArm[i].zRot=0f;
             }else{
-                // The 2x2 deck spans just 14.4 model pixels from its
-                // center, while the old arms had wrists as far out as
-                // 21px! Move both hands INWARD to the actual deck corners
-                // and up to the underside. They genuinely support it.
-                boolean leftSide=i%2==0;
-                leftArm[i].x=leftSide?6f:-2.5f;
-                rightArm[i].x=leftSide?2.5f:-6f;
-                leftArm[i].z=i<2?1.5f:-1.5f;
-                rightArm[i].z=i<2?1.5f:-1.5f;
                 float grip=Mth.clamp(state.liftProgress,0f,1f);
-                leftArm[i].xRot=-3.02f*grip;
-                rightArm[i].xRot=-3.02f*grip;
-                leftArm[i].zRot=-.08f*grip;
-                rightArm[i].zRot=.08f*grip;
+                leftArm[i].xRot=-1.85f*grip;
+                rightArm[i].xRot=-1.85f*grip;
+                leftForearm[i].xRot=-.90f*grip;
+                rightForearm[i].xRot=-.90f*grip;
+                leftArm[i].zRot=-.04f*grip;
+                rightArm[i].zRot=.04f*grip;
             }
         }
     }

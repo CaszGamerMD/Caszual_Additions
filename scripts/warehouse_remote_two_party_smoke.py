@@ -21,7 +21,8 @@ assert "worker.beginRemotePickup(carrier.getUUID(),courier.getUUID()," in dispat
 assert "RemotePalletPickupCrew.rally(" in dispatch
 assert "for(StorageGolem worker:spawned)worker.discard();" in dispatch
 assert "sourceMagazine.put(fresh)" in dispatch
-assert "for(int i=0;i<consumed;i++)shelves.get(i).add();" in dispatch
+assert "for(int i=0;i<consumed;i++)" in dispatch
+assert "shelves.get(i).addNamed(deployedNames.get(i))" in dispatch
 assert "remoteCourierId=worker.getUUID()" in carrier
 assert "entityData.set(CREW_SIZE,3)" in carrier
 assert "pallet=ItemStack.EMPTY;syncDisplay();" in carrier
@@ -33,7 +34,9 @@ assert "deliveryMode=6;" in carrier
 assert "deliveryMode=3;" in carrier
 assert "remoteReplacementPlaced=true;" in carrier
 assert "remoteAisle=remoteAisle(level,target,3,5)" in carrier
-assert "remoteMoveAside=remoteAisle(level,deliveryPosition,5,7)" in carrier
+assert "remoteMoveAside=remoteAisle(level,deliveryPosition,4,7)" in carrier
+assert "if(remoteFootprintClear()){" in carrier
+assert "carrier.remoteFootprintClear()" in swap
 assert "liftForRemoteExchange(level,target,this)" in carrier
 assert "RemotePalletPickupCrew.splitLegacyRig(" in carrier
 assert "public boolean prepareRecoveredRemote(" in carrier

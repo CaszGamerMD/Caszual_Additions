@@ -24,6 +24,9 @@ import net.minecraft.world.level.storage.ValueOutput;
 public final class StorageGolemShelfEntity extends BlockEntity {
     private static final int MAX_LINKED=128;
     private int docked;
+    // The names are individual shelf tokens, not generated on every spawn.
+    private final java.util.ArrayDeque<String> storedNames=new java.util.ArrayDeque<>(2);
+    private boolean debugChat,debugStatuses;
     private boolean sortingEnabled=true;
     private long recallSerial;
     public StorageGolemShelfEntity(BlockPos pos,BlockState state){
@@ -38,9 +41,37 @@ public final class StorageGolemShelfEntity extends BlockEntity {
         setChanged();
     }
     public void setSortingEnabled(boolean enabled){sortingEnabled=enabled;setChanged();}
-    public boolean add(){if(docked>=2)return false;docked++;setChanged();return true;}
-    public boolean take(){if(docked<=0)return false;docked--;setChanged();return true;}
-    public void clearDocked(){docked=0;setChanged();}
+    public boolean debugChat(){return debugChat;}
+    public boolean debugStatuses(){return debugStatuses;}
+    public void setDebug(boolean chat,boolean statuses){
+        debugChat=chat;debugStatuses=statuses;setChanged();
+    }
+    public String nextName(){return storedNames.peekFirst();}
+    public String newestName(){return storedNames.peekLast();}
+    /** Adding a new golem token assigns a friendly name once. Returning
+     * entities pass their existing name and keep it across redocking. */
+    public boolean add(){return addNamed(null);}
+    public boolean addNamed(String existing){
+        if(docked>=2)return false;
+        String name=existing==null||existing.isBlank()
+                ?WarehouseGolemNames.random(level==null
+                        ?net.minecraft.util.RandomSource.create()
+                        :level.getRandom()):existing;
+        storedNames.addLast(name);
+        docked++;setChanged();return true;
+    }
+    public String takeNamed(){
+        if(docked<=0)return null;
+        docked--;
+        String name=storedNames.isEmpty()
+                ?WarehouseGolemNames.random(level==null
+                        ?net.minecraft.util.RandomSource.create()
+                        :level.getRandom()):storedNames.removeFirst();
+        setChanged();
+        return name;
+    }
+    public boolean take(){return takeNamed()!=null;}
+    public void clearDocked(){docked=0;storedNames.clear();setChanged();}
     public static List<StorageGolemShelfEntity> linked(Level level,BlockPos start){
         ArrayDeque<BlockPos> queue=new ArrayDeque<>();
         Set<BlockPos> seen=new HashSet<>();
@@ -67,11 +98,24 @@ public final class StorageGolemShelfEntity extends BlockEntity {
         super.saveAdditional(out);out.putInt("docked_golems",docked);
         out.putBoolean("sorting_enabled",sortingEnabled);
         out.putLong("warehouse_recall_serial",recallSerial);
+        out.putBoolean("debug_chat",debugChat);
+        out.putBoolean("debug_statuses",debugStatuses);
+        int i=0;
+        for(String name:storedNames)out.putString("stored_golem_name_"+i++,name);
     }
     @Override protected void loadAdditional(ValueInput in){
         super.loadAdditional(in);docked=Math.clamp(in.getIntOr("docked_golems",0),0,2);
         sortingEnabled=in.getBooleanOr("sorting_enabled",true);
         recallSerial=Math.max(0,in.getLongOr("warehouse_recall_serial",0L));
+        debugChat=in.getBooleanOr("debug_chat",false);
+        debugStatuses=in.getBooleanOr("debug_statuses",false);
+        storedNames.clear();
+        for(int i=0;i<docked;i++){
+            String name=in.getStringOr("stored_golem_name_"+i,"");
+            storedNames.addLast(name.isBlank()
+                    ?WarehouseGolemNames.random(net.minecraft.util.RandomSource.create())
+                    :name);
+        }
     }
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider p){
         return saveWithoutMetadata(p);

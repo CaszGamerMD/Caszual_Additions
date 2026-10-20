@@ -24,7 +24,7 @@ import net.minecraft.world.level.Level;
 public final class StorageScannerItem extends Item {
     public StorageScannerItem(Properties props){super(props);}
 
-    private static BlockPos linkedComputer(ItemStack scanner,ServerLevel world){
+    static BlockPos linkedComputer(ItemStack scanner,ServerLevel world){
         CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
         if(data==null)return null;
         CompoundTag tag=data.copyTag();
@@ -68,7 +68,16 @@ public final class StorageScannerItem extends Item {
                 ||response.startsWith("Four Golems dispatched");
     }
     private static void message(ServerPlayer player,String text){
-        player.sendSystemMessage(Component.literal(text));
+        // Keep routine Scanner output in the action bar. Rack Computer
+        // DEBUG can opt in to persistent chat while multi-job queue stays.
+        ItemStack hand=player.getMainHandItem();
+        BlockPos computer=hand.is(RackContent.STORAGE_SCANNER_ITEM)
+                ?linkedComputer(hand,player.level()):null;
+        boolean chat=computer!=null
+                &&RackComputerNet.nearbyShelves(player.level(),computer).stream()
+                        .anyMatch(StorageGolemShelfEntity::debugChat);
+        if(chat)player.sendSystemMessage(Component.literal(text));
+        else WarehouseGolemDebug.actionBar(player,Component.literal(text));
     }
 
     /** Persistent per-scanner FIFO. Every requested pallet represents a
@@ -333,7 +342,8 @@ public final class StorageScannerItem extends Item {
                         +(next==Mode.REMOTE
                             ?"Click a wrapped ground pallet to dispatch a remote swap."
                             :"Click a linked Golem Shelf to call four workers, then "
-                                +"click a pallet to pick up and a rack/block to place.")
+                                +"click a pallet to pick up and a rack/block to place. "
+                                +"Right-click ANY following Golem to send ALL followers home.")
                         +(home==null?" Link a computer first.":""));
             }else{
                 message(user,"Scanner: "+mode(scanner)+" | "

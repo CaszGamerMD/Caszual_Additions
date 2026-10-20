@@ -12,18 +12,21 @@ assert "int depth=worker<2 ? 2 : 3;" in r
 assert "accessibleRows(int clearDepth)" in r
 assert "depth<=4" not in r
 assert "StorageGolemReturnPath.stepsHome(" in g
-assert "StorageGolemReturnPath.steps(feet,target" in g
-assert "steerOnFloor(next,1.08)" in g
+assert "WarehousePreferredPath.leg(feet,target," in g
+assert "followTerrainStep(next,1.08)" in g
 assert "steerOnFloor(next,speed)" in g
+assert "getJumpControl().jump();" in g
 assert "getMoveControl().setWantedPosition" in g
 assert "occupiedAisle(level,target)" in g
 assert "occupiedAisle(level,shelfPlane)" in g
 assert "routeIssue=\"REROUTING\"" in g
-assert "routeIssue=\"NO WALKABLE ROUTE\"" in g
+assert "routeIssue=\"WAITING FOR SAFE WALKABLE ROUTE\"" in g
 assert "private void updateTaskLabel()" in g
-assert 'label="PALLET "+(haulIndex+1)+"/4 | "' in g
+assert 'label="PALLET "+(haulIndex+1)+"/4 | WITH PLAYER";' in g
+assert 'label="CREW "+(haulIndex+1)+"/4 | IDLE";' in g
 assert "setCustomNameVisible(true)" in g
-assert "if(tickCount%10==0)updateTaskLabel()" in g
+assert "updateTaskLabel();" in g
+assert "String displayed=showDebugStatuses()?golemName+" in g
 assert "if(tickCount%2!=0)return" not in g
 assert "private void updateCrewLabel()" in m
 assert "4 GOLEMS | DELIVERING TO RACK" in m
