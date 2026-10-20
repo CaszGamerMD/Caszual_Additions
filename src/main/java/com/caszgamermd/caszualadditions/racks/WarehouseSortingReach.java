@@ -16,7 +16,12 @@ public final class WarehouseSortingReach {
         if(Math.abs(dy)>BLOCKS)return false;
         BlockPos a=RackBlock.cell(root,rack.facing(),0);
         BlockPos b=RackBlock.cell(root,rack.facing(),1);
-        return feet.distSqr(a)<=20||feet.distSqr(b)<=20;
+        // A worker may reach two cells horizontally and two vertically,
+        // but must not sort from across a three-wide warehouse aisle.
+        int ax=feet.getX()-a.getX(),az=feet.getZ()-a.getZ();
+        int bx=feet.getX()-b.getX(),bz=feet.getZ()-b.getZ();
+        return ax*ax+az*az<=BLOCKS*BLOCKS
+                ||bx*bx+bz*bz<=BLOCKS*BLOCKS;
     }
     public static BlockPos access(ServerLevel level,RackBlockEntity rack){
         BlockPos root=rack.getBlockPos();
