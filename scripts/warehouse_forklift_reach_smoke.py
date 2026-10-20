@@ -18,6 +18,8 @@ assert "MAX_DROP = 2" in plan and "FORKLIFT_MAX_HEIGHT = 12" in plan
 assert "return find(level,rack,MAX_DROP)" in plan
 assert "return find(level,rack,FORKLIFT_MAX_HEIGHT)" in plan
 assert "BLOCKS=2" in reach
+assert "ax*ax+az*az<=BLOCKS*BLOCKS" in reach
+assert "bx*bx+bz*bz<=BLOCKS*BLOCKS" in reach
 assert "StorageGolemReturnPath.walkable(level,feet)" in reach
 assert "WarehouseSortingReach.withinReach(blockPosition(),rack)" in golem
 assert "WarehouseSortingReach.accessible(level,rack)" in dispatch
