@@ -8,7 +8,8 @@ rack=(folder/"RackBlockEntity.java").read_text()
 block=(folder/"RackBlock.java").read_text()
 
 # A rack's normal GUI MUST NOT intercept the jack in either hand.
-assert "||held.is(RackContent.PALLET_JACK))" in block
+assert "||held.is(RackContent.PALLET_JACK)" in block
+assert "||held.is(RackContent.FORKLIFT_ITEM)" in block
 assert "RackBlockEntity rack=RackBlock.controller(server,clicked);" in jack
 assert jack.index("RackBlockEntity rack=RackBlock.controller(server,clicked)") < jack.index("if(loaded(jack))\n            return unload(")
 assert "if(rack.installFromJack(jack))" in jack
@@ -23,7 +24,7 @@ assert "player.mayUseItemAt(root,context.getClickedFace(),jack)" in jack
 pickup=rack[rack.index("public boolean liftToJack("):rack.index("public boolean installFromJack(")]
 assert "PalletJackItem.loaded(jack)" in pickup
 assert "!glassWrapped()" in pickup
-assert "RackPickupPlan.find(world,this)==null" in pickup
+assert "forklift?RackPickupPlan.forklift(world,this):RackPickupPlan.find(world,this)" in pickup
 assert "pullOwner.isBlank()" in pickup
 assert "PalletData.applyFilterSettings(pallet,this)" in pickup
 assert "GlassPalletWrap.withWrap(" in pickup
