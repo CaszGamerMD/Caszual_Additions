@@ -16,6 +16,8 @@ import com.caszgamermd.caszualadditions.racks.StackOfPalletsRenderer;
 import com.caszgamermd.caszualadditions.racks.StorageGolemModel;
 import com.caszgamermd.caszualadditions.racks.MovingPalletRenderer;
 import com.caszgamermd.caszualadditions.racks.MovingPalletModel;
+import com.caszgamermd.caszualadditions.racks.WarehouseForkliftModel;
+import com.caszgamermd.caszualadditions.racks.WarehouseForkliftRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
 import com.caszgamermd.caszualadditions.pallet.PalletScreen;
@@ -56,6 +58,8 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         EntityRenderers.register(RackContent.STORAGE_GOLEM_TYPE,StorageGolemRenderer::new);
         ModelLayerRegistry.registerModelLayer(MovingPalletRenderer.LAYER,MovingPalletModel::layer);
         EntityRenderers.register(RackContent.MOVING_PALLET_TYPE,MovingPalletRenderer::new);
+        ModelLayerRegistry.registerModelLayer(WarehouseForkliftRenderer.LAYER,WarehouseForkliftModel::layer);
+        EntityRenderers.register(RackContent.FORKLIFT_TYPE,WarehouseForkliftRenderer::new);
 
         BlockEntityRenderers.register(
                 QuarterBlocks.QUARTER_BLOCK_ENTITY,

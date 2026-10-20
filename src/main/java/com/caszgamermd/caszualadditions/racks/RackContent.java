@@ -34,6 +34,8 @@ public final class RackContent {
     public static Item STORAGE_SHELF_ITEM,STORAGE_GOLEM_ITEM;
     public static EntityType<StorageGolem> STORAGE_GOLEM_TYPE;
     public static EntityType<MovingPallet> MOVING_PALLET_TYPE;
+    public static EntityType<WarehouseForklift> FORKLIFT_TYPE;
+    public static Item FORKLIFT_ITEM;
     public static Block RACK_COMPUTER;
     public static Item STORAGE_SCANNER_ITEM,PORTABLE_WRAPPER,STACK_OF_PALLETS,PALLET_JACK;
     public static StackOfPalletsBlock PALLET_STACK_BLOCK;
@@ -243,6 +245,17 @@ public final class RackContent {
                         .sized(1.85f,2.50f).build(movingKey));
         FabricDefaultAttributeRegistry.register(MOVING_PALLET_TYPE,MovingPallet.attributes());
 
+        ResourceKey<Item> forkliftItemKey=ResourceKey.create(Registries.ITEM,
+                CaszualAdditions.id("warehouse_forklift"));
+        FORKLIFT_ITEM=Registry.register(BuiltInRegistries.ITEM,forkliftItemKey,
+                new WarehouseForkliftItem(new Item.Properties().stacksTo(1)
+                        .setId(forkliftItemKey)));
+        ResourceKey<EntityType<?>> forkliftKey=ResourceKey.create(Registries.ENTITY_TYPE,
+                CaszualAdditions.id("warehouse_forklift"));
+        FORKLIFT_TYPE=Registry.register(BuiltInRegistries.ENTITY_TYPE,forkliftKey,
+                EntityType.Builder.<WarehouseForklift>of(WarehouseForklift::new,MobCategory.MISC)
+                        .sized(1.20f,2.6f).build(forkliftKey));
+        FabricDefaultAttributeRegistry.register(FORKLIFT_TYPE,WarehouseForklift.attributes());
         RackComputerNet.initialize();
     }
 }

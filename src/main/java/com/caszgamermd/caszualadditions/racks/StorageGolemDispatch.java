@@ -81,7 +81,8 @@ public final class StorageGolemDispatch {
         BlockPos shelfDoor=StorageGolemShelfDoor.exit(level,shelf);
         if(shelfDoor==null)return false; // Don't consume the worker token.
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
-            if(!rack.hasPallet()||rack.isEmpty())continue;
+            if(!rack.hasPallet()||rack.isEmpty()
+                    ||!WarehouseSortingReach.accessible(level,rack))continue;
             List<ItemStack> preview=new java.util.ArrayList<>(9);
             int amount=0;
             for(int i=0;i<rack.getContainerSize()&&preview.size()<9
@@ -173,7 +174,8 @@ public final class StorageGolemDispatch {
         RackBlockEntity best=null;
         int bestPriority=Integer.MAX_VALUE;
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,computer)){
-            if(!rack.hasPallet()||!canInsert(level,rack.getBlockPos(),sample))
+            if(!rack.hasPallet()||!WarehouseSortingReach.accessible(level,rack)
+                    ||!canInsert(level,rack.getBlockPos(),sample))
                 continue;
             int priority=2;
             for(int slot=0;slot<rack.getContainerSize();slot++){
@@ -204,7 +206,7 @@ public final class StorageGolemDispatch {
             StorageGolemShelfEntity shelf,BlockPos terminal){
         RackBlockEntity target=null;
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
-            if(!rack.hasPallet())continue;
+            if(!rack.hasPallet()||!WarehouseSortingReach.accessible(level,rack))continue;
             for(int i=0;i<rack.getContainerSize();i++){
                 ItemStack stack=rack.getItem(i);
                 if(stack.is(RackContent.STACK_OF_PALLETS)

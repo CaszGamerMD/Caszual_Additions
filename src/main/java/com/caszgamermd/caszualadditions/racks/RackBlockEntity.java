@@ -178,12 +178,15 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
      * The Jack acquires the payload BEFORE the rack removes its copy.
      * Neither ordinary takePallet() nor dropPallet() can transfer full cargo.
      */
-    public boolean liftToJack(ItemStack jack){
+    public boolean liftToJack(ItemStack jack){return liftToTransport(jack,false);}
+    public boolean liftToForklift(ItemStack jack){return liftToTransport(jack,true);}
+    private boolean liftToTransport(ItemStack jack,boolean forklift){
         if(!(level instanceof net.minecraft.server.level.ServerLevel world)
                 ||!jack.is(RackContent.PALLET_JACK)
                 ||PalletJackItem.loaded(jack)||!hasPallet()||!glassWrapped())return false;
         if(!pullOwner.isBlank()&&world.getGameTime()-pullLastTick<=200)return false;
-        if(RackPickupPlan.find(world,this)==null)return false;
+        if((forklift?RackPickupPlan.forklift(world,this):RackPickupPlan.find(world,this))==null)
+            return false;
         try{
             // Golem pull could have completed during a prior tick; do not
             // extract a rack reserved by another carrier.
@@ -216,13 +219,16 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
      * The restored stacks are already part of this pallet and must not be
      * rejected merely because its saved filter currently excludes them.
      */
-    public boolean installFromJack(ItemStack jack){
+    public boolean installFromJack(ItemStack jack){return installFromTransport(jack,false);}
+    public boolean installFromForklift(ItemStack jack){return installFromTransport(jack,true);}
+    private boolean installFromTransport(ItemStack jack,boolean forklift){
         if(!(level instanceof net.minecraft.server.level.ServerLevel world)
                 ||!PalletJackItem.loaded(jack)||hasPallet()||!isEmpty())return false;
         NonNullList<ItemStack> packed=PalletJackItem.unpack(jack);
         ItemStack deck=packed.get(0);
         if(deck.isEmpty()||!GlassPalletWrap.wrapped(deck))return false;
-        if(!WarehouseRackAccess.clearOfStairs(world,this)
+        if((forklift?RackPickupPlan.forklift(world,this):RackPickupPlan.find(world,this))==null
+                ||!WarehouseRackAccess.clearOfStairs(world,this)
                 ||!WarehouseRackAccess.prepare(world,this))return false;
         try{
             if(hasPallet()||!isEmpty())return false;

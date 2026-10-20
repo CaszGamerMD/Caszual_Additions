@@ -144,5 +144,7 @@
   "jade.caszual_additions.xp_charger.repairing": "Status: Repairing",
   "jade.caszual_additions.xp_charger.xp_needed": "XP needed to finish: %s",
   "jade.caszual_additions.xp_charger.xp": "XP available: %s / %s",
-  "item.caszual_additions.pallet_jack": "Pallet Jack"
+  "item.caszual_additions.pallet_jack": "Pallet Jack",
+  "item.caszual_additions.warehouse_forklift": "Warehouse Forklift",
+  "entity.caszual_additions.warehouse_forklift": "Warehouse Forklift"
 }

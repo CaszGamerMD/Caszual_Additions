@@ -448,6 +448,8 @@ public final class MovingPallet extends PathfinderMob {
     }
     /** A scanner sets a destination; it NEVER places the pallet instantly. */
     public String requestRackDelivery(ServerLevel level,RackBlockEntity rack){
+        if(!WarehouseSortingReach.groundRack(level,rack))
+            return "Stacked rack needs a forklift. Stage the wrapped pallet on the aisle floor.";
         if(!loaded()||delivered)return "No pallet ready to deliver.";
         // A new scanner click can retarget a blocked delivery.
         if(rack.hasPallet()||!rack.isEmpty())return "Destination rack must be empty.";
@@ -1034,6 +1036,7 @@ public final class MovingPallet extends PathfinderMob {
         RackBlockEntity rack=remotePickupReturn
                 ?WarehouseAislePriority.firstAvailableInputRack(level,warehouse.racks())
                 :null;
+        if(rack!=null&&!WarehouseSortingReach.groundRack(level,rack))rack=null;
         PtpBlockEntity point=null;
         if(rack==null){
             for(PtpBlockEntity candidate:warehouse.points()){
@@ -1240,6 +1243,8 @@ public final class MovingPallet extends PathfinderMob {
     }
 
     public boolean deliverToRack(RackBlockEntity rack){
+        if(!(level() instanceof ServerLevel server)
+                ||!WarehouseSortingReach.groundRack(server,rack))return false;
         if(!loaded()||rack.hasPallet()||!rack.isEmpty())return false;
         rack.install(pallet);
         if(!rack.hasPallet()||!allFit(rack)){

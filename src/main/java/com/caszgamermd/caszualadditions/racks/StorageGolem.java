@@ -213,6 +213,8 @@ public final class StorageGolem extends PathfinderMob {
     // presentation only and never overwrite this saved identity.
     private String golemName="";
     private boolean groundPickup;
+    private boolean forkliftDriver;
+    private java.util.UUID forkliftId;
     private boolean rackPickup;
     // Fixed physical service face for Direct pickup; DO NOT reselect the
     // nearest side each tick, which previously made workers spin/freeze.
@@ -792,6 +794,34 @@ public final class StorageGolem extends PathfinderMob {
 
     /** A second Golem is dispatched specifically to shepherd a mobile
      * stair unit when an elevated rack needs worker access. No cargo. */
+    public void assignForkliftDriver(BlockPos shelf,java.util.UUID vehicle){
+        home=shelf.immutable();markCurrentRecall();
+        forkliftDriver=true;forkliftId=vehicle;
+        stage=7;cargo=ItemStack.EMPTY;
+        emptyBox=ItemStack.EMPTY;
+    }
+    public void finishForkliftDriving(){
+        if(!forkliftDriver)return;
+        stopRiding();forkliftDriver=false;forkliftId=null;
+        stage=2;getNavigation().stop();
+    }
+    private void tickForkliftDriver(ServerLevel level){
+        if(forkliftId==null
+                ||!(level.getEntity(forkliftId) instanceof WarehouseForklift lift)){
+            finishForkliftDriving();
+            return;
+        }
+        if(getVehicle()==lift){getNavigation().stop();return;}
+        if(getVehicle()!=null)stopRiding();
+        double distance=distanceToSqr(lift);
+        if(distance<3.24){
+            getNavigation().stop();
+            startRiding(lift,true);
+            return;
+        }
+        walkTo(level,lift.blockPosition(),1.08);
+    }
+
     public void assignRackStairMover(BlockPos shelf,BlockPos stairs){
         home=shelf.immutable();markCurrentRecall();
         rackStairLast=stairs.immutable();rackStairMover=true;
@@ -1601,6 +1631,10 @@ public final class StorageGolem extends PathfinderMob {
             return best==null?floorApproach(level,place.south(distance)):best;
         }
         if(be instanceof RackBlockEntity rack){
+            if(!rackPickup){
+                BlockPos service=WarehouseSortingReach.access(level,rack);
+                if(service!=null)return service;
+            }
             if(rackPickup){
                 RackPickupPlan plan=RackPickupPlan.find(level,rack);
                 // The original target floor is saved per worker; if shelves
@@ -2065,6 +2099,7 @@ public final class StorageGolem extends PathfinderMob {
         updateTaskLabel();
         syncHeldVisual();
         syncPalletAction();
+        if(forkliftDriver){tickForkliftDriver(level);return;}
         if(remotePickup){tickRemotePickup(level);return;}
         if(remoteCourier){tickRemoteCourier(level);return;}
         if(rackStairMover){tickRackStairs(level);return;}
@@ -2118,6 +2153,15 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         getNavigation().stop();
+        // Never sort from a floor more than two blocks below a rack, even
+        // if a path recalculation or another mod redirected the worker.
+        BlockPos handling=stage==1?destination:source;
+        if((stage==0||stage==1||stage==3)
+                &&level.getBlockEntity(handling) instanceof RackBlockEntity rack
+                &&!WarehouseSortingReach.withinReach(blockPosition(),rack)){
+            routeIssue="WAITING FOR LADDER, STAIRS OR SCAFFOLD ACCESS";
+            return;
+        }
         if(stage==4){
             PtpBlockEntity output=outputPoint(level);
             if(output==null||!output.readyForOutput()
@@ -2396,6 +2440,8 @@ public final class StorageGolem extends PathfinderMob {
         out.putInt("stage",stage);out.putString("item",itemId);out.putInt("wait",waitTicks);
         out.putBoolean("output_job",outputJob);
         out.putBoolean("pallet_stack_job",palletStackJob);
+        out.putBoolean("forklift_driver",forkliftDriver);
+        if(forkliftId!=null)out.putString("forklift_id",forkliftId.toString());
         out.putBoolean("rack_stair_mover",rackStairMover);
         out.putBoolean("rack_stair_request_checked",rackStairRequestChecked);
         out.putBoolean("rack_stair_request_active",rackStairRequestActive);
@@ -2459,6 +2505,11 @@ public final class StorageGolem extends PathfinderMob {
         waitTicks=Math.max(0,in.getIntOr("wait",0));
         outputJob=in.getBooleanOr("output_job",false);
         palletStackJob=in.getBooleanOr("pallet_stack_job",false);
+        forkliftDriver=in.getBooleanOr("forklift_driver",false);
+        try{
+            String forklift=in.getStringOr("forklift_id","");
+            forkliftId=forklift.isBlank()?null:java.util.UUID.fromString(forklift);
+        }catch(IllegalArgumentException ex){forkliftId=null;}
         rackStairMover=in.getBooleanOr("rack_stair_mover",false);
         rackStairRequestChecked=in.getBooleanOr("rack_stair_request_checked",false);
         rackStairRequestActive=in.getBooleanOr("rack_stair_request_active",false);

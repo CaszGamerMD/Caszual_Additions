@@ -297,6 +297,9 @@ public final class StoragePalletCrew {
         for(StorageGolem member:members)member.clearDelivery();
     }
     public static String deliverRack(ServerLevel level,ServerPlayer player,RackBlockEntity rack){
+        if(!WarehouseSortingReach.groundRack(level,rack))
+            return "Stacked rack loading requires a Golem-operated forklift. "
+                    +"Stage the wrapped pallet on the aisle floor.";
         MovingPallet rig=moving(level,player);
         if(rig!=null)return rig.requestRackDelivery(level,rack);
         List<StorageGolem> workers=team(level,player);
