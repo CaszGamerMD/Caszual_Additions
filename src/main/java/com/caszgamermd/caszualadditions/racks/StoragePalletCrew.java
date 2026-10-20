@@ -20,12 +20,14 @@ public final class StoragePalletCrew {
         UUID owner=player.getUUID();
         return level.getEntitiesOfClass(StorageGolem.class,
                 new AABB(player.blockPosition()).inflate(64),
-                golem->golem.ownedBy(owner));
+                golem->golem.ownedBy(owner)
+                        &&!golem.remotePickupActive()
+                        &&!golem.remoteCourierActive());
     }
     private static MovingPallet moving(ServerLevel level,ServerPlayer player){
         List<MovingPallet> carriers=level.getEntitiesOfClass(MovingPallet.class,
                 new AABB(player.blockPosition()).inflate(96),
-                rig->rig.owns(player.getUUID()));
+                rig->rig.owns(player.getUUID())&&!rig.remoteMission());
         return carriers.isEmpty()?null:carriers.getFirst();
     }
     /** Converts four physically assembled workers into one navigable body.
