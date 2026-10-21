@@ -1,5 +1,7 @@
 package com.caszgamermd.caszualadditions;
 
+import com.caszgamermd.caszualadditions.autovending.CraftVendingContent;
+import com.caszgamermd.caszualadditions.autovending.CraftVendingScreen;
 import com.caszgamermd.caszualadditions.headvending.HeadVendingClient;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntityRenderer;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
@@ -82,5 +84,6 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         MenuScreens.register(RackContent.SHULKER_STATION_MENU, ShulkerStationScreen::new);
         MenuScreens.register(RackContent.PALLET_STACK_MENU, StackOfPalletsScreen::new);
         MenuScreens.register(FunBarrelContent.MENU, FunBarrelScreen::new);
+        MenuScreens.register(CraftVendingContent.MENU, CraftVendingScreen::new);
     }
 }

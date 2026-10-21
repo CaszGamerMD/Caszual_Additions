@@ -1,5 +1,6 @@
 package com.caszgamermd.caszualadditions;
 
+import com.caszgamermd.caszualadditions.autovending.CraftVendingContent;
 import com.caszgamermd.caszualadditions.antiwarden.AntiWardenContent;
 import com.caszgamermd.caszualadditions.rods.ColorfulRods;
 import com.caszgamermd.caszualadditions.headvending.HeadVendingContent;
@@ -42,6 +43,7 @@ public final class CaszualAdditions implements ModInitializer {
         IndustrialPaintContent.initialize();
         HeadVendingContent.initialize();
         FunBarrelContent.initialize();
+        CraftVendingContent.initialize();
 
         CaszualItemGroups.register();
     }

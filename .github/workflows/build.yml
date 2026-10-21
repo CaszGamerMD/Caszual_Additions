@@ -115,6 +115,9 @@ jobs:
         run: python3 scripts/warehouse_remote_crew_deadlock_smoke.py
       - name: Verify parallel full-size warehouse crews and scanner queue (blocking)
         run: python3 scripts/warehouse_parallel_remote_crews_smoke.py
+      - name: Verify crafting vending machine recipe, storage and atomic batch safety (blocking)
+        run: python3 scripts/crafting_vending_machine_smoke.py
+
       - name: Verify two-block sorting reach and Golem-driven forklift safety (blocking)
         run: python3 scripts/warehouse_forklift_reach_smoke.py
       - name: Verify loaded Golem pallet speed boost on concrete and industrial floors

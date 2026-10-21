@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "pattern": [
+    "IRI",
+    "ICI",
+    "IHI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone",
+    "C": "minecraft:crafting_table",
+    "H": "minecraft:hopper"
+  },
+  "result": {
+    "id": "caszual_additions:crafting_vending_machine",
+    "count": 1
+  }
+}

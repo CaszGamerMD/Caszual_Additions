@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import com.caszgamermd.caszualadditions.autovending.CraftVendingContent;
 import com.caszgamermd.caszualadditions.funbarrel.FunBarrelContent;
 import com.caszgamermd.caszualadditions.antiwarden.AntiWardenContent;
 import com.caszgamermd.caszualadditions.racks.RackContent;
@@ -44,6 +45,7 @@ public final class CaszualItemGroups {
                             // No recipe, no survival acquisition: explicitly
                             // surface the sampler in the creative Caszual tab.
                             add.accept(FunBarrelContent.ITEM);
+                            add.accept(CraftVendingContent.ITEM);
                             for (var item : java.util.List.of(RackContent.RACK_ITEM,
                                     RackContent.COMPUTER_ITEM, RackContent.STORAGE_SCANNER_ITEM,
                                     RackContent.WAREHOUSE_TEST_KIT,
