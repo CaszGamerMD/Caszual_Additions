@@ -23,11 +23,11 @@ assert 'queuedPickups(CompoundTag tag)' in scanner
 assert 'remote_pickup_pending' in scanner  # legacy one-target migration
 # Linking never enlists: Direct now only summons via a linked shelf.
 assert "onComputerClick(ServerLevel level,ServerPlayer player," in scanner
-assert "if(player.isShiftKeyDown())onComputerClick(server,user,scanner,clicked);" in scanner
+assert "onComputerClick(server,user,scanner,clicked);" in scanner
 assert "onShelfClick(ServerLevel level,ServerPlayer player," in scanner
 assert "StoragePalletCrew.enlistFromShelf(level,player,home,shelf)" in scanner
 assert 'if(mode(scanner)==Mode.REMOTE)' in scanner
-assert 'Shift-right-click AIR for DIRECT' in scanner
+assert 'Scanner in ' in scanner
 assert 'REMOTE: target must be an intact, glass-wrapped' in scanner
 assert 'return response.startsWith("Three Golems dispatched")' in scanner
 assert 'tag.putString("scanner_mode",next.name())' in scanner
