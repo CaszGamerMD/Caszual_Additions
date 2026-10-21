@@ -139,6 +139,21 @@ def newest_jar_artifact(client: GitHub, owner: str, repo: str, branch: str | Non
     return None
 
 
+def is_installable_jar(filename: str, repo: str) -> bool:
+    """Permit Golems Plus' versioned -dev prerelease, not Loom's extra dev JAR."""
+    name = Path(filename).name
+    if not name.lower().endswith(".jar"):
+        return False
+    # Current mod_version=0.1.0-dev. The remapped, installable artifact is
+    # golems-plus-0.1.0-dev.jar; Loom's development output is
+    # golems-plus-0.1.0-dev-dev.jar, and is still excluded.
+    if repo == "golems_plus" and re.fullmatch(
+        r"golems-plus-\d+(?:\.\d+)*-dev\.jar", name, flags=re.IGNORECASE
+    ):
+        return True
+    return not SKIP_JAR.search(name)
+
+
 def extract_installable_jar(archive: bytes, repo: str):
     try:
         with zipfile.ZipFile(io.BytesIO(archive)) as z:
@@ -146,7 +161,7 @@ def extract_installable_jar(archive: bytes, repo: str):
                 item for item in z.infolist()
                 if not item.is_dir()
                 and item.filename.lower().endswith(".jar")
-                and not SKIP_JAR.search(Path(item.filename).name)
+                and is_installable_jar(item.filename, repo)
                 and not item.filename.startswith("__MACOSX/")
             ]
             if len(options) != 1:

@@ -65,6 +65,22 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(name, "suite-1.0.jar")
         self.assertEqual(body, b"real")
 
+    def test_golems_plus_versioned_dev_is_installable(self):
+        data = artifact_zip({
+            "golems-plus-0.1.0-dev.jar": b"remapped",
+            "golems-plus-0.1.0-dev-dev.jar": b"unremapped",
+            "golems-plus-0.1.0-dev-sources.jar": b"sources",
+        })
+        name, contents = bundler.extract_installable_jar(data, "golems_plus")
+        self.assertEqual(name, "golems-plus-0.1.0-dev.jar")
+        self.assertEqual(contents, b"remapped")
+        self.assertFalse(
+            bundler.is_installable_jar("golems-plus-0.1.0-dev-dev.jar", "golems_plus")
+        )
+        self.assertFalse(
+            bundler.is_installable_jar("othermod-0.1.0-dev.jar", "OtherMod")
+        )
+
     def test_ambiguous_jar_artifact_is_rejected(self):
         data = artifact_zip({"a.jar": b"a", "b.jar": b"b"})
         with self.assertRaisesRegex(bundler.BundlerError, "exactly one"):
