@@ -228,7 +228,7 @@ public final class WarehouseForklift extends PathfinderMob {
             }
         return null;
     }
-    private boolean hasDriver(ServerLevel world){
+    private boolean seatedDriver(ServerLevel world){
         if(driver==null)return false;
         Entity occupant=world.getEntity(driver);
         return occupant instanceof StorageGolem golem && golem.getVehicle()==this;
@@ -277,7 +277,7 @@ public final class WarehouseForklift extends PathfinderMob {
             }else status="RETURNING TO PAINTED FORKLIFT PARKING BAY";
             return;
         }
-        if(!hasDriver(world)){
+        if(!seatedDriver(world)){
             getNavigation().stop();
             status=driver!=null?"GOLEM LEAVING SHELF / BOARDING FORKLIFT"
                     :"WAITING FOR AN AVAILABLE GOLEM";

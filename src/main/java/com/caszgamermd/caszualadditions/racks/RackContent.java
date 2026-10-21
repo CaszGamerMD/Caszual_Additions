@@ -37,6 +37,7 @@ public final class RackContent {
     public static EntityType<WarehouseForklift> FORKLIFT_TYPE;
     public static Item FORKLIFT_ITEM,FORKLIFT_CONTROLLER;
     public static Block RACK_COMPUTER;
+    public static BlockEntityType<WarehouseComputerBlockEntity> COMPUTER_ENTITY;
     public static ForkliftParkingBlock FORKLIFT_PARKING;
     public static Item STORAGE_SCANNER_ITEM,PORTABLE_WRAPPER,STACK_OF_PALLETS,PALLET_JACK;
     public static StackOfPalletsBlock PALLET_STACK_BLOCK;
@@ -117,6 +118,10 @@ public final class RackContent {
                         .strength(3.5f).requiresCorrectToolForDrops()
                         .noOcclusion().setId(computerKey)));
         COMPUTER_ITEM=blockItem("rack_computer",RACK_COMPUTER);
+        COMPUTER_ENTITY=Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
+                CaszualAdditions.id("warehouse_computer"),
+                FabricBlockEntityTypeBuilder.create(
+                        WarehouseComputerBlockEntity::new,RACK_COMPUTER).build());
         ResourceKey<Item> scannerKey=ResourceKey.create(Registries.ITEM,
                 CaszualAdditions.id("storage_scanner"));
         STORAGE_SCANNER_ITEM=Registry.register(BuiltInRegistries.ITEM,scannerKey,
@@ -250,7 +255,7 @@ public final class RackContent {
                 CaszualAdditions.id("forklift_parking"));
         FORKLIFT_PARKING=Registry.register(BuiltInRegistries.BLOCK,parkingKey,
                 new ForkliftParkingBlock(BlockBehaviour.Properties.ofFullCopy(
-                        Blocks.YELLOW_CONCRETE).noCollision().strength(2.0f)
+                        Blocks.IRON_BLOCK).noCollision().strength(2.0f)
                         .setId(parkingKey)));
         ResourceKey<Item> forkliftItemKey=ResourceKey.create(Registries.ITEM,
                 CaszualAdditions.id("warehouse_forklift"));
