@@ -33,7 +33,7 @@ public final class CraftVendingBlock extends HorizontalDirectionalBlock implemen
         super(properties);
         registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));
     }
-    @Override protected MapCodec<? extends Block> codec(){return CODEC;}
+    @Override protected MapCodec<CraftVendingBlock> codec(){return CODEC;}
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> state){
         state.add(FACING);
     }
