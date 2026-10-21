@@ -429,7 +429,7 @@ public final class MovingPallet extends PathfinderMob {
         }else{
             WarehouseGolemDebug.message(user,shelves[0],net.minecraft.network.chat.Component.literal(
                     "DIRECT: crew holding its pallet safely. Choose a ground, rack "
-                    +"or PTP placement with Scanner.")));
+                    +"or PTP placement with Scanner."));
         }
         return net.minecraft.world.InteractionResult.SUCCESS;
     }
