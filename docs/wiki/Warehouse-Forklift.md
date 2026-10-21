@@ -17,7 +17,7 @@ Four-Golem pallet crews load only ground racks. For stacked racks, use the
    To designate an exact ground pallet for storage, right-click it with the
    Controller first. Then click the desired rack. Without a selection the
    nearest wrapped floor pallet is used.
-4. With the Controller, right-click an elevated rack:
+4. With the Controller, aim and right-click an elevated rack. **Empty destination racks can be selected from up to 20 blocks away** using line of sight, even outside vanilla right-click range. Walls and other obstructing blocks prevent selection. The forklift's 12-block vertical lifting limit does not change:
    - **Occupied wrapped rack:** forklift drives to the aisle, raises forks,
      removes exactly one wrapped pallet with all 216 slots, and stages it on
      a clear 2×2 pallet-sized floor area nearby.

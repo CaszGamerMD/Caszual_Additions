@@ -4,6 +4,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -14,6 +21,8 @@ import net.minecraft.world.phys.AABB;
  * nearest parked forklift one specific job. No unrequested rack shuffling.
  */
 public final class WarehouseForkliftItem extends Item {
+    /** How far a player can aim the controller at an empty destination rack. */
+    public static final double RACK_SELECTION_REACH = 20.0D;
     private final boolean spawner;
     public WarehouseForkliftItem(Properties p){this(p,true);}
     public WarehouseForkliftItem(Properties p,boolean spawner){
@@ -57,31 +66,8 @@ public final class WarehouseForkliftItem extends Item {
             }
         }
         RackBlockEntity rack=RackBlock.controller(level,clicked);
-        if(rack!=null){
-            WarehouseForklift nearest=null;
-            double best=24*24;
-            for(WarehouseForklift lift:level.getEntitiesOfClass(
-                    WarehouseForklift.class,new AABB(clicked).inflate(24),
-                    f->!f.busy())){
-                double d=lift.blockPosition().distSqr(clicked);
-                if(d<best){best=d;nearest=lift;}
-            }
-            if(nearest==null){
-                player.sendSystemMessage(Component.literal(
-                        "No idle forklift within 24 blocks of this rack."));
-                return InteractionResult.SUCCESS;
-            }
-            BlockPos selectedSource=spawner?null:selected(context.getItemInHand(),level);
-            boolean started=nearest.order(level,rack,selectedSource);
-            if(started&&!spawner)
-                context.getItemInHand().remove(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
-            player.sendSystemMessage(Component.literal(started
-                    ?"Forklift dispatched: "+(rack.hasPallet()?"retrieve rack pallet to aisle":
-                        "collect nearest wrapped ground pallet and place into rack")
-                    :"Forklift could not start: check driver Golem, aisle, wrapped pallet, "
-                            +"and 12-block lift limit."));
-            return InteractionResult.SUCCESS;
-        }
+        if(rack!=null)
+            return dispatch(level,player,context.getItemInHand(),rack);
         if(!spawner||context.getClickedFace()!=net.minecraft.core.Direction.UP)
             return InteractionResult.PASS;
         BlockPos at=clicked.above();
@@ -97,6 +83,61 @@ public final class WarehouseForkliftItem extends Item {
         player.sendSystemMessage(Component.literal(
                 "Forklift parked. Keep Golems docked nearby; use another Forklift item "
                 +"on a rack to request pickup or storage."));
+        return InteractionResult.SUCCESS;
+    }
+
+    /** Item.use is invoked after an ordinary block click misses (beyond the
+     * vanilla interaction range). Trace a REAL unobstructed line of sight
+     * on both client and server; we never select a rack behind a wall.
+     * Only empty rack destinations can be chosen at extended range.
+     */
+    @Override public InteractionResult use(Level level,Player player,InteractionHand hand){
+        if(spawner)return InteractionResult.PASS;
+        Vec3 eye=player.getEyePosition();
+        Vec3 end=eye.add(player.getViewVector(1.0F).scale(RACK_SELECTION_REACH));
+        BlockHitResult hit=level.clip(new ClipContext(eye,end,
+                ClipContext.Block.OUTLINE,ClipContext.Fluid.NONE,player));
+        if(hit.getType()!=HitResult.Type.BLOCK)return InteractionResult.PASS;
+        RackBlockEntity rack=RackBlock.controller(level,hit.getBlockPos());
+        if(rack==null||rack.hasPallet())return InteractionResult.PASS;
+        if(!(level instanceof ServerLevel server))return InteractionResult.SUCCESS;
+        // Recheck server-side using the server's own view vector and world.
+        if(eye.distanceToSqr(hit.getLocation())>RACK_SELECTION_REACH*RACK_SELECTION_REACH)
+            return InteractionResult.FAIL;
+        return dispatch(server,player,player.getItemInHand(hand),rack);
+    }
+
+    /** Close-range useOn and long-range targeting share the same validated
+     * dispatch logic, so a remote order cannot bypass forklift safety rules. */
+    private InteractionResult dispatch(ServerLevel level,Player player,ItemStack tool,
+            RackBlockEntity rack){
+        BlockPos root=rack.getBlockPos();
+        if(!level.hasChunkAt(root)||!level.mayInteract(player,root)
+                ||!player.mayUseItemAt(root,net.minecraft.core.Direction.UP,tool))
+            return InteractionResult.FAIL;
+        WarehouseForklift nearest=null;
+        double best=24*24;
+        for(WarehouseForklift lift:level.getEntitiesOfClass(
+                WarehouseForklift.class,new AABB(root).inflate(24),
+                f->!f.busy())){
+            double d=lift.blockPosition().distSqr(root);
+            if(d<best){best=d;nearest=lift;}
+        }
+        if(nearest==null){
+            player.sendSystemMessage(Component.literal(
+                    "No idle forklift within 24 blocks of this rack."));
+            return InteractionResult.SUCCESS;
+        }
+        BlockPos selectedSource=spawner?null:selected(tool,level);
+        boolean started=nearest.order(level,rack,selectedSource);
+        if(started&&!spawner)
+            tool.remove(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+        player.sendSystemMessage(Component.literal(started
+                ?"Forklift dispatched: "+(rack.hasPallet()
+                    ?"retrieve rack pallet to aisle"
+                    :"collect wrapped floor pallet and place into rack")
+                :"Forklift could not start: check driver Golem, aisle, wrapped pallet, "
+                    +"and 12-block lift limit."));
         return InteractionResult.SUCCESS;
     }
 }

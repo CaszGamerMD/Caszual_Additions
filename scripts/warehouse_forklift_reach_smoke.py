@@ -52,4 +52,17 @@ assert "mastMiddle.y=22f-height*5.5f" in (client/"WarehouseForkliftModel.java").
 assert "carriage.y=22f-height*16f" in (client/"WarehouseForkliftModel.java").read_text()
 assert (root/"src/main/resources/assets/caszual_additions/textures/entity/warehouse_forklift.png").is_file()
 assert (root/"src/main/resources/data/caszual_additions/recipe/warehouse_forklift.json").is_file()
+
+# Controller rack selection extends to 20 blocks, never through walls.
+assert "RACK_SELECTION_REACH = 20.0D" in item
+assert "public InteractionResult use(Level level,Player player,InteractionHand hand)" in item
+assert "eye.add(player.getViewVector(1.0F).scale(RACK_SELECTION_REACH))" in item
+assert "level.clip(new ClipContext(eye,end," in item
+assert "ClipContext.Block.OUTLINE,ClipContext.Fluid.NONE,player" in item
+assert "hit.getType()!=HitResult.Type.BLOCK" in item
+assert "if(rack==null||rack.hasPallet())return InteractionResult.PASS;" in item
+assert "return dispatch(server,player,player.getItemInHand(hand),rack)" in item
+assert "return dispatch(level,player,context.getItemInHand(),rack)" in item
+assert "level.mayInteract(player,root)" in item
+
 print("PASS: 2-block sort/reach; grounded crews; one owner for forklift cargo; driver boarding and animated mast")
