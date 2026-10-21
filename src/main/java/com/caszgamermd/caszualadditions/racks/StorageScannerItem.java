@@ -131,8 +131,7 @@ public final class StorageScannerItem extends Item {
             return;
         }
         if(lift.hasDriver(world)){
-            message(player,"Forklift: "+lift.status()+". Right-click its driver "
-                    +"with the Scanner to dismiss after the job.");
+            message(player,lift.requestDriverDismissal(world));
             return;
         }
         BlockPos home=linkedComputer(scanner,world);
@@ -354,8 +353,9 @@ public final class StorageScannerItem extends Item {
             // Deliberate unlinking is no longer mixed into ordinary linking.
             clearPickup(scanner);
             bind(scanner,level,computer);
-            message(player,"Scanner is now linked to "+
-                    WarehouseComputerBlockEntity.name(level,computer));
+            WarehouseGolemDebug.actionBar(player,Component.literal(
+                    "Scanner is now linked to "+
+                    WarehouseComputerBlockEntity.name(level,computer)));
             return;
         }
         if(previous!=null&&!previous.equals(computer)){
@@ -373,8 +373,9 @@ public final class StorageScannerItem extends Item {
         java.util.List<StorageGolemShelfEntity> shelves=
                 RackComputerNet.nearbyShelves(level,computer);
         int docked=shelves.stream().mapToInt(StorageGolemShelfEntity::docked).sum();
-        message(player,"Scanner is now linked to "+
-                WarehouseComputerBlockEntity.name(level,computer));
+        WarehouseGolemDebug.actionBar(player,Component.literal(
+                "Scanner is now linked to "+
+                WarehouseComputerBlockEntity.name(level,computer)));
     }
 
     /** Shelf block explicitly forwards Scanner clicks here so the vanilla
@@ -500,13 +501,14 @@ public final class StorageScannerItem extends Item {
             BlockPos home=linkedComputer(scanner,server);
             if(player.isShiftKeyDown()){
                 Mode next=toggleMode(scanner);
-                message(user,"Scanner in "+next.name()+" mode. "
+                WarehouseGolemDebug.actionBar(user,Component.literal(
+                        "Scanner in "+next.name()+" mode. "
                         +(next==Mode.REMOTE
                             ?"Click a wrapped ground pallet to dispatch a remote swap."
                             :next==Mode.DIRECT?"Click a Golem Shelf for a crew, then a pallet and destination."
                             :next==Mode.FORKLIFT?"Select a pallet, then a destination."
                             :"Double-right-click a carrying Golem team to abort safely.")
-                        +(home==null?" Link a computer first.":""));
+                        +(home==null?" Link a computer first.":"")));
             }else if(mode(scanner)==Mode.FORKLIFT){
                 // Retain the old controller's unobstructed 20-block rack
                 // selection after removing that second handheld tool.
@@ -518,7 +520,8 @@ public final class StorageScannerItem extends Item {
                 if(hit.getType()==net.minecraft.world.phys.HitResult.Type.BLOCK){
                     BlockPos at=hit.getBlockPos();
                     if(server.mayInteract(user,at))
-                        message(user,forkliftTarget(server,user,scanner,at,home));
+                        message(user,forkliftTarget(server,user,scanner,at,
+                                at.relative(hit.getDirection()),home));
                 }else message(user,"FORKLIFT: select pallet or destination rack within 20 blocks.");
             }else{
                 message(user,"Scanner: "+mode(scanner)+" | "

@@ -42,7 +42,8 @@ assert "discard();" in home
 assert "Mode next=toggleMode(scanner);" in scanner
 assert "StorageScannerItem.Mode.DIRECT" in golem
 assert "if(remotePickup||remoteCourier)" in golem
-assert "returnToWarehouse(server,linked)" in carrier
+assert "claimStalledRemote(server,user.getUUID(),linked)" in carrier
+assert "holdDirectPallet();" in carrier
 
 # The 4-owner worker job must be treated atomically. No part of an active
 # loaded crew is dismissed when any worker owns/escorts pallet cargo.
