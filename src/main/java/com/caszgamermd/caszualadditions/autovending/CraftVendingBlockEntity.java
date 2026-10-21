@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
 public final class CraftVendingBlockEntity extends BlockEntity
         implements Container,ExtendedMenuProvider<BlockPos> {
     public static final int RECIPE_SLOTS=9,STOCK_SLOTS=27,TOTAL=36;
-    public static final int MAX_BATCHES=16;
+    public static final int MAX_BATCHES=64;
     private NonNullList<ItemStack> contents=NonNullList.withSize(TOTAL,ItemStack.EMPTY);
     private int batches=1;
     private UUID lastCustomer;
