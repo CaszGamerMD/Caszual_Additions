@@ -25,7 +25,7 @@ jobs:
         run: python3 scripts/head_db_api_smoke.py
       - name: Verify lossless Pallet Jack rack-to-rack pickup and unload
         run: python3 scripts/warehouse_pallet_jack_rack_transfer_smoke.py
-      - name: Check Input aisle orange signs and remote pallet drop-off priority
+      - name: Check green INPUT receiving and red OUTPUT shipping aisles
         run: python3 scripts/warehouse_input_aisle_priority_smoke.py
       - name: Check Scanner unlink/relink, Pallet Dispenser floor and Pallet Jack cargo
         run: python3 scripts/warehouse_scanner_dispenser_jack_smoke.py
