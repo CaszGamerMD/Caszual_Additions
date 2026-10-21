@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions.racks;
 
 import java.util.List;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
@@ -39,7 +40,7 @@ public final class WarehouseAislePriority {
     /** Temporary exclusions let a blocked pallet crew try a free INPUT PTP
      * instead of repeatedly selecting the same unreachable Input rack. */
     public static @Nullable RackBlockEntity firstAvailableInputRack(
-            ServerLevel level,List<RackBlockEntity> racks,@Nullable net.minecraft.core.BlockPos exclude){
+            ServerLevel level,List<RackBlockEntity> racks,@Nullable BlockPos exclude){
         for(RackBlockEntity rack:racks){
             if(rack.hasPallet()||!rack.isEmpty())continue;
             if(exclude!=null&&exclude.equals(rack.getBlockPos()))continue;
