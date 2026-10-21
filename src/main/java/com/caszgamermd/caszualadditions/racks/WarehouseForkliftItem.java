@@ -85,11 +85,24 @@ public final class WarehouseForkliftItem extends Item {
         if(lift==null)return InteractionResult.FAIL;
         lift.setPos(at.getX()+1.0,at.getY(),at.getZ()+1.0);
         lift.setYRot(player.getYRot());
-        if(!level.addFreshEntity(lift))return InteractionResult.FAIL;
+        java.util.List<BlockPos> painted=new java.util.ArrayList<>();
+        for(int dx=0;dx<2;dx++)for(int dz=0;dz<2;dz++){
+            BlockPos tile=at.offset(dx,0,dz);
+            if(!level.setBlock(tile,RackContent.FORKLIFT_PARKING.defaultBlockState(),3)){
+                for(BlockPos rollback:painted)level.removeBlock(rollback,false);
+                return InteractionResult.FAIL;
+            }
+            painted.add(tile);
+        }
+        lift.setParking(at.offset(1,0,1));
+        if(!level.addFreshEntity(lift)){
+            for(BlockPos rollback:painted)level.removeBlock(rollback,false);
+            return InteractionResult.FAIL;
+        }
         if(!player.getAbilities().instabuild)context.getItemInHand().shrink(1);
         player.sendSystemMessage(Component.literal(
-                "Forklift parked. Keep a Golem docked nearby. Use the black Forklift Clipboard "
-                +"on a rack; a driver will leave their shelf and board automatically."));
+                "Forklift parked in a protected 2x2 bay. Use Warehouse Scanner in FORKLIFT "
+                +"mode to summon and assign a Golem driver."));
         return InteractionResult.SUCCESS;
     }
 
