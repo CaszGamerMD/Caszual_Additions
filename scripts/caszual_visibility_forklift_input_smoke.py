@@ -25,11 +25,12 @@ assert 'skippedReturnRack=rack.getBlockPos().immutable();' in pallet
 assert 'skipReturnRackUntil=tickCount+400;' in pallet
 assert 'WarehouseSortingReach.groundRack(level,candidate)' in pallet
 assert 'abortDelivery("ELEVATED RACK REQUIRES FORKLIFT' in pallet
-assert 'status=driver==null?"PARKED":"PARKED - DRIVER ON DUTY";' in lift
+assert '"PARKED - DRIVER ON DUTY"' in lift
+assert 'RETURNING TO PAINTED FORKLIFT PARKING BAY' in lift
 assert 'public boolean dismissDriver(ServerLevel world)' in lift
 assert 'player.getItemInHand(hand).is(RackContent.FORKLIFT_CONTROLLER)' in lift
 assert 'GOLEM LEAVING SHELF / BOARDING FORKLIFT' in lift
-assert '&& !forkliftDriver' not in golem or '&&!forkliftDriver)checkPendingRecall(level);' in golem
+assert '!forkliftDriver&&!forkliftEscort' in golem
 assert 'label=getVehicle() instanceof WarehouseForklift' in golem
 model=json.loads((resource/"models/item/forklift_controller.json").read_text())
 assert model["textures"]["layer0"]=="caszual_additions:item/forklift_controller"
