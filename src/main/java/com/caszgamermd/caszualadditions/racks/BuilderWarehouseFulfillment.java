@@ -57,11 +57,7 @@ public final class BuilderWarehouseFulfillment {
         return left;
     }
     private static Map<String,Integer> remaining(PtpBlockEntity ptp){
-        Map<String,Integer> map=new LinkedHashMap<>();
-        // A single ordered head is enough to establish current shortage.
-        var next=ptp.nextOutputOrder();
-        if(next!=null)map.put(next.itemId(),next.remaining());
-        return map;
+        return ptp.pendingOutputManifest();
     }
     private static int packed(PtpBlockEntity ptp){
         int boxes=0;
