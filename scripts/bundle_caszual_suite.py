@@ -26,7 +26,6 @@ from pathlib import Path
 ARTIFACTS = {
     "Caszual_Additions": "Caszual-Additions-*",
     "PrettyFrogs": "PrettyFrogs-1.0.0",
-    "TVtime": "caszual-tv-time-build",
     "Caszual_MTG_addon": "caszual-mtg-*",
     "Caszual_Aquariums": "linked-aquariums-build",
     "MC-MiningRig": "miningrig-26.2",
