@@ -1,6 +1,11 @@
 name: Bundle Caszual Suite JARs
 
 on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/bundle-suite.yml'
+      - 'scripts/bundle_caszual_suite.py'
   workflow_dispatch:
     inputs:
       branch:
@@ -38,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$CASZUAL_SUITE_TOKEN" ]]; then
-            echo "::error::Configure secret CASZUAL_SUITE_TOKEN with Actions:read access to all nine private Suite repositories."
+            echo "::error::Configure secret CASZUAL_SUITE_TOKEN with Actions:read access to all eight active private Suite repositories."
             exit 1
           fi
           args=(--output dist/Caszual-Suite-Latest.zip)
