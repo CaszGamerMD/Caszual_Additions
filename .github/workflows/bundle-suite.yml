@@ -1,0 +1,77 @@
+name: Bundle Caszual Suite JARs
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/bundle-suite.yml'
+      - 'scripts/bundle_caszual_suite.py'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Optional branch filter (leave blank to use latest successful package from any branch)"
+        required: false
+        type: string
+        default: ""
+      allow_missing:
+        description: "Allow an incomplete ZIP if a mod has no downloadable JAR"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout bundler
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Gather newest successfully packaged Suite JARs
+        env:
+          CASZUAL_SUITE_TOKEN: ${{ secrets.CASZUAL_SUITE_TOKEN }}
+          SUITE_BRANCH: ${{ inputs.branch }}
+          ALLOW_MISSING: ${{ inputs.allow_missing }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$CASZUAL_SUITE_TOKEN" ]]; then
+            echo "::error::Configure secret CASZUAL_SUITE_TOKEN with Actions:read access to all eight active private Suite repositories."
+            exit 1
+          fi
+          args=(--output dist/Caszual-Suite-Latest.zip)
+          if [[ -n "$SUITE_BRANCH" ]]; then
+            args+=(--branch "$SUITE_BRANCH")
+          fi
+          if [[ "$ALLOW_MISSING" == "true" ]]; then
+            args+=(--allow-missing)
+          fi
+          python3 scripts/bundle_caszual_suite.py "${args[@]}"
+
+      - name: Upload bundle as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Caszual-Suite-Latest
+          path: dist/Caszual-Suite-Latest.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish ZIP as an easy-to-download prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: suite-${{ github.run_number }}
+          name: Caszual Suite JAR Bundle #${{ github.run_number }}
+          prerelease: true
+          make_latest: false
+          body: |
+            Contains the latest successful packaged JAR from each available
+            Caszual Suite mod repository. See manifest.json inside the ZIP
+            for each mod's branch, commit, build URL, and SHA-256 hash.
+          files: dist/Caszual-Suite-Latest.zip
