@@ -45,7 +45,7 @@ i_priority=return_body.index('WarehouseAislePriority.firstAvailableInputRack(')
 i_ptp=return_body.index('for(PtpBlockEntity candidate:warehouse.points())')
 i_rack_fallback=return_body.index('for(RackBlockEntity candidate:warehouse.racks())')
 assert i_priority<i_ptp<i_rack_fallback
-assert 'RackBlockEntity rack=remotePickupReturn' in return_body
+assert 'RackBlockEntity rack=outboundStaging' in return_body
 assert 'if(!outboundStaging&&!remotePickupReturn&&rack==null){' in return_body[i_priority:i_ptp]
 assert 'if(!outboundStaging&&rack==null&&(remotePickupReturn||point==null)){' in return_body[i_ptp:i_rack_fallback]
 assert 'done=deliverToRack(rack);' in return_body
