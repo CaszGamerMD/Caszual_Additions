@@ -277,6 +277,13 @@ public final class PtpBlockEntity extends BlockEntity
         return count;
     }
     public OutputOrder nextOutputOrder(){return outputOrders.peekFirst();}
+    /** Read-only outstanding manifest for an assigned Builder request. */
+    public java.util.Map<String,Integer> pendingOutputManifest(){
+        java.util.Map<String,Integer> result=new java.util.LinkedHashMap<>();
+        for(OutputOrder line:outputOrders)
+            result.merge(line.itemId(),line.remaining(),Integer::sum);
+        return java.util.Map.copyOf(result);
+    }
     /** A multi-item order is one atomic submission: accept ALL lines or none,
      * so a partially full queue cannot silently drop the end of an order. */
     public boolean queueOutputList(java.util.List<OutputOrder> lines){
