@@ -78,10 +78,11 @@ public final class CraftVendingMenu extends AbstractContainerMenu {
         super.slotsChanged(changed);
     }
     @Override public boolean clickMenuButton(Player player,int id){
-        if(id!=0&&id!=1||!stillValid(player))return false;
+        if(id<0||id>3||!stillValid(player))return false;
+        int change=switch(id){case 0->-1;case 1->1;case 2->-8;default->8;};
         if(entity!=null)
-            entity.setBatches(entity.batches()+(id==0?-1:1));
-        else batchCount=Math.clamp(batchCount+(id==0?-1:1),1,
+            entity.setBatches(entity.batches()+change);
+        else batchCount=Math.clamp(batchCount+change,1,
                 CraftVendingBlockEntity.MAX_BATCHES);
         broadcastFullState();
         return true;
