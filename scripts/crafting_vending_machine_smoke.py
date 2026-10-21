@@ -33,12 +33,14 @@ assert "customer.getInventory().placeItemBackInInventory(stack.copy())" in entit
 assert "ContainerHelper.saveAllItems(out,contents)" in entity
 assert "ContainerHelper.loadAllItems(in,contents)" in entity
 assert "new CraftVendingMenu(id,inventory,this)" in entity
-assert "MAX_BATCHES=16" in entity
+assert "MAX_BATCHES=64" in entity
 assert "addStandardInventorySlots(player,28,208)" in menu
 assert "moveItemStackTo(moving,TEMPLATE,PREVIEW,false)" in menu
 assert "mayPickup(Player player){return false;}" in menu
 assert "mayPlace(ItemStack stack){return false;}" in menu
 assert "handleInventoryButtonClick(menu.containerId,id)" in screen
+assert "case 2->-8;default->8;" in menu
+assert "event.button()==1?3:1" in screen
 assert "RACK" not in reg
 for file in ["assets/caszual_additions/blockstates/crafting_vending_machine.json",
              "assets/caszual_additions/models/block/crafting_vending_machine.json",
@@ -52,4 +54,4 @@ for file in ["src/main/java/com/caszgamermd/caszualadditions/CaszualAdditions.ja
             "src/main/java/com/caszgamermd/caszualadditions/CaszualItemGroups.java",
             "src/client/java/com/caszgamermd/caszualadditions/CaszualAdditionsClient.java"]:
     assert "CraftVendingContent" in (ROOT/file).read_text()
-print("PASS: craft-on-demand vending has 9 recipe samples, 27 stocked slots, atomic 1-16 batches, shift-right settings and save persistence.")
+print("PASS: craft-on-demand vending has 9 recipe samples, 27 stocked slots, atomic 1-64 batches, shift-right settings and save persistence.")

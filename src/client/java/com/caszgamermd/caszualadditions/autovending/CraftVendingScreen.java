@@ -62,14 +62,15 @@ public final class CraftVendingScreen extends AbstractContainerScreen<CraftVendi
             g.text(font,Component.literal("Per craft: "+result.getCount()),
                     116,84,0xff203c42,false);
         else g.text(font,Component.literal("Set recipe"),118,84,0xff4c5a60,false);
+        g.text(font,Component.literal("Right-click +/-: 8"),114,94,0xff35484d,false);
         g.text(font,Component.literal("PLAYER INVENTORY"),28,195,0xff33434b,false);
     }
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick){
-        if(event.button()==0){
+        if(event.button()==0||event.button()==1){
             double x=event.x()-leftPos,y=event.y()-topPos;
             if(y>=101&&y<116){
-                if(x>=119&&x<137){adjust(0);return true;}
-                if(x>=179&&x<197){adjust(1);return true;}
+                if(x>=119&&x<137){adjust(event.button()==1?2:0);return true;}
+                if(x>=179&&x<197){adjust(event.button()==1?3:1);return true;}
             }
         }
         return super.mouseClicked(event,doubleClick);

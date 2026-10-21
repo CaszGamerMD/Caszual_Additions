@@ -15,8 +15,9 @@ Player Head Vending Machine. It does NOT grant free items.
    cabinet, not the recipe template.
 5. The RESULT preview shows the output using the world's current vanilla
    or modded crafting recipes. Adjust the **- / +** buttons to choose
-   **1–16 complete crafting operations** per normal click. The screen
-   shows the total number of produced output items (recipe yield ×
+   **1–64 complete crafting operations** per normal click. Right-click a The screen
+   quantity button to change by eight operations. The screen shows the
+   total number of produced output items (recipe yield ×
    selected operations).
 6. **Right-click** the machine normally to craft and dispense the batch
    into the customer's inventory; overflow goes to the world if inventory
