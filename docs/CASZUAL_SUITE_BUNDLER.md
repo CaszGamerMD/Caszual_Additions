@@ -1,11 +1,11 @@
 # Caszual Suite JAR Bundler
 
-This utility gathers the newest successfully packaged, unexpired GitHub Actions mod JAR from each of nine Caszual Suite repositories into one ZIP. It does not rebuild mods.
+This utility gathers the newest successfully packaged, unexpired GitHub Actions mod JAR from each of eight active Caszual Suite repositories into one ZIP. It does not rebuild mods.
 
 ## Run on GitHub
 
-1. Merge the bundler feature pull request into Caszual_Additions/main.
-2. Create a fine-grained GitHub personal access token for all nine private repositories, granting Actions: Read-only and Metadata: Read-only.
+1. Merge the bundler feature pull request into Caszual_Additions/main. The workflow also runs automatically once when merged; afterward, run it manually whenever you want a refreshed ZIP.
+2. Create a fine-grained GitHub personal access token for all eight active private repositories, granting Actions: Read-only and Metadata: Read-only.
 3. Set the CASZUAL_SUITE_TOKEN secret in Caszual_Additions > Settings > Secrets and variables > Actions. Never put this token in source code or a workflow input.
 4. Select Caszual_Additions > Actions > Bundle Caszual Suite JARs > Run workflow.
 5. Download Caszual-Suite-Latest.zip from the resulting GitHub prerelease (Releases page), or from the workflow artifact.
@@ -30,7 +30,6 @@ On macOS/Linux, replace py with python3. The output defaults to dist/Caszual-Sui
 | --- | --- |
 | Caszual_Additions | Caszual-Additions-* |
 | PrettyFrogs | PrettyFrogs-1.0.0 |
-| TVtime | caszual-tv-time-build |
 | Caszual_MTG_addon | caszual-mtg-* |
 | Caszual_Aquariums | linked-aquariums-build |
 | MC-MiningRig | miningrig-26.2 |
@@ -40,7 +39,7 @@ On macOS/Linux, replace py with python3. The output defaults to dist/Caszual-Sui
 
 ## ZIP layout
 
-The ZIP contains README.txt, manifest.json, and a mods/ folder with exactly one installable JAR per mod.
+The ZIP contains README.txt, manifest.json, and a mods/ folder with exactly one installable JAR per active mod. TV Time is on hold and is excluded.
 
 The manifest records the exact branch, commit, workflow URL, artifact ID, JAR name, size, and SHA-256 hash. Source, development, test, and Javadoc JARs are excluded. Unrelated artifacts (such as Blockbench exports or logs) are not downloaded.
 
