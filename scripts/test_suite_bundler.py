@@ -77,7 +77,7 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(artifact["id"], 400)
         self.assertIsNone(bundler.newest_jar_artifact(api, "test", "PrettyFrogs", "other-branch"))
 
-    def test_full_zip_has_nine_mods_and_checksums(self):
+    def test_full_zip_has_eight_mods_and_checksums(self):
         with tempfile.TemporaryDirectory() as temp:
             target = Path(temp) / "Caszual-Suite-Latest.zip"
             with mock.patch.object(bundler, "find_token", return_value="fake"), mock.patch.object(
@@ -86,10 +86,11 @@ class BundleTests(unittest.TestCase):
                 bundler.make_bundle(target, owner="test", branch=None, allow_missing=False)
             with zipfile.ZipFile(target) as archive:
                 names = archive.namelist()
-                self.assertEqual(len([x for x in names if x.startswith("mods/")]), 9)
+                self.assertEqual(len([x for x in names if x.startswith("mods/")]), 8)
                 manifest = json.loads(archive.read("manifest.json"))
                 self.assertTrue(manifest["complete"])
-                self.assertEqual(len(manifest["mods"]), 9)
+                self.assertEqual(len(manifest["mods"]), 8)
+                self.assertNotIn("TVtime", {x["repo"] for x in manifest["mods"]})
                 self.assertTrue(all(x["branch"] == "main" for x in manifest["mods"]))
                 for entry in manifest["mods"]:
                     data = archive.read("mods/" + entry["filename"])
