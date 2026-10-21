@@ -1,0 +1,29 @@
+name: Test Suite JAR Bundler
+
+on:
+  pull_request:
+    paths:
+      - "scripts/bundle_caszual_suite.py"
+      - "scripts/test_suite_bundler.py"
+      - ".github/workflows/bundle-suite.yml"
+      - ".github/workflows/test-suite-bundler.yml"
+  push:
+    paths:
+      - "scripts/bundle_caszual_suite.py"
+      - "scripts/test_suite_bundler.py"
+      - ".github/workflows/bundle-suite.yml"
+      - ".github/workflows/test-suite-bundler.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test artifact selection, exclusion rules, and ZIP manifest
+        run: python3 -m unittest discover -s scripts -p 'test_suite_bundler.py' -v
