@@ -15,7 +15,7 @@ scanner = source("StorageScannerItem.java")
 crew = source("StoragePalletCrew.java")
 rack = source("RackBlockEntity.java")
 golem = source("StorageGolem.java")
-assert "StoragePalletCrew.interactRack(server,user,rack)" in scanner
+assert "StoragePalletCrew.interactRack(server,user,rack,home)" in scanner
 assert "StoragePalletCrew.deliverRack(server,user,rack)" not in scanner
 assert "public static String interactRack(" in crew
 assert "public static String pickupRack(" in crew
