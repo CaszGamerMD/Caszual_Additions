@@ -40,6 +40,47 @@ public final class PtpBlockEntity extends BlockEntity
     public record OutputOrder(String itemId,int remaining) {}
     public static final int MAX_OUTPUT_ORDERS=16;
     private final ArrayDeque<OutputOrder> outputOrders=new ArrayDeque<>();
+    // Reserved, single-consumer Builder output lane. UUID and destination are
+    // stored at the actual pallet controller, not in a global temporary map.
+    private java.util.UUID builderRequest, builderOwner;
+    private BlockPos builderTable=BlockPos.ZERO, builderComputer=BlockPos.ZERO;
+    public boolean builderReserved(){return builderRequest!=null;}
+    public boolean builderMatches(java.util.UUID request,java.util.UUID owner,
+            BlockPos table,BlockPos computer){
+        return request!=null&&request.equals(builderRequest)
+                &&owner!=null&&owner.equals(builderOwner)
+                &&table!=null&&table.equals(builderTable)
+                &&computer!=null&&computer.equals(builderComputer);
+    }
+    public boolean beginBuilderOutput(java.util.UUID request,java.util.UUID owner,
+            BlockPos table,BlockPos computer,java.util.List<OutputOrder> lines){
+        expireTicket();
+        if(builderReserved()||request==null||owner==null||table==null
+                ||computer==null||!readyForOutput()||!emptyCargo()
+                ||!outputOrders.isEmpty()||activeTicket!=0||hauling()
+                ||lines.isEmpty()||lines.size()>MAX_OUTPUT_ORDERS)return false;
+        for(OutputOrder line:lines)if(line.itemId()==null||line.itemId().isBlank()
+                ||line.remaining()<1||line.remaining()>4096)return false;
+        builderRequest=request;builderOwner=owner;
+        builderTable=table.immutable();builderComputer=computer.immutable();
+        outputOrders.addAll(lines);
+        setChanged();return true;
+    }
+    /** Never erase stock or a live reservation when releasing the lane. */
+    public boolean releaseBuilderOutput(java.util.UUID request,java.util.UUID owner,
+            BlockPos table,BlockPos computer){
+        expireTicket();
+        if(!builderMatches(request,owner,table,computer)
+                ||!outputOrders.isEmpty()||activeTicket!=0
+                ||!emptyCargo()||hauling())return false;
+        builderRequest=null;builderOwner=null;
+        builderTable=BlockPos.ZERO;builderComputer=BlockPos.ZERO;
+        setChanged();return true;
+    }
+    public boolean outputInFlight(){
+        expireTicket();return activeTicket!=0;
+    }
+
     private int activeTicket,ticketSequence,reservedOutput;
     // Leases survive reload. A missing worker cannot permanently block FIFO.
     private long ticketDeadline;
@@ -219,13 +260,13 @@ public final class PtpBlockEntity extends BlockEntity
      * invalidate a wrapped pallet's four-worker escrow. */
     public boolean changeModeFromComputer(){
         expireTicket();
-        if(hauling()||activeTicket!=0||pendingOutputOrders()>0)return false;
+        if(builderReserved()||hauling()||activeTicket!=0||pendingOutputOrders()>0)return false;
         setInput(!input);
         return true;
     }
     public boolean changeWrapFromComputer(){
         expireTicket();
-        if(!hasWrap()||!hasPallet()||hauling()||activeTicket!=0)return false;
+        if(builderReserved()||!hasWrap()||!hasPallet()||hauling()||activeTicket!=0)return false;
         setSealed(!sealed);
         return true;
     }
@@ -239,7 +280,7 @@ public final class PtpBlockEntity extends BlockEntity
     /** A multi-item order is one atomic submission: accept ALL lines or none,
      * so a partially full queue cannot silently drop the end of an order. */
     public boolean queueOutputList(java.util.List<OutputOrder> lines){
-        if(input||hauling()||lines.isEmpty()
+        if(builderReserved()||input||hauling()||lines.isEmpty()
                 ||outputOrders.size()+lines.size()>MAX_OUTPUT_ORDERS)return false;
         for(OutputOrder line:lines)
             if(line.itemId()==null||line.itemId().isBlank()
@@ -249,7 +290,7 @@ public final class PtpBlockEntity extends BlockEntity
         return true;
     }
     public boolean queueOutput(String itemId,int quantity){
-        if(input||hauling()||itemId==null||itemId.isBlank()||quantity<1||quantity>4096
+        if(builderReserved()||input||hauling()||itemId==null||itemId.isBlank()||quantity<1||quantity>4096
                 ||outputOrders.size()>=MAX_OUTPUT_ORDERS)return false;
         outputOrders.addLast(new OutputOrder(itemId,quantity));
         setChanged();return true;
@@ -310,7 +351,7 @@ public final class PtpBlockEntity extends BlockEntity
         return false;
     }
     public boolean canInstallPallet(){
-        if(hasPallet()||level==null||hauling()||pendingOutputOrders()>0)
+        if(builderReserved()||hasPallet()||level==null||hauling()||pendingOutputOrders()>0)
             return false;
         BlockPos root=worldPosition.offset(-1,0,-1);
         for(int y=1;y<=3;y++)for(int z=0;z<3;z++)for(int x=0;x<3;x++){
@@ -335,14 +376,14 @@ public final class PtpBlockEntity extends BlockEntity
      * reservation, or queued output order still belongs to this PTP. */
     public boolean canRemoveEmptyPallet(){
         expireTicket();
-        return hasPallet()&&!sealed&&emptyCargo()&&!hauling()
+        return !builderReserved()&&hasPallet()&&!sealed&&emptyCargo()&&!hauling()
                 &&activeTicket==0&&pendingOutputOrders()==0;
     }
     public ItemStack removePallet(){
         return canRemoveEmptyPallet()?dropPallet():ItemStack.EMPTY;
     }
     public ItemStack dropPallet(){
-        if(!hasPallet()||hauling())return ItemStack.EMPTY;
+        if(builderReserved()||!hasPallet()||hauling())return ItemStack.EMPTY;
         ItemStack result=PalletData.applyFilterSettings(pallet,this);
         pallet=ItemStack.EMPTY;filterUpgrade=ItemStack.EMPTY;
         filterTarget="";filterSignature="";sealed=false;
@@ -409,6 +450,12 @@ public final class PtpBlockEntity extends BlockEntity
         out.putInt("filter_mode",filterMode);
         out.putInt("filter_scope",filterScope);
         out.putBoolean("input",input);out.putBoolean("sealed",sealed);
+        if(builderRequest!=null){
+            out.putString("builder_request",builderRequest.toString());
+            out.putString("builder_owner",builderOwner.toString());
+            out.store("builder_table",BlockPos.CODEC,builderTable);
+            out.store("builder_computer",BlockPos.CODEC,builderComputer);
+        }
         out.putInt("output_orders",outputOrders.size());
         int orderIndex=0;
         for(OutputOrder order:outputOrders){
@@ -442,6 +489,14 @@ public final class PtpBlockEntity extends BlockEntity
         filterScope=Math.clamp(in.getIntOr("filter_scope",0),0,3);
         input=in.getBooleanOr("input",true);
         sealed=in.getBooleanOr("sealed",false)&&hasPallet();
+        builderRequest=builderOwner=null;
+        try{
+            builderRequest=java.util.UUID.fromString(in.getStringOr("builder_request",""));
+            builderOwner=java.util.UUID.fromString(in.getStringOr("builder_owner",""));
+        }catch(IllegalArgumentException ignored){}
+        if(builderRequest==null||builderOwner==null)builderRequest=builderOwner=null;
+        builderTable=in.read("builder_table",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        builderComputer=in.read("builder_computer",BlockPos.CODEC).orElse(BlockPos.ZERO);
         outputOrders.clear();
         int orders=Math.clamp(in.getIntOr("output_orders",0),0,MAX_OUTPUT_ORDERS);
         for(int i=0;i<orders;i++){
