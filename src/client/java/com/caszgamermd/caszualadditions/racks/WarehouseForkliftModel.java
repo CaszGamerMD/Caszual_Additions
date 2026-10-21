@@ -15,11 +15,14 @@ import net.minecraft.util.Mth;
  * Every cuboid is non-coplanar with its neighbors to avoid z-fighting.
  */
 public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftRenderState> {
-    private final ModelPart frontWheels,rearWheels,mastMiddle,mastTop,carriage;
+    private final ModelPart frontLeftWheel,frontRightWheel,rearLeftWheel,rearRightWheel,
+            mastMiddle,mastTop,carriage;
     public WarehouseForkliftModel(ModelPart root){
         super(root);
-        frontWheels=root.getChild("front_wheels");
-        rearWheels=root.getChild("rear_wheels");
+        frontLeftWheel=root.getChild("wheel_front_left");
+        frontRightWheel=root.getChild("wheel_front_right");
+        rearLeftWheel=root.getChild("wheel_rear_left");
+        rearRightWheel=root.getChild("wheel_rear_right");
         mastMiddle=root.getChild("mast_middle");
         mastTop=root.getChild("mast_top");
         carriage=root.getChild("carriage");
@@ -37,19 +40,25 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
             .texOffs(70,0).addBox(-12,-8,-17,1,3,31)
             .texOffs(70,0).addBox(11,-8,-17,1,3,31),
             PartPose.offset(0,24,0));
-        // Four wheel treads, separated by real suspension gaps.
-        root.addOrReplaceChild("front_wheels",CubeListBuilder.create()
-            .texOffs(0,67).addBox(-14,-5,-14,5,9,9)
-            .texOffs(0,67).addBox(9,-5,-14,5,9,9)
-            .texOffs(21,66).addBox(-14,-5,-12,5,6,5)
-            .texOffs(21,66).addBox(9,-5,-12,5,6,5),
-            PartPose.offset(0,20,0));
-        root.addOrReplaceChild("rear_wheels",CubeListBuilder.create()
-            .texOffs(0,67).addBox(-14,-5,9,5,9,9)
-            .texOffs(0,67).addBox(9,-5,9,5,9,9)
-            .texOffs(21,66).addBox(-14,-5,11,5,6,5)
-            .texOffs(21,66).addBox(9,-5,11,5,6,5),
-            PartPose.offset(0,20,0));
+        // Individual wheels rotate around their OWN centered wheel axle.
+        // Sharing a parent across left or right wheels caused the wheels
+        // to orbit around the midpoint rather than spin in place.
+        root.addOrReplaceChild("wheel_front_left",CubeListBuilder.create()
+                .texOffs(0,67).addBox(-2.5f,-4.5f,-4.5f,5f,9f,9f)
+                .texOffs(21,66).addBox(-2.6f,-3f,-3f,5.2f,6f,6f),
+                PartPose.offset(-11.5f,20f,-9.5f));
+        root.addOrReplaceChild("wheel_front_right",CubeListBuilder.create()
+                .texOffs(0,67).addBox(-2.5f,-4.5f,-4.5f,5f,9f,9f)
+                .texOffs(21,66).addBox(-2.6f,-3f,-3f,5.2f,6f,6f),
+                PartPose.offset(11.5f,20f,-9.5f));
+        root.addOrReplaceChild("wheel_rear_left",CubeListBuilder.create()
+                .texOffs(0,67).addBox(-2.5f,-4.5f,-4.5f,5f,9f,9f)
+                .texOffs(21,66).addBox(-2.6f,-3f,-3f,5.2f,6f,6f),
+                PartPose.offset(-11.5f,20f,13.5f));
+        root.addOrReplaceChild("wheel_rear_right",CubeListBuilder.create()
+                .texOffs(0,67).addBox(-2.5f,-4.5f,-4.5f,5f,9f,9f)
+                .texOffs(21,66).addBox(-2.6f,-3f,-3f,5.2f,6f,6f),
+                PartPose.offset(11.5f,20f,13.5f));
         // Lean-back roll cage and overhead protection mesh.
         root.addOrReplaceChild("cage",CubeListBuilder.create()
             .texOffs(70,18).addBox(-12,-49,6,3,40,3)
@@ -110,7 +119,9 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
         mastTop.y=22f-height*10f;
         carriage.y=22f-height*16f;
         float wheel=state.walkAnimationPos*.8f;
-        frontWheels.xRot=wheel;
-        rearWheels.xRot=wheel;
+        frontLeftWheel.xRot=wheel;
+        frontRightWheel.xRot=wheel;
+        rearLeftWheel.xRot=wheel;
+        rearRightWheel.xRot=wheel;
     }
 }

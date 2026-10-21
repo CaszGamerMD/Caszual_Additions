@@ -28,14 +28,14 @@ for key in ('warehouse_dimension','warehouse_x','warehouse_y','warehouse_z',
     assert f'"{key}"' in scanner
 assert 'private static void unlink(ItemStack scanner)' in scanner
 assert 'boolean same=computer.equals(previous);' in scanner
-assert 'if(same){' in scanner and 'unlink(scanner);' in scanner
+assert 'if(same){' in scanner and 'bind(scanner,level,computer);' in scanner
 assert 'clearPickup(scanner);' in scanner
 assert 'StoragePalletCrew.recallFollowing(level,player);' in scanner
 assert 'if(carrying)' in scanner
 assert 'bind(scanner,level,computer);' in scanner
-assert 'player.isShiftKeyDown()' in computer
+assert 'held.is(RackContent.STORAGE_SCANNER_ITEM)' in computer
 assert 'StorageScannerItem.onComputerClick(server,user,held,pos)' in computer
-assert 'Sneak-click this Computer again to UNLINK' in scanner
+assert 'Scanner is now linked to ' in scanner
 
 # Preserve the historical item/block IDs and existing saved 12-slot contents.
 assert 'CaszualAdditions.id("stack_of_pallets")' in rack

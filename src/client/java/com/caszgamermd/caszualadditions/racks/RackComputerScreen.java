@@ -20,7 +20,12 @@ import net.minecraft.network.chat.Component;
  */
 public final class RackComputerScreen extends Screen {
     private final BlockPos computer;
-    private EditBox search, orderQuantity;
+    private EditBox search, orderQuantity,warehouseNameBox;
+    private Button warehouseRenameButton;
+    private boolean showBuilderOrders;
+    private String warehouseName="Warehouse";
+    private JsonArray builderOrders=new JsonArray();
+    private int selectedBuilderOrder;
     private final java.util.List<AbstractWidget> rackWidgets=new java.util.ArrayList<>();
     private final java.util.List<AbstractWidget> workerWidgets=new java.util.ArrayList<>();
     private final java.util.List<AbstractWidget> debugWidgets=new java.util.ArrayList<>();
@@ -84,6 +89,8 @@ public final class RackComputerScreen extends Screen {
         for(AbstractWidget widget:workerWidgets)widget.visible=page==1;
         for(AbstractWidget widget:orderWidgets)widget.visible=page==2;
         for(AbstractWidget widget:debugWidgets)widget.visible=page==3;
+        if(warehouseNameBox!=null)warehouseNameBox.visible=page==3;
+        if(warehouseRenameButton!=null)warehouseRenameButton.visible=page==3;
         sendQuery();
     }
     private String selectedItemId = "";
@@ -102,7 +109,7 @@ public final class RackComputerScreen extends Screen {
     private int savedQueryLength;
 
     public RackComputerScreen(BlockPos computer) {
-        super(Component.literal("Rack Computer"));
+        super(Component.literal("Warehouse Computer"));
         this.computer=computer;
     }
 
@@ -123,6 +130,19 @@ public final class RackComputerScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("DEBUG"),
                 b->showPage(3)).bounds(tabLeft+292,13,75,20).build());
         int left=22, y=45;
+        warehouseNameBox=new EditBox(font,30,320,190,20,
+                Component.literal("Warehouse name"));
+        warehouseNameBox.setMaxLength(40);
+        warehouseNameBox.setValue(warehouseName);
+        addRenderableWidget(warehouseNameBox);
+        warehouseRenameButton=addRenderableWidget(Button.builder(Component.literal("RENAME"),
+                b->{
+                    ClientPlayNetworking.send(new RackComputerNet.RenameWarehouse(
+                            computer,warehouseNameBox.getValue()));
+                    warehouseName=warehouseNameBox.getValue();
+                }).bounds(225,320,76,20).build());
+        warehouseNameBox.visible=false;
+        warehouseRenameButton.visible=false;
         search=addRack(new EditBox(font,left,y,
                 Math.max(90,width-270),23,Component.literal("Search rack network")));
         search.setMaxLength(60);
@@ -194,6 +214,9 @@ public final class RackComputerScreen extends Screen {
         addOrders(Button.builder(Component.literal("CLEAR LIST"),
                 b->{orderList.clear();saveDraft();orderStatus="Order list cleared.";})
                 .bounds(27+Math.max(122,width/3),height-69,104,23).build());
+        addOrders(Button.builder(Component.literal("BUILDER REQUESTS"),
+                b->{showBuilderOrders=!showBuilderOrders;orderScroll=0;})
+                .bounds(Math.max(140,width-275),height-41,125,21).build());
         addOrders(Button.builder(Component.literal("REMOVE LAST"),
                 b->removeLastOrder()).bounds(22,height-41,108,21).build());
         addOrders(Button.builder(Component.literal("▲"),
@@ -319,6 +342,12 @@ public final class RackComputerScreen extends Screen {
         if(!computer.equals(pos))return;
         try {
             JsonObject obj=JsonParser.parseString(raw).getAsJsonObject();
+            warehouseName=obj.has("warehouseName")
+                    ?obj.get("warehouseName").getAsString():"Warehouse";
+            builderOrders=obj.has("builderOrders")
+                    ?obj.getAsJsonArray("builderOrders"):new JsonArray();
+            if(warehouseNameBox!=null&&!warehouseNameBox.isFocused())
+                warehouseNameBox.setValue(warehouseName);
             racks=obj.getAsJsonArray("racks");
             ptps=obj.has("ptps")?obj.getAsJsonArray("ptps"):new JsonArray();
             stations=obj.has("stations")?obj.getAsJsonArray("stations"):new JsonArray();
@@ -388,7 +417,7 @@ public final class RackComputerScreen extends Screen {
         graphics.fill(0,0,width,height,0xf00c1518);
         graphics.fill(8,8,width-8,height-8,0xff162a25);
         graphics.fill(10,10,width-10,35,0xff1c5839);
-        graphics.text(font,Component.literal("RACK COMPUTER  •  WAREHOUSE NETWORK"),
+        graphics.text(font,Component.literal("WAREHOUSE COMPUTER  •  "+warehouseName),
                 22,19,0xffc5ffd0,false);
         if(page==1){
             drawWorkers(graphics);
@@ -462,7 +491,48 @@ public final class RackComputerScreen extends Screen {
 
     }
 
+    private void drawBuilderOrders(GuiGraphicsExtractor g){
+        int count=builderOrders.size();
+        g.text(font,Component.literal("PENDING BUILDER FULFILLMENTS: "+count),
+                22,52,0xffb3f9c1,false);
+        g.text(font,Component.literal("Click a request to inspect its full material list."),
+                22,75,0xffa4d5b7,false);
+        if(count==0){
+            g.text(font,Component.literal("No active Builder Golem requests."),
+                    27,110,0xffb7c3b9,false);
+            return;
+        }
+        for(int i=0;i<count&&i<5;i++){
+            JsonObject request=builderOrders.get(i).getAsJsonObject();
+            int y=103+i*25;
+            g.fill(25,y,width-25,y+22,
+                    i==selectedBuilderOrder?0xff437a54:0xff294236);
+            g.text(font,Component.literal(compact("Builder "+(i+1)
+                    +" • "+request.get("table").getAsString()
+                    +" • "+request.get("status").getAsString(),
+                    Math.max(16,(width-60)/6))),32,y+6,0xffd7e9da,false);
+        }
+        int selected=Math.clamp(selectedBuilderOrder,0,count-1);
+        JsonObject active=builderOrders.get(selected).getAsJsonObject();
+        int y=239;
+        g.text(font,Component.literal("CURRENT BATCH: "
+                +active.get("currentItem").getAsString()+" x"
+                +active.get("currentQuantity").getAsInt()),28,y,0xffe8ca82,false);
+        g.text(font,Component.literal("NEXT BATCH: "
+                +active.get("nextItem").getAsString()+" x"
+                +active.get("nextQuantity").getAsInt()),28,y+16,0xffe8ca82,false);
+        g.text(font,Component.literal("ALL REMAINING MATERIALS"),28,y+38,
+                0xffadeabf,false);
+        JsonArray items=active.getAsJsonArray("items");
+        for(int i=0;i<items.size()&&i<Math.max(0,(height-y-100)/16);i++){
+            JsonObject item=items.get(i).getAsJsonObject();
+            g.text(font,Component.literal(compact(item.get("id").getAsString(),34)
+                    +" x"+item.get("remaining").getAsInt()),
+                    32,y+54+i*16,0xffc9dfd1,false);
+        }
+    }
     private void drawOrderList(GuiGraphicsExtractor graphics){
+        if(showBuilderOrders){drawBuilderOrders(graphics);return;}
         graphics.text(font,Component.literal("ORDER BUILDER  •  "+orderList.size()
                 +" / 16 item types"),22,50,0xffb3f9c1,false);
         graphics.text(font,Component.literal(compact(orderStatus,
@@ -559,6 +629,15 @@ public final class RackComputerScreen extends Screen {
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {
         if(page==2){
             int mx=(int)event.x(),my=(int)event.y();
+            if(showBuilderOrders){
+                if(mx>=25&&mx<width-25&&my>=103&&my<228){
+                    int index=(my-103)/25;
+                    if(index>=0&&index<builderOrders.size()){
+                        selectedBuilderOrder=index;return true;
+                    }
+                }
+                return super.mouseClicked(event,doubleClick);
+            }
             int rows=Math.max(0,(height-251)/25);
             if(mx>=26&&mx<width-26&&my>=150&&my<150+rows*25){
                 int index=orderScroll+(my-150)/25;

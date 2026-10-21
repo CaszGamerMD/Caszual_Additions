@@ -22,13 +22,15 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
 /** Network access point; only physical face-adjacent racks grant access. */
-public final class RackComputerBlock extends Block {
+public final class RackComputerBlock extends Block implements net.minecraft.world.level.block.EntityBlock {
     public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
     private final MapCodec<RackComputerBlock> codec=MapCodec.unit(this);
     public RackComputerBlock(BlockBehaviour.Properties properties){
         super(properties);
         registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));
     }
+    @Override public net.minecraft.world.level.block.entity.BlockEntity newBlockEntity(
+            BlockPos pos,BlockState state){return new WarehouseComputerBlockEntity(pos,state);}
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder){
         builder.add(FACING);
     }
@@ -52,7 +54,7 @@ public final class RackComputerBlock extends Block {
         // click before the handheld tool creates its warehouse link.
         if(level instanceof net.minecraft.server.level.ServerLevel server
                 &&player instanceof ServerPlayer user){
-            if(held.is(RackContent.STORAGE_SCANNER_ITEM)&&player.isShiftKeyDown())
+            if(held.is(RackContent.STORAGE_SCANNER_ITEM))
                 StorageScannerItem.onComputerClick(server,user,held,pos);
             else ServerPlayNetworking.send(user,new RackComputerNet.Open(pos));
         }

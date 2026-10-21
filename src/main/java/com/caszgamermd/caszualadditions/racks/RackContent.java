@@ -37,6 +37,7 @@ public final class RackContent {
     public static EntityType<WarehouseForklift> FORKLIFT_TYPE;
     public static Item FORKLIFT_ITEM,FORKLIFT_CONTROLLER;
     public static Block RACK_COMPUTER;
+    public static ForkliftParkingBlock FORKLIFT_PARKING;
     public static Item STORAGE_SCANNER_ITEM,PORTABLE_WRAPPER,STACK_OF_PALLETS,PALLET_JACK;
     public static StackOfPalletsBlock PALLET_STACK_BLOCK;
     public static BlockEntityType<StackOfPalletsBlockEntity> PALLET_STACK_ENTITY;
@@ -245,6 +246,12 @@ public final class RackContent {
                         .sized(1.85f,2.50f).build(movingKey));
         FabricDefaultAttributeRegistry.register(MOVING_PALLET_TYPE,MovingPallet.attributes());
 
+        ResourceKey<Block> parkingKey=ResourceKey.create(Registries.BLOCK,
+                CaszualAdditions.id("forklift_parking"));
+        FORKLIFT_PARKING=Registry.register(BuiltInRegistries.BLOCK,parkingKey,
+                new ForkliftParkingBlock(BlockBehaviour.Properties.ofFullCopy(
+                        Blocks.YELLOW_CONCRETE).noCollision().strength(2.0f)
+                        .setId(parkingKey)));
         ResourceKey<Item> forkliftItemKey=ResourceKey.create(Registries.ITEM,
                 CaszualAdditions.id("warehouse_forklift"));
         FORKLIFT_ITEM=Registry.register(BuiltInRegistries.ITEM,forkliftItemKey,

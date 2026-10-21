@@ -54,6 +54,10 @@ public final class WarehouseNetwork {
                 ||state.getBlock() instanceof RackBlock
                 ||state.getBlock() instanceof PalletBlock
                 ||state.getBlock() instanceof RackConnectorBlock
+                ||state.getBlock() instanceof RackStairsBlock
+                ||state.getBlock() instanceof RackLadderBlock
+                ||state.getBlock() instanceof RackScaffoldingBlock
+                ||state.getBlock() instanceof ForkliftParkingBlock
                 ||state.getBlock() instanceof PtpBlock
                 ||state.getBlock() instanceof StorageGolemShelfBlock
                 ||state.getBlock() instanceof StackOfPalletsBlock

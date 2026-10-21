@@ -214,6 +214,8 @@ public final class StorageGolem extends PathfinderMob {
     private String golemName="";
     private boolean groundPickup;
     private boolean forkliftDriver;
+    private boolean forkliftEscort;
+    private UUID forkliftEscortOwner;
     private java.util.UUID forkliftId;
     private boolean rackPickup;
     // Fixed physical service face for Direct pickup; DO NOT reselect the
@@ -794,9 +796,38 @@ public final class StorageGolem extends PathfinderMob {
 
     /** A second Golem is dispatched specifically to shepherd a mobile
      * stair unit when an elevated rack needs worker access. No cargo. */
+    public void assignForkliftEscort(BlockPos shelf,UUID owner){
+        home=shelf.immutable();markCurrentRecall();
+        forkliftEscort=true;forkliftEscortOwner=owner;
+        forkliftDriver=false;forkliftId=null;
+        stage=7;cargo=ItemStack.EMPTY;emptyBox=ItemStack.EMPTY;
+    }
+    public boolean escortFor(UUID owner){
+        return forkliftEscort&&owner!=null&&owner.equals(forkliftEscortOwner);
+    }
+    public void boardAssignedForklift(UUID vehicle){
+        if(!forkliftEscort)return;
+        forkliftEscort=false;forkliftEscortOwner=null;
+        assignForkliftDriver(home,vehicle);
+    }
+    public boolean isDrivingForklift(){return forkliftDriver;}
+    public void dismissForkliftEscort(){
+        if(!forkliftEscort)return;
+        forkliftEscort=false;forkliftEscortOwner=null;
+        stage=2;getNavigation().stop();
+    }
+    private void tickForkliftEscort(ServerLevel level){
+        if(forkliftEscortOwner==null){dismissForkliftEscort();return;}
+        var owner=level.getServer().getPlayerList().getPlayer(forkliftEscortOwner);
+        if(owner==null||owner.level()!=level){dismissForkliftEscort();return;}
+        BlockPos goal=owner.blockPosition();
+        if(distanceToSqr(owner)>6.25)walkTo(level,goal,1.10);
+        else getNavigation().stop();
+    }
     public void assignForkliftDriver(BlockPos shelf,java.util.UUID vehicle){
         home=shelf.immutable();markCurrentRecall();
         forkliftDriver=true;forkliftId=vehicle;
+        forkliftEscort=false;forkliftEscortOwner=null;
         stage=7;cargo=ItemStack.EMPTY;
         emptyBox=ItemStack.EMPTY;
     }
@@ -1037,7 +1068,9 @@ public final class StorageGolem extends PathfinderMob {
      * The PALLET prefix is preserved for the existing pallet renderer. */
     private void updateTaskLabel(){
         String label;
-        if(forkliftDriver){
+        if(forkliftEscort){
+            label="FORKLIFT OPERATOR | FOLLOWING PLAYER";
+        }else if(forkliftDriver){
             label=getVehicle() instanceof WarehouseForklift
                     ?"DRIVER | FORKLIFT":"DRIVER | BOARDING FORKLIFT";
         }else if(rackStairMover){
@@ -2098,13 +2131,15 @@ public final class StorageGolem extends PathfinderMob {
         if(!(level() instanceof ServerLevel level))return;
         // An assigned forklift operator ignores ordinary warehouse recall:
         // only the controller's explicit dismiss command sends it home.
-        if(!remoteCourier&&!remotePickup&&!forkliftDriver)checkPendingRecall(level);
+        if(!remoteCourier&&!remotePickup&&!forkliftDriver&&!forkliftEscort)
+            checkPendingRecall(level);
         // Status strings from task transitions should not leak into
         // player-visible nameplates for 10 ticks when debug is disabled.
         updateTaskLabel();
         syncHeldVisual();
         syncPalletAction();
         if(forkliftDriver){tickForkliftDriver(level);return;}
+        if(forkliftEscort){tickForkliftEscort(level);return;}
         if(remotePickup){tickRemotePickup(level);return;}
         if(remoteCourier){tickRemoteCourier(level);return;}
         if(rackStairMover){tickRackStairs(level);return;}
@@ -2445,6 +2480,9 @@ public final class StorageGolem extends PathfinderMob {
         out.putInt("stage",stage);out.putString("item",itemId);out.putInt("wait",waitTicks);
         out.putBoolean("output_job",outputJob);
         out.putBoolean("pallet_stack_job",palletStackJob);
+        out.putBoolean("forklift_escort",forkliftEscort);
+        if(forkliftEscortOwner!=null)
+            out.putString("forklift_escort_owner",forkliftEscortOwner.toString());
         out.putBoolean("forklift_driver",forkliftDriver);
         if(forkliftId!=null)out.putString("forklift_id",forkliftId.toString());
         out.putBoolean("rack_stair_mover",rackStairMover);
@@ -2510,6 +2548,11 @@ public final class StorageGolem extends PathfinderMob {
         waitTicks=Math.max(0,in.getIntOr("wait",0));
         outputJob=in.getBooleanOr("output_job",false);
         palletStackJob=in.getBooleanOr("pallet_stack_job",false);
+        forkliftEscort=in.getBooleanOr("forklift_escort",false);
+        try{
+            String owner=in.getStringOr("forklift_escort_owner","");
+            forkliftEscortOwner=owner.isBlank()?null:UUID.fromString(owner);
+        }catch(IllegalArgumentException ex){forkliftEscortOwner=null;}
         forkliftDriver=in.getBooleanOr("forklift_driver",false);
         try{
             String forklift=in.getStringOr("forklift_id","");
@@ -2609,6 +2652,40 @@ public final class StorageGolem extends PathfinderMob {
     }
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(level().isClientSide())return InteractionResult.SUCCESS;
+        if(player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
+                &&StorageScannerItem.mode(player.getItemInHand(hand))
+                        ==StorageScannerItem.Mode.FORKLIFT
+                &&player instanceof net.minecraft.server.level.ServerPlayer user){
+            if(getVehicle() instanceof WarehouseForklift lift){
+                WarehouseGolemDebug.actionBar(user,Component.literal(
+                        lift.requestDriverDismissal((ServerLevel)level())));
+                return InteractionResult.SUCCESS;
+            }
+            if(escortFor(user.getUUID())){
+                dismissForkliftEscort();
+                WarehouseGolemDebug.actionBar(user,Component.literal(
+                        "FORKLIFT: unassigned operator returning to shelf."));
+                return InteractionResult.SUCCESS;
+            }
+        }
+        if(player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
+                &&StorageScannerItem.mode(player.getItemInHand(hand))
+                        ==StorageScannerItem.Mode.RECALL
+                &&player instanceof net.minecraft.server.level.ServerPlayer user){
+            if(StorageScannerItem.recallDoubleClick((ServerLevel)level(),user,getUUID())){
+                if(holdsPallet()){
+                    WarehouseGolemDebug.actionBar(user,Component.literal(
+                            "RECALL: this Golem holds a pallet; use the complete "
+                            +"four-Golem rig to release it safely."));
+                }else{
+                    recallToShelf((ServerLevel)level());
+                    WarehouseGolemDebug.actionBar(user,Component.literal(
+                            "RECALL: Golem returning to original shelf."));
+                }
+            }else WarehouseGolemDebug.actionBar(user,Component.literal(
+                    "RECALL: right-click the same Golem again quickly to confirm."));
+            return InteractionResult.SUCCESS;
+        }
         if(player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
                 &&(remotePickup||remoteCourier)){
             if(resumeRemotePath())

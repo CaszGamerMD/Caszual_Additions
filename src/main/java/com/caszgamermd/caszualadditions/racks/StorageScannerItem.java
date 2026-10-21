@@ -63,21 +63,128 @@ public final class StorageScannerItem extends Item {
 
     /** A single saved mode belongs to the SCANNER ItemStack, so switching
      * modes cannot silently dispatch four warehouse workers later. */
-    public enum Mode { REMOTE, DIRECT }
+    public enum Mode { REMOTE, DIRECT, FORKLIFT, RECALL }
     public static Mode mode(ItemStack scanner){
         CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
         if(data==null)return Mode.REMOTE;
         String name=data.copyTag().getStringOr("scanner_mode","REMOTE");
-        return "DIRECT".equals(name)?Mode.DIRECT:Mode.REMOTE;
+        try{return Mode.valueOf(name);}
+        catch(IllegalArgumentException e){return Mode.REMOTE;}
     }
     private static Mode toggleMode(ItemStack scanner){
-        Mode next=mode(scanner)==Mode.REMOTE?Mode.DIRECT:Mode.REMOTE;
+        Mode next=Mode.values()[(mode(scanner).ordinal()+1)%Mode.values().length];
         CustomData existing=scanner.get(DataComponents.CUSTOM_DATA);
         CompoundTag tag=existing==null?new CompoundTag():existing.copyTag();
         tag.putString("scanner_mode",next.name());
         scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
-        if(next==Mode.DIRECT)clearPickup(scanner);
+        if(next!=Mode.REMOTE)clearPickup(scanner);
         return next;
+    }
+    /** Per-stack pallet selection for the Forklift mode. Dimension encoded so
+     * a selection never crosses worlds. This is ONLY a reference, not cargo. */
+    private static void selectForkliftSource(ItemStack scanner,ServerLevel world,BlockPos pos){
+        CustomData current=scanner.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag=current==null?new CompoundTag():current.copyTag();
+        tag.putString("forklift_source_dimension",world.dimension().toString());
+        tag.putInt("forklift_source_x",pos.getX());
+        tag.putInt("forklift_source_y",pos.getY());
+        tag.putInt("forklift_source_z",pos.getZ());
+        scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
+    }
+    private static BlockPos forkliftSource(ItemStack scanner,ServerLevel world){
+        CustomData current=scanner.get(DataComponents.CUSTOM_DATA);
+        if(current==null)return null;
+        CompoundTag tag=current.copyTag();
+        if(!tag.getStringOr("forklift_source_dimension","").equals(world.dimension().toString())
+                ||!tag.contains("forklift_source_x"))return null;
+        return new BlockPos(tag.getIntOr("forklift_source_x",0),
+                tag.getIntOr("forklift_source_y",0),tag.getIntOr("forklift_source_z",0));
+    }
+    private static void clearForkliftSource(ItemStack scanner){
+        CustomData current=scanner.get(DataComponents.CUSTOM_DATA);
+        if(current==null)return;
+        CompoundTag tag=current.copyTag();
+        for(String key:new String[]{"forklift_source_dimension","forklift_source_x",
+                "forklift_source_y","forklift_source_z"})tag.remove(key);
+        scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
+    }
+    private static WarehouseForklift availableForklift(ServerLevel world,BlockPos at,
+            BlockPos warehouse){
+        java.util.Set<BlockPos> shelves=new java.util.HashSet<>();
+        for(StorageGolemShelfEntity shelf:WarehouseNetwork.fromComputer(world,warehouse).shelves())
+            shelves.add(shelf.getBlockPos());
+        WarehouseForklift best=null;
+        double nearest=Double.POSITIVE_INFINITY;
+        for(WarehouseForklift forklift:world.getEntitiesOfClass(WarehouseForklift.class,
+                new net.minecraft.world.phys.AABB(at).inflate(64),f->!f.busy())){
+            if(!forklift.hasWarehouseDriver(world,shelves))continue;
+            double distance=forklift.blockPosition().distSqr(at);
+            if(distance<nearest){nearest=distance;best=forklift;}
+        }
+        return best;
+    }
+    public static void onForkliftClick(ServerLevel world,ServerPlayer player,
+            ItemStack scanner,WarehouseForklift lift){
+        if(mode(scanner)!=Mode.FORKLIFT)return;
+        if(lift.busy()){
+            message(player,"Forklift is working: "+lift.status());
+            return;
+        }
+        if(lift.hasDriver(world)){
+            message(player,"Forklift: "+lift.status()+". Right-click its driver "
+                    +"with the Scanner to dismiss after the job.");
+            return;
+        }
+        BlockPos home=linkedComputer(scanner,world);
+        if(home==null){message(player,"Scanner not linked to a warehouse.");return;}
+        message(player,lift.boardEscort(world,player.getUUID(),home));
+    }
+    private static String forkliftTarget(ServerLevel level,ServerPlayer user,
+            ItemStack scanner,BlockPos clicked,BlockPos home){
+        return forkliftTarget(level,user,scanner,clicked,clicked,home);
+    }
+    private static String forkliftTarget(ServerLevel level,ServerPlayer user,
+            ItemStack scanner,BlockPos clicked,BlockPos landing,BlockPos home){
+        RackBlockEntity rack=RackBlock.controller(level,clicked);
+        var pallet=StorageGroundPalletTransfer.wrappedController(level,clicked);
+        BlockPos source=forkliftSource(scanner,level);
+        if(source==null){
+            if(rack!=null&&rack.hasPallet()){
+                selectForkliftSource(scanner,level,rack.getBlockPos());
+                return "FORKLIFT: rack pallet selected; now click a destination.";
+            }
+            if(pallet!=null){
+                selectForkliftSource(scanner,level,pallet.getBlockPos());
+                return "FORKLIFT: ground pallet selected; now click a rack or ground destination.";
+            }
+            return "FORKLIFT: select a wrapped pallet on a rack or ground first.";
+        }
+        WarehouseForklift forklift=availableForklift(level,clicked,home);
+        if(forklift==null)return "FORKLIFT: need a free Golem-driven forklift in this warehouse.";
+        if(rack!=null){
+            if(rack.hasPallet())return "FORKLIFT: destination rack must be empty.";
+            boolean started=level.getBlockEntity(source) instanceof RackBlockEntity from
+                    &&from.hasPallet()?forklift.orderRackToRack(level,from,rack)
+                    :forklift.order(level,rack,source);
+            if(started)clearForkliftSource(scanner);
+            return started?"FORKLIFT: pallet ordered into rack "+rack.getBlockPos().toShortString()
+                    :"FORKLIFT: cannot start. Check source pallet, aisle and mast clearance.";
+        }
+        boolean started=forklift.orderGround(level,source,landing,user.getDirection());
+        if(started)clearForkliftSource(scanner);
+        return started?"FORKLIFT: pallet ordered to ground "+landing.toShortString()
+                :"FORKLIFT: need a clear solid 2x2 ground destination.";
+    }
+    private record RecallTap(java.util.UUID target,long tick){}
+    private static final java.util.Map<java.util.UUID,RecallTap> RECALL_CLICKS=
+            new java.util.HashMap<>();
+    public static boolean recallDoubleClick(ServerLevel world,ServerPlayer player,
+            java.util.UUID target){
+        long tick=world.getGameTime();
+        RecallTap earlier=RECALL_CLICKS.put(player.getUUID(),
+                new RecallTap(target,tick));
+        return earlier!=null&&earlier.target().equals(target)
+                &&tick-earlier.tick()>=0&&tick-earlier.tick()<=12;
     }
     private static boolean dispatched(String response){
         return response.startsWith("Three Golems dispatched")
@@ -243,11 +350,12 @@ public final class StorageScannerItem extends Item {
                         +"before unlinking, so its crew can return safely.");
                 return;
             }
-            StoragePalletCrew.recallFollowing(level,player);
-            unlink(scanner);
-            message(player,"Scanner UNLINKED from "+computer.toShortString()
-                    +". Sneak-right-click a different Rack Computer to link it. "
-                    +"Mode remains "+mode(scanner)+".");
+            // Clicking the same Warehouse Computer refreshes the link.
+            // Deliberate unlinking is no longer mixed into ordinary linking.
+            clearPickup(scanner);
+            bind(scanner,level,computer);
+            message(player,"Scanner is now linked to "+
+                    WarehouseComputerBlockEntity.name(level,computer));
             return;
         }
         if(previous!=null&&!previous.equals(computer)){
@@ -265,30 +373,30 @@ public final class StorageScannerItem extends Item {
         java.util.List<StorageGolemShelfEntity> shelves=
                 RackComputerNet.nearbyShelves(level,computer);
         int docked=shelves.stream().mapToInt(StorageGolemShelfEntity::docked).sum();
-        message(player,"Scanner linked to Rack Computer "+computer.toShortString()
-                +" | "+shelves.size()+" shelves, "+docked+" docked Golems"
-                +" | "+mode(scanner)+" MODE. "
-                +"Sneak-click this Computer again to UNLINK, or another to RELINK. "
-                +"Sneak-click air to toggle Remote / Direct. "
-                +"Diagnostics are in the Rack Computer GUI.");
+        message(player,"Scanner is now linked to "+
+                WarehouseComputerBlockEntity.name(level,computer));
     }
 
     /** Shelf block explicitly forwards Scanner clicks here so the vanilla
      * shelf UI/insert logic cannot consume a Direct summon attempt. */
     public static void onShelfClick(ServerLevel level,ServerPlayer player,
             ItemStack scanner,BlockPos shelf){
-        if(mode(scanner)!=Mode.DIRECT){
-            message(player,"Scanner is REMOTE. Shift-right-click AIR for DIRECT.");
+        if(mode(scanner)!=Mode.DIRECT&&mode(scanner)!=Mode.FORKLIFT){
+            message(player,"Switch Scanner to Direct or Forklift mode.");
             return;
         }
         BlockPos home=linkedComputer(scanner,level);
         if(home==null){
-            message(player,"Link scanner first: shift-right-click your Rack Computer.");
+            message(player,"Link scanner first: right-click your Warehouse Computer.");
             return;
         }
         if(!level.hasChunkAt(shelf)
                 ||!(level.getBlockEntity(shelf) instanceof StorageGolemShelfEntity)){
             message(player,"Not a valid Golem Shelf.");return;
+        }
+        if(mode(scanner)==Mode.FORKLIFT){
+            message(player,StorageGolemForkliftEscort.summon(level,player,home,shelf));
+            return;
         }
         message(player,StoragePalletCrew.enlistFromShelf(level,player,home,shelf));
     }
@@ -312,9 +420,7 @@ public final class StorageScannerItem extends Item {
         // Right-clicking a computer without crouching opens the terminal
         // (handled by RackComputerBlock); only crouching alters the link.
         if(server.getBlockState(clicked).is(RackContent.RACK_COMPUTER)){
-            if(player.isShiftKeyDown())onComputerClick(server,user,scanner,clicked);
-            else net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(
-                    user,new RackComputerNet.Open(clicked));
+            onComputerClick(server,user,scanner,clicked);
             return InteractionResult.SUCCESS;
         }
 
@@ -324,6 +430,16 @@ public final class StorageScannerItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
+        if(mode(scanner)==Mode.FORKLIFT){
+            message(user,forkliftTarget(server,user,scanner,clicked,
+                    clicked.relative(context.getClickedFace()),home));
+            return InteractionResult.SUCCESS;
+        }
+        if(mode(scanner)==Mode.RECALL){
+            message(user,"RECALL: double right-click a carrying Golem team, "
+                    +"not a block, to safely set its pallet down and return.");
+            return InteractionResult.SUCCESS;
+        }
         if(mode(scanner)==Mode.REMOTE){
             // Remote mode ONLY accepts a physical, sealed 2x2 ground pallet.
             // It never enlists a local team or begins direct pickup/delivery.
@@ -370,7 +486,7 @@ public final class StorageScannerItem extends Item {
         }
         RackBlockEntity rack=RackBlock.controller(server,clicked);
         if(rack!=null){
-            message(user,StoragePalletCrew.interactRack(server,user,rack));
+            message(user,StoragePalletCrew.interactRack(server,user,rack,home));
             return InteractionResult.SUCCESS;
         }
         BlockPos placement=clicked.relative(context.getClickedFace());
@@ -384,16 +500,29 @@ public final class StorageScannerItem extends Item {
             BlockPos home=linkedComputer(scanner,server);
             if(player.isShiftKeyDown()){
                 Mode next=toggleMode(scanner);
-                message(user,"Scanner mode: "+next.name()+". "
+                message(user,"Scanner in "+next.name()+" mode. "
                         +(next==Mode.REMOTE
                             ?"Click a wrapped ground pallet to dispatch a remote swap."
-                            :"Click a linked Golem Shelf to call four workers, then "
-                                +"click a pallet to pick up and a rack/block to place. "
-                                +"Right-click ANY following Golem to send ALL followers home.")
+                            :next==Mode.DIRECT?"Click a Golem Shelf for a crew, then a pallet and destination."
+                            :next==Mode.FORKLIFT?"Select a pallet, then a destination."
+                            :"Double-right-click a carrying Golem team to abort safely.")
                         +(home==null?" Link a computer first.":""));
+            }else if(mode(scanner)==Mode.FORKLIFT){
+                // Retain the old controller's unobstructed 20-block rack
+                // selection after removing that second handheld tool.
+                var from=user.getEyePosition();
+                var until=from.add(user.getViewVector(1.0f).scale(20.0));
+                var hit=server.clip(new net.minecraft.world.level.ClipContext(from,until,
+                        net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                        net.minecraft.world.level.ClipContext.Fluid.NONE,user));
+                if(hit.getType()==net.minecraft.world.phys.HitResult.Type.BLOCK){
+                    BlockPos at=hit.getBlockPos();
+                    if(server.mayInteract(user,at))
+                        message(user,forkliftTarget(server,user,scanner,at,home));
+                }else message(user,"FORKLIFT: select pallet or destination rack within 20 blocks.");
             }else{
                 message(user,"Scanner: "+mode(scanner)+" | "
-                        +(home==null?"NOT LINKED. Shift-click a Rack Computer."
+                        +(home==null?"NOT LINKED. Right-click a Warehouse Computer."
                             :"linked to "+home.toShortString())+". "
                         +StoragePalletCrew.status(server,user));
             }

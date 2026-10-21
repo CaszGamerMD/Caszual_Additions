@@ -108,6 +108,8 @@ public final class MovingPallet extends PathfinderMob {
     // A nearly two-block-wide mob can stop pathing before reaching a
     // precise point. Align locally after navigation and detect real stalls.
     private int deliveryStallTicks;
+    private BlockPos pendingForkliftRack=BlockPos.ZERO;
+    private UUID pendingForkliftUuid;
     private double lastDeliveryDistance=Double.POSITIVE_INFINITY;
     // A blocked INPUT rack must not trap a four-Golem load indefinitely.
     // Keep the real pallet escrowed and try another Input rack or INPUT PTP.
@@ -364,16 +366,60 @@ public final class MovingPallet extends PathfinderMob {
     @Override protected net.minecraft.world.InteractionResult mobInteract(
             net.minecraft.world.entity.player.Player player,
             net.minecraft.world.InteractionHand hand){
+        if(player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
+                &&StorageScannerItem.mode(player.getItemInHand(hand))
+                        ==StorageScannerItem.Mode.RECALL){
+            if(level().isClientSide())return net.minecraft.world.InteractionResult.SUCCESS;
+            if(!(player instanceof net.minecraft.server.level.ServerPlayer user))
+                return net.minecraft.world.InteractionResult.PASS;
+            ServerLevel world=(ServerLevel)level();
+            BlockPos home=StorageScannerItem.linkedComputer(
+                    player.getItemInHand(hand),world);
+            if(home==null||!fromWarehouse(WarehouseConnections.shelvesForComputer(world,home)))
+                return net.minecraft.world.InteractionResult.PASS;
+            if(!StorageScannerItem.recallDoubleClick(world,user,getUUID())){
+                WarehouseGolemDebug.actionBar(user,net.minecraft.network.chat.Component.literal(
+                        "RECALL: click this loaded Golem team again quickly to confirm."));
+                return net.minecraft.world.InteractionResult.SUCCESS;
+            }
+            // Never abort by deleting a rig or dropping a 216-slot inventory
+            // directly. Find an actual valid 2x2 pallet pad and use ordinary
+            // physical lowering/unloading, then recall all four workers.
+            String result="No clear 2x2 supported ground pad nearby; pallet held safely.";
+            outer:for(int radius=2;radius<=8;radius++)
+                for(int dx=-radius;dx<=radius;dx++)
+                    for(int dz=-radius;dz<=radius;dz++){
+                        if(Math.max(Math.abs(dx),Math.abs(dz))!=radius)continue;
+                        BlockPos at=blockPosition().offset(dx,0,dz);
+                        String plan=requestGroundDelivery(world,at,user.getDirection());
+                        if(plan.startsWith("Golems carrying pallet to")){
+                            recallAfterDelivery=true;
+                            result="RECALL CONFIRMED: setting pallet down safely at "
+                                    +at.toShortString()+"; all four Golems return home.";
+                            break outer;
+                        }
+                    }
+            WarehouseGolemDebug.actionBar(user,net.minecraft.network.chat.Component.literal(result));
+            return net.minecraft.world.InteractionResult.SUCCESS;
+        }
         if(!player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
                 ||StorageScannerItem.mode(player.getItemInHand(hand))
                         !=StorageScannerItem.Mode.DIRECT)
             return net.minecraft.world.InteractionResult.PASS;
         if(level().isClientSide())return net.minecraft.world.InteractionResult.SUCCESS;
-        if(!(player instanceof net.minecraft.server.level.ServerPlayer user)
-                ||!owns(user.getUUID()))return net.minecraft.world.InteractionResult.PASS;
+        if(!(player instanceof net.minecraft.server.level.ServerPlayer user))
+            return net.minecraft.world.InteractionResult.PASS;
         var server=(ServerLevel)level();
         BlockPos linked=StorageScannerItem.linkedComputer(
                 player.getItemInHand(hand),server);
+        if(!owns(user.getUUID())){
+            if(linked!=null&&claimStalledRemote(server,user.getUUID(),linked)){
+                WarehouseGolemDebug.actionBar(user,net.minecraft.network.chat.Component.literal(
+                        "DIRECT: claimed stalled pallet team. Choose a new safe destination."));
+            }
+            return net.minecraft.world.InteractionResult.SUCCESS;
+        }
+        holdDirectPallet();
         if(linked==null){
             WarehouseGolemDebug.message(user,shelves[0],net.minecraft.network.chat.Component.literal(
                     "DIRECT: link the scanner to your Rack Computer first."));
@@ -382,9 +428,39 @@ public final class MovingPallet extends PathfinderMob {
                     "DIRECT: this loaded crew belongs to a different warehouse."));
         }else{
             WarehouseGolemDebug.message(user,shelves[0],net.minecraft.network.chat.Component.literal(
-                    "DIRECT: "+returnToWarehouse(server,linked)));
+                    "DIRECT: crew holding its pallet safely. Choose a ground, rack "
+                    +"or PTP placement with Scanner.")));
         }
         return net.minecraft.world.InteractionResult.SUCCESS;
+    }
+    /** A stalled remote return may be safely taken over by a player in
+     * Direct mode. No cargo is copied, dropped or regenerated: this exact
+     * MovingPallet entity changes job ownership while keeping its payload. */
+    public boolean claimStalledRemote(ServerLevel world,UUID player,BlockPos linked){
+        if(!loaded()||!remoteMission()||deliveryMode!=3
+                ||!(deliveryFailure.startsWith("WAITING")
+                    ||deliveryFailure.startsWith("RACK REFUSED")
+                    ||deliveryFailure.startsWith("INPUT RACK BLOCKED")))
+            return false;
+        if(!fromWarehouse(WarehouseConnections.shelvesForComputer(world,linked)))
+            return false;
+        owner=player.toString();
+        remoteWarehouse=BlockPos.ZERO;
+        remotePickupReturn=false;
+        deliveryMode=0;deliveryFailure="CLAIMED BY PLAYER - WAITING FOR DIRECT ORDERS";
+        remoteFloorRoute.clear();
+        getNavigation().stop();
+        waitingForPlayer=true;
+        setDeltaMovement(0,getDeltaMovement().y,0);
+        return true;
+    }
+    public void holdDirectPallet(){
+        if(!loaded())return;
+        deliveryMode=0;
+        deliveryFailure="DIRECT CREW WAITING FOR HELP - PALLET SECURE";
+        waitingForPlayer=true;
+        getNavigation().stop();
+        setDeltaMovement(0,getDeltaMovement().y,0);
     }
     public boolean owns(UUID player){return owner.equals(player.toString());}
     public boolean loaded(){return !pallet.isEmpty();}
@@ -476,11 +552,46 @@ public final class MovingPallet extends PathfinderMob {
         return "Golems carrying pallet to rack "+deliveryPosition.toShortString()
                 +"; it will be unloaded only after they arrive.";
     }
+    /** Direct crews stage their complete wrapped pallet onto a genuine
+     * ground pad. A free Golem-operated forklift then completes the tall
+     * rack insertion after that physical placement succeeds. */
+    public String requestForkliftDelivery(ServerLevel level,RackBlockEntity rack,
+            WarehouseForklift forklift){
+        if(!loaded())return "No loaded four-Golem pallet team.";
+        if(rack.hasPallet()||!rack.isEmpty())
+            return "Elevated rack is occupied.";
+        if(forklift==null||forklift.busy()||!forklift.hasDriver(level))
+            return "A free, Golem-driven forklift must be in this warehouse.";
+        RackPickupPlan plan=RackPickupPlan.forklift(level,rack);
+        if(plan==null||plan.height()<1)return "Forklift mast/aisle unavailable.";
+        Direction front=rack.facing();
+        Direction side=front.getClockWise();
+        for(int depth=3;depth<=8;depth++){
+            for(int lateral=-3;lateral<=3;lateral++){
+                BlockPos raw=rack.getBlockPos().relative(front,depth)
+                        .relative(side,lateral);
+                BlockPos position=new BlockPos(raw.getX(),plan.floorY(),raw.getZ());
+                if(!ForkliftPalletIO.fits(level,position,front))continue;
+                String result=requestGroundDelivery(level,position,front);
+                if(result.startsWith("Golems carrying pallet to")){
+                    pendingForkliftRack=rack.getBlockPos().immutable();
+                    pendingForkliftUuid=forklift.getUUID();
+                    recallAfterDelivery=true;
+                    return "DIRECT: team moving to unload at "+position.toShortString()
+                            +". Free forklift will then place pallet into raised rack.";
+                }
+            }
+        }
+        return "No free supported 2x2 forklift transfer pad near this rack.";
+    }
+
     public String requestGroundDelivery(ServerLevel level,BlockPos location,Direction facing){
         if(!loaded()||delivered)return "No pallet ready to deliver.";
         // A new scanner click can retarget a blocked delivery.
         if(!groundClear(level,location,facing))
             return "Need a clear supported 2x2 destination floor.";
+        pendingForkliftRack=BlockPos.ZERO;
+        pendingForkliftUuid=null;
         deliveryPosition=location.immutable();
         deliveryFacing=facing;
         deliveryMode=2;
@@ -617,9 +728,22 @@ public final class MovingPallet extends PathfinderMob {
             waitForDelivery("WAITING: DESTINATION REJECTED PALLET; ORDER SAVED");
             return;
         }
+        // The pallet now truly exists in the world (with all 216 slots).
+        // Schedule the forklift only AFTER the complete placement, never
+        // while the four-Golem carrier still owns that inventory.
+        if(pendingForkliftUuid!=null&&!pendingForkliftRack.equals(BlockPos.ZERO)){
+            var maybe=level.getEntity(pendingForkliftUuid);
+            if(maybe instanceof WarehouseForklift forklift
+                    &&level.getBlockEntity(pendingForkliftRack) instanceof RackBlockEntity rack){
+                if(!forklift.order(level,rack,target))
+                    deliveryFailure="PALLET STAGED - FORKLIFT JOB WAITING";
+            }
+            pendingForkliftUuid=null;
+            pendingForkliftRack=BlockPos.ZERO;
+        }
         deliveryMode=0;
         deliveryService=BlockPos.ZERO;
-        deliveryFailure="";
+        if(!deliveryFailure.startsWith("PALLET STAGED"))deliveryFailure="";
         entityData.set(RACK_INSERT_ACTIVE,false);
         restoreWorkers(level);
     }
@@ -1627,6 +1751,9 @@ public final class MovingPallet extends PathfinderMob {
         out.putBoolean("recall_after_delivery",recallAfterDelivery);
         out.putBoolean("remote_pickup_return",remotePickupReturn);
         out.putInt("lift_ticks",liftTicks);
+        out.store("forklift_pending_rack",BlockPos.CODEC,pendingForkliftRack);
+        if(pendingForkliftUuid!=null)
+            out.putString("forklift_pending_uuid",pendingForkliftUuid.toString());
         out.putInt("delivery_mode",deliveryMode);
         out.putInt("release_ticks",releaseTicks);
         out.store("delivery_position",BlockPos.CODEC,deliveryPosition);
@@ -1660,6 +1787,12 @@ public final class MovingPallet extends PathfinderMob {
         }
         liftTicks=Math.clamp(in.getIntOr("lift_ticks",12),0,12);
         entityData.set(LIFT_TICKS,liftTicks);
+        pendingForkliftRack=in.read("forklift_pending_rack",BlockPos.CODEC)
+                .orElse(BlockPos.ZERO);
+        try{
+            String uuid=in.getStringOr("forklift_pending_uuid","");
+            pendingForkliftUuid=uuid.isBlank()?null:UUID.fromString(uuid);
+        }catch(IllegalArgumentException e){pendingForkliftUuid=null;}
         deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,7);
         releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,20);
         deliveryPosition=in.read("delivery_position",BlockPos.CODEC).orElse(BlockPos.ZERO);

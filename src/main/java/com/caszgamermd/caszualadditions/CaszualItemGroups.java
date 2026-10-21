@@ -53,7 +53,8 @@ public final class CaszualItemGroups {
                                     RackContent.RACK_LADDER_ITEM,
                                     RackContent.RACK_SCAFFOLDING_ITEM,
                                     RackContent.FORKLIFT_ITEM,
-                                    RackContent.FORKLIFT_CONTROLLER,
+                                    // The former controller is retained in the registry
+                                    // for old worlds but replaced by Scanner Forklift mode.
                                     RackContent.RACK_TAG,
                                     RackContent.AISLE_TAG,RackContent.CONNECTOR,
                                     RackContent.PALLET_FILTER,

@@ -89,7 +89,7 @@
   "block.caszual_additions.barrel_of_caszual_fun": "Barrel of Caszual Fun",
   "container.caszual_additions.barrel_of_caszual_fun": "Barrel of Caszual Fun",
   "block.caszual_additions.pallet_rack": "Pallet Rack",
-  "block.caszual_additions.rack_computer": "Rack Computer",
+  "block.caszual_additions.rack_computer": "Warehouse Computer",
   "item.caszual_additions.rack_tag": "Rack Tag",
   "item.caszual_additions.aisle_tag": "Aisle Tag",
   "item.caszual_additions.rack_connector": "Rack Connector",
@@ -149,5 +149,6 @@
   "entity.caszual_additions.warehouse_forklift": "Warehouse Forklift",
   "item.caszual_additions.forklift_controller": "Forklift Clipboard",
   "block.caszual_additions.crafting_vending_machine": "Crafting Vending Machine",
-  "container.caszual_additions.crafting_vending_machine": "Crafting Vending Machine"
+  "container.caszual_additions.crafting_vending_machine": "Crafting Vending Machine",
+  "block.caszual_additions.forklift_parking": "Forklift Parking Bay"
 }

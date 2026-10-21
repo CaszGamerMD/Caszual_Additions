@@ -33,6 +33,16 @@ public final class RackComputerNet {
                 StreamCodec.composite(BlockPos.STREAM_CODEC,Open::computer,Open::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
+    public record RenameWarehouse(BlockPos computer,String name)
+            implements CustomPacketPayload {
+        public static final Type<RenameWarehouse> TYPE=new Type<>(
+                CaszualAdditions.id("warehouse_rename"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,RenameWarehouse> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,RenameWarehouse::computer,
+                        ByteBufCodecs.stringUtf8(48),RenameWarehouse::name,
+                        RenameWarehouse::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
     public record Query(BlockPos computer,String query,BlockPos selected) implements CustomPacketPayload {
         public static final Type<Query> TYPE=new Type<>(CaszualAdditions.id("rack_computer_query"));
         public static final StreamCodec<RegistryFriendlyByteBuf,Query> CODEC=
@@ -138,6 +148,7 @@ public final class RackComputerNet {
 
     public static void initialize() {
         PayloadTypeRegistry.clientboundPlay().register(Open.TYPE,Open.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(RenameWarehouse.TYPE,RenameWarehouse.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(Query.TYPE,Query.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Snapshot.TYPE,Snapshot.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(OrderRequest.TYPE,OrderRequest.CODEC);
@@ -149,6 +160,8 @@ public final class RackComputerNet {
         PayloadTypeRegistry.serverboundPlay().register(DebugControl.TYPE,DebugControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(HighlightRequest.TYPE,HighlightRequest.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(HighlightChanged.TYPE,HighlightChanged.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(RenameWarehouse.TYPE,(payload,context)->
+                context.server().execute(()->renameWarehouse(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(Query.TYPE,(payload,context)->
                 context.server().execute(()->answer(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(OrderRequest.TYPE,(payload,context)->
@@ -168,6 +181,18 @@ public final class RackComputerNet {
 
     }
 
+    private static void renameWarehouse(ServerPlayer player,RenameWarehouse data){
+        ServerLevel level=player.level();
+        BlockPos pos=data.computer();
+        if(!level.hasChunkAt(pos)||!level.getBlockState(pos).is(RackContent.RACK_COMPUTER)
+                ||player.distanceToSqr(pos.getX()+.5,pos.getY()+.5,pos.getZ()+.5)>100)
+            return;
+        if(level.getBlockEntity(pos) instanceof WarehouseComputerBlockEntity computer){
+            computer.rename(data.name());
+            reply(player,"Warehouse renamed: "+computer.warehouseName());
+            answer(player,new Query(pos,"",BlockPos.ZERO));
+        }
+    }
     private static void reply(ServerPlayer player,String message) {
         ServerPlayNetworking.send(player,new OrderReply(message));
     }
@@ -412,6 +437,33 @@ public final class RackComputerNet {
         JsonArray list=new JsonArray();
         JsonArray highlights=new JsonArray();
         root.addProperty("query",term);
+        root.addProperty("warehouseName",WarehouseComputerBlockEntity.name(level,computer));
+        JsonArray builderOrders=new JsonArray();
+        for(PtpBlockEntity point:WarehouseNetwork.fromComputer(level,computer).points()){
+            if(!point.builderReserved())continue;
+            JsonObject order=new JsonObject();
+            order.addProperty("ptp",point.getBlockPos().toShortString());
+            order.addProperty("owner",point.builderOwnerName());
+            order.addProperty("table",point.builderTablePos().toShortString());
+            order.addProperty("status",point.pendingOutputOrders()>0
+                    ?"PENDING FULFILLMENT":"PACKING / AWAITING PICKUP");
+            JsonArray demand=new JsonArray();
+            for(var entry:point.pendingOutputManifest().entrySet()){
+                JsonObject row=new JsonObject();
+                row.addProperty("id",entry.getKey());
+                row.addProperty("remaining",entry.getValue());
+                demand.add(row);
+            }
+            order.add("items",demand);
+            PtpBlockEntity.OutputOrder current=point.currentBuilderBatch();
+            PtpBlockEntity.OutputOrder next=point.nextBuilderBatch();
+            order.addProperty("currentItem",current==null?"":current.itemId());
+            order.addProperty("currentQuantity",current==null?0:current.remaining());
+            order.addProperty("nextItem",next==null?"":next.itemId());
+            order.addProperty("nextQuantity",next==null?0:next.remaining());
+            builderOrders.add(order);
+        }
+        root.add("builderOrders",builderOrders);
         root.addProperty("networkSize",racks.size());
         List<StorageGolemShelfEntity> shelves=nearbyShelves(level,computer);
         root.addProperty("shelfCount",shelves.size());
@@ -565,6 +617,30 @@ public final class RackComputerNet {
                 position.addProperty("z",rack.getBlockPos().getZ());
                 highlights.add(position);
             }
+        }
+        // Physical input/output points and golem shelves are part of the
+        // warehouse rack view, even when not storing an installed pallet.
+        for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,computer).points()){
+            if(list.size()>=RackNetwork.LIMIT)break;
+            JsonObject row=new JsonObject();
+            row.addProperty("name",ptp.input()?"INPUT SHELF / PTP":"OUTPUT SHELF / PTP");
+            row.addProperty("aisle","RECEIVING / SHIPPING");
+            row.addProperty("x",ptp.getBlockPos().getX());
+            row.addProperty("y",ptp.getBlockPos().getY());
+            row.addProperty("z",ptp.getBlockPos().getZ());
+            int occupied=0;
+            int stored=0;
+            for(int slot=0;slot<ptp.getContainerSize();slot++){
+                ItemStack contents=ptp.getItem(slot);
+                if(!contents.isEmpty()){occupied++;stored+=contents.getCount();}
+            }
+            row.addProperty("slots",occupied);
+            row.addProperty("capacity",ptp.getContainerSize());
+            row.addProperty("items",stored);
+            row.addProperty("pallet",ptp.hasPallet());
+            row.addProperty("filter","PTP");
+            row.addProperty("type",ptp.input()?"INPUT":"OUTPUT");
+            list.add(row);
         }
         root.add("racks",list);
         root.add("highlights",highlights);

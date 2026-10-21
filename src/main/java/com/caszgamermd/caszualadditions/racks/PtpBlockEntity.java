@@ -45,6 +45,18 @@ public final class PtpBlockEntity extends BlockEntity
     private java.util.UUID builderRequest, builderOwner;
     private BlockPos builderTable=BlockPos.ZERO, builderComputer=BlockPos.ZERO;
     public boolean builderReserved(){return builderRequest!=null;}
+    public String builderOwnerName(){
+        return builderOwner==null?"":builderOwner.toString().substring(0,8);
+    }
+    public BlockPos builderTablePos(){return builderTable;}
+    public java.util.UUID builderRequestId(){return builderRequest;}
+    /** Current queue head and the next queued material type for the Orders UI. */
+    public OutputOrder currentBuilderBatch(){return outputOrders.peekFirst();}
+    public OutputOrder nextBuilderBatch(){
+        var iter=outputOrders.iterator();
+        if(iter.hasNext())iter.next();
+        return iter.hasNext()?iter.next():null;
+    }
     public boolean builderMatches(java.util.UUID request,java.util.UUID owner,
             BlockPos table,BlockPos computer){
         return request!=null&&request.equals(builderRequest)

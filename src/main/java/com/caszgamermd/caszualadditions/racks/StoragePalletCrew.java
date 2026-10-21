@@ -246,6 +246,30 @@ public final class StoragePalletCrew {
      * warehouse scanner retrieves its pallet when the crew is empty, or
      * delivers the carried pallet when the crew is loaded.
      */
+    /** Scanner Direct mode: an elevated rack triggers a real
+     * crew-to-ground-to-forklift handoff, never a magical long lift. */
+    public static String interactRack(ServerLevel level,ServerPlayer player,
+            RackBlockEntity rack,BlockPos computer){
+        MovingPallet rig=moving(level,player);
+        if(rig==null||WarehouseSortingReach.groundRack(level,rack))
+            return interactRack(level,player,rack);
+        if(computer==null)return "Link your Scanner to a Warehouse Computer.";
+        java.util.Set<BlockPos> homes=new java.util.HashSet<>();
+        for(StorageGolemShelfEntity shelf:WarehouseNetwork.fromComputer(level,computer).shelves())
+            homes.add(shelf.getBlockPos());
+        WarehouseForklift selected=null;
+        double best=Double.POSITIVE_INFINITY;
+        for(WarehouseForklift forklift:level.getEntitiesOfClass(
+                WarehouseForklift.class,new AABB(rack.getBlockPos()).inflate(80),
+                lift->!lift.busy()&&lift.hasWarehouseDriver(level,homes))){
+            double dist=forklift.blockPosition().distSqr(rack.getBlockPos());
+            if(dist<best){best=dist;selected=forklift;}
+        }
+        if(selected==null)return "DIRECT: need a free forklift with a Golem driver "
+                +"assigned to this warehouse for stacked rack placement.";
+        return rig.requestForkliftDelivery(level,rack,selected);
+    }
+
     public static String interactRack(ServerLevel level,ServerPlayer player,RackBlockEntity rack){
         List<StorageGolem> workers=team(level,player);
         if(moving(level,player)!=null

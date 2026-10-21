@@ -71,12 +71,19 @@ public final class WarehouseForkliftItem extends Item {
         if(!spawner||context.getClickedFace()!=net.minecraft.core.Direction.UP)
             return InteractionResult.PASS;
         BlockPos at=clicked.above();
-        if(!level.getBlockState(at).canBeReplaced()
-                ||!level.getBlockState(at.above()).canBeReplaced())
-            return InteractionResult.FAIL;
+        // Reserve a 2x2 painted parking bay, not merely a decorative
+        // particle. Its cells physically reject later block placements.
+        for(int dx=0;dx<2;dx++)for(int dz=0;dz<2;dz++){
+            BlockPos tile=at.offset(dx,0,dz);
+            if(!level.hasChunkAt(tile)||!level.getBlockState(tile).canBeReplaced()
+                    ||!level.getBlockState(tile.above()).canBeReplaced()
+                    ||!level.getBlockState(tile.below()).isCollisionShapeFullBlock(
+                            level,tile.below()))
+                return InteractionResult.FAIL;
+        }
         WarehouseForklift lift=RackContent.FORKLIFT_TYPE.create(level,EntitySpawnReason.EVENT);
         if(lift==null)return InteractionResult.FAIL;
-        lift.setPos(at.getX()+.5,at.getY(),at.getZ()+.5);
+        lift.setPos(at.getX()+1.0,at.getY(),at.getZ()+1.0);
         lift.setYRot(player.getYRot());
         if(!level.addFreshEntity(lift))return InteractionResult.FAIL;
         if(!player.getAbilities().instabuild)context.getItemInHand().shrink(1);

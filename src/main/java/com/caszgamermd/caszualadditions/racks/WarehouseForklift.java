@@ -39,9 +39,12 @@ public final class WarehouseForklift extends PathfinderMob {
             SynchedEntityData.defineId(WarehouseForklift.class,EntityDataSerializers.INT);
     private ItemStack jack=ItemStack.EMPTY;
     private BlockPos source=BlockPos.ZERO,target=BlockPos.ZERO,staging=BlockPos.ZERO;
-    private boolean retrieving;
+    private BlockPos parking=BlockPos.ZERO;
+    private boolean retrieving,groundDestination;
+    private Direction groundFacing=Direction.NORTH;
     private int job,animation,stallTicks;
     private UUID driver;
+    private boolean dismissAfterParking;
     private String status="PARKED";
     public WarehouseForklift(EntityType<? extends WarehouseForklift> type,Level level){
         super(type,level);
@@ -64,7 +67,34 @@ public final class WarehouseForklift extends PathfinderMob {
     public ItemStack displayPallet(){return entityData.get(DECK);}
     public float mastHeight(){return entityData.get(MAST);}
     public int action(){return entityData.get(ACTION);}
-    public boolean busy(){return job!=0;}
+    public boolean busy(){return job!=0&&job!=5;}
+    public void setParking(BlockPos at){parking=at.immutable();}
+    public BlockPos parking(){return parking;}
+    public boolean hasDriver(ServerLevel world){
+        if(driver==null)return false;
+        return world.getEntity(driver) instanceof StorageGolem golem
+                &&golem.isAlive();
+    }
+    public boolean hasWarehouseDriver(ServerLevel world,java.util.Set<BlockPos> shelves){
+        return hasDriver(world) &&world.getEntity(driver) instanceof StorageGolem golem
+                &&shelves.contains(golem.shelfHome());
+    }
+    public String boardEscort(ServerLevel world,java.util.UUID owner,BlockPos warehouse){
+        if(job!=0&&job!=5)return "FORKLIFT: busy carrying a pallet.";
+        if(hasDriver(world))return "FORKLIFT: operator already aboard.";
+        java.util.Set<BlockPos> connected=new java.util.HashSet<>();
+        for(StorageGolemShelfEntity shelf:WarehouseNetwork.fromComputer(world,warehouse).shelves())
+            connected.add(shelf.getBlockPos());
+        StorageGolem golem=StorageGolemForkliftEscort.escort(world,owner,blockPosition());
+        if(golem==null||!connected.contains(golem.shelfHome()))
+            return "FORKLIFT: summon one operator from a linked shelf first.";
+        if(driver!=null&&world.getEntity(driver) instanceof StorageGolem previous)
+            return "FORKLIFT: previously assigned operator still active.";
+        golem.boardAssignedForklift(getUUID());
+        driver=golem.getUUID();
+        status="GOLEM ASSIGNED - BOARDING FORKLIFT";
+        return "FORKLIFT: operator "+golem.golemName()+" assigned; boarding now.";
+    }
     public String status(){return status;}
     private void refreshDisplay(){
         if(jack.isEmpty()||!PalletJackItem.loaded(jack))
@@ -126,9 +156,10 @@ public final class WarehouseForklift extends PathfinderMob {
                     ||selectedFloorPallet.distSqr(rack.getBlockPos())>24*24)
                 return false;
         }
-        if(src==null||(!pickup&&plan.height()<1))return false;
+        if(src==null)return false;
         if(pickup&&!rack.glassWrapped())return false;
         this.retrieving=pickup;
+        this.groundDestination=pickup;
         this.source=src.immutable();
         this.target=rack.getBlockPos().immutable();
         this.staging=pickup?floorPlacement(world,rack,plan.floorY()):src.immutable();
@@ -139,6 +170,38 @@ public final class WarehouseForklift extends PathfinderMob {
         this.status="DRIVER BOARDING";
         return true;
     }
+    public boolean orderRackToRack(ServerLevel world,RackBlockEntity from,
+            RackBlockEntity to){
+        if(busy()||from==null||to==null||from.getBlockPos().equals(to.getBlockPos())
+                ||!from.hasPallet()||!from.glassWrapped()||to.hasPallet()||!to.isEmpty()
+                ||RackPickupPlan.forklift(world,from)==null
+                ||RackPickupPlan.forklift(world,to)==null)return false;
+        if(!hire(world))return false;
+        source=from.getBlockPos().immutable();
+        target=to.getBlockPos().immutable();
+        staging=BlockPos.ZERO;
+        retrieving=true;groundDestination=false;
+        job=1;animation=0;status="DRIVER BOARDING - RACK TO RACK";
+        return true;
+    }
+    public boolean orderGround(ServerLevel world,BlockPos from,BlockPos landing,
+            Direction facing){
+        if(busy()||landing==null||from==null||!ForkliftPalletIO.fits(
+                world,landing,facing))return false;
+        RackBlockEntity rack=world.getBlockEntity(from) instanceof RackBlockEntity r?r:null;
+        boolean fromRack=rack!=null&&rack.hasPallet()&&rack.glassWrapped();
+        if(fromRack&&RackPickupPlan.forklift(world,rack)==null)return false;
+        if(!fromRack){
+            var ground=StorageGroundPalletTransfer.wrappedController(world,from);
+            if(ground==null||!ground.getBlockPos().equals(from))return false;
+        }
+        if(!hire(world))return false;
+        source=from.immutable();target=from.immutable();staging=landing.immutable();
+        retrieving=fromRack;groundDestination=true;groundFacing=facing;
+        job=1;animation=0;status="DRIVER BOARDING - PALLET TO GROUND";
+        return true;
+    }
+
     private BlockPos nearestFloorPallet(ServerLevel level,BlockPos around){
         BlockPos best=null;double distance=Double.POSITIVE_INFINITY;
         for(int dx=-12;dx<=12;dx++)for(int dz=-12;dz<=12;dz++)
@@ -203,6 +266,17 @@ public final class WarehouseForklift extends PathfinderMob {
         entityData.set(MAST,Math.abs(goal-eased)<.012f?goal:eased);
         entityData.set(ACTION,job);
         if(job==0)return;
+        if(job==5){
+            // The driver stays seated while returning to the painted bay.
+            if(parking.equals(BlockPos.ZERO)||drive(world,parking)){
+                job=0;status="PARKED - DRIVER ON DUTY";
+                if(dismissAfterParking){
+                    dismissAfterParking=false;
+                    dismissDriver(world);
+                }
+            }else status="RETURNING TO PAINTED FORKLIFT PARKING BAY";
+            return;
+        }
         if(!hasDriver(world)){
             getNavigation().stop();
             status=driver!=null?"GOLEM LEAVING SHELF / BOARDING FORKLIFT"
@@ -214,27 +288,34 @@ public final class WarehouseForklift extends PathfinderMob {
         }
         RackBlockEntity rack=world.getBlockEntity(target)
                 instanceof RackBlockEntity r?r:null;
-        if(rack==null){status="WAITING FOR TARGET RACK";return;}
+        RackBlockEntity origin=world.getBlockEntity(source)
+                instanceof RackBlockEntity r?r:null;
+        if(!groundDestination&&rack==null){
+            status="WAITING FOR TARGET RACK";return;
+        }
+        if(retrieving&&origin==null){status="WAITING FOR SOURCE RACK";return;}
         if(job==1){
-            BlockPos pickup=retrieving?service(world,rack):staging.relative(rack.facing(),3);
+            BlockPos pickup=retrieving?service(world,origin)
+                    :source.relative(rack==null?groundFacing:rack.facing(),3);
             if(pickup==null){status="WAITING FOR CLEAR AISLE";return;}
             if(!drive(world,pickup))return;
             job=2;animation=0;
         }
         if(job==2){
             if(++animation<45){status="ALIGNING FORKS AND LIFTING";return;}
-            boolean ok=retrieving?rack.liftToForklift(jack):
+            boolean ok=retrieving?origin.liftToForklift(jack):
                     ForkliftPalletIO.liftGround(world,source,jack);
             if(!ok){status="WAITING: PALLET IN USE OR ACCESS BLOCKED";animation=0;return;}
             refreshDisplay();job=3;animation=0;
         }
         if(job==3){
-            BlockPos landing=retrieving?staging.relative(rack.facing(),2):service(world,rack);
+            BlockPos landing=groundDestination
+                    ?staging.relative(groundFacing,2):service(world,rack);
             if(landing==null){status="WAITING FOR SAFE FORKLIFT LANE";return;}
             if(!drive(world,landing))return;
             if(++animation<55){status="SMOOTH MAST TRANSFER";return;}
-            boolean placed=retrieving?ForkliftPalletIO.placeGround(
-                    world,staging,rack.facing(),jack):rack.installFromForklift(jack);
+            boolean placed=groundDestination?ForkliftPalletIO.placeGround(
+                    world,staging,groundFacing,jack):rack.installFromForklift(jack);
             if(!placed){status="WAITING FOR SAFE DROP LOCATION";animation=20;return;}
             refreshDisplay();job=4;animation=0;
         }
@@ -243,11 +324,28 @@ public final class WarehouseForklift extends PathfinderMob {
     private void endTask(ServerLevel world){
         // A driver remains mounted and on duty after a pallet delivery.
         // Only a controller click on the idle forklift dismisses them.
-        job=0;animation=0;retrieving=false;
-        status=driver==null?"PARKED":"PARKED - DRIVER ON DUTY";
+        job=driver!=null&&!parking.equals(BlockPos.ZERO)?5:0;
+        animation=0;retrieving=false;
+        status=job==5?"RETURNING TO PAINTED FORKLIFT PARKING BAY"
+                :driver==null?"PARKED":"PARKED - DRIVER ON DUTY";
+    }
+    /** Used when clicking the actual seated Golem, not the forklift body. */
+    public String requestDriverDismissal(ServerLevel world){
+        if(driver==null)return "FORKLIFT: no active driver.";
+        if(job!=0||PalletJackItem.loaded(jack)){
+            dismissAfterParking=true;
+            return "FORKLIFT: driver will finish the pallet job, park, then return home.";
+        }
+        if(job==5){
+            dismissAfterParking=true;
+            return "FORKLIFT: driver will return home after parking.";
+        }
+        return dismissDriver(world)
+                ?"FORKLIFT: driver dismissed to original shelf."
+                :"FORKLIFT: unable to dismiss driver.";
     }
     public boolean dismissDriver(ServerLevel world){
-        if(job!=0||PalletJackItem.loaded(jack))return false;
+        if((job!=0&&job!=5)||PalletJackItem.loaded(jack))return false;
         if(driver==null)return false;
         Entity passenger=world.getEntity(driver);
         if(passenger instanceof StorageGolem golem)
@@ -274,6 +372,14 @@ public final class WarehouseForklift extends PathfinderMob {
     }
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(level().isClientSide())return InteractionResult.SUCCESS;
+        if(player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)){
+            var scanner=player.getItemInHand(hand);
+            if(StorageScannerItem.mode(scanner)!=StorageScannerItem.Mode.FORKLIFT)
+                return InteractionResult.SUCCESS;
+            StorageScannerItem.onForkliftClick((ServerLevel)level(),
+                    (net.minecraft.server.level.ServerPlayer)player,scanner,this);
+            return InteractionResult.SUCCESS;
+        }
         if(player.getItemInHand(hand).is(RackContent.FORKLIFT_CONTROLLER)){
             if(job!=0||PalletJackItem.loaded(jack)){
                 player.sendSystemMessage(Component.literal(
@@ -297,7 +403,11 @@ public final class WarehouseForklift extends PathfinderMob {
         out.store("source",BlockPos.CODEC,source);
         out.store("target",BlockPos.CODEC,target);
         out.store("staging",BlockPos.CODEC,staging);
+        out.store("parking",BlockPos.CODEC,parking);
         out.putBoolean("retrieving",retrieving);
+        out.putBoolean("ground_destination",groundDestination);
+        out.putString("ground_facing",groundFacing.getName());
+        out.putBoolean("dismiss_after_parking",dismissAfterParking);
         out.putInt("job",job);
         out.putInt("animation",animation);
         if(driver!=null)out.putString("driver_uuid",driver.toString());
@@ -308,7 +418,13 @@ public final class WarehouseForklift extends PathfinderMob {
         source=in.read("source",BlockPos.CODEC).orElse(BlockPos.ZERO);
         target=in.read("target",BlockPos.CODEC).orElse(BlockPos.ZERO);
         staging=in.read("staging",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        parking=in.read("parking",BlockPos.CODEC).orElse(BlockPos.ZERO);
         retrieving=in.getBooleanOr("retrieving",false);
+        groundDestination=in.getBooleanOr("ground_destination",false);
+        try{groundFacing=Direction.valueOf(in.getStringOr("ground_facing","NORTH")
+                .toUpperCase(java.util.Locale.ROOT));}
+        catch(IllegalArgumentException e){groundFacing=Direction.NORTH;}
+        dismissAfterParking=in.getBooleanOr("dismiss_after_parking",false);
         job=in.getIntOr("job",0);
         animation=in.getIntOr("animation",0);
         String uuid=in.getStringOr("driver_uuid","");

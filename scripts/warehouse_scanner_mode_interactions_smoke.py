@@ -12,11 +12,12 @@ crew=j("StoragePalletCrew.java")
 net=j("RackComputerNet.java")
 screen=(client/"RackComputerScreen.java").read_text()
 audit=j("WarehouseDiagnostics.java")
-assert "public enum Mode { REMOTE, DIRECT }" in scanner
+assert "public enum Mode { REMOTE, DIRECT, FORKLIFT, RECALL }" in scanner
+assert "Mode.values()[(mode(scanner).ordinal()+1)%Mode.values().length]" in scanner
 assert 'tag.putString("scanner_mode",next.name());' in scanner
-assert "if(next==Mode.DIRECT)clearPickup(scanner);" in scanner
+assert "if(next!=Mode.REMOTE)clearPickup(scanner);" in scanner
 assert 'if(mode(scanner)!=Mode.REMOTE)return "";' in scanner
-assert 'if(player.isShiftKeyDown())onComputerClick(server,user,scanner,clicked);' in scanner
+assert 'onComputerClick(server,user,scanner,clicked);' in scanner
 assert "if(player.isShiftKeyDown())" in scanner
 assert "Mode next=toggleMode(scanner);" in scanner
 assert "REMOTE mode only requests a swap" in scanner
@@ -28,12 +29,12 @@ assert "if(server.getBlockEntity(clicked) instanceof StorageGolemShelfEntity)" i
 assert "StoragePalletCrew.enlistFromShelf(level,player,home,shelf)" in scanner
 assert "StoragePalletCrew.pickupGround(server,user,clicked)" in scanner
 assert "StoragePalletCrew.interactPtp(server,user,point)" in scanner
-assert "StoragePalletCrew.interactRack(server,user,rack)" in scanner
+assert "StoragePalletCrew.interactRack(server,user,rack,home)" in scanner
 assert "StoragePalletCrew.deliverGround(server,user,placement)" in scanner
 assert "StoragePalletCrew.returnLoadedCrew" not in scanner
 assert "WarehouseDiagnostics.audit" not in scanner
 assert "StoragePalletCrew.enlist(level,player,computer)" not in scanner
-assert "held.is(RackContent.STORAGE_SCANNER_ITEM)&&player.isShiftKeyDown()" in terminal
+assert "held.is(RackContent.STORAGE_SCANNER_ITEM)" in terminal
 assert "else ServerPlayNetworking.send(user,new RackComputerNet.Open(pos))" in terminal
 assert "StorageScannerItem.onShelfClick(server,user,held,pos)" in shelf
 assert "List<StorageGolemShelfEntity> connected=RackComputerNet.nearbyShelves(level,computer)" in crew
@@ -47,4 +48,4 @@ assert "case 3 -> {" in net and "WarehouseDiagnostics.audit(level,computer)" in 
 assert 'Component.literal("DIAGNOSTICS")' in screen
 assert "requestGolem(3)" in screen
 assert "Rack Computer Diagnostics" in audit
-print("PASS: shift-to-link computer, shift-air toggle, remote-only swaps, direct shelf summon, direct pickup/placement and computer diagnostics")
+print("PASS: computer linking, 4-mode air switching, Remote swap, Direct crew, Forklift crew/operator, Recall, warehouse diagnostics")
