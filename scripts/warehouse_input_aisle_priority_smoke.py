@@ -45,14 +45,15 @@ i_ptp=return_body.index('for(PtpBlockEntity candidate:warehouse.points())')
 i_rack_fallback=return_body.index('for(RackBlockEntity candidate:warehouse.racks())')
 assert i_priority<i_ptp<i_rack_fallback
 assert 'RackBlockEntity rack=remotePickupReturn' in return_body
-assert 'if(rack==null){' in return_body[i_priority:i_ptp]
-assert 'if(rack==null&&point==null){' in return_body[i_ptp:i_rack_fallback]
+assert 'if(!remotePickupReturn&&rack==null){' in return_body[i_priority:i_ptp]
+assert 'if(rack==null&&(remotePickupReturn||point==null)){' in return_body[i_ptp:i_rack_fallback]
 assert 'done=deliverToRack(rack);' in return_body
 assert 'point.setInput(true);' in return_body
 assert 'INPUT AISLE RACK' in return_body
 assert 'if(!done)' in return_body
 assert 'restoreWorkers(level);' in return_body
 assert 'skipReturnRackUntil=tickCount+400' in return_body
+assert '"WAITING FOR HELP: NO VACANT INPUT OR STANDARD RACK"' in return_body
 assert 'INPUT RACK BLOCKED: TRYING ANOTHER RECEIVING POINT' in return_body
 assert 'WarehouseSortingReach.groundRack(level,candidate)' in return_body
 print("PASS: Input tag orange end labels and remote rack > input PTP > empty PTP > ordinary rack priority")

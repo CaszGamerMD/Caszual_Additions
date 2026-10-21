@@ -17,7 +17,8 @@ Shift-right-click in air to rotate the modes:
 - **REMOTE** – click a wrapped ground pallet to request an independent
   replacement crew from the linked warehouse. A returning crew prefers
   open ground-level Input aisle racks, then ordinary ground racks. If
-  no destination works, it retains the pallet instead of deleting it.
+  no rack is available it stays loaded and waits for a player to help. A
+  returning remote crew does not silently put its pallet into a PTP.
 - **DIRECT** – right-click a linked Golem Shelf for four actual workers,
   then pick a wrapped pallet on ground, PTP or accessible rack. Click
   a ground pad, PTP or rack to direct the delivery. For a stacked rack,

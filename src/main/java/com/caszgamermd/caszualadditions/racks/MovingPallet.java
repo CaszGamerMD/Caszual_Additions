@@ -1159,9 +1159,10 @@ public final class MovingPallet extends PathfinderMob {
             return;
         }
         var warehouse=WarehouseNetwork.fromComputer(level,computer);
-        // Returned REMOTE pickups should enter racks in an aisle literally
-        // tagged "Input" BEFORE the normal PTP receiving queue.
-        // Direct/manual returns keep their existing PTP-first behavior.
+        // Remote returns: INPUT aisle rack -> other normal ground rack ->
+        // loaded waiting/idle if every rack is full or blocked. Never silently
+        // divert a returned remote pallet into a PTP.
+        // Manual scanner recall keeps its established INPUT PTP-first mode.
         BlockPos exclude=tickCount<skipReturnRackUntil?skippedReturnRack:null;
         RackBlockEntity rack=remotePickupReturn
                 ?WarehouseAislePriority.firstAvailableInputRack(
@@ -1169,13 +1170,13 @@ public final class MovingPallet extends PathfinderMob {
                 :null;
         if(rack!=null&&!WarehouseSortingReach.groundRack(level,rack))rack=null;
         PtpBlockEntity point=null;
-        if(rack==null){
+        if(!remotePickupReturn&&rack==null){
             for(PtpBlockEntity candidate:warehouse.points()){
                 if(!candidate.canInstallPallet())continue;
                 if(point==null||candidate.input()&&!point.input())point=candidate;
             }
         }
-        if(rack==null&&point==null){
+        if(rack==null&&(remotePickupReturn||point==null)){
             for(RackBlockEntity candidate:warehouse.racks()){
                 if(candidate.getBlockPos().equals(exclude)
                         ||candidate.hasPallet()||!candidate.isEmpty()
@@ -1188,7 +1189,9 @@ public final class MovingPallet extends PathfinderMob {
             }
         }
         if(point==null&&rack==null){
-            deliveryFailure="WAITING: NO VACANT INPUT PTP OR RACK";
+            deliveryFailure=remotePickupReturn
+                    ?"WAITING FOR HELP: NO VACANT INPUT OR STANDARD RACK"
+                    :"WAITING: NO VACANT INPUT PTP OR RACK";
             getNavigation().stop();return;
         }
         BlockPos target=point!=null?point.getBlockPos():rack.getBlockPos();
