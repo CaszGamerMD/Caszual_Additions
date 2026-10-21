@@ -27,7 +27,7 @@ assert "WarehouseSortingReach.groundRack(level,rack)" in carrier
 assert "WarehouseSortingReach.groundRack(level,rack)" in read("StoragePalletCrew.java")
 assert "liftToForklift(ItemStack jack)" in racks
 assert "installFromForklift(ItemStack jack)" in racks
-assert "rack.liftToForklift(jack)" in fork and "rack.installFromForklift(jack)" in fork
+assert "origin.liftToForklift(jack)" in fork and "rack.installFromForklift(jack)" in fork
 assert "ForkliftPalletIO.liftGround" in fork and "ForkliftPalletIO.placeGround" in fork
 assert "NonNullList.withSize(217" in io
 assert "ItemContainerContents.fromItems(payload)" in io
