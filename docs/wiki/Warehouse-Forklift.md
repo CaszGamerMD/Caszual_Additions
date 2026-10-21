@@ -13,11 +13,11 @@ Four-Golem pallet crews load only ground racks. For stacked racks, use the
 1. Craft the Warehouse Forklift and right-click a free solid floor to place it.
 2. Keep at least one docked Storage Golem in a shelf within 20 blocks. A
    free Golem walks to and mounts the forklift as its actual driver.
-3. Craft a reusable **Forklift Controller** (compass, redstone and iron).
+3. Craft a reusable **Forklift Clipboard** (compass, redstone and iron).
    To designate an exact ground pallet for storage, right-click it with the
-   Controller first. Then click the desired rack. Without a selection the
+   Clipboard first. Then click the desired rack. Without a selection the
    nearest wrapped floor pallet is used.
-4. With the Controller, aim and right-click an elevated rack. **Empty destination racks can be selected from up to 20 blocks away** using line of sight, even outside vanilla right-click range. Walls and other obstructing blocks prevent selection. The forklift's 12-block vertical lifting limit does not change:
+4. With the Clipboard, aim and right-click an elevated rack. **Empty destination racks can be selected from up to 20 blocks away** using line of sight, even outside vanilla right-click range. Walls and other obstructing blocks prevent selection. The forklift's 12-block vertical lifting limit does not change:
    - **Occupied wrapped rack:** forklift drives to the aisle, raises forks,
      removes exactly one wrapped pallet with all 216 slots, and stages it on
      a clear 2×2 pallet-sized floor area nearby.
@@ -25,8 +25,12 @@ Four-Golem pallet crews load only ground racks. For stacked racks, use the
      collects it, drives to the rack, lifts it, and inserts all saved cargo.
 5. Forklift waits instead of consuming/dropping a load if the target rack,
    mast clearance, service lane, staging floor, or driver is unavailable.
-6. The driver returns to its own Golem Shelf after work. Right-click the
-   forklift with an empty hand to see its status.
+6. A docked Storage Golem **walks out when the first job is requested**,
+   boards the forklift, and remains mounted between multiple pallet jobs.
+   Right-click the parked forklift **with the Forklift Clipboard** to dismiss
+   its driver; the Golem returns to its original shelf. You cannot dismiss
+   the Golem during an active cargo transfer. Use an empty hand on the
+   forklift to inspect its status.
 7. If destroyed, the forklift drops its intact cargo in a loaded Pallet Jack
    item and a new forklift item.
 

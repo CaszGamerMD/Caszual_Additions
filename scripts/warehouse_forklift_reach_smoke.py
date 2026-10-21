@@ -40,6 +40,13 @@ assert "if(forkliftDriver){tickForkliftDriver(level);return;}" in golem
 assert "startRiding(lift)" in golem
 assert "finishForkliftDriving()" in golem
 assert "world.getEntity(driver)" in fork
+assert "private void endTask(ServerLevel world)" in fork
+assert 'status=driver==null?"PARKED":"PARKED - DRIVER ON DUTY";' in fork
+assert "public boolean dismissDriver(ServerLevel world)" in fork
+assert "player.getItemInHand(hand).is(RackContent.FORKLIFT_CONTROLLER)" in fork
+assert "golem.finishForkliftDriving()" in fork
+assert "!forkliftDriver)checkPendingRecall(level);" in golem
+assert "WarehouseSortingReach.groundRack(level,rack)" in carrier
 assert "if(PalletJackItem.loaded(jack))" in fork
 assert "if(!drive(world,landing))return;" in fork
 assert "busy()" in item and "nearest.order(level,rack,selectedSource)" in item

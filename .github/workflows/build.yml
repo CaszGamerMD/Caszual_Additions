@@ -118,6 +118,9 @@ jobs:
       - name: Verify crafting vending machine recipe, storage and atomic batch safety (blocking)
         run: python3 scripts/crafting_vending_machine_smoke.py
 
+      - name: Verify Suite discovery, Input-rack recovery and forklift operator lifecycle (blocking)
+        run: python3 scripts/caszual_visibility_forklift_input_smoke.py
+
       - name: Verify two-block sorting reach and Golem-driven forklift safety (blocking)
         run: python3 scripts/warehouse_forklift_reach_smoke.py
       - name: Verify loaded Golem pallet speed boost on concrete and industrial floors

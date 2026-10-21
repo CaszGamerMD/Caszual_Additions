@@ -64,9 +64,14 @@ public final class CaszualJeiPlugin implements IModPlugin {
     public void registerIngredientAliases(IIngredientAliasRegistration registration) {
         BuiltInRegistries.ITEM.forEach(item -> {
             ItemStack stack = item.getDefaultInstance();
-            if (stack.is(CaszualTags.CASZUAL_CONTENT)) {
+            // JEI queries must include untagged Suite items too; otherwise
+            // they appear in the creative tab but not under @caszual searches.
+            String namespace=BuiltInRegistries.ITEM.getKey(item).getNamespace();
+            if (namespace.startsWith("caszual") ||
+                    stack.is(CaszualTags.CASZUAL_CONTENT)) {
                 registration.addAlias(stack, "Caszual Additions");
                 registration.addAlias(stack, "Caszual");
+                registration.addAlias(stack, "Caszual Suite");
             }
         });
     }

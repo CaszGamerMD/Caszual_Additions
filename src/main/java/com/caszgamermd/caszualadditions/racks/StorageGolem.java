@@ -1037,7 +1037,10 @@ public final class StorageGolem extends PathfinderMob {
      * The PALLET prefix is preserved for the existing pallet renderer. */
     private void updateTaskLabel(){
         String label;
-        if(rackStairMover){
+        if(forkliftDriver){
+            label=getVehicle() instanceof WarehouseForklift
+                    ?"DRIVER | FORKLIFT":"DRIVER | BOARDING FORKLIFT";
+        }else if(rackStairMover){
             label="ESCORT | RACK STAIRS";
         }else if(remotePickup){
             label="REMOTE PICKUP "+(haulIndex+1)+"/3 | EMPTY HANDED"
@@ -2093,7 +2096,9 @@ public final class StorageGolem extends PathfinderMob {
     @Override public void tick(){
         super.tick();
         if(!(level() instanceof ServerLevel level))return;
-        if(!remoteCourier&&!remotePickup)checkPendingRecall(level);
+        // An assigned forklift operator ignores ordinary warehouse recall:
+        // only the controller's explicit dismiss command sends it home.
+        if(!remoteCourier&&!remotePickup&&!forkliftDriver)checkPendingRecall(level);
         // Status strings from task transitions should not leak into
         // player-visible nameplates for 10 ticks when debug is disabled.
         updateTaskLabel();

@@ -11,7 +11,9 @@ for item in ("wool_helmet","wool_boots","warden_trap"):
 # The explicit item list and tag iteration must use the SAME guard.
 assert "java.util.Set<net.minecraft.world.item.Item> seen" in src
 assert "if (seen.add(item))output.accept(new ItemStack(item));" in src
-assert "&& seen.add(item)) output.accept(stack);" in src
+assert "&& seen.add(item))" in src and "output.accept(stack);" in src
+assert 'ns.startsWith("caszual")' in src
+assert 'stack.is(CaszualTags.CASZUAL_CONTENT)' in src
 assert "add.accept(AntiWardenContent.WOOL_HELMET);" in src
 assert "add.accept(AntiWardenContent.WOOL_BOOTS);" in src
 assert "add.accept(AntiWardenContent.WARDEN_TRAP.asItem());" in src

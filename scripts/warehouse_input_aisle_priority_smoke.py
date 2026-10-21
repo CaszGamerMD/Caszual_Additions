@@ -16,7 +16,9 @@ assert '"Input".equalsIgnoreCase(label.trim())' in priority
 assert 'return rack!=null&&isInput(RackNetwork.aisle(level,rack));' in priority
 assert 'if(rack.hasPallet()||!rack.isEmpty())continue;' in priority
 assert 'if(!isInputAisle(level,rack))continue;' in priority
-assert 'if(RackPickupPlan.find(level,rack)==null)continue;' in priority
+assert 'if(!WarehouseSortingReach.groundRack(level,rack))continue;' in priority
+assert 'if(plan==null||plan.height()!=0)continue;' in priority
+assert 'exclude!=null&&exclude.equals(rack.getBlockPos())' in priority
 assert 'else rack.setAisleName(name.equals("Aisle Tag") ? "Aisle" : name);' in tag
 assert 'if(aisleNeighbors(level,rack,other)&&seen.add(other.getBlockPos()))' in network
 
@@ -38,7 +40,7 @@ assert 'out.putBoolean("remote_pickup_return",remotePickupReturn);' in carrier
 assert 'remotePickupReturn=in.getBooleanOr("remote_pickup_return",false);' in carrier
 
 return_body=carrier[carrier.index("private void tickWarehouseReturn"):carrier.index("private void tickDelivery")]
-i_priority=return_body.index('WarehouseAislePriority.firstAvailableInputRack(level,warehouse.racks())')
+i_priority=return_body.index('WarehouseAislePriority.firstAvailableInputRack(')
 i_ptp=return_body.index('for(PtpBlockEntity candidate:warehouse.points())')
 i_rack_fallback=return_body.index('for(RackBlockEntity candidate:warehouse.racks())')
 assert i_priority<i_ptp<i_rack_fallback
@@ -50,4 +52,7 @@ assert 'point.setInput(true);' in return_body
 assert 'INPUT AISLE RACK' in return_body
 assert 'if(!done)' in return_body
 assert 'restoreWorkers(level);' in return_body
+assert 'skipReturnRackUntil=tickCount+400' in return_body
+assert 'INPUT RACK BLOCKED: TRYING ANOTHER RECEIVING POINT' in return_body
+assert 'WarehouseSortingReach.groundRack(level,candidate)' in return_body
 print("PASS: Input tag orange end labels and remote rack > input PTP > empty PTP > ordinary rack priority")

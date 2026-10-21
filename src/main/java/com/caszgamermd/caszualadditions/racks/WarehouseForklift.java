@@ -73,7 +73,13 @@ public final class WarehouseForklift extends PathfinderMob {
     }
     /** Dispatch requires one docked, named Golem driver from a real shelf. */
     private boolean hire(ServerLevel world){
-        if(driver!=null&&world.getEntity(driver) instanceof StorageGolem)return true;
+        // Keep the SAME driver between separate pallet transfers.
+        if(driver!=null){
+            Entity assigned=world.getEntity(driver);
+            if(assigned instanceof StorageGolem golem&&golem.isAlive())return true;
+            status="ASSIGNED GOLEM NOT LOADED - dismiss and request a new driver";
+            return false;
+        }
         for(int dx=-20;dx<=20;dx++)for(int dz=-20;dz<=20;dz++)
             for(int dy=-2;dy<=2;dy++){
                 BlockPos at=blockPosition().offset(dx,dy,dz);
@@ -97,6 +103,7 @@ public final class WarehouseForklift extends PathfinderMob {
                 driver=worker.getUUID();
                 return true;
             }
+        status="NO DOCKED GOLEM WITH A CLEAR SHELF EXIT WITHIN 20 BLOCKS";
         return false;
     }
     /** Source or destination is selected by a player using the forklift item
@@ -196,7 +203,12 @@ public final class WarehouseForklift extends PathfinderMob {
         entityData.set(MAST,Math.abs(goal-eased)<.012f?goal:eased);
         entityData.set(ACTION,job);
         if(job==0)return;
-        if(!hasDriver(world)){getNavigation().stop();status="WAITING FOR GOLEM DRIVER";return;}
+        if(!hasDriver(world)){
+            getNavigation().stop();
+            status=driver!=null?"GOLEM LEAVING SHELF / BOARDING FORKLIFT"
+                    :"WAITING FOR AN AVAILABLE GOLEM";
+            return;
+        }
         if(!world.hasChunkAt(source)||!world.hasChunkAt(target)){
             getNavigation().stop();status="WAITING FOR LOADED CHUNKS";return;
         }
@@ -229,11 +241,21 @@ public final class WarehouseForklift extends PathfinderMob {
         if(job==4&&++animation>=25)endTask(world);
     }
     private void endTask(ServerLevel world){
-        if(driver!=null&&world.getEntity(driver) instanceof StorageGolem golem)
-            golem.finishForkliftDriving();
-        driver=null;
+        // A driver remains mounted and on duty after a pallet delivery.
+        // Only a controller click on the idle forklift dismisses them.
         job=0;animation=0;retrieving=false;
-        status="PARKED";
+        status=driver==null?"PARKED":"PARKED - DRIVER ON DUTY";
+    }
+    public boolean dismissDriver(ServerLevel world){
+        if(job!=0||PalletJackItem.loaded(jack))return false;
+        if(driver==null)return false;
+        Entity passenger=world.getEntity(driver);
+        if(passenger instanceof StorageGolem golem)
+            golem.finishForkliftDriving(); // walks back to original shelf
+        driver=null;
+        getNavigation().stop();
+        status="DRIVER DISMISSED - RETURNING TO SHELF";
+        return true;
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel world){
@@ -246,14 +268,28 @@ public final class WarehouseForklift extends PathfinderMob {
             net.minecraft.world.Containers.dropItemStack(world,
                     getX(),getY(),getZ(),new ItemStack(RackContent.FORKLIFT_ITEM));
             endTask(world);
+            dismissDriver(world);
         }
         super.die(source);
     }
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
-        if(!level().isClientSide())
+        if(level().isClientSide())return InteractionResult.SUCCESS;
+        if(player.getItemInHand(hand).is(RackContent.FORKLIFT_CONTROLLER)){
+            if(job!=0||PalletJackItem.loaded(jack)){
+                player.sendSystemMessage(Component.literal(
+                        "Forklift is carrying out a pallet job. Dismiss the Golem after delivery."));
+            }else if(dismissDriver((ServerLevel)level())){
+                player.sendSystemMessage(Component.literal(
+                        "Forklift Golem dismissed; returning to its Storage Golem Shelf."));
+            }else{
+                player.sendSystemMessage(Component.literal(
+                        "No active Golem driver to dismiss."));
+            }
+        }else{
             player.sendSystemMessage(Component.literal("Forklift: "+status
                     +(PalletJackItem.loaded(jack)?" | carrying wrapped pallet":"")
-                    +". Use a Forklift item on a rack to dispatch."));
+                    +". Dispatch by selecting a rack with the black Forklift Clipboard."));
+        }
         return InteractionResult.SUCCESS;
     }
     @Override protected void addAdditionalSaveData(ValueOutput out){

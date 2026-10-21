@@ -109,6 +109,11 @@ public final class MovingPallet extends PathfinderMob {
     // precise point. Align locally after navigation and detect real stalls.
     private int deliveryStallTicks;
     private double lastDeliveryDistance=Double.POSITIVE_INFINITY;
+    // A blocked INPUT rack must not trap a four-Golem load indefinitely.
+    // Keep the real pallet escrowed and try another Input rack or INPUT PTP.
+    private BlockPos returnTarget=BlockPos.ZERO,skippedReturnRack=BlockPos.ZERO;
+    private double bestReturnDistance=Double.POSITIVE_INFINITY;
+    private int returnStallTicks,skipReturnRackUntil;
     // Detect an obstructed or abandoned path instead of waiting forever on
     // the same unreachable target behind the player.
     private double lastFollowDistance=Double.POSITIVE_INFINITY;
@@ -1033,8 +1038,10 @@ public final class MovingPallet extends PathfinderMob {
         // Returned REMOTE pickups should enter racks in an aisle literally
         // tagged "Input" BEFORE the normal PTP receiving queue.
         // Direct/manual returns keep their existing PTP-first behavior.
+        BlockPos exclude=tickCount<skipReturnRackUntil?skippedReturnRack:null;
         RackBlockEntity rack=remotePickupReturn
-                ?WarehouseAislePriority.firstAvailableInputRack(level,warehouse.racks())
+                ?WarehouseAislePriority.firstAvailableInputRack(
+                        level,warehouse.racks(),exclude)
                 :null;
         if(rack!=null&&!WarehouseSortingReach.groundRack(level,rack))rack=null;
         PtpBlockEntity point=null;
@@ -1045,17 +1052,27 @@ public final class MovingPallet extends PathfinderMob {
             }
         }
         if(rack==null&&point==null){
-            for(RackBlockEntity candidate:warehouse.racks())
-                if(!candidate.hasPallet()&&candidate.isEmpty()
-                        &&RackPickupPlan.find(level,candidate)!=null){
+            for(RackBlockEntity candidate:warehouse.racks()){
+                if(candidate.getBlockPos().equals(exclude)
+                        ||candidate.hasPallet()||!candidate.isEmpty()
+                        ||!WarehouseSortingReach.groundRack(level,candidate))
+                    continue;
+                RackPickupPlan candidatePlan=RackPickupPlan.find(level,candidate);
+                if(candidatePlan!=null&&candidatePlan.height()==0){
                     rack=candidate;break;
                 }
+            }
         }
         if(point==null&&rack==null){
             deliveryFailure="WAITING: NO VACANT INPUT PTP OR RACK";
             getNavigation().stop();return;
         }
         BlockPos target=point!=null?point.getBlockPos():rack.getBlockPos();
+        if(!target.equals(returnTarget)){
+            returnTarget=target.immutable();
+            bestReturnDistance=Double.POSITIVE_INFINITY;
+            returnStallTicks=0;
+        }
         BlockPos service=null;
         if(rack!=null){
             RackPickupPlan plan=RackPickupPlan.find(level,rack);
@@ -1074,6 +1091,22 @@ public final class MovingPallet extends PathfinderMob {
         }
         double dx=service.getX()+.5-getX(),dz=service.getZ()+.5-getZ();
         if(dx*dx+dz*dz>2.25||Math.abs(service.getY()-getY())>.8){
+            double remaining=dx*dx+dz*dz;
+            if(remaining+.10<bestReturnDistance){
+                bestReturnDistance=remaining;
+                returnStallTicks=0;
+            }else if(++returnStallTicks>160&&rack!=null){
+                // After 8 seconds without approaching the INPUT rack,
+                // try a different rack/PTP instead of spinning forever.
+                skippedReturnRack=rack.getBlockPos().immutable();
+                skipReturnRackUntil=tickCount+400;
+                returnTarget=BlockPos.ZERO;
+                returnStallTicks=0;
+                remoteFloorRoute.clear();
+                getNavigation().stop();
+                deliveryFailure="INPUT RACK BLOCKED: TRYING ANOTHER RECEIVING POINT";
+                return;
+            }
             deliveryFailure="RETURNING TO "+(rack!=null
                     &&remotePickupReturn
                     &&WarehouseAislePriority.isInputAisle(level,rack)
@@ -1108,7 +1141,13 @@ public final class MovingPallet extends PathfinderMob {
             done=deliverToRack(rack);
         }
         if(!done){
-            deliveryFailure="WAITING: RETURN DESTINATION NOT READY";
+            if(rack!=null){
+                skippedReturnRack=rack.getBlockPos().immutable();
+                skipReturnRackUntil=tickCount+400;
+                returnTarget=BlockPos.ZERO;
+                remoteFloorRoute.clear();
+                deliveryFailure="RACK REFUSED PALLET: REROUTING TO INPUT PTP";
+            }else deliveryFailure="WAITING: RETURN DESTINATION NOT READY";
             return;
         }
         deliveryMode=0;
@@ -1131,6 +1170,10 @@ public final class MovingPallet extends PathfinderMob {
             rack=level.getBlockEntity(target) instanceof RackBlockEntity found?found:null;
             if(rack==null||rack.hasPallet()||!rack.isEmpty()){
                 waitForDelivery("WAITING: RACK UNAVAILABLE (ORDER SAVED)");
+                return;
+            }
+            if(!WarehouseSortingReach.groundRack(level,rack)){
+                abortDelivery("ELEVATED RACK REQUIRES FORKLIFT - RETARGET PALLET");
                 return;
             }
             RackPickupPlan plan=RackPickupPlan.find(level,rack);

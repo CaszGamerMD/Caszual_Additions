@@ -43,16 +43,18 @@ public final class WarehouseSortingReach {
     /** Cargo crews without forklifts may install a pallet only into a rack
      * supported by a real floor, never directly above another rack module. */
     public static boolean groundRack(ServerLevel level,RackBlockEntity rack){
-        BlockPos pos=rack.getBlockPos();
-        for(int h=1;h<=12;h++){
-            BlockPos under=pos.below(h);
-            if(!level.hasChunkAt(under))return false;
-            if(level.getBlockState(under).getBlock() instanceof RackBlock)
+        // A 3-block-tall rack may look like the bottom shelf, but workers
+        // cannot load it unless the ENTIRE 2x2 footprint rests directly on
+        // a real solid floor at its lowest layer. A solid floor 12 blocks
+        // below is not support for a ground-level rack.
+        BlockPos root=rack.getBlockPos();
+        for(int i=0;i<4;i++){
+            BlockPos foot=RackBlock.cell(root,rack.facing(),i);
+            BlockPos floor=foot.below();
+            if(!level.hasChunkAt(foot)||!level.hasChunkAt(floor)
+                    ||!level.getBlockState(floor).isCollisionShapeFullBlock(level,floor))
                 return false;
-            // Stop at a genuine solid floor, including concrete.
-            if(level.getBlockState(under).isCollisionShapeFullBlock(level,under))
-                return true;
         }
-        return false;
+        return true;
     }
 }

@@ -77,11 +77,19 @@ public final class CaszualItemGroups {
                             add.accept(com.caszgamermd.caszualadditions.curtains.PlasticCurtainsContent.ITEM);
                             for(var blockItem:RackContent.INDUSTRIAL_CONCRETE_ITEMS.values())
                                 add.accept(blockItem);
+                            // A data-pack item tag is optional and cannot cover
+                            // every dynamically registered Caszual Suite item.
+                            // Enumerate actual registered namespace entries too.
+                            // Shared "seen" guarantees the tab never crashes
+                            // on duplicate vanilla/Fabric entries.
                             BuiltInRegistries.ITEM.forEach(item -> {
-                                if (item == FunBarrelContent.ITEM)return;
-                                ItemStack stack = item.getDefaultInstance();
-                                if (stack.is(CaszualTags.CASZUAL_CONTENT)
-                                        && seen.add(item)) output.accept(stack);
+                                if (item == Items.AIR)return;
+                                ItemStack stack=item.getDefaultInstance();
+                                String ns=BuiltInRegistries.ITEM.getKey(item).getNamespace();
+                                if ((ns.startsWith("caszual") ||
+                                        stack.is(CaszualTags.CASZUAL_CONTENT))
+                                        && seen.add(item))
+                                    output.accept(stack);
                             });
                         })
                         .build()

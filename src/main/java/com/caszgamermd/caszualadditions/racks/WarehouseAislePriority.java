@@ -34,10 +34,19 @@ public final class WarehouseAislePriority {
      */
     public static @Nullable RackBlockEntity firstAvailableInputRack(
             ServerLevel level,List<RackBlockEntity> racks){
+        return firstAvailableInputRack(level,racks,null);
+    }
+    /** Temporary exclusions let a blocked pallet crew try a free INPUT PTP
+     * instead of repeatedly selecting the same unreachable Input rack. */
+    public static @Nullable RackBlockEntity firstAvailableInputRack(
+            ServerLevel level,List<RackBlockEntity> racks,@Nullable net.minecraft.core.BlockPos exclude){
         for(RackBlockEntity rack:racks){
             if(rack.hasPallet()||!rack.isEmpty())continue;
+            if(exclude!=null&&exclude.equals(rack.getBlockPos()))continue;
             if(!isInputAisle(level,rack))continue;
-            if(RackPickupPlan.find(level,rack)==null)continue;
+            if(!WarehouseSortingReach.groundRack(level,rack))continue;
+            RackPickupPlan plan=RackPickupPlan.find(level,rack);
+            if(plan==null||plan.height()!=0)continue;
             return rack;
         }
         return null;

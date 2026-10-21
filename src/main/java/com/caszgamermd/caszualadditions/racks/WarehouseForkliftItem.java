@@ -81,8 +81,8 @@ public final class WarehouseForkliftItem extends Item {
         if(!level.addFreshEntity(lift))return InteractionResult.FAIL;
         if(!player.getAbilities().instabuild)context.getItemInHand().shrink(1);
         player.sendSystemMessage(Component.literal(
-                "Forklift parked. Keep Golems docked nearby; use another Forklift item "
-                +"on a rack to request pickup or storage."));
+                "Forklift parked. Keep a Golem docked nearby. Use the black Forklift Clipboard "
+                +"on a rack; a driver will leave their shelf and board automatically."));
         return InteractionResult.SUCCESS;
     }
 
@@ -136,8 +136,8 @@ public final class WarehouseForkliftItem extends Item {
                 ?"Forklift dispatched: "+(rack.hasPallet()
                     ?"retrieve rack pallet to aisle"
                     :"collect wrapped floor pallet and place into rack")
-                :"Forklift could not start: check driver Golem, aisle, wrapped pallet, "
-                    +"and 12-block lift limit."));
+                :"Forklift cannot start: "+nearest.status()
+                    +". Check forklift access, wrapped pallet and 12-block mast limit."));
         return InteractionResult.SUCCESS;
     }
 }
