@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Input-tagged aisle racks take priority for returned remote pallets."""
+"""INPUT receiving and OUTPUT shipping aisles remain distinct."""
 from pathlib import Path
 base=Path(__file__).resolve().parents[1]
 server=base/"src/main/java/com/caszgamermd/caszualadditions/racks"
@@ -22,10 +22,11 @@ assert 'exclude!=null&&exclude.equals(rack.getBlockPos())' in priority
 assert 'else rack.setAisleName(name.equals("Aisle Tag") ? "Aisle" : name);' in tag
 assert 'if(aisleNeighbors(level,rack,other)&&seen.add(other.getBlockPos()))' in network
 
-# The orange tint is applied to the Aisle Tag's actual rack-end text,
+# The green/red tint is applied to the Aisle Tag's actual rack-end text,
 # not the entire dark nameplate or unrelated front rack label.
 assert 'WarehouseAislePriority.isInput(state.aisleLabel)' in renderer
-assert '?0xffff9933:0xffffde9b' in renderer
+assert '?0xff55dd66:WarehouseAislePriority.isOutput(state.aisleLabel)' in renderer
+assert '?0xffff5555:0xffffde9b' in renderer
 assert 'front,x,z,2.31f,0xffe4f0f5' in renderer
 assert 'submitFacingPlate(state,poses,collector,state.aisleLabel,' in renderer
 
@@ -56,4 +57,21 @@ assert 'skipReturnRackUntil=tickCount+400' in return_body
 assert '"WAITING FOR HELP: NO VACANT INPUT OR STANDARD RACK"' in return_body
 assert 'INPUT RACK BLOCKED: TRYING ANOTHER RECEIVING POINT' in return_body
 assert 'WarehouseSortingReach.groundRack(level,candidate)' in return_body
-print("PASS: Input tag orange end labels and remote rack > input PTP > empty PTP > ordinary rack priority")
+assert '"Output".equalsIgnoreCase(label.trim())' in priority
+assert 'return rack!=null&&isOutput(RackNetwork.aisle(level,rack));' in priority
+assert 'firstAvailableOutputRack(' in priority
+assert 'stagedOutputRacks(' in priority
+assert 'if(isOutputAisle(level,rack)&&rack.hasPallet())ready.add(rack);' in priority
+assert 'if(!isOutputAisle(level,rack))continue;' in priority
+assert 'if(plan==null||plan.height()!=0)continue;' in priority
+assert 'outboundStaging' in carrier
+assert 'out.putBoolean("outbound_staging",outboundStaging);' in carrier
+assert 'outboundStaging=in.getBooleanOr("outbound_staging",false);' in carrier
+assert 'WarehouseAislePriority.firstAvailableOutputRack(' in return_body
+assert '||WarehouseAislePriority.isOutputAisle(level,candidate)' in return_body
+scanner=(server/"StorageScannerItem.java").read_text()
+crew=(server/"StoragePalletCrew.java").read_text()
+assert 'mode(scanner)==Mode.DIRECT&&player.isShiftKeyDown()' in scanner
+assert 'StoragePalletCrew.stageForOutput(level,player,computer)' in scanner
+assert 'rig.stageForOutput(level,computer)' in crew
+print("PASS: Input green / Output red; reserved shipping bays, safe Golem staging and inbound priority")
