@@ -87,6 +87,9 @@ public final class MovingPallet extends PathfinderMob {
     // Only remote pickups get Input-aisle-rack priority over warehouse PTPs.
     // Persist this across world saves and chunk unloads.
     private boolean remotePickupReturn;
+    // Explicit shipping task: cargo is held until an OUTPUT-tagged aisle rack
+    // can accept it. This is separate from receiving and ordinary recalls.
+    private boolean outboundStaging;
     // Persist the owner-death pause with the actual pallet entity and cargo.
     private boolean waitingForPlayer;
     private double lastHeadingX,lastHeadingZ;
@@ -353,6 +356,7 @@ public final class MovingPallet extends PathfinderMob {
         deliveryMode=3;
         recallAfterDelivery=true;
         remotePickupReturn=false;
+        outboundStaging=false;
         releaseTicks=0;
         entityData.set(RELEASE_TICKS,0);
         entityData.set(RACK_INSERT_ACTIVE,false);
@@ -360,6 +364,35 @@ public final class MovingPallet extends PathfinderMob {
         getNavigation().stop();
         return "Return assigned: INPUT PTP first, vacant PTP second, then free rack.";
     }
+    /** Direct-scanner shipping: four Golems physically stage their existing
+     * wrapped pallet on an empty OUTPUT rack of their own warehouse. Unlike
+     * a normal recall, no receiving PTP or ordinary rack may be substituted.
+     * The task persists until a shipping bay becomes available. */
+    public String stageForOutput(ServerLevel level,BlockPos computer){
+        if(!loaded()||delivered)return "No loaded pallet ready for shipping.";
+        if(remoteMission())return "Remote exchange cargo cannot become an outbound shipment.";
+        if(!level.hasChunkAt(computer)
+                ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER))
+            return "Linked Rack Computer is unavailable.";
+        deliveryPosition=computer.immutable();
+        deliveryMode=3;
+        recallAfterDelivery=true;
+        remotePickupReturn=false;
+        outboundStaging=true;
+        releaseTicks=0;
+        returnTarget=BlockPos.ZERO;
+        skippedReturnRack=BlockPos.ZERO;
+        skipReturnRackUntil=0;
+        bestReturnDistance=Double.POSITIVE_INFINITY;
+        returnStallTicks=0;
+        entityData.set(RELEASE_TICKS,0);
+        entityData.set(RACK_INSERT_ACTIVE,false);
+        deliveryFailure="RETURNING PALLET TO OUTPUT SHIPPING AISLE";
+        getNavigation().stop();
+        return "OUTPUT shipping assigned: Golems will place this pallet in an "
+                +"available Output aisle rack, or hold it safely until one opens.";
+    }
+
     /** The loaded carrier represents all four attached Golems. Clicking
      * its physical body with a DIRECT scanner safely assigns a warehouse
      * return instead of despawning a pallet with all 216 slots. */
@@ -1159,28 +1192,31 @@ public final class MovingPallet extends PathfinderMob {
             return;
         }
         var warehouse=WarehouseNetwork.fromComputer(level,computer);
-        // Remote returns: INPUT aisle rack -> other normal ground rack ->
-        // loaded waiting/idle if every rack is full or blocked. Never silently
-        // divert a returned remote pallet into a PTP.
-        // Manual scanner recall keeps its established INPUT PTP-first mode.
+        // Shipping tasks stage ONLY in OUTPUT aisle racks, preserving all
+        // cargo if the staging lanes are full. Remote returns go to INPUT
+        // racks then ordinary racks; normal recalls remain PTP-first.
         BlockPos exclude=tickCount<skipReturnRackUntil?skippedReturnRack:null;
-        RackBlockEntity rack=remotePickupReturn
-                ?WarehouseAislePriority.firstAvailableInputRack(
+        RackBlockEntity rack=outboundStaging
+                ?WarehouseAislePriority.firstAvailableOutputRack(
                         level,warehouse.racks(),exclude)
-                :null;
+                :remotePickupReturn
+                    ?WarehouseAislePriority.firstAvailableInputRack(
+                            level,warehouse.racks(),exclude)
+                    :null;
         if(rack!=null&&!WarehouseSortingReach.groundRack(level,rack))rack=null;
         PtpBlockEntity point=null;
-        if(!remotePickupReturn&&rack==null){
+        if(!outboundStaging&&!remotePickupReturn&&rack==null){
             for(PtpBlockEntity candidate:warehouse.points()){
                 if(!candidate.canInstallPallet())continue;
                 if(point==null||candidate.input()&&!point.input())point=candidate;
             }
         }
-        if(rack==null&&(remotePickupReturn||point==null)){
+        if(!outboundStaging&&rack==null&&(remotePickupReturn||point==null)){
             for(RackBlockEntity candidate:warehouse.racks()){
                 if(candidate.getBlockPos().equals(exclude)
                         ||candidate.hasPallet()||!candidate.isEmpty()
-                        ||!WarehouseSortingReach.groundRack(level,candidate))
+                        ||!WarehouseSortingReach.groundRack(level,candidate)
+                        ||WarehouseAislePriority.isOutputAisle(level,candidate))
                     continue;
                 RackPickupPlan candidatePlan=RackPickupPlan.find(level,candidate);
                 if(candidatePlan!=null&&candidatePlan.height()==0){
@@ -1189,9 +1225,11 @@ public final class MovingPallet extends PathfinderMob {
             }
         }
         if(point==null&&rack==null){
-            deliveryFailure=remotePickupReturn
-                    ?"WAITING FOR HELP: NO VACANT INPUT OR STANDARD RACK"
-                    :"WAITING: NO VACANT INPUT PTP OR RACK";
+            deliveryFailure=outboundStaging
+                    ?"WAITING FOR HELP: NO VACANT OUTPUT SHIPPING RACK"
+                    :remotePickupReturn
+                        ?"WAITING FOR HELP: NO VACANT INPUT OR STANDARD RACK"
+                        :"WAITING: NO VACANT INPUT PTP OR RACK";
             getNavigation().stop();return;
         }
         BlockPos target=point!=null?point.getBlockPos():rack.getBlockPos();
@@ -1223,18 +1261,21 @@ public final class MovingPallet extends PathfinderMob {
                 bestReturnDistance=remaining;
                 returnStallTicks=0;
             }else if(++returnStallTicks>160&&rack!=null){
-                // After 8 seconds without approaching the INPUT rack,
-                // try a different rack/PTP instead of spinning forever.
+                // Replan after 8 seconds if this aisle is blocked; cargo
+                // remains on the four-Golem carrier until a safe unload.
                 skippedReturnRack=rack.getBlockPos().immutable();
                 skipReturnRackUntil=tickCount+400;
                 returnTarget=BlockPos.ZERO;
                 returnStallTicks=0;
                 remoteFloorRoute.clear();
                 getNavigation().stop();
-                deliveryFailure="INPUT RACK BLOCKED: TRYING ANOTHER RECEIVING POINT";
+                deliveryFailure=outboundStaging
+                        ?"OUTPUT RACK BLOCKED: TRYING ANOTHER SHIPPING BAY"
+                        :"INPUT RACK BLOCKED: TRYING ANOTHER RECEIVING POINT";
                 return;
             }
-            deliveryFailure="RETURNING TO "+(rack!=null
+            deliveryFailure="RETURNING TO "+(outboundStaging
+                    ?"OUTPUT AISLE RACK":rack!=null
                     &&remotePickupReturn
                     &&WarehouseAislePriority.isInputAisle(level,rack)
                     ?"INPUT AISLE RACK":point!=null
@@ -1273,11 +1314,14 @@ public final class MovingPallet extends PathfinderMob {
                 skipReturnRackUntil=tickCount+400;
                 returnTarget=BlockPos.ZERO;
                 remoteFloorRoute.clear();
-                deliveryFailure="RACK REFUSED PALLET: REROUTING TO INPUT PTP";
+                deliveryFailure=outboundStaging
+                        ?"OUTPUT RACK REFUSED PALLET: TRYING ANOTHER SHIPPING BAY"
+                        :"RACK REFUSED PALLET: TRYING ANOTHER RECEIVING RACK";
             }else deliveryFailure="WAITING: RETURN DESTINATION NOT READY";
             return;
         }
         deliveryMode=0;
+        outboundStaging=false;
         deliveryFailure="";
         restoreWorkers(level);
     }
@@ -1753,6 +1797,7 @@ public final class MovingPallet extends PathfinderMob {
         out.putBoolean("waiting_for_player",waitingForPlayer);
         out.putBoolean("recall_after_delivery",recallAfterDelivery);
         out.putBoolean("remote_pickup_return",remotePickupReturn);
+        out.putBoolean("outbound_staging",outboundStaging);
         out.putInt("lift_ticks",liftTicks);
         out.store("forklift_pending_rack",BlockPos.CODEC,pendingForkliftRack);
         if(pendingForkliftUuid!=null)
@@ -1784,6 +1829,7 @@ public final class MovingPallet extends PathfinderMob {
         waitingForPlayer=in.getBooleanOr("waiting_for_player",false);
         recallAfterDelivery=in.getBooleanOr("recall_after_delivery",false);
         remotePickupReturn=in.getBooleanOr("remote_pickup_return",false);
+        outboundStaging=in.getBooleanOr("outbound_staging",false);
         if(delivered){
             setNoGravity(true);
             noPhysics=true;

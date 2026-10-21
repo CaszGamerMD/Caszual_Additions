@@ -235,7 +235,8 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
                     submitFacingPlate(state,poses,collector,state.aisleLabel,
                             side,x,z,2.61f,
                             WarehouseAislePriority.isInput(state.aisleLabel)
-                                    ?0xffff9933:0xffffde9b);
+                                    ?0xff55dd66:WarehouseAislePriority.isOutput(state.aisleLabel)
+                                        ?0xffff5555:0xffffde9b);
             }
         }
     }

@@ -343,6 +343,13 @@ public final class StorageScannerItem extends Item {
         boolean carrying=crew.contains("carry one shared pallet")
                 ||crew.contains("carrying wrapped pallet: yes")
                 ||crew.contains("heading to assigned pallet placement");
+        // Sneak-click your LINKED terminal in DIRECT mode while carrying
+        // to stage the whole wrapped pallet for Pallets Plus shipment.
+        // A normal click still refreshes the scanner's warehouse link.
+        if(same&&carrying&&mode(scanner)==Mode.DIRECT&&player.isShiftKeyDown()){
+            message(player,StoragePalletCrew.stageForOutput(level,player,computer));
+            return;
+        }
         if(same){
             if(carrying){
                 message(player,"Scanner still linked: deliver the carried pallet "

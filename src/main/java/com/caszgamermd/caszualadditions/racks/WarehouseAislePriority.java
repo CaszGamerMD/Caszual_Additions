@@ -10,9 +10,9 @@ import org.jspecify.annotations.Nullable;
  * A named Aisle Tag is inherited across its physical aisle row using the
  * same RackNetwork.aisle resolver as the rack sign and Rack Computer.
  *
- * Only the exact, user-entered "Input" name enables remote drop-off
- * priority. Ordinary labels containing the word (e.g. "Input 2") do not
- * unexpectedly change warehouse behavior.
+ * Only exact, case-insensitive "Input" and "Output" names are operational.
+ * Input receives remote returns; Output reserves bays for outbound shipping.
+ * Other aisle labels remain ordinary storage.
  */
 public final class WarehouseAislePriority {
     private WarehouseAislePriority(){}
@@ -23,6 +23,51 @@ public final class WarehouseAislePriority {
 
     public static boolean isInputAisle(Level level,RackBlockEntity rack){
         return rack!=null&&isInput(RackNetwork.aisle(level,rack));
+    }
+
+    /** Exact user-defined shipping aisle name, independent of INPUT aisles. */
+    public static boolean isOutput(String label){
+        return label!=null&&"Output".equalsIgnoreCase(label.trim());
+    }
+
+    public static boolean isOutputAisle(Level level,RackBlockEntity rack){
+        return rack!=null&&isOutput(RackNetwork.aisle(level,rack));
+    }
+
+    /**
+     * Outbound four-Golem teams stage their complete pallet in a vacant,
+     * ground-accessible OUTPUT aisle rack. Never choose a normal rack or
+     * receiving PTP for a shipping job; hold cargo until space opens.
+     * Pallets Plus can later collect only from these designated bays.
+     */
+    public static @Nullable RackBlockEntity firstAvailableOutputRack(
+            ServerLevel level,List<RackBlockEntity> racks,@Nullable BlockPos exclude){
+        for(RackBlockEntity rack:racks){
+            if(rack.hasPallet()||!rack.isEmpty())continue;
+            if(exclude!=null&&exclude.equals(rack.getBlockPos()))continue;
+            if(!isOutputAisle(level,rack))continue;
+            if(!WarehouseSortingReach.groundRack(level,rack))continue;
+            RackPickupPlan plan=RackPickupPlan.find(level,rack);
+            if(plan==null||plan.height()!=0)continue;
+            return rack;
+        }
+        return null;
+    }
+
+    public static @Nullable RackBlockEntity firstAvailableOutputRack(
+            ServerLevel level,List<RackBlockEntity> racks){
+        return firstAvailableOutputRack(level,racks,null);
+    }
+
+    /** Transport-facing discovery: loaded OUTPUT rack bays of this warehouse.
+     * Read-only; Pallets Plus must perform its own atomic pallet pickup.
+     */
+    public static List<RackBlockEntity> stagedOutputRacks(
+            ServerLevel level,BlockPos computer){
+        java.util.ArrayList<RackBlockEntity> ready=new java.util.ArrayList<>();
+        for(RackBlockEntity rack:WarehouseNetwork.fromComputer(level,computer).racks())
+            if(isOutputAisle(level,rack)&&rack.hasPallet())ready.add(rack);
+        return List.copyOf(ready);
     }
 
     /**

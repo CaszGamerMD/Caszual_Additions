@@ -35,3 +35,29 @@ Workers exit and check back in through the **front-facing shelf opening**, never
 - Close/reopen the Shulker Station and the clipboard panel; inventory and rules must remain consistent.
 - Verify a loaded magazine stays at most 12 pallets, and a Golem never removes a filled input pallet.
 - Test an unloaded corridor, an obstructed aisle, and a missing target; the job must wait, never teleport or delete cargo.
+
+
+## Input and Output aisle tags
+
+Aisle Tags work as warehouse routing labels when renamed **Input** or **Output**
+(case-insensitive exact names; ordinary aisle names are unaffected).
+**Input** appears in green and takes priority when a remote swap crew returns
+its old pallet to storage. **Output** appears in red and reserves its rack
+bays for outgoing Pallets Plus shipments, instead of incoming remote returns.
+A rack inherits the label of its connected physical aisle row.
+
+To stage an outbound pallet: link the Warehouse Scanner to the Rack Computer,
+set **DIRECT** mode, summon four Storage Golems at a linked shelf and have them
+pick up a pallet. Then **sneak-right-click the linked Rack Computer** with
+the scanner while the team is carrying. They will navigate to a vacant,
+ground-accessible Output rack and install the same pallet with all of its
+contents. If every Output bay is full or obstructed, they hold the load and
+retry rather than sending it to Input, a normal rack, or a PTP. You can also
+use Direct mode to manually deposit onto a selected empty Output rack.
+
+Caszual Additions exposes `WarehouseAislePriority.stagedOutputRacks(level,computer)`
+to identify loaded, labeled shipping bays for Pallets Plus. **Actual train,
+drone, and conveyor collection must be implemented in Pallets Plus** and
+should reserve/pick up a pallet atomically before leaving; aisle tags do not
+dispatch vehicles by themselves. Existing Output PTP item-order functionality
+is separate from these rack-based pallet shipping lanes.
