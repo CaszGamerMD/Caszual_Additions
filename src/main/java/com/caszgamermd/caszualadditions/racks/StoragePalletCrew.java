@@ -94,6 +94,17 @@ public final class StoragePalletCrew {
         return rig.returnToWarehouse(level,computer);
     }
 
+    /** Explicit outbound shipment staging, never a remote-return or PTP job.
+     * A direct crew cannot stage cargo in another warehouse. */
+    public static String stageForOutput(ServerLevel level,ServerPlayer player,
+            BlockPos computer){
+        MovingPallet rig=moving(level,player);
+        if(rig==null||!rig.loaded())return "DIRECT: no carried pallet to stage for shipping.";
+        if(!rig.fromWarehouse(WarehouseConnections.shelvesForComputer(level,computer)))
+            return "DIRECT: this crew belongs to another warehouse.";
+        return rig.stageForOutput(level,computer);
+    }
+
     /** Direct mode must be summoned from a shelf that is REALLY attached to
      * the scanner's linked warehouse, never from a random nearby shelf. */
     public static String enlistFromShelf(ServerLevel level,ServerPlayer player,
