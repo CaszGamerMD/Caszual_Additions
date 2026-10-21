@@ -34,7 +34,9 @@ assert "if(worker.recallToShelf(level))sent++;" in (src/"StoragePalletCrew.java"
 assert "remotePickup||remoteCourier" in golem
 assert "StorageScannerItem.Mode.DIRECT" in rig
 assert "StorageScannerItem.linkedComputer(" in rig
-assert "returnToWarehouse(server,linked)" in rig
+assert "claimStalledRemote(server,user.getUUID(),linked)" in rig
+assert "holdDirectPallet();" in rig
+assert "requestGroundDelivery(world,at,user.getDirection())" in rig
 assert "fromWarehouse(WarehouseConnections.shelvesForComputer(server,linked))" in rig
 assert "if(remoteCourierId!=null&&deliveryMode>=4&&deliveryMode<=6)" in rig
 assert 'static BlockPos linkedComputer(ItemStack scanner,ServerLevel world)' in scanner
