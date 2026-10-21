@@ -75,6 +75,9 @@ public final class BuilderWarehouseFulfillment {
     public static Reply request(ServerLevel level,BlockPos computer,BlockPos table,
             UUID owner,UUID request,Map<String,Integer> manifest){
         if(owner==null||request==null||table==null||computer==null
+                ||!level.hasChunkAt(table)
+                ||!BuiltInRegistries.BLOCK.getKey(level.getBlockState(table).getBlock())
+                        .toString().equals("golems_plus:builder_table")
                 ||!valid(level,computer))
             return new Reply("WAREHOUSE_OFFLINE",BlockPos.ZERO,Map.of(),0,0);
         if(manifest==null||manifest.isEmpty()||manifest.size()>16)
@@ -127,6 +130,9 @@ public final class BuilderWarehouseFulfillment {
                 :unstocked(level,computer,remaining(ptp));
         String state=boxed>0?"READY_FOR_PICKUP":
                 !missing.isEmpty()?"MISSING_STOCK":
+                pending>0&&station.count()==0&&station.activeCount()==0
+                        &&station.finishedCount()==0&&station.bufferedItems()==0
+                        &&!ptp.outputInFlight()?"MISSING_EMPTY_SHULKERS":
                 pending>0?"FULFILLING":
                 station.activeCount()>0||station.finishedCount()>0
                         ||station.bufferedItems()>0?"PACKING":"DELIVERED";
