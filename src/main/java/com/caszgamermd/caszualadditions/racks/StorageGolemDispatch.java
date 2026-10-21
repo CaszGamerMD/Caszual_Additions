@@ -29,8 +29,17 @@ public final class StorageGolemDispatch {
     }
     static PtpBlockEntity outputPoint(ServerLevel level,
             List<StorageGolemShelfEntity> group,BlockPos computer){
-        for(PtpBlockEntity point:WarehouseNetwork.fromComputer(level,computer).points())
-            if(!point.input())return point;
+        var points=WarehouseNetwork.fromComputer(level,computer).points();
+        // Builder requests reserve an otherwise empty OUTPUT PTP. Service
+        // only this pallet when it has queued work, not whichever PTP
+        // happens to appear first in the warehouse scan.
+        for(PtpBlockEntity point:points)
+            if(point.builderReserved()&&point.readyForOutput()
+                    &&point.pendingOutputOrders()>0)return point;
+        for(PtpBlockEntity point:points)
+            if(point.readyForOutput()&&point.pendingOutputOrders()>0)return point;
+        for(PtpBlockEntity point:points)
+            if(!point.input()&&!point.builderReserved())return point;
         return null;
     }
     /** A Shulker Tank can now connect through any warehouse component,
