@@ -734,6 +734,36 @@ public final class MovingPallet extends PathfinderMob {
         }
         return best;
     }
+    /** Wide carriers can stop short of a one-block waypoint even though
+     * all four workers are safely beside the pallet. Accept the real outer
+     * unloading aisle, but never unload from inside the target footprint
+     * or while standing on unsupported / wrong-height terrain. */
+    private boolean groundUnloadReady(ServerLevel level,BlockPos root,
+            Direction facing,BlockPos aisle){
+        double dx=aisle.getX()+.5-getX(),dz=aisle.getZ()+.5-getZ();
+        if(dx*dx+dz*dz>2.25*2.25
+                ||Math.abs(WarehouseTerrain.standingY(level,aisle)-getY())>.85
+                ||!safePlatformFloor(level,blockPosition()))return false;
+        if(!(pallet.getItem() instanceof BlockItem bi)
+                ||!(bi.getBlock() instanceof PalletBlock block))return false;
+        BlockState model=block.defaultBlockState()
+                .setValue(PalletBlock.PART,0)
+                .setValue(PalletBlock.FACING,facing)
+                .setValue(PalletBlock.LEGACY,false);
+        int minX=Integer.MAX_VALUE,minZ=Integer.MAX_VALUE;
+        int maxX=Integer.MIN_VALUE,maxZ=Integer.MIN_VALUE;
+        for(int part=0;part<4;part++){
+            BlockPos cell=PalletBlock.partPos(root,part,model);
+            minX=Math.min(minX,cell.getX());maxX=Math.max(maxX,cell.getX());
+            minZ=Math.min(minZ,cell.getZ());maxZ=Math.max(maxZ,cell.getZ());
+        }
+        // Use the exact footprint of the placed pallet, not a guessed
+        // 2x2 square relative to the unrotated root.
+        AABB footprint=new AABB(minX,root.getY(),minZ,
+                maxX+1,root.getY()+2.5,maxZ+1);
+        return !getBoundingBox().intersects(footprint);
+    }
+
     private void tickAisleDelivery(ServerLevel level){
         BlockPos target=deliveryPosition;
         PtpBlockEntity point=deliveryMode==7
@@ -756,7 +786,10 @@ public final class MovingPallet extends PathfinderMob {
             waitForDelivery("WAITING: NO ACCESSIBLE 3-WIDE UNLOADING AISLE; DELIVERY SAVED");
             return;
         }
-        if(!nearRemoteGoal(deliveryService)){
+        boolean atUnloadingAisle=deliveryMode==7
+                ?nearRemoteGoal(deliveryService)
+                :groundUnloadReady(level,target,deliveryFacing,deliveryService);
+        if(!atUnloadingAisle){
             if(releaseTicks!=0){releaseTicks=0;entityData.set(RELEASE_TICKS,0);}
             navigateRemoteFloor(level,deliveryService);
             // A failed waypoint only retries the route; the original
@@ -777,7 +810,7 @@ public final class MovingPallet extends PathfinderMob {
                 ?deliverToPtp(point)
                 :deliverToGround(level,target,deliveryFacing);
         if(!placed){
-            waitForDelivery("WAITING: DESTINATION REJECTED PALLET; ORDER SAVED");
+            waitForDelivery("WAITING: UNLOADING FAILED; PALLET AND 216 SLOTS STILL WITH GOLEMS");
             return;
         }
         // The pallet now truly exists in the world (with all 216 slots).
@@ -1519,11 +1552,13 @@ public final class MovingPallet extends PathfinderMob {
         if(dest==null)complete=false;
         if(complete){
             dest.initialize(pos,0,pallet);
-            if(!allFit(dest))complete=false;
-        }
-        if(complete){
-            for(int i=0;i<216;i++)if(!contents.get(i).isEmpty())
-                dest.setItem(i,contents.get(i).copy());
+            // A returning pallet already OWNS these 216 stacks. Its
+            // whitelist/blacklist restricts NEW automation inserts, not
+            // the historical contents the Golems just picked up. Inserting
+            // through setItem() silently refused pre-existing cargo when a
+            // saved filter changed, so ground Recall stalled indefinitely.
+            // Restore one exact inventory snapshot as a single operation.
+            dest.restoreJackCargo(contents);
             complete=verify(dest);
         }
         if(!complete){
