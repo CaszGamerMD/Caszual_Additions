@@ -54,3 +54,28 @@ engine fallback on clear level flooring. It never teleports through obstacles.
 If the driving lane is blocked or a source/target chunk is unloaded, its status
 says so and the loaded pallet stays safely in the forklift until the route
 is available. Use an empty hand to inspect the forklift's status.
+
+
+## Forklift operator and cargo behavior (0.1.3)
+
+The Golem sits in the forklift cab about **0.7 blocks lower** than before,
+facing the steering column. The vehicle travels at approximately **4 blocks
+per second** on clear level ground (20 game ticks per second).
+
+A loaded forklift visibly carries the **full 2×2 pallet**, its original
+materials, and up to 27 representative cargo cartons enclosed in glass,
+matching the four-Golem carried pallet display. The vehicle continues to
+own the exact saved **216 cargo slots** in its Pallet Jack while in transit.
+No dummy pallet is placed into the world while the forks are moving.
+
+The forks **lower the pallet close to the ground for travel**. They rise to
+the appropriate level only when lifting from a high source rack or after
+arriving at the destination rack. The forklift must lower the forks again
+before driving off with the pallet.
+
+**Dismissing the driver:** use the Forklift Clipboard or Scanner to request
+dismissal. If the forklift is away from its painted parking bay, it returns
+there **with the Golem still seated**, parks, and *then* releases the worker
+to walk back to its original Golem Shelf. A dismissal during a delivery is
+queued until the job finishes. A missing saved parking bay will not cause
+the Golem to abandon the forklift in the aisle.
