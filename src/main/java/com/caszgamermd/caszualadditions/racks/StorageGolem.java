@@ -165,6 +165,15 @@ public final class StorageGolem extends PathfinderMob {
     // Before pickup, each of the THREE Golems is a real, separately
     // navigating and saved mob. They have no shared carrier or pallet.
     private boolean remotePickup;
+    /** Two real walking pushers move pallets between transfer node and train
+     * or conveyor. Separate from the four-Golem REMOTE and INPUT crews. */
+    private boolean nodePush;
+    private UUID nodePushMission,nodePushVehicle;
+    private BlockPos nodePushNode=BlockPos.ZERO,nodePushGoal=BlockPos.ZERO;
+    private BlockPos nodePushSource=BlockPos.ZERO,nodePushSourceGoal=BlockPos.ZERO;
+    private int nodePushSourceFloor;
+    private boolean nodePushFromSource;
+    private boolean nodePushLoading;
     private UUID remotePickupMission,remotePickupCourier;
     private BlockPos remotePickupTarget=BlockPos.ZERO;
     private BlockPos remotePickupWarehouse=BlockPos.ZERO,remotePickupRally=BlockPos.ZERO;
@@ -324,8 +333,12 @@ public final class StorageGolem extends PathfinderMob {
         return entityData.get(DISPLAY_PALLET_ACTION)==2;
     }
     private void syncPalletAction(){
+        // The two-worker node mission visibly PUSHES the actual full
+        // pallet ahead of its lead Golem, reusing the existing oversized
+        // sideways-pallet pushing pose. The second Golem walks alongside.
         int action=remoteCourier&&remoteCourierPhase==0
                 &&!remoteFresh.isEmpty()?2:playerHaul&&stage==1?1:0;
+        if(nodePush&&nodePushFromSource&&!carryingPallet.isEmpty())action=2;
         if(entityData.get(DISPLAY_PALLET_ACTION)!=action)
             entityData.set(DISPLAY_PALLET_ACTION,action);
     }
@@ -350,6 +363,71 @@ public final class StorageGolem extends PathfinderMob {
         setCustomName(Component.literal((bayOnly?"BAY PICKUP ":"REMOTE PICKUP ")+(haulIndex+1)
                 +(bayOnly?"/4":"/3")+" | EMPTY HANDED"));
         setCustomNameVisible(true);
+    }
+    public void beginNodePush(UUID mission,BlockPos node,UUID vehicle,
+            BlockPos goal,boolean loading,BlockPos source,BlockPos sourceGoal,int floor){
+        nodePush=true;nodePushMission=mission;nodePushVehicle=vehicle;
+        nodePushNode=node.immutable();nodePushGoal=goal.immutable();
+        nodePushSource=source.immutable();nodePushSourceGoal=sourceGoal.immutable();
+        nodePushSourceFloor=floor;
+        nodePushFromSource=false;
+        nodePushLoading=loading;
+        // Existing rack lifting is deliberately restricted to an assigned
+        // lead Golem. In a two-worker push, worker zero temporarily owns
+        // the same physical 216-slot pallet while both visibly move it.
+        haulJob=false;playerHaul=haulIndex==0&&!source.equals(BlockPos.ZERO);
+        stage=0;
+        setCustomName(Component.literal("TRANSFER PUSH "+(haulIndex+1)+"/2"));
+        setCustomNameVisible(true);
+    }
+    public boolean nodePushActive(){return nodePush;}
+    public UUID nodePushMission(){return nodePushMission;}
+    public UUID nodePushVehicle(){return nodePushVehicle;}
+    public BlockPos nodePushNode(){return nodePushNode;}
+    public int nodePushIndex(){return haulIndex;}
+    public boolean nodePushLoading(){return nodePushLoading;}
+    public BlockPos nodePushSource(){return nodePushSource;}
+    public int nodePushSourceFloor(){return nodePushSourceFloor;}
+    public boolean nodePushFromSource(){return nodePushFromSource;}
+    public void nodePushDepartSource(){nodePushFromSource=true;}
+    public boolean nodePushReady(ServerLevel level){
+        BlockPos goal=!nodePushFromSource&&!nodePushSource.equals(BlockPos.ZERO)
+            ?nodePushSourceGoal:nodePushGoal;
+        return nodePush&&routeDistanceSq(level,goal)<1.30;
+    }
+    public void finishNodePush(){
+        nodePush=false;nodePushMission=null;nodePushVehicle=null;
+        stage=2;haulJob=false;playerHaul=false;
+        routeIssue="PUSH COMPLETE — RETURNING TO SHELF";
+    }
+    private void tickNodePush(ServerLevel level){
+        if(nodePushVehicle==null||nodePushMission==null){finishNodePush();return;}
+        if(tickCount%40==0){
+            WarehouseRemoteTickets.keep(level,nodePushNode);
+            WarehouseRemoteTickets.keep(level,nodePushGoal);
+            WarehouseRemoteTickets.keep(level,blockPosition());
+        }
+        if(!level.hasChunkAt(nodePushNode)
+                ||level.getEntity(nodePushVehicle)==null){
+            routeIssue="WAITING FOR TRAIN OR CONVEYOR TO RECONNECT";
+            return;
+        }
+        BlockPos goal=!nodePushFromSource&&!nodePushSource.equals(BlockPos.ZERO)
+            ?nodePushSourceGoal:nodePushGoal;
+        if(!StorageGolemReturnPath.walkable(level,goal)){
+            routeIssue="WAITING FOR CLEAR PUSH AISLE";
+            return;
+        }
+        if(!nodePushReady(level)){
+            routeIssue=nodePushFromSource||nodePushSource.equals(BlockPos.ZERO)
+                ?"PUSHING PALLET TO TRANSFER NODE":"WALKING TO OUTPUT AISLE RACK";
+            walkTo(level,goal,1.02);
+            return;
+        }
+        getNavigation().stop();
+        setDeltaMovement(0,getDeltaMovement().y,0);
+        routeIssue="PUSHING PALLET TO TRANSPORT WITH PARTNER";
+        if(haulIndex==0)PalletNodePushCrew.tryComplete(level,this);
     }
     public boolean remotePickupActive(){return remotePickup;}
     public boolean remotePathPaused(){return remotePathPaused;}
@@ -1100,6 +1178,9 @@ public final class StorageGolem extends PathfinderMob {
                     ?"DRIVER | FORKLIFT":"DRIVER | BOARDING FORKLIFT";
         }else if(rackStairMover){
             label="ESCORT | RACK STAIRS";
+        }else if(nodePush){
+            label="TRANSFER PUSH "+(haulIndex+1)+"/2 | "
+                +(routeIssue.isBlank()?"WALKING TO NODE":routeIssue);
         }else if(remotePickup){
             boolean bayOnly=DroneBayNoReplacementDispatch.NO_COURIER.equals(remotePickupCourier);
             label=(bayOnly?"BAY PICKUP ":"REMOTE PICKUP ")+(haulIndex+1)
@@ -2158,7 +2239,7 @@ public final class StorageGolem extends PathfinderMob {
         if(!(level() instanceof ServerLevel level))return;
         // An assigned forklift operator ignores ordinary warehouse recall:
         // only the controller's explicit dismiss command sends it home.
-        if(!remoteCourier&&!remotePickup&&!forkliftDriver&&!forkliftEscort)
+        if(!remoteCourier&&!remotePickup&&!nodePush&&!forkliftDriver&&!forkliftEscort)
             checkPendingRecall(level);
         // Status strings from task transitions should not leak into
         // player-visible nameplates for 10 ticks when debug is disabled.
@@ -2168,6 +2249,7 @@ public final class StorageGolem extends PathfinderMob {
         if(forkliftDriver){tickForkliftDriver(level);return;}
         if(forkliftEscort){tickForkliftEscort(level);return;}
         if(remotePickup){tickRemotePickup(level);return;}
+        if(nodePush){tickNodePush(level);return;}
         if(remoteCourier){tickRemoteCourier(level);return;}
         if(rackStairMover){tickRackStairs(level);return;}
         if(stage==0&&level.getBlockEntity(source) instanceof RackBlockEntity elevated
@@ -2531,6 +2613,16 @@ public final class StorageGolem extends PathfinderMob {
         out.putBoolean("haul_job",haulJob);
         out.putInt("haul_ticket",haulTicket);
         out.putInt("haul_worker_index",haulIndex);
+        out.putBoolean("node_push",nodePush);
+        if(nodePushMission!=null)out.putString("node_push_mission",nodePushMission.toString());
+        if(nodePushVehicle!=null)out.putString("node_push_vehicle",nodePushVehicle.toString());
+        out.store("node_push_node",BlockPos.CODEC,nodePushNode);
+        out.store("node_push_goal",BlockPos.CODEC,nodePushGoal);
+        out.putBoolean("node_push_loading",nodePushLoading);
+        out.store("node_push_source",BlockPos.CODEC,nodePushSource);
+        out.store("node_push_source_goal",BlockPos.CODEC,nodePushSourceGoal);
+        out.putInt("node_push_floor",nodePushSourceFloor);
+        out.putBoolean("node_push_from_source",nodePushFromSource);
         out.putBoolean("remote_pickup_worker",remotePickup);
         out.putBoolean("remote_path_paused",remotePathPaused);
         out.putString("remote_pause_reason",remotePauseReason);
@@ -2606,6 +2698,18 @@ public final class StorageGolem extends PathfinderMob {
         haulJob=in.getBooleanOr("haul_job",false);
         haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
         haulIndex=Math.clamp(in.getIntOr("haul_worker_index",0),0,3);
+        nodePush=in.getBooleanOr("node_push",false);
+        try{nodePushMission=UUID.fromString(in.getStringOr("node_push_mission",""));}
+        catch(IllegalArgumentException ex){nodePushMission=null;}
+        try{nodePushVehicle=UUID.fromString(in.getStringOr("node_push_vehicle",""));}
+        catch(IllegalArgumentException ex){nodePushVehicle=null;}
+        nodePushNode=in.read("node_push_node",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        nodePushGoal=in.read("node_push_goal",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        nodePushLoading=in.getBooleanOr("node_push_loading",false);
+        nodePushSource=in.read("node_push_source",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        nodePushSourceGoal=in.read("node_push_source_goal",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        nodePushSourceFloor=in.getIntOr("node_push_floor",0);
+        nodePushFromSource=in.getBooleanOr("node_push_from_source",false);
         remotePickup=in.getBooleanOr("remote_pickup_worker",false);
         remotePathPaused=in.getBooleanOr("remote_path_paused",false);
         remotePauseReason=in.getStringOr("remote_pause_reason","PATH BLOCKED");

@@ -49,3 +49,9 @@ The same tag feeds the shared Caszual Creative tab. The barrel scans the active 
 ## Drone Parking Bay warehouse pickup (0.1.3)
 
 Pallets Plus 0.4.9 calls **DroneBayNoReplacementDispatch.request** to send **four independent Storage Golems** to a wrapped pallet on a linked INPUT Parking Bay. All four arrive without cargo, assemble at the pallet, and carry its original 216-slot inventory to a vacant INPUT aisle rack (regular rack fallback). No spare or replacement pallet and no online warehouse owner are required. All four shelf workers are restored after delivery. **Normal Scanner REMOTE pickup is unchanged:** four Golems total, three walking to the target and one bringing an empty replacement pallet to exchange before they return.
+
+## Pallet Transfer Node two-Golem pushers (0.1.4)
+
+Pallets Plus 0.5.0 uses exactly two independently walking and persistent warehouse Golems to push a staged Pallet Transfer Node pallet onto an adjacent eligible train flatbed or conveyor carrier, or to unload a parked vehicle onto an INPUT node. Workers move to different service locations and transfer the real pallet without an item duplicate, then return to their original shelves. A node without adjacent transport never dispatches this crew. The existing four-Golem INPUT pickup has no replacement pallet; normal four-Golem REMOTE pickup still sends one replacement-pallet courier. This branch includes the latest mainline forklift fixes.
+
+The two-Golem OUTPUT push mission now begins at a loaded glass-wrapped pallet in a reachable ground-level **Output aisle rack**. Both workers walk to its service aisle; after the existing 40-tick rack-pull animation, the lead Golem owns all 216 inventory slots. Together they push the original pallet to the transfer node and transfer sole ownership to the adjacent empty train flatbed or conveyor carrier. If the transport leaves, the loaded team waits with its original cargo. No spare pallet or four-Golem crew is used for this job.
