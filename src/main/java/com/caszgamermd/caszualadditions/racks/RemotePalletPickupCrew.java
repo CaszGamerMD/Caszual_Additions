@@ -83,6 +83,17 @@ public final class RemotePalletPickupCrew {
 
     public static BlockPos individualGoal(BlockPos rally,BlockPos target,
             int workerIndex){
+        // Parking Bay pickups have FOUR real golems with no replacement
+        // courier. The fourth takes the aisle cell directly BEHIND the
+        // center worker so it doesn't overlap any of the three positions
+        // used by normal REMOTE exchange. The full 3x3 safe aisle covers
+        // all four positions without allowing a golem inside the pallet.
+        if(workerIndex==3){
+            int dx=rally.getX()-target.getX(),dz=rally.getZ()-target.getZ();
+            if(Math.abs(dx)>Math.abs(dz))
+                return rally.offset(Integer.signum(dx),0,0);
+            return rally.offset(0,0,Integer.signum(dz));
+        }
         // Each worker gets a distinct, FIXED floor tile across the outer
         // pallet aisle, perpendicular to the target-facing direction.
         // The old unconditional X offset placed east/west teams in a
@@ -95,7 +106,7 @@ public final class RemotePalletPickupCrew {
         return rally.offset(lane,0,0);
     }
 
-    /** Called by worker zero after all THREE independently walking workers
+    /** Called by worker zero after THREE exchange workers or FOUR bay workers
      * have reached their fixed external service cells. Nothing is merged
      * while any member is still travelling or cannot be found/reloaded. */
     public static void tryLift(ServerLevel level,StorageGolem leader){
@@ -105,7 +116,7 @@ public final class RemotePalletPickupCrew {
         if(level.getEntity(id) instanceof MovingPallet existing){
             // Crash/reload at the handoff boundary: loaded rig is already
             // sole owner of the three shelf identities. Retire remnants.
-            if(existing.remoteExchangeActive()&&existing.loaded())
+            if(existing.loaded())
                 for(var entity:level.getAllEntities())
                     if(entity instanceof StorageGolem worker
                             &&worker.remotePickupActive()
@@ -113,19 +124,22 @@ public final class RemotePalletPickupCrew {
                         worker.discard();
             return;
         }
-        ArrayList<StorageGolem> trio=new ArrayList<>(3);
+        boolean bayPickup=DroneBayNoReplacementDispatch.NO_COURIER.equals(
+                leader.remotePickupCourier());
+        int workerCount=bayPickup?4:3;
+        ArrayList<StorageGolem> team=new ArrayList<>(workerCount);
         for(var entity:level.getAllEntities()){
             if(!(entity instanceof StorageGolem worker)
                     ||!worker.remotePickupActive()
                     ||!id.equals(worker.remotePickupMission()))continue;
-            trio.add(worker);
+            team.add(worker);
         }
-        if(trio.size()!=3)return;
+        if(team.size()!=workerCount)return;
         BlockPos aisle=leader.remotePickupRally();
         if(!threeWideAisle(level,aisle))return;
-        for(int index=0;index<3;index++){
+        for(int index=0;index<workerCount;index++){
             final int slot=index;
-            StorageGolem worker=trio.stream()
+            StorageGolem worker=team.stream()
                     .filter(w->w.remotePickupIndex()==slot).findFirst().orElse(null);
             if(worker==null)return;
             BlockPos goal=individualGoal(aisle,leader.remotePickupTarget(),index);
@@ -142,21 +156,28 @@ public final class RemotePalletPickupCrew {
                 leader.remotePickupHomes(),leader.remotePickupCourier(),
                 leader.remotePickupTarget(),leader.remotePickupWarehouse()))
             return;
-        for(StorageGolem member:trio)rig.setCrewName(
+        for(StorageGolem member:team)rig.setCrewName(
                 member.remotePickupIndex(),member.golemName());
-        if(level.getEntity(leader.remotePickupCourier()) instanceof StorageGolem courier)
+        if(!bayPickup&&level.getEntity(leader.remotePickupCourier()) instanceof StorageGolem courier)
             rig.setCrewName(3,courier.golemName());
         rig.setPos(aisle.getX()+.5,aisle.getY(),aisle.getZ()+.5);
         if(!level.addFreshEntity(rig))return;
         // Existing transaction copies 216 slots into the ONE rig then
         // removes the ground pallet. On failure it never destroys source;
-        // return to three real workers and retry later.
+        // return to the same independent workers and retry later.
         if(!StorageGroundPalletTransfer.liftForRemoteExchange(level,
                 leader.remotePickupTarget(),rig)){
             rig.discard();
             return;
         }
-        for(StorageGolem worker:trio)worker.discard();
+        if(DroneBayNoReplacementDispatch.NO_COURIER.equals(leader.remotePickupCourier())
+                &&!rig.finishNoReplacementRemotePickup()){
+            // The original ground pallet belongs to this rig already.
+            // On an unexpected transition failure retain its inventory
+            // and route home rather than destroying or cloning it.
+            rig.returnToWarehouse(level,leader.remotePickupWarehouse());
+        }
+        for(StorageGolem worker:team)worker.discard();
     }
 
     /** Backwards-compatible upgrade for preexisting 3-model rigs that
