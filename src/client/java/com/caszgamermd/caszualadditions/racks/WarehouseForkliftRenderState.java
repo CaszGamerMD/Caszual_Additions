@@ -9,6 +9,7 @@ public final class WarehouseForkliftRenderState extends LivingEntityRenderState 
     public float mastHeight;
     public int task;
     public int visibleCargo;
+    public boolean hasPallet;
     public final BlockModelRenderState palletDeck=new BlockModelRenderState();
     public final BlockModelRenderState[] boards={
             new BlockModelRenderState(),new BlockModelRenderState(),
