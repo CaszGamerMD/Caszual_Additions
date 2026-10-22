@@ -105,6 +105,8 @@ jobs:
         run: python3 scripts/warehouse_pallet_stack_pathfinding_smoke.py
       - name: Verify PTP pallet pickup and physical 2x2 magazine (blocking)
         run: python3 scripts/warehouse_ptp_pickup_2x2_magazine_smoke.py
+      - name: Verify exactly two pallet node pushers, four-Golem INPUT and REMOTE unchanged
+        run: python3 scripts/warehouse_node_two_pushers_smoke.py
       - name: Verify Parking Bay four-Golem pickup has no replacement while REMOTE exchange remains intact
         run: python3 scripts/warehouse_drone_bay_four_workers_smoke.py
       - name: Verify synchronized three-Golem lift and empty-pallet courier
