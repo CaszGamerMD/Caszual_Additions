@@ -91,13 +91,15 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
             .texOffs(70,18).addBox(4,-43,-24,2,43,3)
             .texOffs(0,90).addBox(-6,-43,-25,12,2,3),
             PartPose.offset(0,22,0));
-        // Lift carriage never clips mast: fork rails project forward.
+        // The tines run forward from the mast (local -Z), under the
+        // 2x2 deck; extend them to -64px to support cargo placed outside
+        // the cab. They remain one moving carriage during mast lifting.
         root.addOrReplaceChild("carriage",CubeListBuilder.create()
             .texOffs(0,90).addBox(-12,-13,-26,24,5,3)
             .texOffs(0,90).addBox(-11,-12,-31,4,13,4)
             .texOffs(0,90).addBox(7,-12,-31,4,13,4)
-            .texOffs(92,31).addBox(-10,-2,-45,4,3,22)
-            .texOffs(92,31).addBox(6,-2,-45,4,3,22)
+            .texOffs(92,31).addBox(-10,-2,-64,4,3,41)
+            .texOffs(92,31).addBox(6,-2,-64,4,3,41)
             .texOffs(104,50).addBox(-11,-14,-27,22,2,2),
             PartPose.offset(0,22,0));
         // Tail light / safety lamp and amber work lights.
