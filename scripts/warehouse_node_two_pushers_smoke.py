@@ -8,7 +8,7 @@ remote=(base/"RemotePalletDispatch.java").read_text()
 bay=(base/"DroneBayNoReplacementDispatch.java").read_text()
 assert "new ArrayList<>(2)" in push and "shelves.size()!=2" in push
 assert "for(int i=0;i<2;i++)" in push
-assert "golem.beginNodePush(mission,node,vehicle,goals[i],loading)" in push
+assert "golem.beginNodePush(mission,node,vehicle,goals[i],loading," in push
 assert "StorageGolemReturnPath.walkable(level,a)" in push
 assert 'Class.forName("com.caszgamermd.palletsplus.transport.NodePushBridge")' in push
 assert "if(!transferred)return;" in push
