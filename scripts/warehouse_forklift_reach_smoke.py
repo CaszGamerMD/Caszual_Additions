@@ -48,7 +48,7 @@ assert "golem.finishForkliftDriving()" in fork
 assert "!forkliftDriver&&!forkliftEscort)" in golem
 assert "WarehouseSortingReach.groundRack(level,rack)" in carrier
 assert "if(PalletJackItem.loaded(jack))" in fork
-assert "if(!drive(world,landing))return;" in fork
+assert "if(animation==0&&!drive(world,landing))return;" in fork
 assert "busy()" in item and "nearest.order(level,rack,selectedSource)" in item
 assert "FORKLIFT_CONTROLLER" in read("RackContent.java")
 assert "selectedFloorPallet" in fork
