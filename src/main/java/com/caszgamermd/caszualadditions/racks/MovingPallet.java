@@ -86,7 +86,7 @@ public final class MovingPallet extends PathfinderMob {
     private boolean delivered,deathDropsReleased,recallAfterDelivery;
     // Only remote pickups get Input-aisle-rack priority over warehouse PTPs.
     // Persist this across world saves and chunk unloads.
-    private boolean remotePickupReturn;
+    private boolean remotePickupReturn,remoteNoReplacement;
     // Explicit shipping task: cargo is held until an OUTPUT-tagged aisle rack
     // can accept it. This is separate from receiving and ordinary recalls.
     private boolean outboundStaging;
@@ -327,6 +327,24 @@ public final class MovingPallet extends PathfinderMob {
         entityData.set(CREW_SIZE,3);
         liftTicks=0;entityData.set(LIFT_TICKS,0);
         syncDisplay();
+        return true;
+    }
+    /** Called only after the existing atomic 216-slot pickup has completed.
+     * Return directly to INPUT racks with the three real workers: no courier
+     * is created and no empty pallet is placed at the source bay. */
+    public boolean finishNoReplacementRemotePickup(){
+        if(deliveryMode!=5||pallet.isEmpty()||
+                !DroneBayNoReplacementDispatch.NO_COURIER.equals(remoteCourierId))
+            return false;
+        remoteNoReplacement=true;
+        remoteCourierId=null;
+        deliveryMode=3;
+        recallAfterDelivery=true;
+        remotePickupReturn=true;
+        deliveryPosition=remoteWarehouse;
+        remoteFloorRoute.clear();nextRemotePlan=0;
+        entityData.set(CREW_SIZE,3);
+        deliveryFailure="THREE GOLEMS RETURNING INPUT BAY PALLET WITHOUT REPLACEMENT";
         return true;
     }
     public boolean beginRemoteExchange(BlockPos target,BlockPos computer){
@@ -1528,7 +1546,7 @@ public final class MovingPallet extends PathfinderMob {
         UUID id;
         try{id=UUID.fromString(owner);}catch(IllegalArgumentException ex){return false;}
         java.util.ArrayList<StorageGolem> spawned=new java.util.ArrayList<>();
-        for(int i=0;i<4;i++){
+        for(int i=0;i<(remoteNoReplacement?3:4);i++){
             StorageGolem golem=RackContent.STORAGE_GOLEM_TYPE.create(level,EntitySpawnReason.EVENT);
             if(golem==null){for(StorageGolem worker:spawned)worker.discard();return false;}
             golem.assignPlayerCrew(shelves[i],i,id);
@@ -1797,6 +1815,7 @@ public final class MovingPallet extends PathfinderMob {
         out.putBoolean("waiting_for_player",waitingForPlayer);
         out.putBoolean("recall_after_delivery",recallAfterDelivery);
         out.putBoolean("remote_pickup_return",remotePickupReturn);
+        out.putBoolean("remote_no_replacement",remoteNoReplacement);
         out.putBoolean("outbound_staging",outboundStaging);
         out.putInt("lift_ticks",liftTicks);
         out.store("forklift_pending_rack",BlockPos.CODEC,pendingForkliftRack);
@@ -1829,6 +1848,7 @@ public final class MovingPallet extends PathfinderMob {
         waitingForPlayer=in.getBooleanOr("waiting_for_player",false);
         recallAfterDelivery=in.getBooleanOr("recall_after_delivery",false);
         remotePickupReturn=in.getBooleanOr("remote_pickup_return",false);
+        remoteNoReplacement=in.getBooleanOr("remote_no_replacement",false);
         outboundStaging=in.getBooleanOr("outbound_staging",false);
         if(delivered){
             setNoGravity(true);
@@ -1861,7 +1881,7 @@ public final class MovingPallet extends PathfinderMob {
         catch(IllegalArgumentException ex){remoteOldFacing=Direction.NORTH;}
         try{remoteCourierId=UUID.fromString(in.getStringOr("remote_courier_uuid",""));}
         catch(IllegalArgumentException ex){remoteCourierId=null;}
-        entityData.set(CREW_SIZE,remoteCourierId==null?4:3);
+        entityData.set(CREW_SIZE,remoteNoReplacement||remoteCourierId!=null?3:4);
         entityData.set(RELEASE_TICKS,releaseTicks);
         entityData.set(RACK_INSERT_ACTIVE,deliveryMode==1);
         for(int i=0;i<4;i++){
