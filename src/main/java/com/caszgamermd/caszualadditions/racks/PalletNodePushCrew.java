@@ -19,6 +19,23 @@ public final class PalletNodePushCrew {
         // vehicle class, speed and cargo capacity again at commit time.
         if(level.getEntity(vehicle)==null)return "WAITING: Adjacent vehicle unloaded.";
         var network=WarehouseNetwork.fromComputer(level,computer);
+        // OUTPUT aisle is the warehouse's staging inventory. When the
+        // Transfer Node is empty, pick a genuine wrapped pallet in an
+        // accessible ground-level OUTPUT rack, then physically walk both
+        // Golems to that rack BEFORE traveling together to the node.
+        RackBlockEntity source=null;
+        RackPickupPlan sourcePlan=null;
+        boolean onNode=level.getBlockState(node.above().offset(-1,0,-1))
+                .getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock;
+        if(loading&&!onNode){
+            for(RackBlockEntity rack:WarehouseAislePriority.stagedOutputRacks(level,computer)){
+                if(!rack.glassWrapped()||!WarehouseSortingReach.groundRack(level,rack))
+                    continue;
+                RackPickupPlan plan=RackPickupPlan.find(level,rack);
+                if(plan!=null&&plan.height()==0){source=rack;sourcePlan=plan;break;}
+            }
+            if(source==null)return "WAITING: no wrapped pallet in a reachable OUTPUT aisle rack.";
+        }
         for(var entity:level.getAllEntities())
             if(entity instanceof StorageGolem golem&&golem.nodePushActive()
                     &&node.equals(golem.nodePushNode()))
@@ -55,7 +72,12 @@ public final class PalletNodePushCrew {
             if(golem==null)break;
             golem.assignPlayerCrew(shelves.get(i).getBlockPos(),i,owner);
             golem.setGolemName(names[i]);
-            golem.beginNodePush(mission,node,vehicle,goals[i],loading);
+            BlockPos sourceRoot=source==null?BlockPos.ZERO:source.getBlockPos();
+            BlockPos sourceApproach=sourcePlan==null?BlockPos.ZERO:
+                    sourcePlan.goal(i,false);
+            int sourceFloor=sourcePlan==null?0:sourcePlan.floorY();
+            golem.beginNodePush(mission,node,vehicle,goals[i],loading,
+                    sourceRoot,sourceApproach,sourceFloor);
             BlockPos departure=StorageGolemShelfDoor.exit(level,shelves.get(i));
             if(departure==null){golem.discard();break;}
             golem.setPos(departure.getX()+.5,departure.getY(),departure.getZ()+.5);
@@ -78,15 +100,34 @@ public final class PalletNodePushCrew {
                     &&candidate!=first&&candidate.nodePushActive()
                     &&first.nodePushMission().equals(candidate.nodePushMission())
                     &&candidate.nodePushIndex()==1){partner=candidate;break;}
-        if(partner==null||!first.nodePushReady(level)||!partner.nodePushReady(level))return;
+        if(partner==null)return;
+        if(!first.nodePushSource().equals(BlockPos.ZERO)&&!first.nodePushFromSource()){
+            if(!first.nodePushReady(level)||!partner.nodePushReady(level))return;
+            if(!(level.getBlockEntity(first.nodePushSource()) instanceof RackBlockEntity rack))
+                return;
+            if(!rack.startPull(first.nodePushMission(),first.nodePushSourceFloor()))
+                return;
+            if(rack.pullProgress()<RackPickupPlan.PULL_TICKS)return;
+            if(!rack.liftToCarrier(first))return;
+            first.nodePushDepartSource();
+            partner.nodePushDepartSource();
+            return;
+        }
+        if(!first.nodePushReady(level)||!partner.nodePushReady(level))return;
         // Two workers visibly walk into place, stop, then push together.
         if(first.tickCount<15||partner.tickCount<15)return;
         boolean transferred=false;
         try{
             Class<?> bridge=Class.forName("com.caszgamermd.palletsplus.transport.NodePushBridge");
-            var method=bridge.getMethod("complete",ServerLevel.class,BlockPos.class,UUID.class,boolean.class);
-            transferred=Boolean.TRUE.equals(method.invoke(null,level,first.nodePushNode(),
-                    first.nodePushVehicle(),first.nodePushLoading()));
+            boolean fromRack=first.nodePushFromSource()&&first.holdsPallet();
+            var method=fromRack?
+                bridge.getMethod("completeFromCrew",ServerLevel.class,BlockPos.class,
+                        UUID.class,StorageGolem.class):
+                bridge.getMethod("complete",ServerLevel.class,BlockPos.class,UUID.class,boolean.class);
+            transferred=Boolean.TRUE.equals(fromRack?
+                method.invoke(null,level,first.nodePushNode(),first.nodePushVehicle(),first):
+                method.invoke(null,level,first.nodePushNode(),
+                        first.nodePushVehicle(),first.nodePushLoading()));
         }catch(ReflectiveOperationException ignored){}
         if(!transferred)return; // Both remain ready; original cargo never disappears.
         first.finishNodePush();
