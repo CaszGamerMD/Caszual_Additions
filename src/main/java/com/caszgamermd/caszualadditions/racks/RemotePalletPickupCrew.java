@@ -156,6 +156,13 @@ public final class RemotePalletPickupCrew {
             rig.discard();
             return;
         }
+        if(DroneBayNoReplacementDispatch.NO_COURIER.equals(leader.remotePickupCourier())
+                &&!rig.finishNoReplacementRemotePickup()){
+            // The original ground pallet belongs to this rig already.
+            // On an unexpected transition failure retain its inventory
+            // and route home rather than destroying or cloning it.
+            rig.returnToWarehouse(level,leader.remotePickupWarehouse());
+        }
         for(StorageGolem worker:trio)worker.discard();
     }
 
