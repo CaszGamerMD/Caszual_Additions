@@ -346,8 +346,9 @@ public final class StorageGolem extends PathfinderMob {
         for(int i=0;i<4;i++)remotePickupHomes[i]=fourHomes[i].immutable();
         stage=0;waitTicks=0;
         markCurrentRecall();
-        setCustomName(Component.literal("REMOTE PICKUP "+(haulIndex+1)
-                +"/3 | EMPTY HANDED"));
+        boolean bayOnly=DroneBayNoReplacementDispatch.NO_COURIER.equals(courier);
+        setCustomName(Component.literal((bayOnly?"BAY PICKUP ":"REMOTE PICKUP ")+(haulIndex+1)
+                +(bayOnly?"/4":"/3")+" | EMPTY HANDED"));
         setCustomNameVisible(true);
     }
     public boolean remotePickupActive(){return remotePickup;}
@@ -1076,7 +1077,9 @@ public final class StorageGolem extends PathfinderMob {
         }else if(rackStairMover){
             label="ESCORT | RACK STAIRS";
         }else if(remotePickup){
-            label="REMOTE PICKUP "+(haulIndex+1)+"/3 | EMPTY HANDED"
+            boolean bayOnly=DroneBayNoReplacementDispatch.NO_COURIER.equals(remotePickupCourier);
+            label=(bayOnly?"BAY PICKUP ":"REMOTE PICKUP ")+(haulIndex+1)
+                    +(bayOnly?"/4":"/3")+" | EMPTY HANDED"
                     +(routeIssue.isBlank()?"":" | "+routeIssue);
         }else if(remoteCourier){
             label="EMPTY PALLET COURIER | "
