@@ -24,6 +24,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * A physical, Golem-driven warehouse forklift. One actual pallet with its
@@ -43,6 +44,8 @@ public final class WarehouseForklift extends PathfinderMob {
     private boolean retrieving,groundDestination;
     private Direction groundFacing=Direction.NORTH;
     private int job,animation,stallTicks;
+    private BlockPos lastDriveGoal=BlockPos.ZERO;
+    private double lastDriveDistance=Double.POSITIVE_INFINITY;
     private UUID driver;
     private boolean dismissAfterParking;
     private String status="PARKED";
@@ -68,6 +71,18 @@ public final class WarehouseForklift extends PathfinderMob {
     public float mastHeight(){return entityData.get(MAST);}
     public int action(){return entityData.get(ACTION);}
     public boolean busy(){return job!=0&&job!=5;}
+
+    /** The cab seat is behind the steering column (positive model Z),
+     * about 1.3 blocks above the tires, NOT on top of the roll cage.
+     * Rotate the seat position with the forklift on both client and server.
+     */
+    @Override public Vec3 getPassengerRidingPosition(Entity passenger){
+        if(!(passenger instanceof StorageGolem))return super.getPassengerRidingPosition(passenger);
+        double radians=Math.toRadians(getYRot());
+        double rear=.59;
+        return new Vec3(getX()-Math.sin(radians)*rear,
+                getY()+1.32,getZ()+Math.cos(radians)*rear);
+    }
     public void setParking(BlockPos at){parking=at.immutable();}
     public BlockPos parking(){return parking;}
     public boolean hasDriver(ServerLevel world){
@@ -233,27 +248,90 @@ public final class WarehouseForklift extends PathfinderMob {
         Entity occupant=world.getEntity(driver);
         return occupant instanceof StorageGolem golem && golem.getVehicle()==this;
     }
-    /** Smooth acceleration and navigation to an actual service lane,
-     * not into the rack's collision model. */
+    /** On flat unobstructed industrial flooring the forklift must not
+     * freeze merely because the vanilla mob path search rejected a 1.2-wide
+     * vehicle. This only enables the direct engine when the FULL bounding box
+     * and every floor tile of the straight route are clear. Normal navigation
+     * remains responsible for turns, hills and obstacle avoidance. */
+    private boolean directLaneClear(ServerLevel world,double x,double y,double z){
+        double dx=x-getX(),dz=z-getZ();
+        double distance=Math.hypot(dx,dz);
+        if(distance>24||Math.abs(y-getY())>.6)return false;
+        int steps=Math.max(1,(int)Math.ceil(distance/.4));
+        for(int i=1;i<=steps;i++){
+            double amount=(double)i/steps;
+            double tx=getX()+dx*amount,tz=getZ()+dz*amount;
+            AABB test=getBoundingBox().move(tx-getX(),0,tz-getZ());
+            if(!world.noCollision(this,test))return false;
+            BlockPos floor=BlockPos.containing(tx,y,tz).below();
+            if(!world.hasChunkAt(floor)
+                    ||world.getBlockState(floor).getCollisionShape(world,floor).isEmpty())
+                return false;
+        }
+        return true;
+    }
+
+    /** Progress-based driving: a path can report 'active' even while the
+     * forklift is motionless, so detect real displacement toward the target.
+     * Never teleport a pallet or bypass collisions to rescue a failed route. */
     private boolean drive(ServerLevel world,BlockPos goal){
         double x=goal.getX()+.5,z=goal.getZ()+.5;
         double dx=x-getX(),dz=z-getZ(),dist=dx*dx+dz*dz;
         if(dist<3.0&&Math.abs(goal.getY()-getY())<1.2){
-            getNavigation().stop();setDeltaMovement(getDeltaMovement().multiply(.7,1,.7));
+            getNavigation().stop();
+            getMoveControl().setWantedPosition(getX(),getY(),getZ(),0);
+            setDeltaMovement(getDeltaMovement().multiply(.7,1,.7));
+            stallTicks=0;
             return true;
         }
-        if(tickCount%12==0||getNavigation().isDone())
-            getNavigation().moveTo(x,goal.getY(),z,.86);
-        if(getNavigation().isDone())stallTicks++;
-        else stallTicks=0;
-        status=stallTicks>90?"WAITING: SERVICE AISLE BLOCKED":"DRIVING TO SERVICE AISLE";
+        if(!goal.equals(lastDriveGoal)){
+            lastDriveGoal=goal.immutable();
+            lastDriveDistance=Double.POSITIVE_INFINITY;
+            stallTicks=0;
+            getNavigation().stop();
+        }
+        if(dist+.04<lastDriveDistance){
+            lastDriveDistance=dist;
+            stallTicks=0;
+        }else stallTicks++;
+
+        // Use a normal path when one exists, then power the wheels using
+        // MoveControl rather than expecting the passenger Golem to walk.
+        if(tickCount%20==0||getNavigation().isDone()||stallTicks==45)
+            getNavigation().moveTo(x,goal.getY(),z,1.0);
+        boolean direct=(getNavigation().isDone()||stallTicks>30)
+                &&directLaneClear(world,x,goal.getY(),z);
+        if(direct){
+            getNavigation().stop();
+            getMoveControl().setWantedPosition(x,goal.getY(),z,1.25);
+        }
+        status=stallTicks>100&&!direct
+                ?"WAITING: FORKLIFT PATH BLOCKED; CLEAR THE DRIVE AISLE"
+                :"DRIVING FORKLIFT TO SERVICE AISLE";
         return false;
     }
     private BlockPos service(ServerLevel world,RackBlockEntity rack){
         RackPickupPlan plan=RackPickupPlan.forklift(world,rack);
-        if(plan==null)return null;
-        BlockPos at=plan.goal(3,false);
-        return at;
+        return plan==null?null:plan.goal(3,false);
+    }
+    /** A ground pallet has no rack facing. Select a free vehicle-wide
+     * approach next to that pallet instead of extrapolating the destination
+     * rack direction from the source location. */
+    private BlockPos groundService(ServerLevel world,BlockPos pallet){
+        BlockPos best=null;
+        double nearest=Double.POSITIVE_INFINITY;
+        for(Direction face:Direction.Plane.HORIZONTAL){
+            BlockPos candidate=pallet.relative(face,3);
+            if(!world.hasChunkAt(candidate)
+                    ||!StorageGolemReturnPath.walkable(world,candidate))continue;
+            AABB spot=getBoundingBox().move(
+                    candidate.getX()+.5-getX(),candidate.getY()-getY(),
+                    candidate.getZ()+.5-getZ());
+            if(!world.noCollision(this,spot))continue;
+            double score=candidate.distSqr(blockPosition());
+            if(score<nearest){nearest=score;best=candidate;}
+        }
+        return best;
     }
     @Override public void tick(){
         super.tick();
@@ -267,7 +345,12 @@ public final class WarehouseForklift extends PathfinderMob {
         entityData.set(ACTION,job);
         if(job==0)return;
         if(job==5){
-            // The driver stays seated while returning to the painted bay.
+            // Keep vehicle movement contingent on an actual seated operator.
+            if(driver!=null&&!seatedDriver(world)){
+                getNavigation().stop();
+                status="WAITING FOR FORKLIFT OPERATOR TO BOARD";
+                return;
+            }
             if(parking.equals(BlockPos.ZERO)||drive(world,parking)){
                 job=0;status="PARKED - DRIVER ON DUTY";
                 if(dismissAfterParking){
@@ -296,7 +379,7 @@ public final class WarehouseForklift extends PathfinderMob {
         if(retrieving&&origin==null){status="WAITING FOR SOURCE RACK";return;}
         if(job==1){
             BlockPos pickup=retrieving?service(world,origin)
-                    :source.relative(rack==null?groundFacing:rack.facing(),3);
+                    :groundService(world,source);
             if(pickup==null){status="WAITING FOR CLEAR AISLE";return;}
             if(!drive(world,pickup))return;
             job=2;animation=0;
