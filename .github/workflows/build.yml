@@ -144,6 +144,8 @@ jobs:
         run: python3 scripts/warehouse_pallet_death_recovery_smoke.py
       - name: Verify idle golem arms, repaired UV atlas and smooth slab traversal
         run: python3 scripts/warehouse_idle_slab_texture_smoke.py
+      - name: Verify Recall ground pallet drop and preserved 216-slot cargo
+        run: python3 scripts/warehouse_recall_ground_delivery_smoke.py
       - name: Verify visible remote empty pallet and safe direct scanner Golem recall
         run: python3 scripts/warehouse_remote_pallet_visual_direct_recall_smoke.py
       - name: Verify unloading Golems hold actual items in wrists with no cargo tray
