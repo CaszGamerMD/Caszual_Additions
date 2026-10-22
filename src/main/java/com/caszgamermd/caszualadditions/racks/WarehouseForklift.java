@@ -44,8 +44,8 @@ public final class WarehouseForklift extends PathfinderMob {
             SynchedEntityData.defineId(WarehouseForklift.class,EntityDataSerializers.INT);
     /** Actual travel distance, not an AI speed multiplier:
      * Minecraft runs 20 server ticks per second, so 0.20 block/tick = 4 m/s. */
-    private static final double DRIVE_BLOCKS_PER_TICK=.20D;
-    private static final double DRIVE_SPEED=.20D;
+    private static final double DRIVE_BLOCKS_PER_TICK=0.20D;
+    private static final double DRIVE_SPEED=0.20D;
     private static final double DRIVE_CONTROL=1.0D;
     /** Only used to cap physical motor displacement after vanilla AI movement. */
     private double driveTickStartX,driveTickStartZ;
