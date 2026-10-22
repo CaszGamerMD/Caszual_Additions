@@ -100,6 +100,17 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
         leftForearm.xRot=rightForearm.xRot=0f;
         leftForearm.yRot=rightForearm.yRot=0f;
         leftForearm.zRot=rightForearm.zRot=0f;
+        if(state.ridingForklift){
+            // Actual seated forklift driver: thighs extend toward the pedals,
+            // arms grip the forward steering wheel rather than waving or
+            // swinging in the walking animation.
+            leftLeg.xRot=rightLeg.xRot=-1.35f;
+            leftArm.xRot=rightArm.xRot=-1.08f;
+            leftForearm.xRot=rightForearm.xRot=-.36f;
+            leftArm.zRot=-.10f;rightArm.zRot=.10f;
+            head.xRot=0f;head.yRot=0f;
+            return;
+        }
         if(state.pushingEmptyPallet){
             // Arms reach forward to physically TOUCH the upright pallet
             // instead of swinging empty-handed through its surface.
