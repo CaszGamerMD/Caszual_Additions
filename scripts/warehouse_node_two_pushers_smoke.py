@@ -12,10 +12,19 @@ assert "golem.beginNodePush(mission,node,vehicle,goals[i],loading)" in push
 assert "StorageGolemReturnPath.walkable(level,a)" in push
 assert 'Class.forName("com.caszgamermd.palletsplus.transport.NodePushBridge")' in push
 assert "if(!transferred)return;" in push
+assert "WarehouseAislePriority.stagedOutputRacks(level,computer)" in push
+assert "RackPickupPlan.find(level,rack)" in push
+assert "rack.startPull(first.nodePushMission(),first.nodePushSourceFloor())" in push
+assert "rack.liftToCarrier(first)" in push
+assert "first.nodePushDepartSource()" in push and "partner.nodePushDepartSource()" in push
+assert 'bridge.getMethod("completeFromCrew"' in push
 assert "first.finishNodePush()" in push and "partner.finishNodePush()" in push
 assert "private boolean nodePush;" in worker
 assert "nodePush=in.getBooleanOr(" in worker and 'out.putBoolean("node_push",nodePush)' in worker
 assert "tickNodePush(level);return;" in worker
+assert 'out.store("node_push_source",BlockPos.CODEC,nodePushSource)' in worker
+assert 'nodePushSource=in.read("node_push_source",BlockPos.CODEC)' in worker
+assert "leader.relinquishPalletToRig()" not in push  # only the transport bridge commits the transfer
 assert 'label="TRANSFER PUSH "+(haulIndex+1)+"/2' in worker
 assert "shelves.size()<4" in bay and "for(int i=0;i<4;i++)" in bay
 assert "List<StorageGolem> identities=new ArrayList<>(4)" in remote
