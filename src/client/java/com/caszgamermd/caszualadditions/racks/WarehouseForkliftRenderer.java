@@ -43,13 +43,9 @@ public final class WarehouseForkliftRenderer extends MobRenderer<
         state.mastHeight=vehicle.mastHeight();
         state.task=vehicle.action();
         ItemStack deck=vehicle.displayPallet();
+        state.hasPallet=!deck.isEmpty();
         state.visibleCargo=deck.isEmpty()?0:vehicle.displayedCargoCrates();
-        if(deck.isEmpty()){
-            state.palletDeck.clear();
-            for(BlockModelRenderState board:state.boards)board.clear();
-            state.support.clear();state.crate.clear();state.glass.clear();
-            return;
-        }
+        if(deck.isEmpty())return;
         Block material=Blocks.OAK_PLANKS;
         boolean plastic=false;
         if(deck.getItem() instanceof BlockItem item
@@ -82,7 +78,7 @@ public final class WarehouseForkliftRenderer extends MobRenderer<
     @Override public void submit(WarehouseForkliftRenderState state,
             PoseStack pose,SubmitNodeCollector collector,CameraRenderState camera){
         super.submit(state,pose,collector,camera);
-        if(state.palletDeck.isEmpty())return;
+        if(!state.hasPallet)return;
         pose.pushPose();
         pose.mulPose(Axis.YP.rotationDegrees(180-state.bodyRot));
         // The REAL forks sit just above wheel height. Keep a 2x2 pallet
