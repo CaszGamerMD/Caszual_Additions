@@ -26,7 +26,7 @@ assert "StorageGolemReturnPath.walkable(level,candidate)" in golem
 assert "setYBodyRot(lift.getYRot());" in golem
 assert "getNavigation().moveTo(x,goal.getY(),z,DRIVE_CONTROL)" in fork
 assert "powerAlongSafeRoute(world,x,goal.getY(),z)" in fork
-assert "directLaneClear(world,x,goal.getY(),z)" in fork
+assert "directLaneClear(world,aheadX,y,aheadZ)" in fork
 assert "world.noCollision(this,test)" in fork
 assert "getCollisionShape(world,floor).isEmpty()" in fork
 assert "lastDriveDistance=dist" in fork and "stallTicks++" in fork
