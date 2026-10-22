@@ -87,7 +87,7 @@ public final class WarehouseForkliftRenderer extends MobRenderer<
         // Four material-accurate long boards and transverse pallet runners.
         for(int board=0;board<4;board++)
             piece(state.boards[board],state,pose,collector,
-                    0,.10f+board*.43f,0,1.80f,.12f,.33f);
+                    0,.10f,.03f+board*.43f,1.80f,.12f,.42f);
         for(float x:new float[]{.08f,.73f,1.58f})
             piece(state.palletDeck,state,pose,collector,
                     x,.015f,.07f,.14f,.13f,1.73f);
