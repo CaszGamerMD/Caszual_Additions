@@ -11,7 +11,7 @@ state=(client/"StorageGolemRenderState.java").read_text()
 renderer=(client/"StorageGolemRenderer.java").read_text()
 assert "getPassengerRidingPosition(Entity passenger)" in fork
 assert "passenger instanceof StorageGolem" in fork
-assert "getY()+1.32" in fork and "double rear=.59;" in fork
+assert "getY()+.62" in fork and "double rear=.59;" in fork
 assert "getX()-Math.sin(radians)*rear" in fork
 assert "getZ()+Math.cos(radians)*rear" in fork
 assert "state.ridingForklift=golem.getVehicle() instanceof WarehouseForklift;" in renderer
@@ -24,8 +24,8 @@ assert "startRiding(lift)" in golem
 assert "BlockPos candidate=lift.blockPosition().relative(side,2);" in golem
 assert "StorageGolemReturnPath.walkable(level,candidate)" in golem
 assert "setYBodyRot(lift.getYRot());" in golem
-assert "getNavigation().moveTo(x,goal.getY(),z,1.0)" in fork
-assert "getMoveControl().setWantedPosition(x,goal.getY(),z,1.25)" in fork
+assert "getNavigation().moveTo(x,goal.getY(),z,DRIVE_CONTROL)" in fork
+assert "getMoveControl().setWantedPosition(x,goal.getY(),z,DRIVE_CONTROL)" in fork
 assert "directLaneClear(world,x,goal.getY(),z)" in fork
 assert "world.noCollision(this,test)" in fork
 assert "getCollisionShape(world,floor).isEmpty()" in fork
