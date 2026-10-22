@@ -86,7 +86,8 @@ public final class MovingPallet extends PathfinderMob {
     private boolean delivered,deathDropsReleased,recallAfterDelivery;
     // Only remote pickups get Input-aisle-rack priority over warehouse PTPs.
     // Persist this across world saves and chunk unloads.
-    private boolean remotePickupReturn,remoteNoReplacement;
+    private boolean remotePickupReturn;
+    private boolean remoteNoReplacement;
     // Explicit shipping task: cargo is held until an OUTPUT-tagged aisle rack
     // can accept it. This is separate from receiving and ordinary recalls.
     private boolean outboundStaging;
