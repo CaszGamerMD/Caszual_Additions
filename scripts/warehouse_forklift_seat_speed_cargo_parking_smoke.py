@@ -23,7 +23,7 @@ assert "if(animation==0&&!drive(world,landing))return;" in lift
 assert "entityData.set(CARGO_CRATES,Math.min(27,visible));" in lift
 assert "state.visibleCargo=deck.isEmpty()?0:vehicle.displayedCargoCrates();" in view
 assert "state.hasPallet=!deck.isEmpty();" in view
-assert "pose.translate(-.90f,.32f+state.mastHeight,-1.72f);" in view
+assert "pose.translate(-.90f,.32f+state.mastHeight,-3.72f);" in view
 assert "0,.10f,.03f+board*.43f,1.80f,.12f,.42f" in view
 assert "state.crate" in view and "state.glass" in view
 assert "state.boards[board]" in view and "PalletData.plasticColor(deck)" in view

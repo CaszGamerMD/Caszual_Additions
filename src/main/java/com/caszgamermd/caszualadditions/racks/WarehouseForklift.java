@@ -27,6 +27,7 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.util.Mth;
 
 /**
  * A physical, Golem-driven warehouse forklift. One actual pallet with its
@@ -296,6 +297,34 @@ public final class WarehouseForklift extends PathfinderMob {
         return true;
     }
 
+    /** Rotate the front mast and fork tines to point at the direction of
+     * movement, before advancing. Vanilla path navigation can move an entity
+     * sideways; the forklift must turn like a vehicle instead. Returning
+     * false keeps the motor stopped while the steering turn completes.
+     */
+    private boolean turnForksToward(double x,double z){
+        double dx=x-getX(),dz=z-getZ();
+        if(dx*dx+dz*dz<.01)return true;
+        float wanted=(float)Math.toDegrees(Math.atan2(-dx,dz));
+        float error=Mth.wrapDegrees(wanted-getYRot());
+        float turn=Mth.clamp(error,-14f,14f);
+        float yaw=getYRot()+turn;
+        setYRot(yaw);
+        setYBodyRot(yaw);
+        setYHeadRot(yaw);
+        return Math.abs(error)<8f;
+    }
+
+    /** Stop at the service aisle and face the actual pallet or rack before
+     * starting the lift, or before installing the pallet. This prevents
+     * transfers with the forks facing across the cab or sideways. */
+    private boolean alignForTransfer(BlockPos load){
+        boolean aligned=turnForksToward(load.getX()+.5,load.getZ()+.5);
+        getNavigation().stop();
+        setDeltaMovement(0,getDeltaMovement().y,0);
+        return aligned;
+    }
+
     /** Physically power the forklift along an already checked aisle.
      * MoveControl speed is a multiplier applied to mob navigation, NOT an
      * actual blocks-per-second target. Move only the missing portion of this
@@ -317,6 +346,12 @@ public final class WarehouseForklift extends PathfinderMob {
         if(!world.hasChunkAt(floor)
                 ||world.getBlockState(floor).getCollisionShape(world,floor).isEmpty()
                 ||!world.noCollision(this,footprint))return false;
+        // A heading change is a deliberate steering action. Do not slide
+        // sideways toward the target with the forks still facing elsewhere.
+        if(!turnForksToward(x,z)){
+            setDeltaMovement(0,getDeltaMovement().y,0);
+            return false;
+        }
         double beforeX=getX(),beforeZ=getZ();
         move(MoverType.SELF,new Vec3(mx,0,mz));
         // Mob walking inertia on the following tick must not add a second,
@@ -472,9 +507,17 @@ public final class WarehouseForklift extends PathfinderMob {
                     :groundService(world,source);
             if(pickup==null){status="WAITING FOR CLEAR AISLE";return;}
             if(!drive(world,pickup))return;
+            if(!alignForTransfer(source)){
+                status="TURNING FORKS TOWARD SOURCE PALLET";
+                return;
+            }
             job=2;animation=0;
         }
         if(job==2){
+            if(!alignForTransfer(source)){
+                status="TURNING FORKS TOWARD SOURCE PALLET";
+                return;
+            }
             if(++animation<45){status="ALIGNING FORKS AND LIFTING";return;}
             boolean ok=retrieving?origin.liftToForklift(jack):
                     ForkliftPalletIO.liftGround(world,source,jack);
@@ -493,7 +536,13 @@ public final class WarehouseForklift extends PathfinderMob {
                 return;
             }
             if(animation==0&&!drive(world,landing))return;
-            // Animation starts ONLY once we've reached the destination aisle.
+            BlockPos unload=groundDestination?staging:target;
+            if(!alignForTransfer(unload)){
+                status="TURNING FORKS TOWARD DROP-OFF";
+                return;
+            }
+            // Animation starts ONLY once we've reached the destination aisle,
+            // and after the fork carriage points at the intended pallet bay.
             if(++animation<55
                     ||(!groundDestination&&Math.abs(entityData.get(MAST)-goal)>.12f)){
                 status=groundDestination?"LOWERING PALLET ONTO GROUND"
