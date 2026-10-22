@@ -13,7 +13,7 @@ assert "double rear=.59;" in lift
 assert "DRIVE_SPEED=0.20D;" in lift # 4 blocks per 20t second
 assert ".add(Attributes.MOVEMENT_SPEED,DRIVE_SPEED)" in lift
 assert "getNavigation().moveTo(x,goal.getY(),z,DRIVE_CONTROL)" in lift
-assert "getMoveControl().setWantedPosition(x,goal.getY(),z,DRIVE_CONTROL)" in lift
+assert "powerAlongSafeRoute(world,x,goal.getY(),z)" in lift
 assert "boolean liftingAtSource=job==2&&retrieving;" in lift
 assert "boolean liftingAtDestination=job==3&&!groundDestination&&animation>0;" in lift
 assert 'status="LOWERING LOADED PALLET FOR TRAVEL"' in lift
