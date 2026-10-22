@@ -39,7 +39,7 @@ assert "StorageGroundPalletTransfer.wrappedController" in rally
 assert "rig.setUUID(id);" in rally
 assert "level.addFreshEntity(rig)" in rally
 assert "StorageGroundPalletTransfer.liftForRemoteExchange(level," in rally
-assert "for(StorageGolem worker:trio)worker.discard();" in rally
+assert "for(StorageGolem worker:team)worker.discard();" in rally
 assert "public boolean prepareRecoveredRemote(" in rig
 assert "remoteCourierId=courierId" in rig
 assert "deliveryMode=4" in rig

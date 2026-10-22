@@ -45,3 +45,7 @@ The same tag feeds the shared Caszual Creative tab. The barrel scans the active 
 - TV Time
 - Aquarium-related content
 - Built-in utility features (cosmetics, firefly glass, size snacks)
+
+## Drone Parking Bay warehouse pickup (0.1.3)
+
+Pallets Plus 0.4.9 calls **DroneBayNoReplacementDispatch.request** to send **four independent Storage Golems** to a wrapped pallet on a linked INPUT Parking Bay. All four arrive without cargo, assemble at the pallet, and carry its original 216-slot inventory to a vacant INPUT aisle rack (regular rack fallback). No spare or replacement pallet and no online warehouse owner are required. All four shelf workers are restored after delivery. **Normal Scanner REMOTE pickup is unchanged:** four Golems total, three walking to the target and one bringing an empty replacement pallet to exchange before they return.
