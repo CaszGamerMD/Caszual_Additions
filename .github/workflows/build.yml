@@ -132,6 +132,8 @@ jobs:
         run: python3 scripts/warehouse_forklift_seat_drive_smoke.py
       - name: Verify forklift low pallet travel, 4m/s, lowered seat and park-before-dismiss
         run: python3 scripts/warehouse_forklift_seat_speed_cargo_parking_smoke.py
+      - name: Verify centered forklift seat and physical four-blocks-per-second motor
+        run: python3 scripts/warehouse_forklift_center_physical_speed_smoke.py
       - name: Verify loaded Golem pallet speed boost on concrete and industrial floors
         run: python3 scripts/warehouse_concrete_carry_speed_smoke.py
       - name: Verify courier avoids nearby pallet decks and retains its assigned target
