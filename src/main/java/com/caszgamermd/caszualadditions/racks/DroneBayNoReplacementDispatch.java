@@ -5,12 +5,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 
-/** No-exchange warehouse pickup: three real independently walking Golems
+/** No-exchange warehouse pickup: four real independently walking Golems
  * retrieve a wrapped floor pallet and deliver it to an INPUT aisle rack.
  * No courier, spare pallet or player-online requirement. */
 public final class DroneBayNoReplacementDispatch {
-    /** Sentinel is persisted on the three workers until their leader merges
-     * them into one loaded rig; never spawns an imaginary fourth worker. */
+    /** Sentinel distinguishes four empty-handed pickup workers from the
+     * normal REMOTE exchange (three walkers plus one replacement courier). */
     public static final UUID NO_COURIER=new UUID(0,1);
 
     public static String request(ServerLevel level,UUID owner,BlockPos computer,BlockPos target){
@@ -38,12 +38,12 @@ public final class DroneBayNoReplacementDispatch {
                     &&WarehouseSortingReach.groundRack(level,rack)
                     &&RackPickupPlan.find(level,rack)!=null){space=true;break;}
         if(!space)return "WAITING: warehouse needs a vacant INPUT or regular rack.";
-        List<StorageGolemShelfEntity> shelves=new ArrayList<>(3);
+        List<StorageGolemShelfEntity> shelves=new ArrayList<>(4);
         for(var shelf:warehouse.shelves()){
-            for(int i=0;i<shelf.docked()&&shelves.size()<3;i++)shelves.add(shelf);
-            if(shelves.size()==3)break;
+            for(int i=0;i<shelf.docked()&&shelves.size()<4;i++)shelves.add(shelf);
+            if(shelves.size()==4)break;
         }
-        if(shelves.size()<3)return "WAITING: three docked storage Golems needed.";
+        if(shelves.size()<4)return "WAITING: four docked storage Golems needed.";
         BlockPos staging=null;
         for(var shelf:shelves){
             BlockPos door=StorageGolemShelfDoor.exit(level,shelf);
@@ -55,18 +55,18 @@ public final class DroneBayNoReplacementDispatch {
                     clear=false;
             if(clear){staging=candidate;break;}
         }
-        if(staging==null)return "WAITING: clear three-Golem departure aisle required.";
+        if(staging==null)return "WAITING: clear four-Golem departure aisle required.";
         BlockPos rally=RemotePalletPickupCrew.rally(level,target,staging);
         if(rally.equals(BlockPos.ZERO))
             return "WAITING: INPUT bay needs a clear three-wide pickup approach.";
-        List<BlockPos> starts=new ArrayList<>(3);
-        for(int dx=-1;dx<=1&&starts.size()<3;dx++)for(int dz=-1;dz<=1&&starts.size()<3;dz++){
+        List<BlockPos> starts=new ArrayList<>(4);
+        for(int dx=-1;dx<=1&&starts.size()<4;dx++)for(int dz=-1;dz<=1&&starts.size()<4;dz++){
             BlockPos where=staging.offset(dx,0,dz);
             if(!StorageGolemReturnPath.walkable(level,where))continue;
             if(starts.stream().anyMatch(previous->previous.distSqr(where)<2))continue;
             starts.add(where);
         }
-        if(starts.size()!=3)return "WAITING: three separated crew departure tiles required.";
+        if(starts.size()!=4)return "WAITING: four separated crew departure tiles required.";
         var names=new ArrayList<String>(3);
         for(var shelf:shelves){
             String name=shelf.takeNamed();
@@ -77,11 +77,11 @@ public final class DroneBayNoReplacementDispatch {
             names.add(name);
         }
         BlockPos[] homes={shelves.get(0).getBlockPos(),shelves.get(1).getBlockPos(),
-                shelves.get(2).getBlockPos(),shelves.get(2).getBlockPos()};
+                shelves.get(2).getBlockPos(),shelves.get(3).getBlockPos()};
         UUID mission=UUID.randomUUID();
         var spawned=new ArrayList<StorageGolem>(3);
         boolean ok=true;
-        for(int i=0;i<3;i++){
+        for(int i=0;i<4;i++){
             StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(
                 level,EntitySpawnReason.EVENT);
             if(worker==null){ok=false;break;}
@@ -96,9 +96,9 @@ public final class DroneBayNoReplacementDispatch {
         if(!ok){
             for(var worker:spawned)worker.discard();
             for(int i=0;i<names.size();i++)shelves.get(i).addNamed(names.get(i));
-            return "WAITING: dispatch failed; all three shelf workers restored.";
+            return "WAITING: dispatch failed; all four shelf workers restored.";
         }
-        return "Three Golems dispatched to INPUT bay "+target.toShortString()+
+        return "Four Golems dispatched to INPUT bay "+target.toShortString()+
                 " with NO replacement pallet; returning cargo to INPUT rack.";
     }
     private DroneBayNoReplacementDispatch(){}
