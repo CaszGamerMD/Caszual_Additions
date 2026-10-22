@@ -7,7 +7,7 @@ pallet=root/"src/main/java/com/caszgamermd/caszualadditions/pallet"
 rig=(server/"MovingPallet.java").read_text()
 block=(pallet/"PalletBlockEntity.java").read_text()
 scanner=(server/"StorageScannerItem.java").read_text()
-recall=rig[rig.index('if(StorageScannerItem.mode(player.getItemInHand(hand))'):rig.index('if(!player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)')]
+recall=rig[rig.index('    @Override protected net.minecraft.world.InteractionResult mobInteract('):rig.index('        if(!player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)')]
 place=rig[rig.index('private boolean deliverToGround(ServerLevel level,BlockPos pos,Direction facing,'):rig.index('/** Recreate precisely four *empty* walking crew members')]
 unload=rig[rig.index('private void tickAisleDelivery(ServerLevel level)'):rig.index('/** Transfers the same pallet and exact 216 stacks')]
 assert 'Mode.RECALL' in recall and 'StorageScannerItem.recallDoubleClick' in recall
