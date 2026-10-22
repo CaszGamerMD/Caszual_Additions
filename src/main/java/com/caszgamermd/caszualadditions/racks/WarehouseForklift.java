@@ -14,6 +14,8 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -40,9 +42,13 @@ public final class WarehouseForklift extends PathfinderMob {
             SynchedEntityData.defineId(WarehouseForklift.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> CARGO_CRATES=
             SynchedEntityData.defineId(WarehouseForklift.class,EntityDataSerializers.INT);
-    /** 4 blocks per second at the standard 20 server ticks/second. */
-    private static final double DRIVE_SPEED=0.20D;
+    /** Actual travel distance, not an AI speed multiplier:
+     * Minecraft runs 20 server ticks per second, so 0.20 block/tick = 4 m/s. */
+    private static final double DRIVE_BLOCKS_PER_TICK=.20D;
+    private static final double DRIVE_SPEED=.20D;
     private static final double DRIVE_CONTROL=1.0D;
+    /** Only used to cap physical motor displacement after vanilla AI movement. */
+    private double driveTickStartX,driveTickStartZ;
     private ItemStack jack=ItemStack.EMPTY;
     private BlockPos source=BlockPos.ZERO,target=BlockPos.ZERO,staging=BlockPos.ZERO;
     private BlockPos parking=BlockPos.ZERO;
@@ -79,16 +85,18 @@ public final class WarehouseForklift extends PathfinderMob {
     public int action(){return entityData.get(ACTION);}
     public boolean busy(){return job!=0&&job!=5;}
 
-    /** The cab seat is behind the steering column (positive model Z),
-     * about 1.3 blocks above the tires, NOT on top of the roll cage.
-     * Rotate the seat position with the forklift on both client and server.
-     */
+    /** The cab seat stays at its verified .62-block height. Offset the
+     * driver toward the center of the chair to fix the left-side clipping;
+     * both offsets rotate with the vehicle on client and server. */
     @Override public Vec3 getPassengerRidingPosition(Entity passenger){
         if(!(passenger instanceof StorageGolem))return super.getPassengerRidingPosition(passenger);
         double radians=Math.toRadians(getYRot());
         double rear=.59;
-        return new Vec3(getX()-Math.sin(radians)*rear,
-                getY()+.62,getZ()+Math.cos(radians)*rear);
+        double right=.28;
+        return new Vec3(
+                getX()-Math.sin(radians)*rear+Math.cos(radians)*right,
+                getY()+.62,
+                getZ()+Math.cos(radians)*rear+Math.sin(radians)*right);
     }
     public void setParking(BlockPos at){parking=at.immutable();}
     public BlockPos parking(){return parking;}
@@ -288,9 +296,61 @@ public final class WarehouseForklift extends PathfinderMob {
         return true;
     }
 
-    /** Progress-based driving: a path can report 'active' even while the
-     * forklift is motionless, so detect real displacement toward the target.
-     * Never teleport a pallet or bypass collisions to rescue a failed route. */
+    /** Physically power the forklift along an already checked aisle.
+     * MoveControl speed is a multiplier applied to mob navigation, NOT an
+     * actual blocks-per-second target. Move only the missing portion of this
+     * tick's 0.20-block budget, including any vanilla navigation movement.
+     * Normal entity move() resolves collisions; it cannot clip through racks.
+     */
+    private boolean motorStep(ServerLevel world,double x,double z){
+        double dx=x-getX(),dz=z-getZ();
+        double length=Math.hypot(dx,dz);
+        if(length<.06)return false;
+        double vanillaDistance=Math.hypot(
+                getX()-driveTickStartX,getZ()-driveTickStartZ);
+        double remaining=Math.max(0,DRIVE_BLOCKS_PER_TICK-vanillaDistance);
+        if(remaining<.005)return false;
+        double step=Math.min(remaining,length);
+        double mx=dx/length*step,mz=dz/length*step;
+        AABB footprint=getBoundingBox().move(mx,0,mz);
+        BlockPos floor=BlockPos.containing(getX()+mx,getY(),getZ()+mz).below();
+        if(!world.hasChunkAt(floor)
+                ||world.getBlockState(floor).getCollisionShape(world,floor).isEmpty()
+                ||!world.noCollision(this,footprint))return false;
+        double beforeX=getX(),beforeZ=getZ();
+        move(MoverType.SELF,new Vec3(mx,0,mz));
+        // Mob walking inertia on the following tick must not add a second,
+        // uncontrolled velocity to the 4m/s motor budget.
+        setDeltaMovement(0,getDeltaMovement().y,0);
+        return Math.hypot(getX()-beforeX,getZ()-beforeZ)>.01;
+    }
+
+    /** Pick a safe steering target. Use a checked straight lookahead for
+     * long unobstructed lanes, or the next real navigation node around
+     * shelves and corners. Never drive directly through a blocked aisle. */
+    private boolean powerAlongSafeRoute(ServerLevel world,double x,double y,double z){
+        double dx=x-getX(),dz=z-getZ(),length=Math.hypot(dx,dz);
+        if(length<.05)return false;
+        // Keep all long-distance safety probes short to avoid assuming
+        // that terrain and intermediate chunks are loaded far ahead.
+        double probe=Math.min(length,12);
+        double aheadX=getX()+dx/length*probe;
+        double aheadZ=getZ()+dz/length*probe;
+        if(directLaneClear(world,aheadX,y,aheadZ)){
+            getNavigation().stop();
+            return motorStep(world,aheadX,aheadZ);
+        }
+        Path path=getNavigation().getPath();
+        if(path!=null&&!path.isDone()){
+            Vec3 waypoint=path.getNextEntityPos(this);
+            if(directLaneClear(world,waypoint.x,waypoint.y,waypoint.z))
+                return motorStep(world,waypoint.x,waypoint.z);
+        }
+        return false;
+    }
+
+    /** Move close to 4 blocks/s on clear paths while retaining vanilla
+     * pathfinding and collision resolution around turns and obstacles. */
     private boolean drive(ServerLevel world,BlockPos goal){
         double x=goal.getX()+.5,z=goal.getZ()+.5;
         double dx=x-getX(),dz=z-getZ(),dist=dx*dx+dz*dz;
@@ -298,7 +358,7 @@ public final class WarehouseForklift extends PathfinderMob {
         if(dist<arriveDistance&&Math.abs(goal.getY()-getY())<1.2){
             getNavigation().stop();
             getMoveControl().setWantedPosition(getX(),getY(),getZ(),0);
-            setDeltaMovement(getDeltaMovement().multiply(.7,1,.7));
+            setDeltaMovement(0,getDeltaMovement().y,0);
             stallTicks=0;
             return true;
         }
@@ -313,17 +373,13 @@ public final class WarehouseForklift extends PathfinderMob {
             stallTicks=0;
         }else stallTicks++;
 
-        // Use a normal path when one exists, then power the wheels using
-        // MoveControl rather than expecting the passenger Golem to walk.
+        // Pathfinding chooses a safe aisle; the forklift motor supplies
+        // actual block displacement instead of relying on MoveControl speed.
         if(tickCount%20==0||getNavigation().isDone()||stallTicks==45)
             getNavigation().moveTo(x,goal.getY(),z,DRIVE_CONTROL);
-        boolean direct=(getNavigation().isDone()||stallTicks>30)
-                &&directLaneClear(world,x,goal.getY(),z);
-        if(direct){
-            getNavigation().stop();
-            getMoveControl().setWantedPosition(x,goal.getY(),z,DRIVE_CONTROL);
-        }
-        status=stallTicks>100&&!direct
+        boolean powered=powerAlongSafeRoute(world,x,goal.getY(),z);
+        if(powered)stallTicks=0;
+        status=stallTicks>100&&!powered
                 ?"WAITING: FORKLIFT PATH BLOCKED; CLEAR THE DRIVE AISLE"
                 :"DRIVING FORKLIFT TO SERVICE AISLE";
         return false;
@@ -352,6 +408,10 @@ public final class WarehouseForklift extends PathfinderMob {
         return best;
     }
     @Override public void tick(){
+        // Include any navigation displacement in the physical 0.20-block
+        // movement budget so the forklift cannot exceed the requested speed.
+        driveTickStartX=getX();
+        driveTickStartZ=getZ();
         super.tick();
         if(!(level() instanceof ServerLevel world))return;
         // Travel with lowered forks. Raise them only while picking up from
