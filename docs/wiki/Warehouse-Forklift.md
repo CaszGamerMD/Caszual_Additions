@@ -26,7 +26,10 @@ Four-Golem pallet crews load only ground racks. For stacked racks, use the
 5. Forklift waits instead of consuming/dropping a load if the target rack,
    mast clearance, service lane, staging floor, or driver is unavailable.
 6. A docked Storage Golem **walks out when the first job is requested**,
-   boards the forklift, and remains mounted between multiple pallet jobs.
+   boards the forklift in the central operator seat (below the protective roof),
+   with legs bent and arms on the steering wheel. The forklift itself moves
+   to pickup and delivery locations; the driver stays seated throughout.
+   The Golem remains mounted between multiple pallet jobs.
    Right-click the parked forklift **with the Forklift Clipboard** to dismiss
    its driver; the Golem returns to its original shelf. You cannot dismiss
    the Golem during an active cargo transfer. Use an empty hand on the
@@ -45,3 +48,9 @@ when ordered; it never autonomously rearranges warehouse inventories.
 occupancy, moving vehicle and rider collision, tall-mast rendering, and
 interrupted/dead driver recovery. CI tests are useful but not a substitute
 for physics and animation checks in Minecraft.
+
+**Movement:** The forklift uses physical pathfinding and a collision-checked
+engine fallback on clear level flooring. It never teleports through obstacles.
+If the driving lane is blocked or a source/target chunk is unloaded, its status
+says so and the loaded pallet stays safely in the forklift until the route
+is available. Use an empty hand to inspect the forklift's status.

@@ -842,15 +842,39 @@ public final class StorageGolem extends PathfinderMob {
             finishForkliftDriving();
             return;
         }
-        if(getVehicle()==lift){getNavigation().stop();return;}
-        if(getVehicle()!=null)stopRiding();
-        double distance=distanceToSqr(lift);
-        if(distance<3.24){
+        if(getVehicle()==lift){
             getNavigation().stop();
-            startRiding(lift);
+            // Keep the operator aligned with the forklift/steering wheel
+            // instead of looking sideways as the vehicle turns.
+            setYRot(lift.getYRot());
+            setYBodyRot(lift.getYRot());
+            setYHeadRot(lift.getYRot());
             return;
         }
-        walkTo(level,lift.blockPosition(),1.08);
+        if(getVehicle()!=null)stopRiding();
+        // A large vehicle's actual center can be unreachable to the walking
+        // Golem. Board from the nearest clear side step, not from inside its
+        // collision box or from a position on the cab roof.
+        double distance=distanceToSqr(lift);
+        if(distance<9.0){
+            getNavigation().stop();
+            if(startRiding(lift)){
+                setYRot(lift.getYRot());
+                setYBodyRot(lift.getYRot());
+                setYHeadRot(lift.getYRot());
+            }
+            return;
+        }
+        BlockPos entry=null;
+        double best=Double.POSITIVE_INFINITY;
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            BlockPos candidate=lift.blockPosition().relative(side,2);
+            if(!level.hasChunkAt(candidate)
+                    ||!StorageGolemReturnPath.walkable(level,candidate))continue;
+            double score=candidate.distSqr(blockPosition());
+            if(score<best){best=score;entry=candidate;}
+        }
+        walkTo(level,entry==null?lift.blockPosition():entry,1.08);
     }
 
     public void assignRackStairMover(BlockPos shelf,BlockPos stairs){

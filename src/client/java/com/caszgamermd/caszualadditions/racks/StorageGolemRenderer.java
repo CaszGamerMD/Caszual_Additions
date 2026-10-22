@@ -49,6 +49,7 @@ public final class StorageGolemRenderer
         // Animation is governed by real cargo/missions, never by the
         // custom name. A crew member whose task label still says PALLET
         // must not stand idle with both arms permanently raised.
+        state.ridingForklift=golem.getVehicle() instanceof WarehouseForklift;
         state.carryingPallet=golem.carryingPalletPose();
         state.pushingEmptyPallet=golem.pushingPalletPose();
         state.showSharedPallet=state.carryingPallet
