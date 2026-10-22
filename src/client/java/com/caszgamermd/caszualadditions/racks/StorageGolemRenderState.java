@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 /** Four raised-arm Golems move in a square; ONLY the lead submits one
  * shared pallet model between them, avoiding four overlapping duplicates. */
 public final class StorageGolemRenderState extends LivingEntityRenderState {
+    public boolean ridingForklift;
     public boolean carryingPallet;
     public boolean showSharedPallet;
     public boolean pushingEmptyPallet;
