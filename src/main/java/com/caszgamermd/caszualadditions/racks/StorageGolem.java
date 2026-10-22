@@ -336,9 +336,9 @@ public final class StorageGolem extends PathfinderMob {
         // The two-worker node mission visibly PUSHES the actual full
         // pallet ahead of its lead Golem, reusing the existing oversized
         // sideways-pallet pushing pose. The second Golem walks alongside.
-        int action=nodePush&&nodePushFromSource&&!carryingPallet.isEmpty()?2:
-                remoteCourier&&remoteCourierPhase==0
+        int action=remoteCourier&&remoteCourierPhase==0
                 &&!remoteFresh.isEmpty()?2:playerHaul&&stage==1?1:0;
+        if(nodePush&&nodePushFromSource&&!carryingPallet.isEmpty())action=2;
         if(entityData.get(DISPLAY_PALLET_ACTION)!=action)
             entityData.set(DISPLAY_PALLET_ACTION,action);
     }
