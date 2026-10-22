@@ -126,6 +126,8 @@ jobs:
 
       - name: Verify two-block sorting reach and Golem-driven forklift safety (blocking)
         run: python3 scripts/warehouse_forklift_reach_smoke.py
+      - name: Verify Golem seat inside moving forklift and safe autonomous job driving
+        run: python3 scripts/warehouse_forklift_seat_drive_smoke.py
       - name: Verify loaded Golem pallet speed boost on concrete and industrial floors
         run: python3 scripts/warehouse_concrete_carry_speed_smoke.py
       - name: Verify courier avoids nearby pallet decks and retains its assigned target
