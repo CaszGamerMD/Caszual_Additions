@@ -16,7 +16,7 @@ assert "shelves.get(3).getBlockPos()" in bay
 assert "NO_COURIER" in bay and "worker.beginRemotePickup(mission,NO_COURIER" in bay
 assert "empty pallet" not in bay.lower()
 assert "fresh" not in bay.lower()
-assert "replacement courier" not in bay.lower()
+assert "beginRemoteCourier(" not in bay
 # Fourth worker must walk to a distinct, safe rally cell: normal trio unchanged.
 assert "if(workerIndex==3)" in crew
 assert "int workerCount=bayPickup?4:3;" in crew
