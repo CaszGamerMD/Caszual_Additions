@@ -81,9 +81,12 @@ public final class WarehouseForkliftRenderer extends MobRenderer<
         if(!state.hasPallet)return;
         pose.pushPose();
         pose.mulPose(Axis.YP.rotationDegrees(180-state.bodyRot));
-        // The REAL forks sit just above wheel height. Keep a 2x2 pallet
-        // low for driving and lift together with the telescoping carriage.
-        pose.translate(-.90f,.32f+state.mastHeight,-1.72f);
+        // The forklift model points forward along LOCAL -Z: mast at ~-1.4,
+        // fork tips at ~-3.9, driver's cab behind the mast (+Z).
+        // Put the ENTIRE 1.8x1.8 pallet outside the cab on the tines:
+        // [-3.72,-1.92] in local Z. Never center cargo on the passenger.
+        // Render from the same 180-bodyRot pose as the fork model.
+        pose.translate(-.90f,.32f+state.mastHeight,-3.72f);
         // Four material-accurate long boards and transverse pallet runners.
         for(int board=0;board<4;board++)
             piece(state.boards[board],state,pose,collector,
