@@ -150,5 +150,9 @@
   "item.caszual_additions.forklift_controller": "Forklift Clipboard",
   "block.caszual_additions.crafting_vending_machine": "Crafting Vending Machine",
   "container.caszual_additions.crafting_vending_machine": "Crafting Vending Machine",
-  "block.caszual_additions.forklift_parking": "Forklift Parking Bay"
+  "block.caszual_additions.forklift_parking": "Forklift Parking Bay",
+  "block.caszual_additions.mailbox": "Blue Mailbox",
+  "block.caszual_additions.po_box": "PO Box",
+  "item.caszual_additions.mailbox": "Blue Mailbox",
+  "item.caszual_additions.po_box": "PO Box"
 }
