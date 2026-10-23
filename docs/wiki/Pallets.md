@@ -46,16 +46,31 @@ All pallet materials, the 216-slot shared inventory, long mixed-wood deck boards
 
 ## Visible items versus inventory
 
-Pallets do not render all 216 stored stacks.
+Pallets retain **216 inventory slots** but display up to **27 nonempty
+stacks** in a compact **3 × 3 × 3** cargo grid. Each visible cell is
+2/3 of a block across, with a top height of about 2.3 blocks (plus the
+pallet deck). The first nonempty stack occupies the lowest available
+display position, and extra inventory stacks stay securely stored but hidden.
 
-- Up to **63 nonempty inventory stacks** are displayed in **3 × 3 × 7** columns/layers across the 2×2 footprint.
-- Block cargo uses real Minecraft world-block models scaled to **9 × 9 × 9 pixels**, with **1 pixel between adjacent cargo units**, horizontally and vertically. Three across spans **29 pixels** on the 32-pixel pallet, leaving a **1.5-pixel inset** from each side: no overhang. The last visible tier stays below five world blocks.
-- Non-block items appear as compact kraft-cardboard boxes with the item's icon on the front. Block models are anchored at the deck rather than using the offset inventory-display transform, so they stack tightly without floating.
-- The first nonempty stack fills the bottom tier. If a visible stack is removed, remaining visible stacks immediately pack down into the earliest available display positions.
-- Once the 63 display positions are occupied, additional stacks stay in the full 216-slot inventory but are no longer rendered on the pallet.
-- The pallet base is submitted **only by the shared controller block**. A single set of long deck boards and bottom runners now crosses all four blocks, without quarter-pallet seams.
+To prevent overlapping or floating models, pallet cargo has two visual
+styles:
 
-Unusually oversized modded item models can exceed standard display bounds and may require visual adjustment.
+- **Full-cube blocks** (for example stone, logs, full glass blocks) appear
+  as recognizable Minecraft block models stacked on the pallet.
+- **Non-full blocks and other items** (such as signs, doors, trapdoors,
+  carpets, slabs, stairs, fences, walls, buttons, torches, and modded
+  decorative shapes) appear inside **kraft cardboard cartons** with
+  the item's icon on the front. Their world block models are never drawn
+  loose among the crates.
+
+The same rule applies to a **placed pallet** and to a **pallet displayed
+inside a warehouse rack**. The forklift and four-Golem carriers already use
+cartons for their carried cargo.
+
+The entire display is cosmetic: neither boxing nor unboxing an item changes
+the actual stored ItemStack, its components, filtering, storage capacity, or
+the way a pallet is moved. Up to 27 visible occupied cells have corresponding
+cargo selection/collision spaces, and a ceiling can reduce the visible tiers.
 
 ## Breaking and moving
 
