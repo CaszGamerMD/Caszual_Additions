@@ -15,8 +15,8 @@ dispatch=read("StorageGolemDispatch.java")
 carrier=read("MovingPallet.java")
 racks=read("RackBlockEntity.java")
 assert "MAX_DROP = 2" in plan and "FORKLIFT_MAX_HEIGHT = 12" in plan
-assert "return find(level,rack,MAX_DROP)" in plan
-assert "return find(level,rack,FORKLIFT_MAX_HEIGHT)" in plan
+assert "return find(level,rack,MAX_DROP,AISLE_DEPTH)" in plan
+assert "return find(level,rack,FORKLIFT_MAX_HEIGHT,2)" in plan
 assert "BLOCKS=2" in reach
 assert "ax*ax+az*az<=BLOCKS*BLOCKS" in reach
 assert "bx*bx+bz*bz<=BLOCKS*BLOCKS" in reach
