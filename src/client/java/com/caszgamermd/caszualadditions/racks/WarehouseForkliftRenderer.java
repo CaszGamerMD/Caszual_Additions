@@ -41,6 +41,7 @@ public final class WarehouseForkliftRenderer extends MobRenderer<
             WarehouseForkliftRenderState state,float partialTick){
         super.extractRenderState(vehicle,state,partialTick);
         state.mastHeight=vehicle.mastHeight();
+        state.steeringAngle=vehicle.steeringAngle();
         state.task=vehicle.action();
         ItemStack deck=vehicle.displayPallet();
         state.hasPallet=!deck.isEmpty();
