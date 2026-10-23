@@ -29,6 +29,7 @@ public final class CaszUtils {
 
     public static void initialize() {
         FireflyGlass.initialize();
+        SilkTouchSpecialBlocks.initialize();
         com.caszgamermd.caszualadditions.utils.cosmetics.CosmeticGuide.initialize();
         com.caszgamermd.caszualadditions.utils.cosmetics.Cosmetics.initialize();
         com.caszgamermd.caszualadditions.utils.cosmetics.ArmorStandCosmeticInteraction.initialize();

@@ -9,7 +9,9 @@
     "SlotAccessor",
     "AnvilBlockDamageMixin",
     "AnvilMenuUnbreakableMixin",
-    "QuarterCreativeBreakServerMixin"
+    "QuarterCreativeBreakServerMixin",
+    "DragonEggNoTeleportMixin",
+    "SpawnerSilkTouchXpMixin"
   ],
   "injectors": {
     "defaultRequire": 1
