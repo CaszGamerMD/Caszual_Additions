@@ -78,7 +78,7 @@ public final class ForkliftAislePath {
         PriorityQueue<Candidate> frontier=new PriorityQueue<>(
                 Comparator.comparingInt(Candidate::f));
         cost.put(start,0);
-        frontier.add(new Candidate(start,distance(start,end)));
+        frontier.add(new Candidate(start,10*distance(start,end)));
         while(!frontier.isEmpty()&&visited.size()<MAX_VISITED){
             Cell current=frontier.poll().cell();
             if(!visited.add(current))continue;
@@ -98,18 +98,24 @@ public final class ForkliftAislePath {
                     path.add(destination);
                 return path;
             }
-            int nextCost=cost.get(current)+1;
+            Cell previous=parent.get(current);
             for(int[] dir:DIRECTIONS){
                 Cell next=new Cell(current.x+dir[0],current.z+dir[1]);
                 if(Math.abs(next.x-start.x)>MAX_RANGE*2
                         ||Math.abs(next.z-start.z)>MAX_RANGE*2
                         ||visited.contains(next))continue;
+                // Turning costs a little more than continuing straight,
+                // reducing zig-zags in long parallel warehouse aisles.
+                int turnCost=previous!=null
+                        &&(current.x-previous.x!=dir[0]
+                        ||current.z-previous.z!=dir[1])?3:0;
+                int nextCost=cost.get(current)+10+turnCost;
                 if(nextCost>=cost.getOrDefault(next,Integer.MAX_VALUE))continue;
                 if(!standable(world,vehicle,next.x*.5,vehicle.getY(),next.z*.5))
                     continue;
                 cost.put(next,nextCost);
                 parent.put(next,current);
-                frontier.add(new Candidate(next,nextCost+distance(next,end)));
+                frontier.add(new Candidate(next,nextCost+10*distance(next,end)));
             }
         }
         return List.of();
