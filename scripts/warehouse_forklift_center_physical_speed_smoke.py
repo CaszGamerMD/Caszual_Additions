@@ -4,7 +4,7 @@ from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 fork=(root/"src/main/java/com/caszgamermd/caszualadditions/racks/WarehouseForklift.java").read_text()
 assert "double right=.28;" in fork
-assert "getY()+.62" in fork # keep height unchanged
+assert "WarehouseForkliftSeat.riderPosition(position(),getYRot())" in fork
 assert "getX()-Math.sin(radians)*rear+Math.cos(radians)*right" in fork
 assert "getZ()+Math.cos(radians)*rear+Math.sin(radians)*right" in fork
 assert "DRIVE_BLOCKS_PER_TICK=0.20D" in fork
