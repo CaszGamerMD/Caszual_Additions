@@ -10,7 +10,6 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -41,7 +40,7 @@ public final class MailMenu extends AbstractContainerMenu {
         this.pos=pos;
         this.sending=sending;
         viewer=inventory.player;
-        saved=viewer instanceof ServerPlayer sp?MailSavedData.get(sp.getServer()):null;
+        saved=viewer instanceof ServerPlayer sp?MailSavedData.get(sp.level().getServer()):null;
         if(saved!=null&&viewer instanceof ServerPlayer sp)saved.remember(sp);
         recipients=saved==null?List.of():saved.recipients();
         pageCount=Math.max(1,(recipients.size()+VISIBLE_PLAYERS-1)/VISIBLE_PLAYERS);
@@ -103,22 +102,17 @@ public final class MailMenu extends AbstractContainerMenu {
         }
         return "Recipient selected";
     }
-    @Override public void clicked(int slot,int button,ClickType type,Player player){
-        // These are server-side, non-takeable buttons, never actual items.
-        if(sending&&slot>=0&&slot<VISIBLE_PLAYERS){
-            if(saved!=null){
-                int candidate=page*VISIBLE_PLAYERS+slot;
-                if(candidate<recipients.size()){
-                    selected=candidate;
-                    broadcastFullState();
-                }
-            }
-            return;
-        }
-        super.clicked(slot,button,type,player);
-    }
     @Override public boolean clickMenuButton(Player player,int id){
         if(!sending||saved==null||!stillValid(player))return false;
+        // All player-head selections are real server-validated menu buttons;
+        // no spoofable client-supplied recipient name or UUID is ever trusted.
+        if(id>=0&&id<VISIBLE_PLAYERS){
+            int candidate=page*VISIBLE_PLAYERS+id;
+            if(candidate>=recipients.size())return false;
+            selected=candidate;
+            broadcastFullState();
+            return true;
+        }
         if(id==PAGE_PREVIOUS&&page>0){
             page--;refreshSelectors();return true;
         }
