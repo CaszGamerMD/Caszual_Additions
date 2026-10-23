@@ -69,6 +69,20 @@ public final class WarehouseForkliftItem extends Item {
         if(rack!=null){
             if(!spawner){
                 BlockPos source=selected(context.getItemInHand(),level);
+                if(player.isShiftKeyDown()){
+                    if(rack.hasPallet()){
+                        select(context.getItemInHand(),level,rack.getBlockPos());
+                        player.sendSystemMessage(Component.literal(
+                                "Forklift Controller: changed source to rack "
+                                +rack.getBlockPos().toShortString()));
+                    }else{
+                        context.getItemInHand().remove(
+                                net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+                        player.sendSystemMessage(Component.literal(
+                                "Forklift Controller: source selection cleared."));
+                    }
+                    return InteractionResult.SUCCESS;
+                }
                 if(source==null&&rack.hasPallet()){
                     select(context.getItemInHand(),level,rack.getBlockPos());
                     player.sendSystemMessage(Component.literal(
