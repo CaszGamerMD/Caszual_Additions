@@ -44,7 +44,7 @@ public final class MailBlock extends HorizontalDirectionalBlock {
         this.outgoing=outgoing;
         registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));
     }
-    @Override protected MapCodec<? extends Block> codec(){
+    @Override protected MapCodec<? extends HorizontalDirectionalBlock> codec(){
         return outgoing?MAILBOX_CODEC:BOX_CODEC;
     }
     @Override protected void createBlockStateDefinition(
@@ -60,7 +60,7 @@ public final class MailBlock extends HorizontalDirectionalBlock {
     }
     private InteractionResult open(Level level,BlockPos pos,Player player){
         if(!(player instanceof ServerPlayer serverPlayer))return InteractionResult.SUCCESS;
-        MailSavedData.get(serverPlayer.getServer()).remember(serverPlayer);
+        MailSavedData.get(serverPlayer.level().getServer()).remember(serverPlayer);
         serverPlayer.openMenu(new ExtendedMenuProvider<BlockPos>(){
             @Override public Component getDisplayName(){
                 return Component.literal(outgoing?"USPS-style Mailbox":"Personal PO Box");
