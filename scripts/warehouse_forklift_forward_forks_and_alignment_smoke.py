@@ -24,7 +24,7 @@ assert 'float error=Mth.wrapDegrees(wanted-getYRot());' in truck
 assert 'Mth.clamp(error,-14f,14f)' in truck
 assert 'setYBodyRot(yaw);' in truck
 assert 'setYHeadRot(yaw);' in truck
-assert 'if(!turnForksToward(waypoint.x,waypoint.z)){' in truck
+assert 'boolean facing=turnForksToward(waypoint.x,waypoint.z);' in truck
 assert 'private boolean alignForTransfer(Dock dock)' in truck
 assert 'if(!alignForTransfer(pickup)){' in truck
 assert 'if(!alignForTransfer(landing)){' in truck
