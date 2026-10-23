@@ -186,7 +186,10 @@ public final class WarehouseForklift extends PathfinderMob {
         if(busy()||PalletJackItem.loaded(jack)
                 ||!world.hasChunkAt(rack.getBlockPos()))return false;
         RackPickupPlan plan=RackPickupPlan.forklift(world,rack);
-        if(plan==null||plan.height()>RackPickupPlan.FORKLIFT_MAX_HEIGHT)return false;
+        if(plan==null||plan.height()>RackPickupPlan.FORKLIFT_MAX_HEIGHT){
+            status="NO CLEAR TWO-ROW FORKLIFT APPROACH OR MAST HEIGHT EXCEEDED";
+            return false;
+        }
         boolean pickup=rack.hasPallet();
         BlockPos src=pickup?rack.getBlockPos()
                 :selectedFloorPallet!=null?selectedFloorPallet
@@ -205,7 +208,11 @@ public final class WarehouseForklift extends PathfinderMob {
         this.source=src.immutable();
         this.target=rack.getBlockPos().immutable();
         this.staging=pickup?floorPlacement(world,rack,plan.floorY()):src.immutable();
-        if(staging==null||staging.equals(BlockPos.ZERO))return false;
+        if(staging==null||staging.equals(BlockPos.ZERO)){
+            status="NO EMPTY 2x2 STAGING FOOTPRINT; CHECK ACTUAL BLOCKS AND FLOOR";
+            return false;
+        }
+        if(pickup)this.groundFacing=rack.facing();
         if(!hire(world))return false;
         this.job=1;
         this.animation=0;
@@ -216,9 +223,13 @@ public final class WarehouseForklift extends PathfinderMob {
             RackBlockEntity to){
         if(busy()||PalletJackItem.loaded(jack)
                 ||from==null||to==null||from.getBlockPos().equals(to.getBlockPos())
-                ||!from.hasPallet()||!from.glassWrapped()||to.hasPallet()||!to.isEmpty()
-                ||RackPickupPlan.forklift(world,from)==null
-                ||RackPickupPlan.forklift(world,to)==null)return false;
+                ||!from.hasPallet()||!from.glassWrapped()||to.hasPallet()||!to.isEmpty())
+            return false;
+        if(RackPickupPlan.forklift(world,from)==null
+                ||RackPickupPlan.forklift(world,to)==null){
+            status="SOURCE OR DESTINATION LACKS TWO CLEAR FORKLIFT APPROACH ROWS";
+            return false;
+        }
         if(!hire(world))return false;
         source=from.getBlockPos().immutable();
         target=to.getBlockPos().immutable();
@@ -435,9 +446,28 @@ public final class WarehouseForklift extends PathfinderMob {
                 :"DRIVING FORKLIFT TO SERVICE AISLE";
         return false;
     }
+    /** The four-Golem goal(3) is in ROW THREE. With a 1.20-block
+     * chassis in a three-block aisle, parking at row three puts the rear
+     * (or front) of the forklift into the opposing rack. Keep the chassis
+     * centered in row TWO and pick the unblocked rack column instead.
+     * These are actual collision checks, not fictitious access reservations. */
     private BlockPos service(ServerLevel world,RackBlockEntity rack){
         RackPickupPlan plan=RackPickupPlan.forklift(world,rack);
-        return plan==null?null:plan.goal(3,false);
+        if(plan==null)return null;
+        BlockPos best=null;
+        double bestDistance=Double.POSITIVE_INFINITY;
+        for(int col=0;col<2;col++){
+            BlockPos candidate=plan.goal(col,false); // depth 2, not 3
+            if(!world.hasChunkAt(candidate))continue;
+            AABB footprint=getBoundingBox().move(
+                    candidate.getX()+.5-getX(),
+                    candidate.getY()-getY(),
+                    candidate.getZ()+.5-getZ());
+            if(!world.noCollision(this,footprint))continue;
+            double distance=candidate.distSqr(blockPosition());
+            if(distance<bestDistance){bestDistance=distance;best=candidate;}
+        }
+        return best;
     }
     /** A ground pallet has no rack facing. Select a free vehicle-wide
      * approach next to that pallet instead of extrapolating the destination
@@ -542,8 +572,10 @@ public final class WarehouseForklift extends PathfinderMob {
             refreshDisplay();job=3;animation=0;
         }
         if(job==3){
+            // Stage alongside the aisle rather than driving two blocks
+            // straight across it and into the facing rack bank.
             BlockPos landing=groundDestination
-                    ?staging.relative(groundFacing,2):service(world,rack);
+                    ?groundService(world,staging):service(world,rack);
             if(landing==null){status="WAITING FOR SAFE FORKLIFT LANE";return;}
             // Do not drive out of a tall source rack with the mast extended.
             // With a load on the forks it must lower to travel height first.
