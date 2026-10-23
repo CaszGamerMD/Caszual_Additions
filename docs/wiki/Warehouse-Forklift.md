@@ -79,3 +79,30 @@ there **with the Golem still seated**, parks, and *then* releases the worker
 to walk back to its original Golem Shelf. A dismissal during a delivery is
 queued until the job finishes. A missing saved parking bay will not cause
 the Golem to abandon the forklift in the aisle.
+
+
+## Recovery from blocked driving (0.1.4)
+
+A forklift now moves along short **collision-checked** segments instead of
+requiring a fully clear long ray all the way into its destination pallet.
+The 4-block-per-second motor still cannot drive through racks or walls.
+
+- **Normal recall:** With a linked Warehouse Scanner in **FORKLIFT** mode,
+  right-click the forklift or its seated operator. This cancels an unfinished
+  pickup/drop-off and sends the forklift back to its painted parking bay.
+  The driver only gets out once the truck is parked, as normal.
+- **Emergency dismount:** If the route to the parking bay is actually
+  obstructed, **sneak-right-click the forklift with an empty hand**, or
+  sneak-right-click the seated operator with the FORKLIFT-mode scanner.
+  This stops the task where it stands and releases the driver to their shelf.
+  It does **not** discard the carried pallet or force the vehicle through walls.
+- **Recover onboard cargo:** After an emergency dismount, while no Golem is
+  aboard, sneak-right-click the forklift **again with an empty hand**.
+  The packed Pallet Jack, holding the complete original pallet and its
+  contents, is returned to the player's inventory (or dropped beside them
+  if the inventory is full). The forklift's copy is cleared exactly once.
+  You can assign the forklift to a new job afterward.
+
+An abandoned loaded Pallet Jack is never overwritten by a new pickup order.
+If the forklift reports that its parking bay is missing, use emergency
+dismount instead of repeatedly requesting normal parking.
