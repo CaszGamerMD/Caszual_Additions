@@ -116,7 +116,7 @@ public final class StorageScannerItem extends Item {
         WarehouseForklift best=null;
         double nearest=Double.POSITIVE_INFINITY;
         for(WarehouseForklift forklift:world.getEntitiesOfClass(WarehouseForklift.class,
-                new net.minecraft.world.phys.AABB(at).inflate(64),f->!f.busy())){
+                new net.minecraft.world.phys.AABB(at).inflate(64),WarehouseForklift::readyForPickup)){
             if(!forklift.hasWarehouseDriver(world,shelves))continue;
             double distance=forklift.blockPosition().distSqr(at);
             if(distance<nearest){nearest=distance;best=forklift;}
@@ -157,7 +157,9 @@ public final class StorageScannerItem extends Item {
         if(source==null){
             if(rack!=null&&rack.hasPallet()){
                 selectForkliftSource(scanner,level,rack.getBlockPos());
-                return "FORKLIFT: rack pallet selected; now click a destination.";
+                return "FORKLIFT: selected rack at "
+                        +rack.getBlockPos().toShortString()
+                        +". Click a DIFFERENT empty 2x2x3 rack as destination.";
             }
             if(pallet!=null){
                 selectForkliftSource(scanner,level,pallet.getBlockPos());
@@ -165,21 +167,64 @@ public final class StorageScannerItem extends Item {
             }
             return "FORKLIFT: select a wrapped pallet on a rack or ground first.";
         }
+        // Check the *server-side controller root*, not the clicked model part.
+        // All 12 blocks in a 2x2x3 rack share ONE pallet and ONE inventory.
+        RackBlockEntity from=RackBlock.controller(level,source);
+        if(from!=null){
+            if(!from.hasPallet()||!from.glassWrapped()){
+                clearForkliftSource(scanner);
+                return "FORKLIFT: previously selected source rack "
+                        +source.toShortString()
+                        +" no longer contains a wrapped pallet. Select source again.";
+            }
+            if(rack!=null&&from.getBlockPos().equals(rack.getBlockPos()))
+                return "FORKLIFT: clicked the SAME 2x2x3 rack "
+                        +rack.getBlockPos().toShortString()
+                        +" as source. All 12 frame blocks share one pallet. "
+                        +"Click a different, empty rack.";
+        }else if(StorageGroundPalletTransfer.wrappedController(level,source)==null){
+            clearForkliftSource(scanner);
+            return "FORKLIFT: selected ground pallet is missing or unwrapped. "
+                    +"Select the wrapped source again.";
+        }
+        if(rack!=null&&rack.hasPallet())
+            return "FORKLIFT: rack "+rack.getBlockPos().toShortString()
+                    +" already stores "+rack.palletStack().getHoverName().getString()
+                    +". No pallet will be overwritten. Select a different rack.";
+        if(rack!=null&&!rack.isEmpty())
+            return "FORKLIFT: rack "+rack.getBlockPos().toShortString()
+                    +" appears empty but still stores "+rack.occupiedSlots()
+                    +" item stacks. Retrieve these safely before delivery.";
         WarehouseForklift forklift=availableForklift(level,clicked,home);
-        if(forklift==null)return "FORKLIFT: need a free Golem-driven forklift in this warehouse.";
+        if(forklift==null){
+            // Avoid a misleading generic aisle failure if a visibly empty
+            // truck is actually holding the only copy of a packed pallet.
+            for(WarehouseForklift candidate:level.getEntitiesOfClass(
+                    WarehouseForklift.class,new net.minecraft.world.phys.AABB(clicked).inflate(64),
+                    f->!f.busy())){
+                if(candidate.hasOnboardPallet())
+                    return "FORKLIFT: idle truck at "
+                            +candidate.blockPosition().toShortString()
+                            +" still owns a packed pallet. Deliver or recover "
+                            +"the Pallet Jack; a new order cannot replace it.";
+            }
+            return "FORKLIFT: no idle, EMPTY Golem-driven forklift assigned to "
+                    +"this warehouse. Check its driver or current task.";
+        }
         if(rack!=null){
-            if(rack.hasPallet())return "FORKLIFT: destination rack must be empty.";
-            boolean started=level.getBlockEntity(source) instanceof RackBlockEntity from
-                    &&from.hasPallet()?forklift.orderRackToRack(level,from,rack)
+            boolean started=from!=null?forklift.orderRackToRack(level,from,rack)
                     :forklift.order(level,rack,source);
             if(started)clearForkliftSource(scanner);
-            return started?"FORKLIFT: pallet ordered into rack "+rack.getBlockPos().toShortString()
-                    :"FORKLIFT: cannot start. Check source pallet, aisle and mast clearance.";
+            return started?"FORKLIFT: pallet ordered into rack "
+                    +rack.getBlockPos().toShortString()
+                    :"FORKLIFT: "+forklift.status()
+                    +" | source "+source.toShortString()
+                    +" -> destination "+rack.getBlockPos().toShortString();
         }
         boolean started=forklift.orderGround(level,source,landing,user.getDirection());
         if(started)clearForkliftSource(scanner);
         return started?"FORKLIFT: pallet ordered to ground "+landing.toShortString()
-                :"FORKLIFT: need a clear solid 2x2 ground destination.";
+                :"FORKLIFT: "+forklift.status()+" | ground "+landing.toShortString();
     }
     private record RecallTap(java.util.UUID target,long tick){}
     private static final java.util.Map<java.util.UUID,RecallTap> RECALL_CLICKS=
