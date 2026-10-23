@@ -210,3 +210,32 @@ and emergency driver recovery remain unchanged.
 The 128x128 existing forklift texture is retained so current installations
 do not need texture migration. Existing saved forklifts update visually when
 the JAR is replaced.
+
+
+## Smooth forklift driving and visual cleanup
+
+Forklift aisle routing still uses the half-block A* collision grid, but its
+wheel motor now follows **longer collision-tested straight segments** rather
+than stopping to steer at each tiny waypoint. The chassis can steer and roll
+at the same time when it is already pointed along the lane; it slows down
+at moderate turns and rotates in place only at sharp corners. Speed ramps up
+gently to the existing **0.20 blocks/tick (4 blocks/second)** ceiling.
+Lookahead tests sample the *full vehicle collision box and all wheel-support
+positions* every 0.18 block so turning never becomes an excuse to cut
+through a rack or pallet.
+
+The Golem and cushion are both centered at **X=0, Z=10 model pixels**.
+This is two pixels farther toward the rear than the previous shared
+seat center; the height stays 10 pixels. The golem's position and yaw
+continue rotating with the truck, so turning doesn't drift the driver
+out of the cushion.
+
+The chassis underside, cab floor, seat cushion/foundation, rooftop rails,
+warning beacon and rear counterweight have had overlapping external faces
+separated or removed. These cosmetic corrections do not change warehouse
+clearance, forklift inventory, docking geometry, parking or driver rescue.
+
+**Regression check:** drive a long straight three-block aisle followed
+by a 90-degree turn, watch from third-person side and rear views, and
+verify the golem stays on the seat while the carriage and roof remain free
+of visual flicker.
