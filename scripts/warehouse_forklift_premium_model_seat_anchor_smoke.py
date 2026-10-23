@@ -41,7 +41,8 @@ assert 'for(Entity passenger:getPassengers())' in truck
 assert 'golem.setYRot(getYRot());' in truck
 assert 'golem.setYBodyRot(getYRot());' in truck
 assert 'golem.setYHeadRot(getYRot());' in truck
-assert 'state.bodyRot=vehicle.getYRot();' in golem
+assert 'state.bodyRot=net.minecraft.util.Mth.rotLerp(' in golem
+assert 'partialTick,vehicle.yBodyRotO,vehicle.yBodyRot);' in golem
 assert 'state.yRot=0f;' in golem
 assert 'state.xRot=0f;' in golem
 assert 'state.walkAnimationSpeed=0f;' in golem
