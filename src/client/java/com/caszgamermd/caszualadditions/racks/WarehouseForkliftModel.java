@@ -236,6 +236,15 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
                 PartPose.offset(x,20f,z));
     }
 
+    private static void rearWheel(PartDefinition root,String name,float x,float z){
+        root.addOrReplaceChild(name,CubeListBuilder.create()
+                .texOffs(0,67).addBox(-2.5f,-4f,-4f,5f,8f,8f)
+                .texOffs(21,66).addBox(-2.7f,-3f,-3f,5.4f,6f,6f)
+                .texOffs(70,18).addBox(-2.9f,-1.8f,-1.8f,5.8f,3.6f,3.6f)
+                .texOffs(70,0).addBox(-3.0f,-.7f,-.7f,6f,1.4f,1.4f),
+                PartPose.offset(x,20f,z));
+    }
+
     @Override public void setupAnim(WarehouseForkliftRenderState state){
         super.setupAnim(state);
         float height=Mth.clamp(state.mastHeight,0f,12f);
