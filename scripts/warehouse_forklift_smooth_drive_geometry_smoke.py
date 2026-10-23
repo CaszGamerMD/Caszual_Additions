@@ -37,7 +37,7 @@ assert "FOOT_HEIGHT=10.0/16.0;" in seat
 assert "WarehouseForkliftSeat.riderPosition(position(),getYRot())" in truck
 assert "addBox(-6,-10,5,12,2,10)" in model
 assert "addBox(-6,-8,5,12,5,10)" in model
-assert "addBox(-6,-25,15,12,15,2)" in model
+assert "addBox(-6,-25,13.5f,12,15,2)" in model
 for deg in (0,45,90,135,180,225,270,315):
     t=deg*pi/180
     x=-sin(t)*.625
