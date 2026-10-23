@@ -24,20 +24,16 @@ assert "startRiding(lift)" in golem
 assert "BlockPos candidate=lift.blockPosition().relative(side,2);" in golem
 assert "StorageGolemReturnPath.walkable(level,candidate)" in golem
 assert "setYBodyRot(lift.getYRot());" in golem
-assert "getNavigation().moveTo(x,goal.getY(),z,DRIVE_CONTROL)" in fork
-assert "powerAlongSafeRoute(world,x,goal.getY(),z)" in fork
-assert "directLaneClear(world,aheadX,getY(),aheadZ)" in fork
-assert "world.noCollision(this,test)" in fork
-assert "getCollisionShape(world,floor).isEmpty()" in fork
-assert "lastDriveDistance=dist" in fork and "stallTicks++" in fork
-assert 'WAITING: FORKLIFT PATH BLOCKED; CLEAR THE DRIVE AISLE' in fork
-assert "private BlockPos groundService(" in fork
-assert ":groundService(world,source);" in fork
+assert "aisleRoute=ForkliftAislePath.route(world,this,goal);" in fork
+assert "private boolean drive(ServerLevel world,Vec3 goal)" in fork
+assert "private Dock groundService(ServerLevel world,BlockPos root,Direction facing)" in fork
+assert ":groundService(world,source,groundFacing);" in fork
+assert "REPLANNING FORKLIFT AISLE AROUND OBSTRUCTION" in fork
 assert "if(!seatedDriver(world)){" in fork
 assert "origin.liftToForklift(jack)" in fork
 assert "ForkliftPalletIO.liftGround(world,source,jack)" in fork
 assert "rack.installFromForklift(jack)" in fork
 assert "ForkliftPalletIO.placeGround(" in fork
-assert 'BlockPos candidate=plan.goal(col,false); // depth 2, not 3' in fork
-assert 'if(!world.noCollision(this,footprint))continue;' in fork
+assert 'Vec3 palletCenter=rackPalletCenter(rack);' in fork
+assert 'ForkliftAislePath.canStand(world,this,position)' in fork
 print("PASS: centered seated driver and autonomous forklift driving with collision guards")
