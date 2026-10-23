@@ -11,7 +11,8 @@ assert "return WarehouseForkliftSeat.riderPosition(position(),getYRot());" in fo
 assert "DRIVE_BLOCKS_PER_TICK=0.20D" in fork
 assert "DRIVE_SPEED=0.20D" in fork
 assert "double step=Math.min(distance," in fork
-assert "Math.max(0,DRIVE_BLOCKS_PER_TICK-alreadyMoved)" in fork
+assert "Math.min(rollingSpeed,cornerLimit)-alreadyMoved" in fork
+assert "rollingSpeed+MOTOR_ACCELERATION" in fork
 assert "move(MoverType.SELF,delta);" in fork
 assert "setDeltaMovement(0,getDeltaMovement().y,0);" in fork
 assert "getX()-driveTickStartX,getZ()-driveTickStartZ" in fork
