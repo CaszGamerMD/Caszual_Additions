@@ -126,3 +126,31 @@ trying to drive through the opposite rack.
 
 Aisles with actual obstructions, missing floors, or occupied 2x2 landing
 footprints will still be refused; this change does not bypass collisions.
+
+
+## Selecting a rack destination and diagnosing refused jobs
+
+The **Warehouse Scanner (FORKLIFT mode)** and **black Forklift Controller**
+both support a two-click transfer: click the source's wrapped pallet, then
+click a *different empty rack* to deliver it. In the scanner, sneak-right-click
+a wrapped pallet to change the selected source, or sneak-click an ordinary
+block to clear a stale source. With the black controller, sneak-right-click
+a loaded rack to reselect or an empty rack to clear the source.
+
+**One rack is one 2×2×3 multiblock.** All twelve rack frame blocks share the
+same pallet and 216 inventory slots. Clicking a visually empty top or lower
+frame section of the same rack is *not* choosing a separate destination.
+Messages now show the real **root coordinates**, so you can verify the source
+and destination are distinct.
+
+An empty-looking rack is not automatically an empty inventory. If a rack
+actually contains a saved pallet, or still has stored items left behind
+without a deck, delivery is refused **without deleting any cargo**. The
+message will report the root coordinates and stored stack count.
+
+A forklift can also carry a **packed Pallet Jack with no visible pallet**
+if older/interrupted data has stored contents but no valid display deck.
+Such a vehicle is excluded from new pickups. Complete the previous delivery,
+or follow the emergency driver / Pallet Jack recovery procedure above.
+The diagnostic message distinguishes source and destination access clearance,
+missing wrapping, unexpected contents, absent driver, or loaded internal cargo.
