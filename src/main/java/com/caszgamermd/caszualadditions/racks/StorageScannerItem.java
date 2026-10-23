@@ -202,7 +202,7 @@ public final class StorageScannerItem extends Item {
             for(WarehouseForklift candidate:level.getEntitiesOfClass(
                     WarehouseForklift.class,new net.minecraft.world.phys.AABB(clicked).inflate(64),
                     f->!f.busy())){
-                if(candidate.hasOnboardPallet())
+                if(candidate.hasPackedCargo())
                     return "FORKLIFT: idle truck at "
                             +candidate.blockPosition().toShortString()
                             +" still owns a packed pallet. Deliver or recover "
