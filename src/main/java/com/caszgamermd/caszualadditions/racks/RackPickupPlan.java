@@ -52,12 +52,18 @@ public final class RackPickupPlan {
     }
 
     public static RackPickupPlan find(ServerLevel level,RackBlockEntity rack){
-        return find(level,rack,MAX_DROP);
+        // Four walking Golems still need their original three-row formation.
+        return find(level,rack,MAX_DROP,AISLE_DEPTH);
     }
+    /** A forklift has a compact 1.2-block physical chassis. It can load
+     * from the CENTER of a three-block aisle with two free approach rows.
+     * Requiring a third row forced its body against the opposite rack.
+     * Keep Golem access rules unchanged. */
     public static RackPickupPlan forklift(ServerLevel level,RackBlockEntity rack){
-        return find(level,rack,FORKLIFT_MAX_HEIGHT);
+        return find(level,rack,FORKLIFT_MAX_HEIGHT,2);
     }
-    private static RackPickupPlan find(ServerLevel level,RackBlockEntity rack,int maxDrop){
+    private static RackPickupPlan find(ServerLevel level,RackBlockEntity rack,
+            int maxDrop,int accessDepth){
         BlockPos root=rack.getBlockPos();
         Direction direction=rack.facing();
         // The loading crew waits if a mobile staircase is parked across
@@ -80,7 +86,7 @@ public final class RackPickupPlan {
         for(int y=root.getY();y>=root.getY()-maxDrop;y--){
             boolean clear=true;
             for(int col=0;col<2&&clear;col++)
-                for(int depth=1;depth<=AISLE_DEPTH&&clear;depth++){
+                for(int depth=1;depth<=accessDepth&&clear;depth++){
                     BlockPos base=withY(RackBlock.cell(root,direction,col)
                             .relative(direction,depth),y);
                     if(!StorageGolemReturnPath.walkable(level,base))clear=false;
