@@ -31,8 +31,8 @@ assert 'powerAlongSafeRoute(' not in fork
 
 # Physical rendering places a centered load 2.82 blocks in front of mast.
 assert 'pose.translate(-.90f,.32f+state.mastHeight,-3.72f);' in view
-assert 'addBox(-10,-2,-64,4,3,41)' in model
-assert 'addBox(6,-2,-64,4,3,41)' in model
+assert 'addBox(-10,-3,-61,4,3,35)' in model
+assert 'addBox(6,-3,-61,4,3,35)' in model
 assert 'private static Vec3 rackPalletCenter(RackBlockEntity rack)' in fork
 assert 'side.getStepX()*.5' in fork and '-face.getStepX()*.5' in fork
 assert 'palletCenter.x+outward.getStepX()*2.82' in fork

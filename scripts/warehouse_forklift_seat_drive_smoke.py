@@ -11,9 +11,9 @@ state=(client/"StorageGolemRenderState.java").read_text()
 renderer=(client/"StorageGolemRenderer.java").read_text()
 assert "getPassengerRidingPosition(Entity passenger)" in fork
 assert "passenger instanceof StorageGolem" in fork
-assert "getY()+.62" in fork and "double rear=.59;" in fork
-assert "getX()-Math.sin(radians)*rear+Math.cos(radians)*right" in fork
-assert "getZ()+Math.cos(radians)*rear+Math.sin(radians)*right" in fork
+assert "WarehouseForkliftSeat.riderPosition(position(),getYRot())" in fork
+assert "WarehouseForkliftSeat.riderPosition(position(),getYRot())" in fork
+assert "return WarehouseForkliftSeat.riderPosition(position(),getYRot());" in fork
 assert "state.ridingForklift=golem.getVehicle() instanceof WarehouseForklift;" in renderer
 assert "public boolean ridingForklift;" in state
 assert "if(state.ridingForklift){" in pose

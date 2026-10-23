@@ -44,6 +44,9 @@ public final class WarehouseForklift extends PathfinderMob {
             SynchedEntityData.defineId(WarehouseForklift.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> CARGO_CRATES=
             SynchedEntityData.defineId(WarehouseForklift.class,EntityDataSerializers.INT);
+    /** Small signed front wheel steering angle, synchronized for client model. */
+    private static final EntityDataAccessor<Float> STEERING=
+            SynchedEntityData.defineId(WarehouseForklift.class,EntityDataSerializers.FLOAT);
     /** Actual travel distance, not an AI speed multiplier:
      * Minecraft runs 20 server ticks per second, so 0.20 block/tick = 4 m/s. */
     private static final double DRIVE_BLOCKS_PER_TICK=0.20D;
@@ -89,10 +92,12 @@ public final class WarehouseForklift extends PathfinderMob {
         builder.define(MAST,0f);
         builder.define(ACTION,0);
         builder.define(CARGO_CRATES,0);
+        builder.define(STEERING,0f);
     }
     public ItemStack displayPallet(){return entityData.get(DECK);}
     public int displayedCargoCrates(){return entityData.get(CARGO_CRATES);}
     public float mastHeight(){return entityData.get(MAST);}
+    public float steeringAngle(){return entityData.get(STEERING);}
     public int action(){return entityData.get(ACTION);}
     public boolean busy(){return job!=0&&job!=5;}
     /** A forklift can be visually idle but still own the only packed pallet.
@@ -126,18 +131,13 @@ public final class WarehouseForklift extends PathfinderMob {
         return true;
     }
 
-    /** The cab seat stays at its verified .62-block height. Offset the
-     * driver toward the center of the chair to fix the left-side clipping;
-     * both offsets rotate with the vehicle on client and server. */
+    /** Position the operator at the exact cushion center, not a guessed
+     * lateral correction. Vanilla rider attachment calls this on BOTH
+     * server and client, so the seat follows all turns and driving ticks. */
     @Override public Vec3 getPassengerRidingPosition(Entity passenger){
-        if(!(passenger instanceof StorageGolem))return super.getPassengerRidingPosition(passenger);
-        double radians=Math.toRadians(getYRot());
-        double rear=.59;
-        double right=.28;
-        return new Vec3(
-                getX()-Math.sin(radians)*rear+Math.cos(radians)*right,
-                getY()+.62,
-                getZ()+Math.cos(radians)*rear+Math.sin(radians)*right);
+        if(!(passenger instanceof StorageGolem))
+            return super.getPassengerRidingPosition(passenger);
+        return WarehouseForkliftSeat.riderPosition(position(),getYRot());
     }
     public void setParking(BlockPos at){parking=at.immutable();}
     public BlockPos parking(){return parking;}
@@ -380,6 +380,9 @@ public final class WarehouseForklift extends PathfinderMob {
     }
     private boolean turnForksToYaw(float wanted){
         float error=Mth.wrapDegrees(wanted-getYRot());
+        float steering=Mth.clamp(error/45f,-1f,1f);
+        if(Math.abs(entityData.get(STEERING)-steering)>.035f)
+            entityData.set(STEERING,steering);
         float yaw=getYRot()+Mth.clamp(error,-14f,14f);
         setYRot(yaw);
         setYBodyRot(yaw);
@@ -556,6 +559,16 @@ public final class WarehouseForklift extends PathfinderMob {
             setDeltaMovement(0,getDeltaMovement().y,0);
         }
         super.tick();
+        // Rider coordinates are owned by the forklift on both logical sides.
+        // Keep rider rotation tied to the cab, not independent golem look AI:
+        // the passenger may otherwise visually turn away while steering.
+        for(Entity passenger:getPassengers()){
+            if(passenger instanceof StorageGolem golem){
+                golem.setYRot(getYRot());
+                golem.setYBodyRot(getYRot());
+                golem.setYHeadRot(getYRot());
+            }
+        }
         if(!(level() instanceof ServerLevel world))return;
         // Travel with lowered forks. Raise them only while picking up from
         // a rack, or after arriving at the destination rack and braking.
