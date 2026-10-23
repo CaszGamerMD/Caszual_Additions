@@ -153,6 +153,23 @@ public final class StorageScannerItem extends Item {
             ItemStack scanner,BlockPos clicked,BlockPos landing,BlockPos home){
         RackBlockEntity rack=RackBlock.controller(level,clicked);
         var pallet=StorageGroundPalletTransfer.wrappedController(level,clicked);
+        // Sneak-click a different source pallet to reselect it, or an
+        // ordinary block to clear a stale/incorrect source. Never treat
+        // an already-loaded rack as the intended drop-off by accident.
+        if(user.isShiftKeyDown()){
+            if(rack!=null&&rack.hasPallet()){
+                selectForkliftSource(scanner,level,rack.getBlockPos());
+                return "FORKLIFT: new source is rack "
+                        +rack.getBlockPos().toShortString();
+            }
+            if(pallet!=null){
+                selectForkliftSource(scanner,level,pallet.getBlockPos());
+                return "FORKLIFT: new source is ground pallet "
+                        +pallet.getBlockPos().toShortString();
+            }
+            clearForkliftSource(scanner);
+            return "FORKLIFT: source selection cleared. Click a wrapped pallet.";
+        }
         BlockPos source=forkliftSource(scanner,level);
         if(source==null){
             if(rack!=null&&rack.hasPallet()){
