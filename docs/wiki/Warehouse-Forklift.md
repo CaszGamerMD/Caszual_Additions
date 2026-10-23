@@ -106,3 +106,23 @@ The 4-block-per-second motor still cannot drive through racks or walls.
 An abandoned loaded Pallet Jack is never overwritten by a new pickup order.
 If the forklift reports that its parking bay is missing, use emergency
 dismount instead of repeatedly requesting normal parking.
+
+
+## Three-block-wide aisles
+
+Forklifts can now load from and deliver to racks on **both sides of a
+three-block-clear aisle**. Their physical chassis is 1.2 blocks wide and stops
+in the middle approach row (row 2), not against the opposite rack at row 3.
+Only two clear approach rows are needed for a forklift to engage the mast.
+The existing **three-row four-Golem** loading route is unchanged.
+
+A forklift may set down a wrapped 2x2 pallet temporarily in an **actually
+empty** portion of the three-block aisle, even when those floor tiles are
+marked as rack-access reservations. The pallet still requires four replaceable
+cells above full solid floor, and must never overwrite racks, cargo, or other
+blocks. When servicing a rack, the forklift uses the rack's facing direction
+for ground pallet placement and finds an approach along the aisle rather than
+trying to drive through the opposite rack.
+
+Aisles with actual obstructions, missing floors, or occupied 2x2 landing
+footprints will still be refused; this change does not bypass collisions.
