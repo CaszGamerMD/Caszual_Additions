@@ -15,18 +15,18 @@ state=(client/"WarehouseForkliftRenderState.java").read_text()
 # Exactly ONE shared model/rider anchor. Never reintroduce a separate
 # +0.28 lateral nudge or a mismatched 0.59-rear rider offset.
 assert 'public static final double LOCAL_RIGHT=0.0;' in seat
-assert 'public static final double LOCAL_REAR=8.0/16.0;' in seat
+assert 'public static final double LOCAL_REAR=10.0/16.0;' in seat
 assert 'public static final double FOOT_HEIGHT=10.0/16.0;' in seat
 assert 'WarehouseForkliftSeat.riderPosition(position(),getYRot())' in truck
 assert 'double right=.28;' not in truck
 assert 'getY()+.62' not in truck
 assert 'if(!(passenger instanceof StorageGolem))' in truck
 assert 'getPassengerRidingPosition(Entity passenger)' in truck
-assert 'texOffs(48,48).addBox(-6,-10,3,12,3,10)' in geometry
-assert 'texOffs(48,48).addBox(-6,-25,12,12,16,3)' in geometry
+assert 'texOffs(48,48).addBox(-6,-10,5,12,2,10)' in geometry
+assert 'texOffs(48,48).addBox(-6,-25,13.5f,12,15,2)' in geometry
 
 # The rider remains CENTERED on the same revolving seat at every heading.
-rear=.5;right=0.
+rear=.625;right=0.
 for heading in (0,45,90,135,180,225,270,315):
     angle=radians(heading)
     x=-sin(angle)*rear+cos(angle)*right
@@ -74,8 +74,8 @@ for wheel in ('wheel_front_left','wheel_front_right',
     assert '"'+wheel+'"' in geometry
 assert 'LayerDefinition.create(mesh,128,128)' in geometry
 assert 'pose.translate(-.90f,.32f+state.mastHeight,-3.72f);' in renderer
-assert 'addBox(-10,-3,-61,4,3,35)' in geometry
-assert 'addBox(6,-3,-61,4,3,35)' in geometry
+assert 'addBox(-10,-3,-61,4,3,30)' in geometry
+assert 'addBox(6,-3,-61,4,3,30)' in geometry
 assert 'DRIVE_BLOCKS_PER_TICK=0.20D' in truck
 assert 'ForkliftAislePath.route(world,this,goal)' in truck
 print('PASS: premium forklift mesh, synced steering, exact rotating rider anchor, 4m/s aisle routing preserved')

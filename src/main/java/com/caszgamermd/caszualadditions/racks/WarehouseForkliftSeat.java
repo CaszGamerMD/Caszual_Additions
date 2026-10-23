@@ -7,15 +7,15 @@ import net.minecraft.world.phys.Vec3;
  *
  * Local truck model coordinates: +Z is toward the rear counterweight,
  * +X is passenger-right, and the model's origin is centered over the axle.
- * The seat cushion spans X=-6..6, Z=4..12 model pixels, making the center
- * X=0, Z=8px (half a block behind the model origin).
+ * The seat cushion spans X=-6..6, Z=5..15 model pixels, making the center
+ * X=0, Z=10px (0.625 block behind the model origin).
  *
  * Keep these values aligned with WarehouseForkliftModel.seat: independent
  * "nudge" constants cause the occupant to float beside the seat in turns.
  */
 public final class WarehouseForkliftSeat {
     public static final double LOCAL_RIGHT=0.0;
-    public static final double LOCAL_REAR=8.0/16.0;
+    public static final double LOCAL_REAR=10.0/16.0;
     /** Feet touch the top of the cushion (10 px above the local ground). */
     public static final double FOOT_HEIGHT=10.0/16.0;
     private WarehouseForkliftSeat(){}

@@ -12,7 +12,7 @@ golem=(base/"StorageGolem.java").read_text()
 assert 'aisleRoute=ForkliftAislePath.route(world,this,goal);' in truck
 assert 'ForkliftAislePath.canStand(world,this,next)' in truck
 assert 'DRIVE_BLOCKS_PER_TICK=0.20D' in truck
-assert 'if(!turnForksToward(waypoint.x,waypoint.z)){' in truck
+assert 'boolean facing=turnForksToward(waypoint.x,waypoint.z);' in truck
 assert 'status="REPLANNING FORKLIFT AISLE AROUND OBSTRUCTION";' in truck
 assert 'status="WAITING: FORKLIFT PATH BLOCKED; CLEAR THE DRIVE AISLE"' not in truck or 'WAITING: FORKLIFT PATH BLOCKED; CLEAR THE DRIVE AISLE' in truck
 
