@@ -23,10 +23,10 @@ import org.jspecify.annotations.Nullable;
  * outgoing mail stays in the sending player's private open menu.
  */
 public final class MailBlock extends Block {
-    private static final MapCodec<MailBlock> MAILBOX_CODEC=MapCodec.unit(
-            new MailBlock(true,BlockBehaviour.Properties.of()));
-    private static final MapCodec<MailBlock> BOX_CODEC=MapCodec.unit(
-            new MailBlock(false,BlockBehaviour.Properties.of()));
+    private static final MapCodec<MailBlock> MAILBOX_CODEC=
+            simpleCodec(props->new MailBlock(true,props));
+    private static final MapCodec<MailBlock> BOX_CODEC=
+            simpleCodec(props->new MailBlock(false,props));
     private final boolean outgoing;
     public MailBlock(boolean outgoing,BlockBehaviour.Properties props){
         super(props);
