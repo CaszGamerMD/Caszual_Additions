@@ -2783,6 +2783,14 @@ public final class StorageGolem extends PathfinderMob {
     }
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(level().isClientSide())return InteractionResult.SUCCESS;
+        // The operator model may intercept clicks aimed at the truck. Allow
+        // the exact same safe emergency dismount from the seated Golem.
+        if(player.isShiftKeyDown()&&player.getItemInHand(hand).isEmpty()
+                &&getVehicle() instanceof WarehouseForklift lift){
+            player.sendSystemMessage(Component.literal(
+                    lift.emergencyDriverRelease((ServerLevel)level())));
+            return InteractionResult.SUCCESS;
+        }
         if(player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)
                 &&StorageScannerItem.mode(player.getItemInHand(hand))
                         ==StorageScannerItem.Mode.FORKLIFT
