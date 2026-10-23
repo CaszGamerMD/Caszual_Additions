@@ -3,7 +3,8 @@
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 fork=(root/"src/main/java/com/caszgamermd/caszualadditions/racks/WarehouseForklift.java").read_text()
-assert "double right=.28;" in fork
+assert "double right=.28;" not in fork
+assert "WarehouseForkliftSeat.riderPosition(position(),getYRot())" in fork
 assert "WarehouseForkliftSeat.riderPosition(position(),getYRot())" in fork
 assert "WarehouseForkliftSeat.riderPosition(position(),getYRot())" in fork
 assert "return WarehouseForkliftSeat.riderPosition(position(),getYRot());" in fork
