@@ -85,6 +85,36 @@ public final class WarehouseForklift extends PathfinderMob {
     public float mastHeight(){return entityData.get(MAST);}
     public int action(){return entityData.get(ACTION);}
     public boolean busy(){return job!=0&&job!=5;}
+    /** A forklift can be visually idle but still own the only packed pallet.
+     * Never assign a second pickup until the first cargo is unloaded or
+     * explicitly recovered by its owner using emergency recovery. */
+    public boolean hasOnboardPallet(){return PalletJackItem.loaded(jack);}
+    /** An old or interrupted transfer might have stored item stacks but
+     * lost its slot-zero deck. It renders as an EMPTY forklift, yet still
+     * owns inventory. Treat those stacks as cargo, never as an empty Jack. */
+    public boolean hasPackedCargo(){
+        if(!jack.is(RackContent.PALLET_JACK))return false;
+        for(ItemStack item:PalletJackItem.unpack(jack))
+            if(!item.isEmpty())return true;
+        return false;
+    }
+    public boolean readyForPickup(){return !busy()&&!hasPackedCargo();}
+    private boolean beginWithoutCargo(){
+        if(busy()){
+            status="CURRENT FORKLIFT JOB IN PROGRESS";
+            return false;
+        }
+        if(hasPackedCargo()){
+            refreshDisplay();
+            status=hasOnboardPallet()
+                    ?"FORKLIFT HAS A PACKED PALLET IN ITS JACK; FINISH DELIVERY "
+                     +"OR USE SAFE CARGO RECOVERY BEFORE PICKING UP ANOTHER"
+                    :"FORKLIFT JACK CONTAINS UNDISPLAYED SAVED CARGO; "
+                     +"USE SAFE RECOVERY, NEVER OVERWRITE IT";
+            return false;
+        }
+        return true;
+    }
 
     /** The cab seat stays at its verified .62-block height. Offset the
      * driver toward the center of the chair to fix the left-side clipping;
@@ -183,8 +213,11 @@ public final class WarehouseForklift extends PathfinderMob {
         return order(world,rack,null);
     }
     public boolean order(ServerLevel world,RackBlockEntity rack,BlockPos selectedFloorPallet){
-        if(busy()||PalletJackItem.loaded(jack)
-                ||!world.hasChunkAt(rack.getBlockPos()))return false;
+        if(!beginWithoutCargo())return false;
+        if(!world.hasChunkAt(rack.getBlockPos())){
+            status="RACK CHUNK NOT LOADED";
+            return false;
+        }
         RackPickupPlan plan=RackPickupPlan.forklift(world,rack);
         if(plan==null||plan.height()>RackPickupPlan.FORKLIFT_MAX_HEIGHT){
             status="NO CLEAR TWO-ROW FORKLIFT APPROACH OR MAST HEIGHT EXCEEDED";
@@ -198,22 +231,38 @@ public final class WarehouseForklift extends PathfinderMob {
             PalletBlockEntity selected=StorageGroundPalletTransfer.wrappedController(
                     world,selectedFloorPallet);
             if(selected==null||!selected.getBlockPos().equals(selectedFloorPallet)
-                    ||selectedFloorPallet.distSqr(rack.getBlockPos())>24*24)
+                    ||selectedFloorPallet.distSqr(rack.getBlockPos())>24*24){
+                status="SELECTED GROUND PALLET IS NOT WRAPPED, LOADED OR WITHIN 24 BLOCKS";
                 return false;
+            }
         }
-        if(src==null)return false;
-        if(pickup&&!rack.glassWrapped())return false;
+        if(src==null){
+            status="NO WRAPPED SOURCE PALLET FOUND NEAR DESTINATION";
+            return false;
+        }
+        if(pickup&&!rack.glassWrapped()){
+            status="SOURCE RACK PALLET NEEDS GLASS WRAPPING";
+            return false;
+        }
+        if(!pickup&&(rack.hasPallet()||!rack.isEmpty())){
+            status=rack.hasPallet()?"DESTINATION RACK ALREADY CONTAINS A PALLET"
+                    :"DESTINATION RACK HAS STORED ITEMS WITHOUT A PALLET; "
+                    +"EMPTY INVENTORY SAFELY BEFORE USE";
+            return false;
+        }
+        BlockPos proposedStaging=pickup?floorPlacement(world,rack,plan.floorY())
+                :src.immutable();
+        if(proposedStaging==null||proposedStaging.equals(BlockPos.ZERO)){
+            status="NO EMPTY 2x2 STAGING FOOTPRINT; CHECK ACTUAL BLOCKS AND FLOOR";
+            return false;
+        }
+        if(!hire(world))return false;
         this.retrieving=pickup;
         this.groundDestination=pickup;
         this.source=src.immutable();
         this.target=rack.getBlockPos().immutable();
-        this.staging=pickup?floorPlacement(world,rack,plan.floorY()):src.immutable();
-        if(staging==null||staging.equals(BlockPos.ZERO)){
-            status="NO EMPTY 2x2 STAGING FOOTPRINT; CHECK ACTUAL BLOCKS AND FLOOR";
-            return false;
-        }
+        this.staging=proposedStaging;
         if(pickup)this.groundFacing=rack.facing();
-        if(!hire(world))return false;
         this.job=1;
         this.animation=0;
         this.status="DRIVER BOARDING";
@@ -221,13 +270,34 @@ public final class WarehouseForklift extends PathfinderMob {
     }
     public boolean orderRackToRack(ServerLevel world,RackBlockEntity from,
             RackBlockEntity to){
-        if(busy()||PalletJackItem.loaded(jack)
-                ||from==null||to==null||from.getBlockPos().equals(to.getBlockPos())
-                ||!from.hasPallet()||!from.glassWrapped()||to.hasPallet()||!to.isEmpty())
+        if(!beginWithoutCargo())return false;
+        if(from==null||to==null){
+            status="SOURCE OR DESTINATION IS NOT A VALID RACK";
             return false;
-        if(RackPickupPlan.forklift(world,from)==null
-                ||RackPickupPlan.forklift(world,to)==null){
-            status="SOURCE OR DESTINATION LACKS TWO CLEAR FORKLIFT APPROACH ROWS";
+        }
+        if(from.getBlockPos().equals(to.getBlockPos())){
+            status="SOURCE AND DESTINATION ARE THE SAME 2x2x3 RACK";
+            return false;
+        }
+        if(!from.hasPallet()||!from.glassWrapped()){
+            status="SOURCE RACK NEEDS A REAL GLASS-WRAPPED PALLET";
+            return false;
+        }
+        if(to.hasPallet()){
+            status="DESTINATION RACK CONTAINS A PALLET: "+to.getBlockPos().toShortString();
+            return false;
+        }
+        if(!to.isEmpty()){
+            status="DESTINATION RACK HAS "+to.occupiedSlots()
+                    +" STORED ITEM SLOTS BUT NO PALLET; ITEMS NOT OVERWRITTEN";
+            return false;
+        }
+        if(RackPickupPlan.forklift(world,from)==null){
+            status="SOURCE RACK CANNOT EXTRACT: AISLE BLOCKED OR MAST ABOVE 12 BLOCKS";
+            return false;
+        }
+        if(RackPickupPlan.forklift(world,to)==null){
+            status="DESTINATION RACK CANNOT ACCEPT: AISLE BLOCKED OR MAST ABOVE 12 BLOCKS";
             return false;
         }
         if(!hire(world))return false;
@@ -240,9 +310,12 @@ public final class WarehouseForklift extends PathfinderMob {
     }
     public boolean orderGround(ServerLevel world,BlockPos from,BlockPos landing,
             Direction facing){
-        if(busy()||PalletJackItem.loaded(jack)
-                ||landing==null||from==null||!ForkliftPalletIO.fits(
-                world,landing,facing))return false;
+        if(!beginWithoutCargo())return false;
+        if(landing==null||from==null||!ForkliftPalletIO.fits(
+                world,landing,facing)){
+            status="GROUND DESTINATION NEEDS FOUR CLEAR PALLET CELLS ON SOLID FLOOR";
+            return false;
+        }
         RackBlockEntity rack=world.getBlockEntity(from) instanceof RackBlockEntity r?r:null;
         boolean fromRack=rack!=null&&rack.hasPallet()&&rack.glassWrapped();
         if(fromRack&&RackPickupPlan.forklift(world,rack)==null)return false;
@@ -650,8 +723,8 @@ public final class WarehouseForklift extends PathfinderMob {
         golem.finishForkliftDriving();
         driver=null;dismissAfterParking=false;
         getNavigation().stop();
-        status=PalletJackItem.loaded(jack)
-                ?"DRIVER HOME; SEALED PALLET JACK SECURE IN FORKLIFT"
+        status=hasPackedCargo()
+                ?"DRIVER HOME; PACKED JACK CARGO SECURE IN FORKLIFT"
                 :"DRIVER DISMISSED - RETURNING TO SHELF";
         return true;
     }
@@ -682,8 +755,8 @@ public final class WarehouseForklift extends PathfinderMob {
     public String recoverStuckCargo(Player player){
         if(driver!=null||job!=0)
             return "FORKLIFT: stop and release the driver first.";
-        if(!PalletJackItem.loaded(jack))
-            return "FORKLIFT: no sealed pallet cargo to recover.";
+        if(!hasPackedCargo())
+            return "FORKLIFT: no packed pallet cargo to recover.";
         ItemStack packed=jack.copy();
         jack=new ItemStack(RackContent.PALLET_JACK);
         refreshDisplay();
@@ -694,7 +767,7 @@ public final class WarehouseForklift extends PathfinderMob {
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel world){
             // One packed pallet must survive the vehicle's destruction.
-            if(PalletJackItem.loaded(jack)){
+            if(hasPackedCargo()){
                 net.minecraft.world.Containers.dropItemStack(world,
                         getX(),getY(),getZ(),jack.copy());
                 jack.remove(net.minecraft.core.component.DataComponents.CONTAINER);

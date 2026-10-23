@@ -146,6 +146,8 @@ jobs:
         run: python3 scripts/warehouse_forklift_stuck_recovery_smoke.py
       - name: Verify forklift operations inside three-block warehouse aisles
         run: python3 scripts/warehouse_forklift_three_block_aisles_smoke.py
+      - name: Verify forklift source destination selection and saved cargo safety
+        run: python3 scripts/warehouse_forklift_selection_cargo_smoke.py
       - name: Verify loaded Golem pallet speed boost on concrete and industrial floors
         run: python3 scripts/warehouse_concrete_carry_speed_smoke.py
       - name: Verify courier avoids nearby pallet decks and retains its assigned target
