@@ -60,6 +60,28 @@ public final class ForkliftAislePath {
                 &&standable(world,vehicle,location.x,vehicle.getY(),location.z);
     }
 
+    /** Verify the entire vehicle can follow an interpolated straight segment,
+     * rather than checking only its far endpoint. This is used to smooth
+     * the short A* grid nodes into real driving stretches WITHOUT cutting
+     * across rack corners or driving through pallet loads.
+     * Each sample checks both the collision box and floor under all wheels.
+     */
+    public static boolean clearSegment(ServerLevel world,WarehouseForklift vehicle,
+            Vec3 from,Vec3 to){
+        if(Math.abs(from.y-to.y)>.25)return false;
+        double distance=Math.hypot(to.x-from.x,to.z-from.z);
+        if(distance<.005)return true;
+        int samples=Math.max(1,(int)Math.ceil(distance/.18));
+        if(samples>96)return false;
+        for(int i=1;i<=samples;i++){
+            double t=i/(double)samples;
+            if(!standable(world,vehicle,
+                    from.x+(to.x-from.x)*t,vehicle.getY(),
+                    from.z+(to.z-from.z)*t))return false;
+        }
+        return true;
+    }
+
     private static int distance(Cell a,Cell b){
         return Math.abs(a.x-b.x)+Math.abs(a.z-b.z);
     }
