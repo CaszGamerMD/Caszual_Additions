@@ -124,8 +124,8 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
         root.addOrReplaceChild("driver_seat",CubeListBuilder.create()
                 .texOffs(48,48).addBox(-6,-10,5,12,2,10)
                 .texOffs(70,0).addBox(-6,-8,5,12,5,10)
-                .texOffs(48,48).addBox(-6,-25,15,12,15,2)
-                .texOffs(70,18).addBox(-6,-26,15,12,1,2)
+                .texOffs(48,48).addBox(-6,-25,13.5f,12,15,2)
+                .texOffs(70,18).addBox(-6,-26,13.5f,12,1,2)
                 .texOffs(70,18).addBox(-8,-17,10,2,3,5)
                 .texOffs(70,18).addBox(6,-17,10,2,3,5),
                 PartPose.offset(0,24,0));
