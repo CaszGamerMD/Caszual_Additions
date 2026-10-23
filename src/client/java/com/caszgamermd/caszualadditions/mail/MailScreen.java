@@ -2,6 +2,7 @@ package com.caszgamermd.caszualadditions.mail;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -68,6 +69,19 @@ public final class MailScreen extends AbstractContainerScreen<MailMenu> {
             for(int i=0;i<27;i++)slot(graphics,x+8+i%9*18,y+102+i/9*18);
             for(int i=0;i<9;i++)slot(graphics,x+8+i*18,y+160);
         }
+    }
+    @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick){
+        if(sending&&event.button()==0){
+            double x=event.x()-leftPos,y=event.y()-topPos;
+            if(x>=8&&x<170&&y>=20&&y<56){
+                int col=(int)(x-8)/18,row=(int)(y-20)/18;
+                if(col>=0&&col<9&&row>=0&&row<2){
+                    press(row*9+col);
+                    return true;
+                }
+            }
+        }
+        return super.mouseClicked(event,doubleClick);
     }
     @Override protected void extractLabels(GuiGraphicsExtractor graphics,
             int mouseX,int mouseY){
