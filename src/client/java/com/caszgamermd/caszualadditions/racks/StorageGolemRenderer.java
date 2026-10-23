@@ -50,6 +50,15 @@ public final class StorageGolemRenderer
         // custom name. A crew member whose task label still says PALLET
         // must not stand idle with both arms permanently raised.
         state.ridingForklift=golem.getVehicle() instanceof WarehouseForklift;
+        if(golem.getVehicle() instanceof WarehouseForklift vehicle){
+            // Rotate the driver with the CAB, not golem look/idle animation.
+            // The forklift itself supplies the physical seat position and
+            // vanilla interpolation of the passenger's world location.
+            state.bodyRot=vehicle.getYRot();
+            state.yRot=0f;
+            state.xRot=0f;
+            state.walkAnimationSpeed=0f;
+        }
         state.carryingPallet=golem.carryingPalletPose();
         state.pushingEmptyPallet=golem.pushingPalletPose();
         state.showSharedPallet=state.carryingPallet
