@@ -179,7 +179,7 @@ public final class WarehouseForkliftItem extends Item {
         boolean onboard=false;
         for(WarehouseForklift lift:level.getEntitiesOfClass(
                 WarehouseForklift.class,new AABB(root).inflate(24),f->!f.busy())){
-            if(lift.hasOnboardPallet()){onboard=true;continue;}
+            if(lift.hasPackedCargo()){onboard=true;continue;}
             double d=lift.blockPosition().distSqr(root);
             if(d<best){best=d;nearest=lift;}
         }
