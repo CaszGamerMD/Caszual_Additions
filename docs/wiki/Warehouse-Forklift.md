@@ -178,3 +178,35 @@ nearest usable aisle route is preferred.
 The traveling forks stay low, mast lift is limited to the destination/source
 transfer itself, and the safe driver-dismissal and packed-cargo recovery
 features remain available.
+
+
+## Detailed forklift model and locked driver seat (visual redesign)
+
+The forklift has a revised industrial Minecraft-style model: structural steel
+chassis, protective lower rails, layered yellow counterweight, shaped wheel
+arches, work platform and pedals, real seat cushions and backrest, armrests,
+grabbable overhead guard, canopy braces, steering wheel, operator levers,
+recessed lamp clusters, safety beacon, rear reflectors, and a reinforced
+telescoping mast with visible hydraulic cylinders.
+
+The **driver's seat** is one shared coordinate: model X=0, Z=+8 pixels
+(0.5 block behind the chassis origin) and its cushion is 10 pixels high
+(0.625 block above the floor). The Golem's riding position is calculated
+from this same anchor and is rotated with the current forklift yaw on both
+server and client. The Golem's body, head and steering pose rotate along
+with the forklift, including turns. It does not use the old arbitrary
+0.28-block sideways offset.
+
+Front wheels visibly steer and the steering wheel responds to the same
+network-synchronized angle. All four wheels retain travel spin, the middle
+and upper mast sections telescope independently, the fork carriage follows
+the commanded height, and both hydraulic cylinders animate as it lifts.
+
+Only appearance, the riding anchor and pose synchronization change. The
+same 1.2-block server collision box, 3-block aisle router, 4 m/s motor,
+full-size cargo on its tines, saved pallet inventory, warehouse integrations
+and emergency driver recovery remain unchanged.
+
+The 128x128 existing forklift texture is retained so current installations
+do not need texture migration. Existing saved forklifts update visually when
+the JAR is replaced.
