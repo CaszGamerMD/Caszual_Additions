@@ -154,3 +154,27 @@ Such a vehicle is excluded from new pickups. Complete the previous delivery,
 or follow the emergency driver / Pallet Jack recovery procedure above.
 The diagnostic message distinguishes source and destination access clearance,
 missing wrapping, unexpected contents, absent driver, or loaded internal cargo.
+
+
+## 3-block aisle routing and true-to-life fork alignment
+
+A forklift no longer aims its motor straight toward a destination pallet
+when an obstacle prevents the direct route. Its server-side motor follows an
+**A* aisle path** that checks the full 1.2-block chassis every half block,
+verifies support under all four corners, turns at aisle intersections and
+replans if a new obstacle appears. The player/warehouse does not need to
+place special path markers. An impossible or unloaded route causes a clear
+"NO SAFE FORKLIFT AISLE ROUTE TO DOCK" status, rather than a forklift
+forcing itself into a rack.
+
+At pickup and drop-off the forklift steers to a precise position **2.82 blocks
+back from the center of the 2x2 pallet**. Its wheels stop square to the rack
+opening, and its two physical fork tines run underneath the whole pallet.
+It rotates in place to face the pallet **perpendicularly** before raising or
+lowering, so its mast no longer points diagonally at one rack corner. A
+ground pallet can be approached from any genuinely reachable side; the
+nearest usable aisle route is preferred.
+
+The traveling forks stay low, mast lift is limited to the destination/source
+transfer itself, and the safe driver-dismissal and packed-cargo recovery
+features remain available.
