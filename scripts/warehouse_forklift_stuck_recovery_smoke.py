@@ -9,16 +9,11 @@ golem=(base/"StorageGolem.java").read_text()
 
 # A pallet/rack at the end of a 12-block ray can block the full scan even
 # while the vehicle's next small movement is completely safe.
-assert 'double shortStep=Math.min(length,.45);' in truck
-assert 'directLaneClear(world,safeX,getY(),safeZ)' in truck
-assert 'directLaneClear(world,aheadX,getY(),aheadZ)' in truck
-assert 'Path path=getNavigation().getPath();' in truck
-assert 'world.noCollision(this,footprint)' in truck
-assert 'if(!supportedFloor(world,tx,y,tz))return false;' in truck
-assert 'world.getBlockState(floor).is(RackContent.FORKLIFT_PARKING)' in truck
-assert 'if(!supportedFloor(world,getX()+mx,getY(),getZ()+mz)' in truck
+assert 'aisleRoute=ForkliftAislePath.route(world,this,goal);' in truck
+assert 'ForkliftAislePath.canStand(world,this,next)' in truck
 assert 'DRIVE_BLOCKS_PER_TICK=0.20D' in truck
-assert 'if(!turnForksToward(x,z)){' in truck
+assert 'if(!turnForksToward(waypoint.x,waypoint.z)){' in truck
+assert 'status="REPLANNING FORKLIFT AISLE AROUND OBSTRUCTION";' in truck
 assert 'status="WAITING: FORKLIFT PATH BLOCKED; CLEAR THE DRIVE AISLE"' not in truck or 'WAITING: FORKLIFT PATH BLOCKED; CLEAR THE DRIVE AISLE' in truck
 
 # Normal dismissal must cancel an unfinishable order, then park the vehicle.

@@ -24,9 +24,9 @@ vehicle_half_width=.60
 assert 1 < (2+.5)-vehicle_half_width
 assert (2+.5)+vehicle_half_width < 4
 assert (3+.5)+vehicle_half_width > 4
-assert "BlockPos candidate=plan.goal(col,false); // depth 2, not 3" in truck
-assert "if(!world.noCollision(this,footprint))continue;" in truck
-assert "private BlockPos service(ServerLevel world,RackBlockEntity rack)" in truck
+assert "private Dock service(ServerLevel world,RackBlockEntity rack)" in truck
+assert "Vec3 palletCenter=rackPalletCenter(rack);" in truck
+assert "ForkliftAislePath.canStand(world,this,position)" in truck
 
 # A 2-deep pallet needs 2 of the 3 free aisle rows. Both choices touch
 # a neighboring rack's RESERVED access row, but neither hits real blocks.
@@ -42,8 +42,8 @@ assert "world.removeBlock" in pallet
 # from a safe cardinal side along the aisle rather than driving directly
 # into the opposite rack.
 assert "if(pickup)this.groundFacing=rack.facing();" in truck
-assert "?groundService(world,staging):service(world,rack);" in truck
-assert "BlockPos candidate=pallet.relative(face,3);" in truck
-assert "if(!world.noCollision(this,spot))continue;" in truck
+assert "?groundService(world,staging,groundFacing):service(world,rack);" in truck
+assert "for(Direction side:Direction.Plane.HORIZONTAL)" in truck
+assert "ForkliftAislePath.route(world,this,position)" in truck
 
 print("PASS: forklift can service both sides of a three-block aisle and stage intact 2x2 pallets")

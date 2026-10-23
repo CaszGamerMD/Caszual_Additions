@@ -12,14 +12,14 @@ assert "getY()+.62" in lift   # previous passenger height was 1.32
 assert "double rear=.59;" in lift
 assert "DRIVE_SPEED=0.20D;" in lift # 4 blocks per 20t second
 assert ".add(Attributes.MOVEMENT_SPEED,DRIVE_SPEED)" in lift
-assert "getNavigation().moveTo(x,goal.getY(),z,DRIVE_CONTROL)" in lift
-assert "powerAlongSafeRoute(world,x,goal.getY(),z)" in lift
+assert "aisleRoute=ForkliftAislePath.route(world,this,goal);" in lift
+assert "ForkliftAislePath.canStand(world,this,next)" in lift
 assert "boolean liftingAtSource=job==2&&retrieving;" in lift
 assert "boolean liftingAtDestination=job==3&&!groundDestination&&animation>0;" in lift
 assert 'status="LOWERING LOADED PALLET FOR TRAVEL"' in lift
 assert 'status=groundDestination?"LOWERING PALLET ONTO GROUND"' in lift
 assert ':"RAISING PALLET TO RACK HEIGHT"' in lift
-assert "if(animation==0&&!drive(world,landing))return;" in lift
+assert "if(animation==0&&!drive(world,landing.position()))return;" in lift
 assert "entityData.set(CARGO_CRATES,Math.min(27,visible));" in lift
 assert "state.visibleCargo=deck.isEmpty()?0:vehicle.displayedCargoCrates();" in view
 assert "state.hasPallet=!deck.isEmpty();" in view

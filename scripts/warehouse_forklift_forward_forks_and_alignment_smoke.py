@@ -19,18 +19,17 @@ assert 'addBox(6,-2,-64,4,3,41)' in geometry
 assert 'carriage.y=22f-height*16f;' in geometry
 # Physical motor must not translate sideways through turns.
 assert 'private boolean turnForksToward(double x,double z)' in truck
-assert 'float wanted=(float)Math.toDegrees(Math.atan2(-dx,dz));' in truck
+assert 'return turnForksToYaw((float)Math.toDegrees(Math.atan2(-dx,dz)));' in truck
 assert 'float error=Mth.wrapDegrees(wanted-getYRot());' in truck
-assert 'float turn=Mth.clamp(error,-14f,14f);' in truck
+assert 'Mth.clamp(error,-14f,14f)' in truck
 assert 'setYBodyRot(yaw);' in truck
 assert 'setYHeadRot(yaw);' in truck
-assert 'if(!turnForksToward(x,z)){' in truck
-assert 'private boolean alignForTransfer(BlockPos load)' in truck
-assert 'if(!alignForTransfer(source)){' in truck
-assert 'BlockPos unload=groundDestination?staging:target;' in truck
-assert 'if(!alignForTransfer(unload)){' in truck
-assert 'status="TURNING FORKS TOWARD SOURCE PALLET";' in truck
-assert 'status="TURNING FORKS TOWARD DROP-OFF";' in truck
+assert 'if(!turnForksToward(waypoint.x,waypoint.z)){' in truck
+assert 'private boolean alignForTransfer(Dock dock)' in truck
+assert 'if(!alignForTransfer(pickup)){' in truck
+assert 'if(!alignForTransfer(landing)){' in truck
+assert 'status="SQUARING FORKS WITH CENTER OF SOURCE PALLET";' in truck
+assert 'status="SQUARING FORKS WITH CENTER OF DESTINATION";' in truck
 # Previous forklift speed and low-travel fork height remain in this build.
 assert 'DRIVE_BLOCKS_PER_TICK=0.20D' in truck
 assert 'boolean liftingAtDestination=job==3&&!groundDestination&&animation>0;' in truck
