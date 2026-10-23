@@ -150,6 +150,8 @@ jobs:
         run: python3 scripts/warehouse_forklift_selection_cargo_smoke.py
       - name: Verify around-rack forklift route and centered pallet docking
         run: python3 scripts/warehouse_forklift_aisle_routing_docking_smoke.py
+      - name: Verify detailed forklift model, centered seat and Golem steering attachment
+        run: python3 scripts/warehouse_forklift_premium_model_seat_anchor_smoke.py
       - name: Verify loaded Golem pallet speed boost on concrete and industrial floors
         run: python3 scripts/warehouse_concrete_carry_speed_smoke.py
       - name: Verify courier avoids nearby pallet decks and retains its assigned target
