@@ -26,7 +26,7 @@ assert "for(int i=0;i<outgoing.getContainerSize();i++)outgoing.setItem(i,ItemSta
 assert "private final SimpleContainer outgoing=new SimpleContainer(OUTGOING);" in menu
 assert "if(id>=0&&id<VISIBLE_PLAYERS)" in menu
 assert "press(row*9+col);" in screen
-assert "if(saved!=null)" in menu
+assert "if(id>=0&&id<VISIBLE_PLAYERS)" in menu
 assert "MailSavedData.Recipient recipient=recipients.get(selected);" in menu
 assert "saved.deliver(recipient.id(),outgoing)" in menu
 assert "return player.getUUID().equals(owner);" in saved
