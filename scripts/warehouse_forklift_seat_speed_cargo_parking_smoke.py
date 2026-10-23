@@ -29,8 +29,10 @@ assert "state.crate" in view and "state.glass" in view
 assert "state.boards[board]" in view and "PalletData.plasticColor(deck)" in view
 assert "public boolean hasPallet;" in state
 assert "dismissAfterParking=true;" in lift
-assert "if(job==0){job=5;animation=0;getNavigation().stop();}" in lift
-assert "if(job!=0||PalletJackItem.loaded(jack)||!atParkingBay())return false;" in lift
+assert "job=5;animation=0;stallTicks=0;" in lift
+assert "if(job!=0||!atParkingBay()||driver==null)return false;" in lift
+assert "public String emergencyDriverRelease(ServerLevel world)" in lift
+assert "public String recoverStuckCargo(Player player)" in lift
 assert 'status="WAITING: FORKLIFT PARKING BAY NOT SET"' in lift
 assert "if(drive(world,parking)){" in lift
 assert "golem.finishForkliftDriving()" in lift
