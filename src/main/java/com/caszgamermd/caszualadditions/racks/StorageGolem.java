@@ -2789,7 +2789,9 @@ public final class StorageGolem extends PathfinderMob {
                 &&player instanceof net.minecraft.server.level.ServerPlayer user){
             if(getVehicle() instanceof WarehouseForklift lift){
                 WarehouseGolemDebug.actionBar(user,Component.literal(
-                        lift.requestDriverDismissal((ServerLevel)level())));
+                        user.isShiftKeyDown()
+                            ?lift.emergencyDriverRelease((ServerLevel)level())
+                            :lift.requestDriverDismissal((ServerLevel)level())));
                 return InteractionResult.SUCCESS;
             }
             if(escortFor(user.getUUID())){
