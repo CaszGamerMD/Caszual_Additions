@@ -65,7 +65,7 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
         root.addOrReplaceChild("rear_counterweight",CubeListBuilder.create()
                 .texOffs(0,0).addBox(-10,-18,16,20,11,7)
                 .texOffs(0,0).addBox(-9,-21,18,18,4,4)
-                .texOffs(0,23).addBox(-7,-22,19,14,2,3)
+                .texOffs(0,23).addBox(-7,-22,19,14,2,2)
                 .texOffs(70,0).addBox(-9,-16,23,18,6,2)
                 .texOffs(70,0).addBox(-7,-18,25,14,2,1.5f)
                 .texOffs(48,48).addBox(-9,-11,25,18,2,1.5f)
@@ -83,8 +83,8 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
                 .texOffs(70,18).addBox(-13,-11,9,3,5,8)
                 .texOffs(70,18).addBox(10,-11,9,3,5,8)
                 .texOffs(70,0).addBox(-8,-1,-4,16,1,10)
-                .texOffs(70,18).addBox(-14,-8,0,4,3,12)
-                .texOffs(70,18).addBox(10,-8,0,4,3,12),
+                .texOffs(70,18).addBox(-14,-8.25f,0,3.5f,3.5f,12)
+                .texOffs(70,18).addBox(10.5f,-8.25f,0,3.5f,3.5f,12),
                 PartPose.offset(0,24,0));
 
         // Four individual wheels. Tread shoulder/cap relief gives them
@@ -156,10 +156,10 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
         root.addOrReplaceChild("mast_fixed",CubeListBuilder.create()
                 .texOffs(70,18).addBox(-12,-46,-22,3,46,4)
                 .texOffs(70,18).addBox(9,-46,-22,3,46,4)
-                .texOffs(70,0).addBox(-12,-44,-22,24,3,3)
-                .texOffs(70,0).addBox(-12,-7,-22,24,3,3)
-                .texOffs(70,18).addBox(-11,-25,-21,22,2,3)
-                .texOffs(70,18).addBox(-11,-15,-21,22,2,3)
+                .texOffs(70,0).addBox(-9,-44,-21,18,3,2)
+                .texOffs(70,0).addBox(-9,-7,-21,18,3,2)
+                .texOffs(70,18).addBox(-9,-25,-20,18,2,2)
+                .texOffs(70,18).addBox(-9,-15,-20,18,2,2)
                 .texOffs(92,31).addBox(-8,-30,-21,3,21,3)
                 .texOffs(92,31).addBox(5,-30,-21,3,21,3)
                 .texOffs(70,0).addBox(-12,-46,-24,4,2,3)
@@ -184,16 +184,18 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
         // Left/right hydraulic lift cylinders; chrome center rods extend
         // with the carriage, no impossible side-to-side displacement.
         root.addOrReplaceChild("ram_left",CubeListBuilder.create()
-                .texOffs(92,31).addBox(-7,-18,-19,3,19,3)
+                .texOffs(92,31).addBox(-7,-18,-20,3,19,3)
                 .texOffs(70,0).addBox(-6,-28,-18,1,12,1)
-                .texOffs(104,50).addBox(-7,-18,-19,3,2,3),
+                .texOffs(104,50).addBox(-7,-18,-20.25f,3,2,3),
                 PartPose.offset(0,22,0));
         root.addOrReplaceChild("ram_right",CubeListBuilder.create()
-                .texOffs(92,31).addBox(4,-18,-19,3,19,3)
+                .texOffs(92,31).addBox(4,-18,-20,3,19,3)
                 .texOffs(70,0).addBox(5,-28,-18,1,12,1)
-                .texOffs(104,50).addBox(4,-18,-19,3,2,3),
+                .texOffs(104,50).addBox(4,-18,-20.25f,3,2,3),
                 PartPose.offset(0,22,0));
 
+        // Fork arms stop at the front edge of the upright brackets, avoiding
+        // duplicated faces at their connection without shortening the tips.
         // Heavy back plate, two real extended steel forks with 1px beveled
         // tips, supporting the complete visible 1.8x1.8 wrapped pallet.
         // Forks end at -64px: the existing cargo mesh ends at -59.5px.
@@ -201,8 +203,8 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
                 .texOffs(70,0).addBox(-12,-15,-28,24,4,3)
                 .texOffs(70,18).addBox(-11,-12,-31,4,12,4)
                 .texOffs(70,18).addBox(7,-12,-31,4,12,4)
-                .texOffs(92,31).addBox(-10,-3,-61,4,3,35)
-                .texOffs(92,31).addBox(6,-3,-61,4,3,35)
+                .texOffs(92,31).addBox(-10,-3,-61,4,3,30)
+                .texOffs(92,31).addBox(6,-3,-61,4,3,30)
                 .texOffs(70,0).addBox(-9,-2,-64,2,2,3)
                 .texOffs(70,0).addBox(7,-2,-64,2,2,3)
                 .texOffs(70,18).addBox(-11,-16,-30,22,2,2)
