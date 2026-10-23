@@ -54,7 +54,8 @@ public final class StorageGolemRenderer
             // Rotate the driver with the CAB, not golem look/idle animation.
             // The forklift itself supplies the physical seat position and
             // vanilla interpolation of the passenger's world location.
-            state.bodyRot=vehicle.getYRot();
+            state.bodyRot=net.minecraft.util.Mth.rotLerp(
+                    partialTick,vehicle.yBodyRotO,vehicle.yBodyRot);
             state.yRot=0f;
             state.xRot=0f;
             state.walkAnimationSpeed=0f;
