@@ -55,11 +55,32 @@ jobs:
           fi
           python3 scripts/bundle_caszual_suite.py "${args[@]}"
 
-      - name: Upload bundle as a workflow artifact
+      # GitHub Actions always creates a ZIP when you download an artifact.
+      # Upload extracted files (not our release ZIP) to avoid ZIP-inside-ZIP.
+      # Preserve the mods/ directory so extraction is ready for Minecraft.
+      - name: Stage mods directory for artifact download
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/action-artifact
+          python3 -m zipfile -e dist/Caszual-Suite-Latest.zip dist/action-artifact
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path("dist/action-artifact")
+          manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+          jars = sorted((root / "mods").glob("*.jar"))
+          assert len(jars) == len(manifest["mods"]), "JARs do not match manifest"
+          assert jars, "No installable JARs in the mods/ folder"
+          assert not list(root.rglob("*.zip")), "Unexpected nested ZIP in staged artifact"
+          print(f"Actions artifact will contain mods/ with {len(jars)} JARs directly.")
+          PY
+
+      - name: Upload mods folder as a workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Caszual-Suite-Latest
-          path: dist/Caszual-Suite-Latest.zip
+          name: Caszual-Suite-Mods
+          path: dist/action-artifact/
           if-no-files-found: error
           retention-days: 30
 
