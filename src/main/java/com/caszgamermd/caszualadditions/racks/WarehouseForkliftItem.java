@@ -66,8 +66,30 @@ public final class WarehouseForkliftItem extends Item {
             }
         }
         RackBlockEntity rack=RackBlock.controller(level,clicked);
-        if(rack!=null)
+        if(rack!=null){
+            if(!spawner){
+                BlockPos source=selected(context.getItemInHand(),level);
+                if(source==null&&rack.hasPallet()){
+                    select(context.getItemInHand(),level,rack.getBlockPos());
+                    player.sendSystemMessage(Component.literal(
+                            "Forklift Controller: source rack "
+                            +rack.getBlockPos().toShortString()
+                            +" selected. Click a DIFFERENT empty rack to deliver."));
+                    return InteractionResult.SUCCESS;
+                }
+                if(source!=null&&rack.hasPallet()){
+                    player.sendSystemMessage(Component.literal(
+                            source.equals(rack.getBlockPos())
+                                ?"Forklift Controller: same 2x2x3 rack; all 12 frame "
+                                 +"blocks share one pallet. Select a different empty rack."
+                                :"Forklift Controller: destination rack "
+                                 +rack.getBlockPos().toShortString()
+                                 +" already contains a pallet. Nothing overwritten."));
+                    return InteractionResult.SUCCESS;
+                }
+            }
             return dispatch(level,player,context.getItemInHand(),rack);
+        }
         if(!spawner||context.getClickedFace()!=net.minecraft.core.Direction.UP)
             return InteractionResult.PASS;
         BlockPos at=clicked.above();
@@ -135,21 +157,43 @@ public final class WarehouseForkliftItem extends Item {
         if(!level.hasChunkAt(root)||!level.mayInteract(player,root)
                 ||!player.mayUseItemAt(root,net.minecraft.core.Direction.UP,tool))
             return InteractionResult.FAIL;
+        BlockPos selectedSource=spawner?null:selected(tool,level);
+        RackBlockEntity sourceRack=selectedSource==null?null
+                :RackBlock.controller(level,selectedSource);
+        if(sourceRack!=null&&sourceRack.getBlockPos().equals(root)){
+            player.sendSystemMessage(Component.literal(
+                    "Forklift Controller: source and destination resolve to "
+                    +"the same 2x2x3 rack "+root.toShortString()));
+            return InteractionResult.SUCCESS;
+        }
+        if(!rack.hasPallet()&&!rack.isEmpty()){
+            player.sendSystemMessage(Component.literal(
+                    "Forklift Controller: destination rack "+root.toShortString()
+                    +" contains "+rack.occupiedSlots()
+                    +" stored item stacks despite no visible pallet. "
+                    +"Cannot overwrite them."));
+            return InteractionResult.SUCCESS;
+        }
         WarehouseForklift nearest=null;
         double best=24*24;
+        boolean onboard=false;
         for(WarehouseForklift lift:level.getEntitiesOfClass(
-                WarehouseForklift.class,new AABB(root).inflate(24),
-                f->!f.busy())){
+                WarehouseForklift.class,new AABB(root).inflate(24),f->!f.busy())){
+            if(lift.hasOnboardPallet()){onboard=true;continue;}
             double d=lift.blockPosition().distSqr(root);
             if(d<best){best=d;nearest=lift;}
         }
         if(nearest==null){
-            player.sendSystemMessage(Component.literal(
-                    "No idle forklift within 24 blocks of this rack."));
+            player.sendSystemMessage(Component.literal(onboard
+                    ?"Forklift Controller: idle forklift still has a packed "
+                     +"pallet in its Jack. Recover or finish that load before dispatch."
+                    :"Forklift Controller: no empty idle forklift within "
+                     +"24 blocks of this rack."));
             return InteractionResult.SUCCESS;
         }
-        BlockPos selectedSource=spawner?null:selected(tool,level);
-        boolean started=nearest.order(level,rack,selectedSource);
+        boolean started=sourceRack!=null&&sourceRack.hasPallet()
+                ?nearest.orderRackToRack(level,sourceRack,rack)
+                :nearest.order(level,rack,selectedSource);
         if(started&&!spawner)
             tool.remove(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
         player.sendSystemMessage(Component.literal(started
@@ -157,7 +201,8 @@ public final class WarehouseForkliftItem extends Item {
                     ?"retrieve rack pallet to aisle"
                     :"collect wrapped floor pallet and place into rack")
                 :"Forklift cannot start: "+nearest.status()
-                    +". Check forklift access, wrapped pallet and 12-block mast limit."));
+                    +" | rack "+root.toShortString()
+                    +". Stored items and packed pallets were not changed."));
         return InteractionResult.SUCCESS;
     }
 }
