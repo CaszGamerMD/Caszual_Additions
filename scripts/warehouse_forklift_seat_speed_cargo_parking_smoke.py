@@ -8,8 +8,7 @@ lift=(racks/"WarehouseForklift.java").read_text()
 view=(client/"WarehouseForkliftRenderer.java").read_text()
 state=(client/"WarehouseForkliftRenderState.java").read_text()
 golem=(racks/"StorageGolem.java").read_text()
-assert "getY()+.62" in lift   # previous passenger height was 1.32
-assert "double rear=.59;" in lift
+assert "WarehouseForkliftSeat.riderPosition(position(),getYRot())" in lift
 assert "DRIVE_SPEED=0.20D;" in lift # 4 blocks per 20t second
 assert ".add(Attributes.MOVEMENT_SPEED,DRIVE_SPEED)" in lift
 assert "aisleRoute=ForkliftAislePath.route(world,this,goal);" in lift
