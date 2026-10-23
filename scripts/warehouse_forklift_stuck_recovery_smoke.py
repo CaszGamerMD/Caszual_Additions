@@ -38,7 +38,8 @@ assert 'public String recoverStuckCargo(Player player)' in truck
 assert 'ItemStack packed=jack.copy();' in truck
 assert 'jack=new ItemStack(RackContent.PALLET_JACK);' in truck
 assert 'player.getInventory().placeItemBackInInventory(packed);' in truck
-assert 'if(busy()||PalletJackItem.loaded(jack)' in truck
+assert 'if(!beginWithoutCargo())return false;' in truck
+assert 'public boolean hasPackedCargo()' in truck
 assert 'player.isShiftKeyDown()' in truck
 
 # All 3 interaction surfaces can cancel or emergency-dismount.
