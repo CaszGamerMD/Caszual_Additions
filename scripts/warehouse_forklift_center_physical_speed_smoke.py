@@ -21,7 +21,7 @@ assert "world.noCollision(this,footprint)" in fork
 assert "world.hasChunkAt(floor)" in fork
 assert "Path path=getNavigation().getPath();" in fork
 assert "path.getNextEntityPos(this)" in fork
-assert "directLaneClear(world,aheadX,y,aheadZ)" in fork
+assert "directLaneClear(world,aheadX,getY(),aheadZ)" in fork
 assert "getNavigation().moveTo(x,goal.getY(),z,DRIVE_CONTROL);" in fork
 assert "powerAlongSafeRoute(world,x,goal.getY(),z)" in fork
 assert "job==5?.90*.90:3.0" in fork

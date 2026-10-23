@@ -183,7 +183,8 @@ public final class WarehouseForklift extends PathfinderMob {
         return order(world,rack,null);
     }
     public boolean order(ServerLevel world,RackBlockEntity rack,BlockPos selectedFloorPallet){
-        if(busy()||!world.hasChunkAt(rack.getBlockPos()))return false;
+        if(busy()||PalletJackItem.loaded(jack)
+                ||!world.hasChunkAt(rack.getBlockPos()))return false;
         RackPickupPlan plan=RackPickupPlan.forklift(world,rack);
         if(plan==null||plan.height()>RackPickupPlan.FORKLIFT_MAX_HEIGHT)return false;
         boolean pickup=rack.hasPallet();
@@ -213,7 +214,8 @@ public final class WarehouseForklift extends PathfinderMob {
     }
     public boolean orderRackToRack(ServerLevel world,RackBlockEntity from,
             RackBlockEntity to){
-        if(busy()||from==null||to==null||from.getBlockPos().equals(to.getBlockPos())
+        if(busy()||PalletJackItem.loaded(jack)
+                ||from==null||to==null||from.getBlockPos().equals(to.getBlockPos())
                 ||!from.hasPallet()||!from.glassWrapped()||to.hasPallet()||!to.isEmpty()
                 ||RackPickupPlan.forklift(world,from)==null
                 ||RackPickupPlan.forklift(world,to)==null)return false;
@@ -227,7 +229,8 @@ public final class WarehouseForklift extends PathfinderMob {
     }
     public boolean orderGround(ServerLevel world,BlockPos from,BlockPos landing,
             Direction facing){
-        if(busy()||landing==null||from==null||!ForkliftPalletIO.fits(
+        if(busy()||PalletJackItem.loaded(jack)
+                ||landing==null||from==null||!ForkliftPalletIO.fits(
                 world,landing,facing))return false;
         RackBlockEntity rack=world.getBlockEntity(from) instanceof RackBlockEntity r?r:null;
         boolean fromRack=rack!=null&&rack.hasPallet()&&rack.glassWrapped();
@@ -289,12 +292,20 @@ public final class WarehouseForklift extends PathfinderMob {
             double tx=getX()+dx*amount,tz=getZ()+dz*amount;
             AABB test=getBoundingBox().move(tx-getX(),0,tz-getZ());
             if(!world.noCollision(this,test))return false;
-            BlockPos floor=BlockPos.containing(tx,y,tz).below();
-            if(!world.hasChunkAt(floor)
-                    ||world.getBlockState(floor).getCollisionShape(world,floor).isEmpty())
-                return false;
+            if(!supportedFloor(world,tx,y,tz))return false;
         }
         return true;
+    }
+
+    /** A painted parking marker has no collision of its own. Accept the
+     * solid support underneath it, but never mistake ordinary air for floor. */
+    private boolean supportedFloor(ServerLevel world,double x,double y,double z){
+        BlockPos floor=BlockPos.containing(x,y,z).below();
+        if(!world.hasChunkAt(floor))return false;
+        if(world.getBlockState(floor).is(RackContent.FORKLIFT_PARKING))
+            floor=floor.below();
+        return world.hasChunkAt(floor)
+                &&!world.getBlockState(floor).getCollisionShape(world,floor).isEmpty();
     }
 
     /** Rotate the front mast and fork tines to point at the direction of
@@ -342,9 +353,7 @@ public final class WarehouseForklift extends PathfinderMob {
         double step=Math.min(remaining,length);
         double mx=dx/length*step,mz=dz/length*step;
         AABB footprint=getBoundingBox().move(mx,0,mz);
-        BlockPos floor=BlockPos.containing(getX()+mx,getY(),getZ()+mz).below();
-        if(!world.hasChunkAt(floor)
-                ||world.getBlockState(floor).getCollisionShape(world,floor).isEmpty()
+        if(!supportedFloor(world,getX()+mx,getY(),getZ()+mz)
                 ||!world.noCollision(this,footprint))return false;
         // A heading change is a deliberate steering action. Do not slide
         // sideways toward the target with the forks still facing elsewhere.
@@ -360,27 +369,33 @@ public final class WarehouseForklift extends PathfinderMob {
         return Math.hypot(getX()-beforeX,getZ()-beforeZ)>.01;
     }
 
-    /** Pick a safe steering target. Use a checked straight lookahead for
-     * long unobstructed lanes, or the next real navigation node around
-     * shelves and corners. Never drive directly through a blocked aisle. */
+    /** An obstructed pallet at the destination must not block every step
+     * along the preceding clear aisle. Use navigation for turns, otherwise
+     * test a short piece of road with the FULL physical collision box. */
     private boolean powerAlongSafeRoute(ServerLevel world,double x,double y,double z){
         double dx=x-getX(),dz=z-getZ(),length=Math.hypot(dx,dz);
         if(length<.05)return false;
-        // Keep all long-distance safety probes short to avoid assuming
-        // that terrain and intermediate chunks are loaded far ahead.
-        double probe=Math.min(length,12);
+        double probe=Math.min(length,8.0);
         double aheadX=getX()+dx/length*probe;
         double aheadZ=getZ()+dz/length*probe;
-        if(directLaneClear(world,aheadX,y,aheadZ)){
+        if(directLaneClear(world,aheadX,getY(),aheadZ)){
             getNavigation().stop();
             return motorStep(world,aheadX,aheadZ);
         }
         Path path=getNavigation().getPath();
         if(path!=null&&!path.isDone()){
             Vec3 waypoint=path.getNextEntityPos(this);
-            if(directLaneClear(world,waypoint.x,waypoint.y,waypoint.z))
-                return motorStep(world,waypoint.x,waypoint.z);
+            if(directLaneClear(world,waypoint.x,waypoint.y,waypoint.z)
+                    &&motorStep(world,waypoint.x,waypoint.z))
+                return true;
         }
+        // Old implementation required a clear 12-block ray, so a pallet
+        // sitting at the far end locked the motor even on clear pavement.
+        double shortStep=Math.min(length,.45);
+        double safeX=getX()+dx/length*shortStep;
+        double safeZ=getZ()+dz/length*shortStep;
+        if(directLaneClear(world,safeX,getY(),safeZ))
+            return motorStep(world,safeX,safeZ);
         return false;
     }
 
@@ -410,7 +425,8 @@ public final class WarehouseForklift extends PathfinderMob {
 
         // Pathfinding chooses a safe aisle; the forklift motor supplies
         // actual block displacement instead of relying on MoveControl speed.
-        if(tickCount%20==0||getNavigation().isDone()||stallTicks==45)
+        if(tickCount%20==0||(getNavigation().isDone()&&tickCount%8==0)
+                ||stallTicks==45)
             getNavigation().moveTo(x,goal.getY(),z,DRIVE_CONTROL);
         boolean powered=powerAlongSafeRoute(world,x,goal.getY(),z);
         if(powered)stallTicks=0;
@@ -482,7 +498,8 @@ public final class WarehouseForklift extends PathfinderMob {
                     dismissAfterParking=false;
                     dismissDriver(world);
                 }
-            }else status="RETURNING TO PAINTED FORKLIFT PARKING BAY";
+            }else if(!status.startsWith("WAITING: FORKLIFT PATH BLOCKED"))
+                status="RETURNING TO PAINTED FORKLIFT PARKING BAY";
             return;
         }
         if(!seatedDriver(world)){
@@ -571,30 +588,76 @@ public final class WarehouseForklift extends PathfinderMob {
         return dx*dx+dz*dz<.90*.90
                 &&Math.abs(getY()-parking.getY())<.8;
     }
-    /** Dismissal is a queued physical job, even from an otherwise idle
-     * vehicle. Never leave the operator behind in a rack aisle. */
+    /** Cancel the stalled order and drive home with the original packed
+     * cargo. This runs even when the current task cannot be completed. */
     public String requestDriverDismissal(ServerLevel world){
         if(driver==null)return "FORKLIFT: no active driver.";
         if(parking.equals(BlockPos.ZERO))
-            return "FORKLIFT: no saved painted parking bay; driver remains aboard.";
-        if(atParkingBay()&&job==0&&!PalletJackItem.loaded(jack))
+            return "FORKLIFT: no saved parking bay. Sneak-click the forklift "
+                    +"with empty hand for an emergency driver release.";
+        if(atParkingBay()){
+            job=0;animation=0;dismissAfterParking=false;
             return dismissDriver(world)
-                    ?"FORKLIFT: parked; Golem returning to its original shelf."
-                    :"FORKLIFT: unable to dismiss driver.";
+                    ?"FORKLIFT: parked, driver heading to shelf."
+                    :"FORKLIFT: driver not loaded; retry when nearby.";
+        }
+        // A failed loading job must not block recall indefinitely.
+        // Cargo already in the Pallet Jack stays in the forklift.
         dismissAfterParking=true;
-        if(job==0){job=5;animation=0;getNavigation().stop();}
-        return "FORKLIFT: driver will return to the painted bay, park, then go home.";
+        job=5;animation=0;stallTicks=0;
+        lastDriveGoal=BlockPos.ZERO;
+        getNavigation().stop();
+        status="RETURNING TO PARKING BAY FOR DRIVER DISMISSAL";
+        return "FORKLIFT: task canceled; returning to parking bay, then "
+                +"driver dismounts. Any sealed pallet stays in the forklift.";
     }
     public boolean dismissDriver(ServerLevel world){
-        if(job!=0||PalletJackItem.loaded(jack)||!atParkingBay())return false;
-        if(driver==null)return false;
+        if(job!=0||!atParkingBay()||driver==null)return false;
         Entity passenger=world.getEntity(driver);
-        if(passenger instanceof StorageGolem golem)
-            golem.finishForkliftDriving(); // walks back to original shelf
-        driver=null;
+        if(!(passenger instanceof StorageGolem golem))return false;
+        golem.finishForkliftDriving();
+        driver=null;dismissAfterParking=false;
         getNavigation().stop();
-        status="DRIVER DISMISSED - RETURNING TO SHELF";
+        status=PalletJackItem.loaded(jack)
+                ?"DRIVER HOME; SEALED PALLET JACK SECURE IN FORKLIFT"
+                :"DRIVER DISMISSED - RETURNING TO SHELF";
         return true;
+    }
+    /** A separate deliberate override if the vehicle cannot physically
+     * reach its bay. Never force-teleport the truck or delete loaded cargo. */
+    public String emergencyDriverRelease(ServerLevel world){
+        if(driver==null)return "FORKLIFT: no driver aboard.";
+        Entity passenger=world.getEntity(driver);
+        if(!(passenger instanceof StorageGolem golem))
+            return "FORKLIFT: driver not loaded; cannot release safely.";
+        getNavigation().stop();
+        setDeltaMovement(0,getDeltaMovement().y,0);
+        job=0;animation=0;stallTicks=0;dismissAfterParking=false;
+        lastDriveGoal=BlockPos.ZERO;
+        golem.finishForkliftDriving();driver=null;
+        status=PalletJackItem.loaded(jack)
+                ?"EMERGENCY STOP; PACKED PALLET SECURE IN FORKLIFT"
+                :"EMERGENCY STOP; DRIVER RETURNING TO SHELF";
+        return "FORKLIFT: emergency stop; driver released. "
+                +(PalletJackItem.loaded(jack)
+                    ?"Cargo stays safely packed. Sneak-click again with "
+                     +"empty hand to retrieve the complete Pallet Jack."
+                    :"No cargo was aboard.");
+    }
+    /** Recover a stranded packed pallet with every slot intact. After
+     * transfer, clear the vehicle's copy exactly once to prevent duplication.
+     * Vanilla inventory return drops overflow near the player if necessary. */
+    public String recoverStuckCargo(Player player){
+        if(driver!=null||job!=0)
+            return "FORKLIFT: stop and release the driver first.";
+        if(!PalletJackItem.loaded(jack))
+            return "FORKLIFT: no sealed pallet cargo to recover.";
+        ItemStack packed=jack.copy();
+        jack=new ItemStack(RackContent.PALLET_JACK);
+        refreshDisplay();
+        player.getInventory().placeItemBackInInventory(packed);
+        status="PACKED PALLET JACK RECOVERED BY PLAYER";
+        return "FORKLIFT: original packed Pallet Jack returned with every item.";
     }
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel world){
@@ -616,6 +679,13 @@ public final class WarehouseForklift extends PathfinderMob {
     }
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(level().isClientSide())return InteractionResult.SUCCESS;
+        if(player.isShiftKeyDown()&&(player.getItemInHand(hand).isEmpty()
+                ||player.getItemInHand(hand).is(RackContent.FORKLIFT_CONTROLLER))){
+            player.sendSystemMessage(Component.literal(
+                    driver==null?recoverStuckCargo(player)
+                        :emergencyDriverRelease((ServerLevel)level())));
+            return InteractionResult.SUCCESS;
+        }
         if(player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)){
             var scanner=player.getItemInHand(hand);
             if(StorageScannerItem.mode(scanner)!=StorageScannerItem.Mode.FORKLIFT)
