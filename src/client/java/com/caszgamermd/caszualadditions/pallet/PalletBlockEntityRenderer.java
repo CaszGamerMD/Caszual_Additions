@@ -3,7 +3,6 @@ package com.caszgamermd.caszualadditions.pallet;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.core.Direction;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelResolver;
 import net.minecraft.client.renderer.block.model.BlockDisplayContext;
@@ -91,19 +90,16 @@ public final class PalletBlockEntityRenderer
                 if (stack.isEmpty()) continue;
 
                 int displayIndex = state.visibleCount++;
-                if (stack.getItem() instanceof BlockItem blockItem) {
-                    state.boxed[displayIndex] = false;
-                    // Render full item geometry in a cubic display cell.
-                    // The submit method centers this item model explicitly.
-                    itemModelResolver.updateForTopItem(
-                            state.items[displayIndex], stack, ItemDisplayContext.NONE,
-                            blockEntity.getLevel(), null, slot);
-                } else {
-                    state.boxed[displayIndex] = true;
-                    itemModelResolver.updateForTopItem(
-                            state.items[displayIndex], stack, ItemDisplayContext.GUI,
-                            blockEntity.getLevel(), null, slot);
-                }
+                // BlockItems are not always cubes: doors, signs, carpets,
+                // fences, slabs and other partial blocks must be packed
+                // into cardboard instead of extending through cargo rows.
+                state.boxed[displayIndex]=PalletCargoDisplay.shouldBox(
+                        stack,blockEntity.getLevel(),blockEntity.getBlockPos());
+                itemModelResolver.updateForTopItem(
+                        state.items[displayIndex],stack,
+                        state.boxed[displayIndex]
+                                ?ItemDisplayContext.GUI:ItemDisplayContext.NONE,
+                        blockEntity.getLevel(),null,slot);
             }
         }
 

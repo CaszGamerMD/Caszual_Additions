@@ -3,6 +3,7 @@ package com.caszgamermd.caszualadditions.racks;
 import com.caszgamermd.caszualadditions.pallet.PalletBlock;
 import com.caszgamermd.caszualadditions.pallet.PalletContent;
 import com.caszgamermd.caszualadditions.pallet.PalletData;
+import com.caszgamermd.caszualadditions.pallet.PalletCargoDisplay;
 import com.caszgamermd.caszualadditions.pallet.PalletKind;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
@@ -129,7 +130,11 @@ public final class RackBlockEntityRenderer implements BlockEntityRenderer<RackBl
             ItemStack stack=rack.getItem(slot);
             if(stack.isEmpty())continue;
             int i=state.visible++;
-            state.boxed[i]=!(stack.getItem() instanceof BlockItem);
+            // Match placed pallets: block-items with partial geometry
+            // (signs, doors, carpets, fences, slabs...) are boxed, not
+            // drawn as detached or protruding world-model geometry.
+            state.boxed[i]=PalletCargoDisplay.shouldBox(
+                    stack,rack.getLevel(),rack.getBlockPos());
             items.updateForTopItem(state.items[i],stack,
                     state.boxed[i]?ItemDisplayContext.GUI:ItemDisplayContext.NONE,
                     rack.getLevel(),null,slot);
