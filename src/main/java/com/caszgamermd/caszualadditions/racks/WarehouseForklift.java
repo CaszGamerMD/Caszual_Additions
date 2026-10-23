@@ -64,6 +64,10 @@ public final class WarehouseForklift extends PathfinderMob {
      * After chunk reload the route is recomputed against current obstacles. */
     private List<Vec3> aisleRoute=List.of();
     private int routeStep,lastRouteTick=-100;
+    /** Transient wheel-motor acceleration for smooth starts and corners. */
+    private double rollingSpeed;
+    private static final double MOTOR_ACCELERATION=.024D;
+    private static final double LOOKAHEAD_DISTANCE=3.5D;
     private Vec3 aisleTarget;
     private Dock cachedGroundDock;
     private BlockPos cachedDockRoot=BlockPos.ZERO;
@@ -406,18 +410,33 @@ public final class WarehouseForklift extends PathfinderMob {
         double dx=waypoint.x-getX(),dz=waypoint.z-getZ();
         double distance=Math.hypot(dx,dz);
         if(distance<.06)return true;
-        if(!turnForksToward(waypoint.x,waypoint.z)){
+        // Steering and rolling are concurrent when the wheels already
+        // point approximately down the lane. Only a SHARP aisle corner
+        // requires turning in place; the old <3-degree requirement at
+        // EVERY half-block A* waypoint was what caused start-stop driving.
+        boolean facing=turnForksToward(waypoint.x,waypoint.z);
+        float desired=(float)Math.toDegrees(Math.atan2(-dx,dz));
+        double error=Math.abs(Mth.wrapDegrees(desired-getYRot()));
+        if(!facing&&error>52){
+            rollingSpeed=Math.max(0,rollingSpeed-MOTOR_ACCELERATION*1.5);
             setDeltaMovement(0,getDeltaMovement().y,0);
             return false;
         }
         double alreadyMoved=Math.hypot(
                 getX()-driveTickStartX,getZ()-driveTickStartZ);
+        double cornerLimit=error>35?DRIVE_BLOCKS_PER_TICK*.65:
+                error>18?DRIVE_BLOCKS_PER_TICK*.83:DRIVE_BLOCKS_PER_TICK;
+        rollingSpeed=Math.min(DRIVE_BLOCKS_PER_TICK,
+                rollingSpeed+MOTOR_ACCELERATION);
         double step=Math.min(distance,
-                Math.max(0,DRIVE_BLOCKS_PER_TICK-alreadyMoved));
+                Math.max(0,Math.min(rollingSpeed,cornerLimit)-alreadyMoved));
         if(step<.005)return false;
         Vec3 delta=new Vec3(dx/distance*step,0,dz/distance*step);
         Vec3 next=position().add(delta);
-        if(!ForkliftAislePath.canStand(world,this,next))return false;
+        if(!ForkliftAislePath.canStand(world,this,next)){
+            rollingSpeed=0;
+            return false;
+        }
         double beforeX=getX(),beforeZ=getZ();
         move(MoverType.SELF,delta);
         setDeltaMovement(0,getDeltaMovement().y,0);
@@ -439,6 +458,7 @@ public final class WarehouseForklift extends PathfinderMob {
         if(distance<tolerance&&Math.abs(goal.y-getY())<.7){
             aisleRoute=List.of();
             routeStep=0;
+            rollingSpeed=0;
             setDeltaMovement(0,getDeltaMovement().y,0);
             stallTicks=0;
             return true;
@@ -464,13 +484,28 @@ public final class WarehouseForklift extends PathfinderMob {
                 return false;
             }
         }
+        // Collapse consecutive 0.5-block path nodes into a longer *visible*
+        // driving segment. Never skip an actual corner unless the entire
+        // chassis fits along the interpolated line. This keeps speed near
+        // 4 m/s on straight aisles and avoids jerking at each grid node.
         while(routeStep<aisleRoute.size()
                 &&Math.hypot(getX()-aisleRoute.get(routeStep).x,
-                        getZ()-aisleRoute.get(routeStep).z)<.13)
+                        getZ()-aisleRoute.get(routeStep).z)<.24)
             routeStep++;
         if(routeStep>=aisleRoute.size())return false;
-        Vec3 waypoint=aisleRoute.get(routeStep);
+        Vec3 origin=position();
+        int best=routeStep;
+        for(int look=routeStep+1;look<aisleRoute.size();look++){
+            Vec3 candidate=aisleRoute.get(look);
+            if(origin.distanceToSqr(candidate)>LOOKAHEAD_DISTANCE*LOOKAHEAD_DISTANCE)
+                break;
+            if(!ForkliftAislePath.clearSegment(world,this,origin,candidate))
+                break;
+            best=look;
+        }
+        Vec3 waypoint=aisleRoute.get(best);
         boolean moved=motorStep(world,waypoint);
+        if(moved&&best>routeStep)routeStep=best;
         if(moved){
             stallTicks=0;
             status="DRIVING FORKLIFT VIA CLEAR WAREHOUSE AISLE";
@@ -479,6 +514,7 @@ public final class WarehouseForklift extends PathfinderMob {
             // to a straight-to-pallet fallback that intersects rack frames.
             aisleRoute=List.of();
             routeStep=0;
+            rollingSpeed=0;
             stallTicks=0;
             status="REPLANNING FORKLIFT AISLE AROUND OBSTRUCTION";
         }
