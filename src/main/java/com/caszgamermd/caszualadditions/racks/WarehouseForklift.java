@@ -89,16 +89,28 @@ public final class WarehouseForklift extends PathfinderMob {
      * Never assign a second pickup until the first cargo is unloaded or
      * explicitly recovered by its owner using emergency recovery. */
     public boolean hasOnboardPallet(){return PalletJackItem.loaded(jack);}
-    public boolean readyForPickup(){return !busy()&&!hasOnboardPallet();}
+    /** An old or interrupted transfer might have stored item stacks but
+     * lost its slot-zero deck. It renders as an EMPTY forklift, yet still
+     * owns inventory. Treat those stacks as cargo, never as an empty Jack. */
+    public boolean hasPackedCargo(){
+        if(!jack.is(RackContent.PALLET_JACK))return false;
+        for(ItemStack item:PalletJackItem.unpack(jack))
+            if(!item.isEmpty())return true;
+        return false;
+    }
+    public boolean readyForPickup(){return !busy()&&!hasPackedCargo();}
     private boolean beginWithoutCargo(){
         if(busy()){
             status="CURRENT FORKLIFT JOB IN PROGRESS";
             return false;
         }
-        if(hasOnboardPallet()){
+        if(hasPackedCargo()){
             refreshDisplay();
-            status="FORKLIFT HAS A PACKED PALLET IN ITS JACK; FINISH DELIVERY "
-                    +"OR USE SAFE CARGO RECOVERY BEFORE PICKING UP ANOTHER";
+            status=hasOnboardPallet()
+                    ?"FORKLIFT HAS A PACKED PALLET IN ITS JACK; FINISH DELIVERY "
+                     +"OR USE SAFE CARGO RECOVERY BEFORE PICKING UP ANOTHER"
+                    :"FORKLIFT JACK CONTAINS UNDISPLAYED SAVED CARGO; "
+                     +"USE SAFE RECOVERY, NEVER OVERWRITE IT";
             return false;
         }
         return true;
@@ -711,8 +723,8 @@ public final class WarehouseForklift extends PathfinderMob {
         golem.finishForkliftDriving();
         driver=null;dismissAfterParking=false;
         getNavigation().stop();
-        status=PalletJackItem.loaded(jack)
-                ?"DRIVER HOME; SEALED PALLET JACK SECURE IN FORKLIFT"
+        status=hasPackedCargo()
+                ?"DRIVER HOME; PACKED JACK CARGO SECURE IN FORKLIFT"
                 :"DRIVER DISMISSED - RETURNING TO SHELF";
         return true;
     }
@@ -743,8 +755,8 @@ public final class WarehouseForklift extends PathfinderMob {
     public String recoverStuckCargo(Player player){
         if(driver!=null||job!=0)
             return "FORKLIFT: stop and release the driver first.";
-        if(!PalletJackItem.loaded(jack))
-            return "FORKLIFT: no sealed pallet cargo to recover.";
+        if(!hasPackedCargo())
+            return "FORKLIFT: no packed pallet cargo to recover.";
         ItemStack packed=jack.copy();
         jack=new ItemStack(RackContent.PALLET_JACK);
         refreshDisplay();
@@ -755,7 +767,7 @@ public final class WarehouseForklift extends PathfinderMob {
     @Override public void die(net.minecraft.world.damagesource.DamageSource source){
         if(level() instanceof ServerLevel world){
             // One packed pallet must survive the vehicle's destruction.
-            if(PalletJackItem.loaded(jack)){
+            if(hasPackedCargo()){
                 net.minecraft.world.Containers.dropItemStack(world,
                         getX(),getY(),getZ(),jack.copy());
                 jack.remove(net.minecraft.core.component.DataComponents.CONTAINER);
