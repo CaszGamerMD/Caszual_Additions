@@ -548,6 +548,13 @@ public final class WarehouseForklift extends PathfinderMob {
         // movement budget so the forklift cannot exceed the requested speed.
         driveTickStartX=getX();
         driveTickStartZ=getZ();
+        // The custom aisle motor owns ALL horizontal driving. Allowing
+        // vanilla navigation to tick here previously pulled the vehicle
+        // directly toward the pallet before the collision-aware route.
+        if(job!=0){
+            getNavigation().stop();
+            setDeltaMovement(0,getDeltaMovement().y,0);
+        }
         super.tick();
         if(!(level() instanceof ServerLevel world))return;
         // Travel with lowered forks. Raise them only while picking up from
@@ -605,19 +612,21 @@ public final class WarehouseForklift extends PathfinderMob {
         }
         if(retrieving&&origin==null){status="WAITING FOR SOURCE RACK";return;}
         if(job==1){
-            BlockPos pickup=retrieving?service(world,origin)
-                    :groundService(world,source);
-            if(pickup==null){status="WAITING FOR CLEAR AISLE";return;}
-            if(!drive(world,pickup))return;
-            if(!alignForTransfer(source)){
-                status="TURNING FORKS TOWARD SOURCE PALLET";
+            Dock pickup=retrieving?service(world,origin)
+                    :groundService(world,source,groundFacing);
+            if(pickup==null){status="WAITING FOR REACHABLE PALLET-SIDE AISLE";return;}
+            if(!drive(world,pickup.position()))return;
+            if(!alignForTransfer(pickup)){
+                status="SQUARING FORKS WITH CENTER OF SOURCE PALLET";
                 return;
             }
             job=2;animation=0;
         }
         if(job==2){
-            if(!alignForTransfer(source)){
-                status="TURNING FORKS TOWARD SOURCE PALLET";
+            Dock pickup=retrieving?service(world,origin)
+                    :groundService(world,source,groundFacing);
+            if(pickup==null||!alignForTransfer(pickup)){
+                status="SQUARING FORKS WITH CENTER OF SOURCE PALLET";
                 return;
             }
             if(++animation<45){status="ALIGNING FORKS AND LIFTING";return;}
@@ -627,22 +636,20 @@ public final class WarehouseForklift extends PathfinderMob {
             refreshDisplay();job=3;animation=0;
         }
         if(job==3){
-            // Stage alongside the aisle rather than driving two blocks
-            // straight across it and into the facing rack bank.
-            BlockPos landing=groundDestination
-                    ?groundService(world,staging):service(world,rack);
-            if(landing==null){status="WAITING FOR SAFE FORKLIFT LANE";return;}
-            // Do not drive out of a tall source rack with the mast extended.
-            // With a load on the forks it must lower to travel height first.
+            // The deposit point is directly behind the real pallet center,
+            // parallel to its rack face; do not aim at the rack controller.
+            Dock landing=groundDestination
+                    ?groundService(world,staging,groundFacing):service(world,rack);
+            if(landing==null){status="WAITING FOR REACHABLE DROP-OFF AISLE";return;}
+            // Lower the pallet before setting out for the other rack.
             if(animation==0&&entityData.get(MAST)>.20f){
                 getNavigation().stop();
                 status="LOWERING LOADED PALLET FOR TRAVEL";
                 return;
             }
-            if(animation==0&&!drive(world,landing))return;
-            BlockPos unload=groundDestination?staging:target;
-            if(!alignForTransfer(unload)){
-                status="TURNING FORKS TOWARD DROP-OFF";
+            if(animation==0&&!drive(world,landing.position()))return;
+            if(!alignForTransfer(landing)){
+                status="SQUARING FORKS WITH CENTER OF DESTINATION";
                 return;
             }
             // Animation starts ONLY once we've reached the destination aisle,
