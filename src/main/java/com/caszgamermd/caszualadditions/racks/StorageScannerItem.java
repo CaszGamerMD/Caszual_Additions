@@ -126,12 +126,19 @@ public final class StorageScannerItem extends Item {
     public static void onForkliftClick(ServerLevel world,ServerPlayer player,
             ItemStack scanner,WarehouseForklift lift){
         if(mode(scanner)!=Mode.FORKLIFT)return;
-        if(lift.busy()){
-            message(player,"Forklift is working: "+lift.status());
+        // Sneak-click is a deliberate emergency intervention if the normal
+        // park-before-dismissal path is obstructed. Otherwise right-click
+        // cancels the current order and sends the forklift home FIRST.
+        if(player.isShiftKeyDown()){
+            message(player,lift.emergencyDriverRelease(world));
             return;
         }
         if(lift.hasDriver(world)){
             message(player,lift.requestDriverDismissal(world));
+            return;
+        }
+        if(lift.busy()){
+            message(player,"FORKLIFT: no loaded driver for task: "+lift.status());
             return;
         }
         BlockPos home=linkedComputer(scanner,world);
