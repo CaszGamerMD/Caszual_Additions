@@ -23,7 +23,11 @@ public final class ForkliftPalletIO {
     public static boolean fits(ServerLevel world,BlockPos root,Direction face){
         if(world.isOutsideBuildHeight(root)||!world.getWorldBorder().isWithinBounds(root))
             return false;
-        // Only a real floor, never a thin rack, stack or pallet top.
+        // A real 2x2 ground pallet is allowed to occupy an otherwise empty
+        // rack-approach row temporarily. In a three-block aisle, EVERY
+        // possible 2-deep footprint overlaps one of the opposite racks'
+        // reserved access rows, even when there is no physical obstruction.
+        // This fit test is for actual forklift staging, not rack placement.
         for(int part=0;part<4;part++){
             BlockPos at=PalletBlock.partPos(root,part,
                     com.caszgamermd.caszualadditions.pallet.PalletContent.WOODEN_PALLET.defaultBlockState()
@@ -31,7 +35,6 @@ public final class ForkliftPalletIO {
                             .setValue(PalletBlock.FACING,face));
             if(!world.hasChunkAt(at)||!world.hasChunkAt(at.below())
                     ||!world.getBlockState(at).canBeReplaced()
-                    ||RackBlock.reservedForAccess(world,at)
                     ||!world.getBlockState(at.below()).isCollisionShapeFullBlock(world,at.below()))
                 return false;
         }

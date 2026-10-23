@@ -38,5 +38,6 @@ assert "origin.liftToForklift(jack)" in fork
 assert "ForkliftPalletIO.liftGround(world,source,jack)" in fork
 assert "rack.installFromForklift(jack)" in fork
 assert "ForkliftPalletIO.placeGround(" in fork
-assert "return plan==null?null:plan.goal(3,false);" in fork
+assert 'BlockPos candidate=plan.goal(col,false); // depth 2, not 3' in fork
+assert 'if(!world.noCollision(this,footprint))continue;' in fork
 print("PASS: centered seated driver and autonomous forklift driving with collision guards")
