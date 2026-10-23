@@ -23,7 +23,7 @@ assert 'getY()+.62' not in truck
 assert 'if(!(passenger instanceof StorageGolem))' in truck
 assert 'getPassengerRidingPosition(Entity passenger)' in truck
 assert 'texOffs(48,48).addBox(-6,-10,5,12,2,10)' in geometry
-assert 'texOffs(48,48).addBox(-6,-25,15,12,15,2)' in geometry
+assert 'texOffs(48,48).addBox(-6,-25,13.5f,12,15,2)' in geometry
 
 # The rider remains CENTERED on the same revolving seat at every heading.
 rear=.625;right=0.
