@@ -103,6 +103,7 @@ class BundleTests(unittest.TestCase):
             with zipfile.ZipFile(target) as archive:
                 names = archive.namelist()
                 self.assertEqual(len([x for x in names if x.startswith("mods/")]), 8)
+                self.assertFalse(any(name.endswith(".zip") for name in names))
                 manifest = json.loads(archive.read("manifest.json"))
                 self.assertTrue(manifest["complete"])
                 self.assertEqual(len(manifest["mods"]), 8)
