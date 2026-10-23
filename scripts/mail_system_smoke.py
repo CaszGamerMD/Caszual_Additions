@@ -35,7 +35,7 @@ assert "ServerPlayConnectionEvents.JOIN.register(" in content
 assert "MailContent.MAILBOX_MENU" in menu
 assert "MailContent.PO_BOX_MENU" in menu
 assert "simpleCodec(props->new MailBlock(true,props))" in block
-assert "MailSavedData.get(serverPlayer.getServer()).remember(serverPlayer);" in block
+assert "MailSavedData.get(serverPlayer.level().getServer()).remember(serverPlayer);" in block
 assert "menu.selectedName()" in screen
 for name in ("mailbox","po_box"):
     assert (root/f"src/main/resources/assets/caszual_additions/blockstates/{name}.json").exists()
