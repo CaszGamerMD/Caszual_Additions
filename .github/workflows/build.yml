@@ -140,6 +140,8 @@ jobs:
         run: python3 scripts/warehouse_forklift_center_physical_speed_smoke.py
       - name: Verify forklift pallet ahead of mast and forward-facing pickup/drop-off
         run: python3 scripts/warehouse_forklift_forward_forks_and_alignment_smoke.py
+      - name: Verify forklift unblocked travel and stranded operator recovery
+        run: python3 scripts/warehouse_forklift_stuck_recovery_smoke.py
       - name: Verify loaded Golem pallet speed boost on concrete and industrial floors
         run: python3 scripts/warehouse_concrete_carry_speed_smoke.py
       - name: Verify courier avoids nearby pallet decks and retains its assigned target
