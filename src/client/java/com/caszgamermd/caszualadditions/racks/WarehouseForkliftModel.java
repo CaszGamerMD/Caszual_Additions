@@ -55,19 +55,19 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
                 .texOffs(70,18).addBox(-12,-8,-16,2,4,28)
                 .texOffs(70,18).addBox(10,-8,-16,2,4,28)
                 .texOffs(48,48).addBox(-10,-8,-21,20,3,4)
-                .texOffs(70,18).addBox(-10,-6,15,20,5,3),
+                .texOffs(70,18).addBox(-10,-6,15,20,5,8),
                 PartPose.offset(0,24,0));
 
         // Rounded-in-blocks counterweight: sloped shoulder approximated by
         // stepped chamfers, bevel end caps and realistic rear service panel.
         root.addOrReplaceChild("rear_counterweight",CubeListBuilder.create()
-                .texOffs(0,0).addBox(-10,-18,8,20,11,8)
-                .texOffs(0,0).addBox(-9,-21,10,18,4,6)
-                .texOffs(0,23).addBox(-7,-22,11,14,2,5)
-                .texOffs(70,0).addBox(-9,-16,16,18,6,2)
-                .texOffs(70,0).addBox(-7,-18,17,14,4,2)
-                .texOffs(48,48).addBox(-10,-11,17,20,2,2)
-                .texOffs(98,0).addBox(-5,-19,18,10,1,1),
+                .texOffs(0,0).addBox(-10,-18,16,20,11,7)
+                .texOffs(0,0).addBox(-9,-21,18,18,4,5)
+                .texOffs(0,23).addBox(-7,-22,19,14,2,4)
+                .texOffs(70,0).addBox(-9,-16,23,18,6,2)
+                .texOffs(70,0).addBox(-7,-18,24,14,4,2)
+                .texOffs(48,48).addBox(-10,-11,24,20,2,2)
+                .texOffs(98,0).addBox(-5,-19,25,10,1,1),
                 PartPose.offset(0,24,0));
 
         // Visible tapered nose, curved-looking wheel arches, footboard and
@@ -214,14 +214,14 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
                 .texOffs(98,90).addBox(7,-42,-25,5,4,3)
                 .texOffs(104,50).addBox(-11,-44,-26,3,1,2)
                 .texOffs(104,50).addBox(8,-44,-26,3,1,2)
-                .texOffs(108,70).addBox(-10,-20,18,5,3,2)
-                .texOffs(108,70).addBox(5,-20,18,5,3,2)
-                .texOffs(0,80).addBox(-6,-18,19,12,3,1)
+                .texOffs(108,70).addBox(-10,-20,25,5,3,2)
+                .texOffs(108,70).addBox(5,-20,25,5,3,2)
+                .texOffs(0,80).addBox(-6,-18,26,12,3,1)
                 .texOffs(104,50).addBox(6,-55,7,5,3,5)
                 .texOffs(70,18).addBox(7,-50,8,3,3,3)
                 .texOffs(70,18).addBox(-10,-40,12,3,20,3)
                 .texOffs(70,0).addBox(-11,-42,11,5,3,5)
-                .texOffs(48,48).addBox(-7,-12,19,14,2,1),
+                .texOffs(48,48).addBox(-7,-12,26,14,2,1),
                 PartPose.offset(0,24,0));
 
         return LayerDefinition.create(mesh,128,128);
