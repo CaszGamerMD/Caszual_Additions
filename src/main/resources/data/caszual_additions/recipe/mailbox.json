@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " B ",
+    "BCB",
+    "III"
+  ],
+  "key": {
+    "B": "minecraft:blue_concrete",
+    "C": "minecraft:chest",
+    "I": "minecraft:iron_ingot"
+  },
+  "result": {
+    "id": "caszual_additions:mailbox",
+    "count": 1
+  }
+}

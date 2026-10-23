@@ -1,6 +1,8 @@
 package com.caszgamermd.caszualadditions;
 
 import com.caszgamermd.caszualadditions.autovending.CraftVendingContent;
+import com.caszgamermd.caszualadditions.mail.MailContent;
+import com.caszgamermd.caszualadditions.mail.MailScreen;
 import com.caszgamermd.caszualadditions.autovending.CraftVendingScreen;
 import com.caszgamermd.caszualadditions.headvending.HeadVendingClient;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntityRenderer;
@@ -85,5 +87,7 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         MenuScreens.register(RackContent.PALLET_STACK_MENU, StackOfPalletsScreen::new);
         MenuScreens.register(FunBarrelContent.MENU, FunBarrelScreen::new);
         MenuScreens.register(CraftVendingContent.MENU, CraftVendingScreen::new);
+        MenuScreens.register(MailContent.MAILBOX_MENU, MailScreen::new);
+        MenuScreens.register(MailContent.PO_BOX_MENU, MailScreen::new);
     }
 }

@@ -1,0 +1,24 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "caszual_additions:block/po_box",
+      "y": 0,
+      "uvlock": true
+    },
+    "facing=east": {
+      "model": "caszual_additions:block/po_box",
+      "y": 90,
+      "uvlock": true
+    },
+    "facing=south": {
+      "model": "caszual_additions:block/po_box",
+      "y": 180,
+      "uvlock": true
+    },
+    "facing=west": {
+      "model": "caszual_additions:block/po_box",
+      "y": 270,
+      "uvlock": true
+    }
+  }
+}

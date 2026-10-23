@@ -11,6 +11,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import com.caszgamermd.caszualadditions.autovending.CraftVendingContent;
 import com.caszgamermd.caszualadditions.funbarrel.FunBarrelContent;
+import com.caszgamermd.caszualadditions.mail.MailContent;
 import com.caszgamermd.caszualadditions.antiwarden.AntiWardenContent;
 import com.caszgamermd.caszualadditions.racks.RackContent;
 import com.caszgamermd.caszualadditions.painting.IndustrialPaintContent;
@@ -46,6 +47,8 @@ public final class CaszualItemGroups {
                             // surface the sampler in the creative Caszual tab.
                             add.accept(FunBarrelContent.ITEM);
                             add.accept(CraftVendingContent.ITEM);
+                            add.accept(MailContent.MAILBOX_ITEM);
+                            add.accept(MailContent.PO_BOX_ITEM);
                             for (var item : java.util.List.of(RackContent.RACK_ITEM,
                                     RackContent.COMPUTER_ITEM, RackContent.STORAGE_SCANNER_ITEM,
                                     RackContent.WAREHOUSE_TEST_KIT,
