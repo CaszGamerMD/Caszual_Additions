@@ -2,6 +2,8 @@ package com.caszgamermd.caszualadditions.racks;
 
 import com.caszgamermd.caszualadditions.pallet.PalletBlock;
 import com.caszgamermd.caszualadditions.pallet.PalletBlockEntity;
+import com.caszgamermd.caszualadditions.pallet.PalletContent;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -15,7 +17,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -56,6 +57,15 @@ public final class WarehouseForklift extends PathfinderMob {
     private boolean retrieving,groundDestination;
     private Direction groundFacing=Direction.NORTH;
     private int job,animation,stallTicks;
+    /** Transient aisle route: only the current job and the cargo Jack persist.
+     * After chunk reload the route is recomputed against current obstacles. */
+    private List<Vec3> aisleRoute=List.of();
+    private int routeStep,lastRouteTick=-100;
+    private Vec3 aisleTarget;
+    private Dock cachedGroundDock;
+    private BlockPos cachedDockRoot=BlockPos.ZERO;
+    private int cachedDockJob=-1,lastDockSearch=-100;
+    private record Dock(Vec3 position,Direction forksFace) {}
     private BlockPos lastDriveGoal=BlockPos.ZERO;
     private double lastDriveDistance=Double.POSITIVE_INFINITY;
     private UUID driver;
@@ -361,205 +371,177 @@ public final class WarehouseForklift extends PathfinderMob {
         Entity occupant=world.getEntity(driver);
         return occupant instanceof StorageGolem golem && golem.getVehicle()==this;
     }
-    /** On flat unobstructed industrial flooring the forklift must not
-     * freeze merely because the vanilla mob path search rejected a 1.2-wide
-     * vehicle. This only enables the direct engine when the FULL bounding box
-     * and every floor tile of the straight route are clear. Normal navigation
-     * remains responsible for turns, hills and obstacle avoidance. */
-    private boolean directLaneClear(ServerLevel world,double x,double y,double z){
-        double dx=x-getX(),dz=z-getZ();
-        double distance=Math.hypot(dx,dz);
-        if(distance>24||Math.abs(y-getY())>.6)return false;
-        int steps=Math.max(1,(int)Math.ceil(distance/.4));
-        for(int i=1;i<=steps;i++){
-            double amount=(double)i/steps;
-            double tx=getX()+dx*amount,tz=getZ()+dz*amount;
-            AABB test=getBoundingBox().move(tx-getX(),0,tz-getZ());
-            if(!world.noCollision(this,test))return false;
-            if(!supportedFloor(world,tx,y,tz))return false;
-        }
-        return true;
-    }
-
-    /** A painted parking marker has no collision of its own. Accept the
-     * solid support underneath it, but never mistake ordinary air for floor. */
-    private boolean supportedFloor(ServerLevel world,double x,double y,double z){
-        BlockPos floor=BlockPos.containing(x,y,z).below();
-        if(!world.hasChunkAt(floor))return false;
-        if(world.getBlockState(floor).is(RackContent.FORKLIFT_PARKING))
-            floor=floor.below();
-        return world.hasChunkAt(floor)
-                &&!world.getBlockState(floor).getCollisionShape(world,floor).isEmpty();
-    }
-
-    /** Rotate the front mast and fork tines to point at the direction of
-     * movement, before advancing. Vanilla path navigation can move an entity
-     * sideways; the forklift must turn like a vehicle instead. Returning
-     * false keeps the motor stopped while the steering turn completes.
-     */
+    /** Explicit heading matters at the load face: pointing at a corner
+     * makes the forks clip one side of the pallet. Hold the truck square. */
     private boolean turnForksToward(double x,double z){
         double dx=x-getX(),dz=z-getZ();
         if(dx*dx+dz*dz<.01)return true;
-        float wanted=(float)Math.toDegrees(Math.atan2(-dx,dz));
+        return turnForksToYaw((float)Math.toDegrees(Math.atan2(-dx,dz)));
+    }
+    private boolean turnForksToYaw(float wanted){
         float error=Mth.wrapDegrees(wanted-getYRot());
-        float turn=Mth.clamp(error,-14f,14f);
-        float yaw=getYRot()+turn;
+        float yaw=getYRot()+Mth.clamp(error,-14f,14f);
         setYRot(yaw);
         setYBodyRot(yaw);
         setYHeadRot(yaw);
-        return Math.abs(error)<8f;
+        return Math.abs(Mth.wrapDegrees(wanted-yaw))<3f;
     }
-
-    /** Stop at the service aisle and face the actual pallet or rack before
-     * starting the lift, or before installing the pallet. This prevents
-     * transfers with the forks facing across the cab or sideways. */
-    private boolean alignForTransfer(BlockPos load){
-        boolean aligned=turnForksToward(load.getX()+.5,load.getZ()+.5);
+    private boolean alignForTransfer(Dock dock){
+        // The carriage and BOTH fork tines must point straight along
+        // the rack's normal, not diagonally toward its controller corner.
+        Direction face=dock.forksFace();
+        boolean aligned=turnForksToYaw((float)Math.toDegrees(
+                Math.atan2(-face.getStepX(),face.getStepZ())));
         getNavigation().stop();
         setDeltaMovement(0,getDeltaMovement().y,0);
         return aligned;
     }
 
-    /** Physically power the forklift along an already checked aisle.
-     * MoveControl speed is a multiplier applied to mob navigation, NOT an
-     * actual blocks-per-second target. Move only the missing portion of this
-     * tick's 0.20-block budget, including any vanilla navigation movement.
-     * Normal entity move() resolves collisions; it cannot clip through racks.
-     */
-    private boolean motorStep(ServerLevel world,double x,double z){
-        double dx=x-getX(),dz=z-getZ();
-        double length=Math.hypot(dx,dz);
-        if(length<.06)return false;
-        double vanillaDistance=Math.hypot(
-                getX()-driveTickStartX,getZ()-driveTickStartZ);
-        double remaining=Math.max(0,DRIVE_BLOCKS_PER_TICK-vanillaDistance);
-        if(remaining<.005)return false;
-        double step=Math.min(remaining,length);
-        double mx=dx/length*step,mz=dz/length*step;
-        AABB footprint=getBoundingBox().move(mx,0,mz);
-        if(!supportedFloor(world,getX()+mx,getY(),getZ()+mz)
-                ||!world.noCollision(this,footprint))return false;
-        // A heading change is a deliberate steering action. Do not slide
-        // sideways toward the target with the forks still facing elsewhere.
-        if(!turnForksToward(x,z)){
+    /** Move up to 0.20 blocks per tick while keeping the 1.2-wide vehicle
+     * entirely inside the clearance checked by ForkliftAislePath. */
+    private boolean motorStep(ServerLevel world,Vec3 waypoint){
+        double dx=waypoint.x-getX(),dz=waypoint.z-getZ();
+        double distance=Math.hypot(dx,dz);
+        if(distance<.06)return true;
+        if(!turnForksToward(waypoint.x,waypoint.z)){
             setDeltaMovement(0,getDeltaMovement().y,0);
             return false;
         }
+        double alreadyMoved=Math.hypot(
+                getX()-driveTickStartX,getZ()-driveTickStartZ);
+        double step=Math.min(distance,
+                Math.max(0,DRIVE_BLOCKS_PER_TICK-alreadyMoved));
+        if(step<.005)return false;
+        Vec3 delta=new Vec3(dx/distance*step,0,dz/distance*step);
+        Vec3 next=position().add(delta);
+        if(!ForkliftAislePath.canStand(world,this,next))return false;
         double beforeX=getX(),beforeZ=getZ();
-        move(MoverType.SELF,new Vec3(mx,0,mz));
-        // Mob walking inertia on the following tick must not add a second,
-        // uncontrolled velocity to the 4m/s motor budget.
+        move(MoverType.SELF,delta);
         setDeltaMovement(0,getDeltaMovement().y,0);
         return Math.hypot(getX()-beforeX,getZ()-beforeZ)>.01;
     }
 
-    /** An obstructed pallet at the destination must not block every step
-     * along the preceding clear aisle. Use navigation for turns, otherwise
-     * test a short piece of road with the FULL physical collision box. */
-    private boolean powerAlongSafeRoute(ServerLevel world,double x,double y,double z){
-        double dx=x-getX(),dz=z-getZ(),length=Math.hypot(dx,dz);
-        if(length<.05)return false;
-        double probe=Math.min(length,8.0);
-        double aheadX=getX()+dx/length*probe;
-        double aheadZ=getZ()+dz/length*probe;
-        if(directLaneClear(world,aheadX,getY(),aheadZ)){
-            getNavigation().stop();
-            return motorStep(world,aheadX,aheadZ);
-        }
-        Path path=getNavigation().getPath();
-        if(path!=null&&!path.isDone()){
-            Vec3 waypoint=path.getNextEntityPos(this);
-            if(directLaneClear(world,waypoint.x,waypoint.y,waypoint.z)
-                    &&motorStep(world,waypoint.x,waypoint.z))
-                return true;
-        }
-        // Old implementation required a clear 12-block ray, so a pallet
-        // sitting at the far end locked the motor even on clear pavement.
-        double shortStep=Math.min(length,.45);
-        double safeX=getX()+dx/length*shortStep;
-        double safeZ=getZ()+dz/length*shortStep;
-        if(directLaneClear(world,safeX,getY(),safeZ))
-            return motorStep(world,safeX,safeZ);
-        return false;
-    }
-
-    /** Move close to 4 blocks/s on clear paths while retaining vanilla
-     * pathfinding and collision resolution around turns and obstacles. */
     private boolean drive(ServerLevel world,BlockPos goal){
-        double x=goal.getX()+.5,z=goal.getZ()+.5;
-        double dx=x-getX(),dz=z-getZ(),dist=dx*dx+dz*dz;
-        double arriveDistance=job==5?.90*.90:3.0;
-        if(dist<arriveDistance&&Math.abs(goal.getY()-getY())<1.2){
-            getNavigation().stop();
-            getMoveControl().setWantedPosition(getX(),getY(),getZ(),0);
+        return drive(world,Vec3.atCenterOf(goal));
+    }
+    /** Follow a routed series of aisle waypoints, never the direct bearing
+     * to a blocked pallet. Replan if a path is obstructed by a newly placed
+     * block or moving vehicle. Refuse to go through a wall if none exists. */
+    private boolean drive(ServerLevel world,Vec3 goal){
+        getNavigation().stop();
+        getMoveControl().setWantedPosition(getX(),getY(),getZ(),0);
+        double dx=goal.x-getX(),dz=goal.z-getZ();
+        double distance=Math.hypot(dx,dz);
+        double tolerance=job==5?.82:.16;
+        if(distance<tolerance&&Math.abs(goal.y-getY())<.7){
+            aisleRoute=List.of();
+            routeStep=0;
             setDeltaMovement(0,getDeltaMovement().y,0);
             stallTicks=0;
             return true;
         }
-        if(!goal.equals(lastDriveGoal)){
-            lastDriveGoal=goal.immutable();
-            lastDriveDistance=Double.POSITIVE_INFINITY;
-            stallTicks=0;
-            getNavigation().stop();
+        boolean changed=aisleTarget==null||aisleTarget.distanceToSqr(goal)>.01;
+        if(changed){
+            aisleTarget=goal;
+            aisleRoute=List.of();
+            routeStep=0;
+            lastRouteTick=-100;
         }
-        if(dist+.04<lastDriveDistance){
-            lastDriveDistance=dist;
+        if(Math.abs(goal.y-getY())>.7){
+            status="WAITING: FORKLIFT REQUIRES A LEVEL AISLE TO THE DOCK";
+            return false;
+        }
+        if(aisleRoute.isEmpty()||routeStep>=aisleRoute.size()){
+            if(tickCount-lastRouteTick<20)return false;
+            lastRouteTick=tickCount;
+            aisleRoute=ForkliftAislePath.route(world,this,goal);
+            routeStep=0;
+            if(aisleRoute.isEmpty()){
+                status="WAITING: NO SAFE FORKLIFT AISLE ROUTE TO DOCK";
+                return false;
+            }
+        }
+        while(routeStep<aisleRoute.size()
+                &&Math.hypot(getX()-aisleRoute.get(routeStep).x,
+                        getZ()-aisleRoute.get(routeStep).z)<.13)
+            routeStep++;
+        if(routeStep>=aisleRoute.size())return false;
+        Vec3 waypoint=aisleRoute.get(routeStep);
+        boolean moved=motorStep(world,waypoint);
+        if(moved){
             stallTicks=0;
-        }else stallTicks++;
-
-        // Pathfinding chooses a safe aisle; the forklift motor supplies
-        // actual block displacement instead of relying on MoveControl speed.
-        if(tickCount%20==0||(getNavigation().isDone()&&tickCount%8==0)
-                ||stallTicks==45)
-            getNavigation().moveTo(x,goal.getY(),z,DRIVE_CONTROL);
-        boolean powered=powerAlongSafeRoute(world,x,goal.getY(),z);
-        if(powered)stallTicks=0;
-        status=stallTicks>100&&!powered
-                ?"WAITING: FORKLIFT PATH BLOCKED; CLEAR THE DRIVE AISLE"
-                :"DRIVING FORKLIFT TO SERVICE AISLE";
+            status="DRIVING FORKLIFT VIA CLEAR WAREHOUSE AISLE";
+        }else if(++stallTicks>30){
+            // The next segment has been blocked. Replan, but NEVER switch
+            // to a straight-to-pallet fallback that intersects rack frames.
+            aisleRoute=List.of();
+            routeStep=0;
+            stallTicks=0;
+            status="REPLANNING FORKLIFT AISLE AROUND OBSTRUCTION";
+        }
         return false;
     }
-    /** The four-Golem goal(3) is in ROW THREE. With a 1.20-block
-     * chassis in a three-block aisle, parking at row three puts the rear
-     * (or front) of the forklift into the opposing rack. Keep the chassis
-     * centered in row TWO and pick the unblocked rack column instead.
-     * These are actual collision checks, not fictitious access reservations. */
-    private BlockPos service(ServerLevel world,RackBlockEntity rack){
+    private static Vec3 rackPalletCenter(RackBlockEntity rack){
+        BlockPos root=rack.getBlockPos();
+        Direction face=rack.facing(),side=face.getCounterClockWise();
+        // The controller is the front-left cube of the 2x2 rack. The
+        // center lies between BOTH columns and half a block into the bay.
+        return new Vec3(root.getX()+.5+side.getStepX()*.5
+                        -face.getStepX()*.5,root.getY(),
+                root.getZ()+.5+side.getStepZ()*.5-face.getStepZ()*.5);
+    }
+    private Dock service(ServerLevel world,RackBlockEntity rack){
         RackPickupPlan plan=RackPickupPlan.forklift(world,rack);
         if(plan==null)return null;
-        BlockPos best=null;
-        double bestDistance=Double.POSITIVE_INFINITY;
-        for(int col=0;col<2;col++){
-            BlockPos candidate=plan.goal(col,false); // depth 2, not 3
-            if(!world.hasChunkAt(candidate))continue;
-            AABB footprint=getBoundingBox().move(
-                    candidate.getX()+.5-getX(),
-                    candidate.getY()-getY(),
-                    candidate.getZ()+.5-getZ());
-            if(!world.noCollision(this,footprint))continue;
-            double distance=candidate.distSqr(blockPosition());
-            if(distance<bestDistance){bestDistance=distance;best=candidate;}
-        }
-        return best;
+        Direction outward=rack.facing();
+        Vec3 palletCenter=rackPalletCenter(rack);
+        // The rendered pallet sits 2.82 blocks forward of the chassis,
+        // halfway between the fork tines. Aim the chassis directly behind
+        // this center, in row two of the three-block working aisle.
+        Vec3 position=new Vec3(
+                palletCenter.x+outward.getStepX()*2.82,
+                plan.floorY(),
+                palletCenter.z+outward.getStepZ()*2.82);
+        return ForkliftAislePath.canStand(world,this,position)
+                ?new Dock(position,outward.getOpposite()):null;
     }
-    /** A ground pallet has no rack facing. Select a free vehicle-wide
-     * approach next to that pallet instead of extrapolating the destination
-     * rack direction from the source location. */
-    private BlockPos groundService(ServerLevel world,BlockPos pallet){
-        BlockPos best=null;
-        double nearest=Double.POSITIVE_INFINITY;
-        for(Direction face:Direction.Plane.HORIZONTAL){
-            BlockPos candidate=pallet.relative(face,3);
-            if(!world.hasChunkAt(candidate)
-                    ||!StorageGolemReturnPath.walkable(world,candidate))continue;
-            AABB spot=getBoundingBox().move(
-                    candidate.getX()+.5-getX(),candidate.getY()-getY(),
-                    candidate.getZ()+.5-getZ());
-            if(!world.noCollision(this,spot))continue;
-            double score=candidate.distSqr(blockPosition());
-            if(score<nearest){nearest=score;best=candidate;}
+    private Vec3 groundPalletCenter(ServerLevel world,BlockPos root,Direction facing){
+        var state=world.getBlockState(root);
+        if(!(state.getBlock() instanceof PalletBlock))
+            state=PalletContent.WOODEN_PALLET.defaultBlockState()
+                    .setValue(PalletBlock.FACING,facing).setValue(PalletBlock.PART,0);
+        int minX=Integer.MAX_VALUE,minZ=Integer.MAX_VALUE;
+        for(int i=0;i<4;i++){
+            BlockPos at=PalletBlock.partPos(root,i,state);
+            minX=Math.min(minX,at.getX());
+            minZ=Math.min(minZ,at.getZ());
         }
-        return best;
+        return new Vec3(minX+1.0,root.getY(),minZ+1.0);
+    }
+    /** Try all four sides and select the SHORTEST REACHABLE aisle route,
+     * not merely the closest location separated by a glass rack bank. */
+    private Dock groundService(ServerLevel world,BlockPos root,Direction facing){
+        if(cachedDockJob==job&&root.equals(cachedDockRoot)
+                &&cachedGroundDock!=null)return cachedGroundDock;
+        if(cachedDockJob==job&&root.equals(cachedDockRoot)
+                &&tickCount-lastDockSearch<30)return null;
+        lastDockSearch=tickCount;
+        cachedDockJob=job;
+        cachedDockRoot=root.immutable();
+        cachedGroundDock=null;
+        Vec3 center=groundPalletCenter(world,root,facing);
+        int fewest=Integer.MAX_VALUE;
+        for(Direction side:Direction.Plane.HORIZONTAL){
+            Vec3 position=new Vec3(center.x+side.getStepX()*2.82,
+                    center.y,center.z+side.getStepZ()*2.82);
+            if(!ForkliftAislePath.canStand(world,this,position))continue;
+            List<Vec3> path=ForkliftAislePath.route(world,this,position);
+            if(!path.isEmpty()&&path.size()<fewest){
+                fewest=path.size();
+                cachedGroundDock=new Dock(position,side.getOpposite());
+            }
+        }
+        return cachedGroundDock;
     }
     @Override public void tick(){
         // Include any navigation displacement in the physical 0.20-block
