@@ -8,7 +8,8 @@ This utility gathers the newest successfully packaged, unexpired GitHub Actions 
 2. Create a fine-grained GitHub personal access token for all eight active private repositories, granting Actions: Read-only and Metadata: Read-only.
 3. Set the CASZUAL_SUITE_TOKEN secret in Caszual_Additions > Settings > Secrets and variables > Actions. Never put this token in source code or a workflow input.
 4. Select Caszual_Additions > Actions > Bundle Caszual Suite JARs > Run workflow.
-5. Download Caszual-Suite-Latest.zip from the resulting GitHub prerelease (Releases page), or from the workflow artifact.
+5. Download **Caszual-Suite-Latest.zip** from the GitHub prerelease (Releases page). It directly contains the `mods/` folder and JARs, not another ZIP.
+6. Alternatively, download the **Caszual-Suite-Mods** Actions artifact. GitHub automatically supplies a ZIP for Actions artifacts; this artifact now directly contains `mods/`, README.txt and manifest.json instead of wrapping an existing ZIP.
 
 Leave the Branch input empty for the latest successful packaged build on any branch, or set it to main to limit the result to main. GitHub's regular GITHUB_TOKEN cannot read other private repos, which is why the extra token is required.
 
@@ -39,7 +40,7 @@ On macOS/Linux, replace py with python3. The output defaults to dist/Caszual-Sui
 
 ## ZIP layout
 
-The ZIP contains README.txt, manifest.json, and a mods/ folder with exactly one installable JAR per active mod. TV Time is on hold and is excluded.
+Both ZIP download methods contain README.txt, manifest.json, and a `mods/` folder with exactly one installable JAR per active mod. **There is no second ZIP inside.** Extract once and copy the JAR files from `mods/` into your Minecraft instance's mods directory. TV Time is on hold and is excluded.
 
 The manifest records the exact branch, commit, workflow URL, artifact ID, JAR name, size, and SHA-256 hash. Source, development, test, and Javadoc JARs are excluded. Unrelated artifacts (such as Blockbench exports or logs) are not downloaded.
 
