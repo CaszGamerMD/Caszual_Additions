@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
  * Only the real 217-slot Jack item owns the inventory server-side. */
 public final class WarehouseForkliftRenderState extends LivingEntityRenderState {
     public float mastHeight;
+    public float steeringAngle;
     public int task;
     public int visibleCargo;
     public boolean hasPallet;
