@@ -65,22 +65,20 @@ public final class StorageGolemDispatch {
         BlockPos terminal=computer(level,group);
         return terminal!=null&&dispatchOutput(level,shelf,group,terminal);
     }
-    /** The computer owns the packer limit (one by default). Count only
-     * loaded real order-picking Golems linked to this warehouse network.
-     * The check occurs on dispatch, not every Golem/server tick.
+    /** The computer owns the warehouse-wide packer limit (default one).
+     * PTP tickets are persisted and each belongs to a real picker, so unlike
+     * a 160-block entity search they include couriers far from the computer
+     * and temporarily unloaded workers. Expired leases are ignored.
      */
     private static boolean packerSlotFree(ServerLevel level,BlockPos computer){
         if(!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity cfg))
             return true;
-        var network=WarehouseNetwork.fromComputer(level,computer);
-        java.util.Set<BlockPos> outputs=new java.util.HashSet<>();
-        for(PtpBlockEntity point:network.points())
-            outputs.add(point.getBlockPos());
-        int running=level.getEntitiesOfClass(StorageGolem.class,
-                new net.minecraft.world.phys.AABB(computer).inflate(160,32,160),
-                worker->worker.activeOrderPacking()
-                        &&outputs.contains(worker.packingOutput())).size();
-        return running<cfg.orderPackers();
+        int running=0;
+        for(PtpBlockEntity point:WarehouseNetwork.fromComputer(level,computer).points()){
+            running+=point.activeOutputReservations();
+            if(running>=cfg.orderPackers())return false;
+        }
+        return true;
     }
     /** Reuse the same Golem immediately after delivering three physical
      * stacks to a Shulker Station, with another checked FIFO reservation.
