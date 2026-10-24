@@ -27,7 +27,9 @@ assert "onComputerClick(server,user,scanner,clicked);" in scanner
 assert "onShelfClick(ServerLevel level,ServerPlayer player," in scanner
 assert "StoragePalletCrew.enlistFromShelf(level,player,home,shelf)" in scanner
 assert 'if(mode(scanner)==Mode.REMOTE)' in scanner
-assert 'Scanner in ' in scanner
+assert 'ScannerControlNet.open(user,scanner)' in scanner
+assert 'ScannerControlNet.initialize();' in registration
+assert 'Mode { DIRECT, REMOTE, FORKLIFT, RECALL, LINK, LOAD_UNLOAD, COMPUTER }' in scanner
 assert 'REMOTE: target must be an intact, glass-wrapped' in scanner
 assert 'return response.startsWith("Three Golems dispatched")' in scanner
 assert 'tag.putString("scanner_mode",next.name())' in scanner
