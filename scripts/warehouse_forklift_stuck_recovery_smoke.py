@@ -9,7 +9,8 @@ golem=(base/"StorageGolem.java").read_text()
 
 # A pallet/rack at the end of a 12-block ray can block the full scan even
 # while the vehicle's next small movement is completely safe.
-assert 'aisleRoute=ForkliftAislePath.route(world,this,goal);' in truck
+assert 'List<Vec3> raw=ForkliftAislePath.route(world,this,goal);' in truck
+assert 'aisleRoute=ForkliftAislePath.smooth(world,this,raw,' in truck
 assert 'ForkliftAislePath.canStand(world,this,next)' in truck
 assert 'DRIVE_BLOCKS_PER_TICK=0.20D' in truck
 assert 'boolean facing=turnForksToward(waypoint.x,waypoint.z);' in truck

@@ -20,6 +20,7 @@ assert 'return List.of();' in route # no path means NO driving through racks
 assert 'Collections.reverse(path);' in route
 assert 'path.add(destination);' in route
 assert 'ForkliftAislePath.route(world,this,goal)' in fork
+assert 'ForkliftAislePath.smooth(world,this,raw,' in fork
 assert 'ForkliftAislePath.canStand(world,this,next)' in fork
 assert 'getNavigation().stop();' in fork
 assert 'aisleRoute=List.of();' in fork

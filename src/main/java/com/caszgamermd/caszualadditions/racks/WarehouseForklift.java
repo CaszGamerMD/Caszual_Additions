@@ -64,10 +64,16 @@ public final class WarehouseForklift extends PathfinderMob {
      * After chunk reload the route is recomputed against current obstacles. */
     private List<Vec3> aisleRoute=List.of();
     private int routeStep,lastRouteTick=-100;
-    /** Transient wheel-motor acceleration for smooth starts and corners. */
+    /** Acceleration is per game tick; the true top speed is 0.2
+     * blocks/tick (4 blocks/sec at 20 TPS) regardless of path length. */
     private double rollingSpeed;
-    private static final double MOTOR_ACCELERATION=.024D;
-    private static final double LOOKAHEAD_DISTANCE=3.5D;
+    private static final double MOTOR_ACCELERATION=.05D;
+    private static final double ROUTE_SEGMENT_LENGTH=3.5D;
+    /** Actual server displacement telemetry, not an AI speed estimate. */
+    private double telemetryX=Double.NaN,telemetryZ=Double.NaN;
+    private double telemetryDistance,currentBlocksPerSecond;
+    private int telemetryTicks;
+    private double lastHeadingError;
     private Vec3 aisleTarget;
     private Dock cachedGroundDock;
     private BlockPos cachedDockRoot=BlockPos.ZERO;
@@ -171,6 +177,27 @@ public final class WarehouseForklift extends PathfinderMob {
         return "FORKLIFT: operator "+golem.golemName()+" assigned; boarding now.";
     }
     public String status(){return status;}
+    /** Measured over 20 server ticks, including all stoppages. Helps tell
+     * a blocked route from a client animation/rendering problem. */
+    public String driveDiagnostics(){
+        double speed=Math.round(currentBlocksPerSecond*10.0)/10.0;
+        return "measured "+speed+" blocks/s, segment "
+                +(aisleRoute.isEmpty()?0:Math.min(routeStep+1,aisleRoute.size()))
+                +"/"+aisleRoute.size()+", yaw error "
+                +Math.round(lastHeadingError)+" deg";
+    }
+    private void measureActualMotion(){
+        if(Double.isFinite(telemetryX)){
+            telemetryDistance+=Math.hypot(getX()-telemetryX,getZ()-telemetryZ);
+        }
+        telemetryX=getX();
+        telemetryZ=getZ();
+        if(++telemetryTicks>=20){
+            currentBlocksPerSecond=telemetryDistance;
+            telemetryDistance=0;
+            telemetryTicks=0;
+        }
+    }
     private void refreshDisplay(){
         if(jack.isEmpty()||!PalletJackItem.loaded(jack)){
             entityData.set(DECK,ItemStack.EMPTY);
@@ -417,6 +444,7 @@ public final class WarehouseForklift extends PathfinderMob {
         boolean facing=turnForksToward(waypoint.x,waypoint.z);
         float desired=(float)Math.toDegrees(Math.atan2(-dx,dz));
         double error=Math.abs(Mth.wrapDegrees(desired-getYRot()));
+        lastHeadingError=error;
         if(!facing&&error>52){
             rollingSpeed=Math.max(0,rollingSpeed-MOTOR_ACCELERATION*1.5);
             setDeltaMovement(0,getDeltaMovement().y,0);
@@ -450,8 +478,10 @@ public final class WarehouseForklift extends PathfinderMob {
      * to a blocked pallet. Replan if a path is obstructed by a newly placed
      * block or moving vehicle. Refuse to go through a wall if none exists. */
     private boolean drive(ServerLevel world,Vec3 goal){
-        getNavigation().stop();
-        getMoveControl().setWantedPosition(getX(),getY(),getZ(),0);
+        // The custom forklift motor is the sole horizontal driver. Never
+        // issue a dummy vanilla MoveControl instruction at our own current
+        // position: it can overwrite speed/heading in the following AI tick.
+        // Navigation is already stopped before super.tick() while on a job.
         double dx=goal.x-getX(),dz=goal.z-getZ();
         double distance=Math.hypot(dx,dz);
         double tolerance=job==5?.82:.16;
@@ -477,35 +507,26 @@ public final class WarehouseForklift extends PathfinderMob {
         if(aisleRoute.isEmpty()||routeStep>=aisleRoute.size()){
             if(tickCount-lastRouteTick<20)return false;
             lastRouteTick=tickCount;
-            aisleRoute=ForkliftAislePath.route(world,this,goal);
+            List<Vec3> raw=ForkliftAislePath.route(world,this,goal);
+            aisleRoute=ForkliftAislePath.smooth(world,this,raw,
+                    ROUTE_SEGMENT_LENGTH);
             routeStep=0;
             if(aisleRoute.isEmpty()){
+                rollingSpeed=0;
                 status="WAITING: NO SAFE FORKLIFT AISLE ROUTE TO DOCK";
                 return false;
             }
         }
-        // Collapse consecutive 0.5-block path nodes into a longer *visible*
-        // driving segment. Never skip an actual corner unless the entire
-        // chassis fits along the interpolated line. This keeps speed near
-        // 4 m/s on straight aisles and avoids jerking at each grid node.
+        // Hold a CONSTANT steering point until reaching that segment.
+        // Changing it every tick was causing hesitation and false corner
+        // braking even after the acceleration patch.
         while(routeStep<aisleRoute.size()
                 &&Math.hypot(getX()-aisleRoute.get(routeStep).x,
-                        getZ()-aisleRoute.get(routeStep).z)<.24)
+                        getZ()-aisleRoute.get(routeStep).z)<.08)
             routeStep++;
         if(routeStep>=aisleRoute.size())return false;
-        Vec3 origin=position();
-        int best=routeStep;
-        for(int look=routeStep+1;look<aisleRoute.size();look++){
-            Vec3 candidate=aisleRoute.get(look);
-            if(origin.distanceToSqr(candidate)>LOOKAHEAD_DISTANCE*LOOKAHEAD_DISTANCE)
-                break;
-            if(!ForkliftAislePath.clearSegment(world,this,origin,candidate))
-                break;
-            best=look;
-        }
-        Vec3 waypoint=aisleRoute.get(best);
+        Vec3 waypoint=aisleRoute.get(routeStep);
         boolean moved=motorStep(world,waypoint);
-        if(moved&&best>routeStep)routeStep=best;
         if(moved){
             stallTicks=0;
             status="DRIVING FORKLIFT VIA CLEAR WAREHOUSE AISLE";
@@ -595,6 +616,7 @@ public final class WarehouseForklift extends PathfinderMob {
             setDeltaMovement(0,getDeltaMovement().y,0);
         }
         super.tick();
+        if(!level().isClientSide())measureActualMotion();
         // Rider coordinates are owned by the forklift on both logical sides.
         // Keep rider rotation tied to the cab, not independent golem look AI:
         // the passenger may otherwise visually turn away while steering.
@@ -843,6 +865,7 @@ public final class WarehouseForklift extends PathfinderMob {
         }else{
             player.sendSystemMessage(Component.literal("Forklift: "+status
                     +(PalletJackItem.loaded(jack)?" | carrying wrapped pallet":"")
+                    +" | "+driveDiagnostics()
                     +". Dispatch by selecting a rack with the black Forklift Clipboard."));
         }
         return InteractionResult.SUCCESS;

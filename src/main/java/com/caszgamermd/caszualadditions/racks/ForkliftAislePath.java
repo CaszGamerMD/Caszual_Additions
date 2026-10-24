@@ -82,6 +82,38 @@ public final class ForkliftAislePath {
         return true;
     }
 
+    /** Convert the half-block A* cells into a FIXED series of longer
+     * verified driving segments, ONCE per route. The previous controller
+     * recalculated its farthest visible aim every tick, making the steering
+     * target wobble and causing repeated braking even in clear corridors.
+     *
+     * Only omit intermediate points when the full 1.2-wide forklift can
+     * traverse the connecting line without clipping a rack corner.
+     */
+    public static List<Vec3> smooth(ServerLevel world,WarehouseForklift vehicle,
+            List<Vec3> raw,double maxSegment){
+        if(raw.isEmpty())return List.of();
+        List<Vec3> segments=new ArrayList<>();
+        Vec3 start=vehicle.position();
+        int index=0;
+        while(index<raw.size()){
+            int furthest=-1;
+            for(int next=index;next<raw.size();next++){
+                Vec3 candidate=raw.get(next);
+                if(start.distanceToSqr(candidate)>maxSegment*maxSegment
+                        &&next>index)break;
+                if(!clearSegment(world,vehicle,start,candidate))break;
+                furthest=next;
+            }
+            if(furthest<index)return List.of();
+            Vec3 end=raw.get(furthest);
+            segments.add(end);
+            start=end;
+            index=furthest+1;
+        }
+        return segments;
+    }
+
     private static int distance(Cell a,Cell b){
         return Math.abs(a.x-b.x)+Math.abs(a.z-b.z);
     }

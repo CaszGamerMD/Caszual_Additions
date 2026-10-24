@@ -24,7 +24,8 @@ assert "startRiding(lift)" in golem
 assert "BlockPos candidate=lift.blockPosition().relative(side,2);" in golem
 assert "StorageGolemReturnPath.walkable(level,candidate)" in golem
 assert "setYBodyRot(lift.getYRot());" in golem
-assert "aisleRoute=ForkliftAislePath.route(world,this,goal);" in fork
+assert "List<Vec3> raw=ForkliftAislePath.route(world,this,goal);" in fork
+assert "aisleRoute=ForkliftAislePath.smooth(world,this,raw," in fork
 assert "private boolean drive(ServerLevel world,Vec3 goal)" in fork
 assert "private Dock groundService(ServerLevel world,BlockPos root,Direction facing)" in fork
 assert ":groundService(world,source,groundFacing);" in fork

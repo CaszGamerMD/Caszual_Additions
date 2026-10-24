@@ -11,7 +11,8 @@ golem=(racks/"StorageGolem.java").read_text()
 assert "WarehouseForkliftSeat.riderPosition(position(),getYRot())" in lift
 assert "DRIVE_SPEED=0.20D;" in lift # 4 blocks per 20t second
 assert ".add(Attributes.MOVEMENT_SPEED,DRIVE_SPEED)" in lift
-assert "aisleRoute=ForkliftAislePath.route(world,this,goal);" in lift
+assert "List<Vec3> raw=ForkliftAislePath.route(world,this,goal);" in lift
+assert "aisleRoute=ForkliftAislePath.smooth(world,this,raw," in lift
 assert "ForkliftAislePath.canStand(world,this,next)" in lift
 assert "boolean liftingAtSource=job==2&&retrieving;" in lift
 assert "boolean liftingAtDestination=job==3&&!groundDestination&&animation>0;" in lift
