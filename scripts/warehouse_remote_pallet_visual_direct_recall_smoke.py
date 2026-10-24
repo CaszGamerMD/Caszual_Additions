@@ -40,5 +40,5 @@ assert "requestGroundDelivery(world,at,user.getDirection())" in rig
 assert "fromWarehouse(WarehouseConnections.shelvesForComputer(server,linked))" in rig
 assert "if(remoteCourierId!=null&&deliveryMode>=4&&deliveryMode<=6)" in rig
 assert 'static BlockPos linkedComputer(ItemStack scanner,ServerLevel world)' in scanner
-assert "Mode next=toggleMode(scanner);" in scanner
-print("PASS: synced courier pallet, individual direct recall, loaded-rig return; scanner toggle unaffected")
+assert "ScannerControlNet.open(user,scanner)" in scanner
+print("PASS: synced courier pallet, individual direct recall, loaded-rig return; scanner menu unaffected")
