@@ -13,15 +13,15 @@ model=(client/"WarehouseForkliftModel.java").read_text()
 # The original motor stopped at every half-block A* cell until yaw error
 # fell below 3 degrees. It should now steer while MOVING down clear lanes,
 # with a sharp-corner exception and physical 4 m/s speed ceiling.
-assert "private static final double LOOKAHEAD_DISTANCE=3.5D;" in truck
-assert "MOTOR_ACCELERATION=.024D;" in truck
+assert "private static final double ROUTE_SEGMENT_LENGTH=3.5D;" in truck
+assert "MOTOR_ACCELERATION=.05D;" in truck
 assert "rollingSpeed=Math.min(DRIVE_BLOCKS_PER_TICK," in truck
 assert "boolean facing=turnForksToward(waypoint.x,waypoint.z);" in truck
 assert "if(!facing&&error>52){" in truck
 assert "error>35?DRIVE_BLOCKS_PER_TICK*.65" in truck
-assert "origin.distanceToSqr(candidate)>LOOKAHEAD_DISTANCE*LOOKAHEAD_DISTANCE" in truck
-assert "ForkliftAislePath.clearSegment(world,this,origin,candidate)" in truck
-assert "if(moved&&best>routeStep)routeStep=best;" in truck
+assert "ForkliftAislePath.smooth(world,this,raw," in truck
+assert "Vec3 waypoint=aisleRoute.get(routeStep);" in truck
+assert "ForkliftAislePath.clearSegment(world,this,origin,candidate)" not in truck
 assert "rollingSpeed=0;" in truck
 assert "DRIVE_BLOCKS_PER_TICK=0.20D;" in truck
 assert "if(!standable(world,vehicle," in path
