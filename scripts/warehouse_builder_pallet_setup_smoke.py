@@ -39,4 +39,11 @@ assert "ptp.prepareBuilder(pending.request())" in fulfill
 assert "ptp.beginBuilderOutput(pending.request(),pending.owner()" in fulfill
 assert "public static void progressWaiting(" in fulfill
 assert "BuilderWarehouseFulfillment.progressWaiting(level,computer);" in shelf
+ticket=(root/"WarehouseOrderTickets.java").read_text()
+computerBlock=(root/"RackComputerBlock.java").read_text()
+assert "new TicketType(200,TicketType.FLAG_LOADING" in ticket
+assert "TicketType.FLAG_SIMULATION" in ticket
+assert "MAX_CENTERS=16" in ticket
+assert "WarehouseOrderTickets.keep(server,pos,network)" in computerBlock
+assert "BuilderWarehouseFulfillment.progressWaiting(server,pos)" in computerBlock
 print("PASS: durable Builder PTP preparation, actual pallet courier, packing handoff and empty pallet return")
