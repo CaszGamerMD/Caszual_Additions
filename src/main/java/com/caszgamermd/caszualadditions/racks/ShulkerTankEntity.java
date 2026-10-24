@@ -244,6 +244,23 @@ public final class ShulkerTankEntity extends BlockEntity implements Container, E
         }
         return true;
     }
+    /** A reserved Builder PTP needs supplies as each picker returns.
+     * Seal a real partially filled shulker as soon as its physical delivery
+     * reaches the station; don't hold all prior supplies until a different,
+     * potentially unstocked material at the end of the order is fulfilled.
+     * Full boxes still use the existing atomic hopper-adapter transfer. */
+    public void flushBuilderBatch(ServerLevel level,PtpBlockEntity ptp){
+        if(ptp==null||!ptp.builderReserved()||attachedOutput(level)!=ptp)return;
+        boolean changed=false;
+        for(int i=0;i<STATIONS;i++){
+            if(working.get(i).isEmpty()||!finished.get(i).isEmpty())continue;
+            finished.set(i,working.get(i));
+            working.set(i,ItemStack.EMPTY);
+            changed=true;
+        }
+        if(changed)setChanged();
+        flushFinished(level,ptp,true);
+    }
     /** Full shulkers are ready immediately; partially filled shulkers
      * become ready when the whole submitted order queue finishes. */
     public void finishOrder(ServerLevel level,PtpBlockEntity ptp){
