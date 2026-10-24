@@ -29,6 +29,9 @@ assert "BlockEntityTicker<T> getTicker" in station_block
 assert "orderCargo=NonNullList.withSize(3,ItemStack.EMPTY)" in golem
 assert "continuePacking(" in golem
 assert "packerSlotFree(" in dispatch
+assert "public int activeOutputReservations()" in ptp
+assert "point.activeOutputReservations()" in dispatch
+assert "if(running>=cfg.orderPackers())return false;" in dispatch
 # Changing the selected PTP cannot steal dispatch from an already reserved
 # Builder shipment; the manual-order selection must remain unchanged.
 assert "if(output==null)output=outputPoint(level,group,terminal);" in dispatch
