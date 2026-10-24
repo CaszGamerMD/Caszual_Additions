@@ -382,6 +382,7 @@ public final class WarehouseForklift extends PathfinderMob {
         if(!hire(world))return false;
         source=from.immutable();target=from.immutable();staging=landing.immutable();
         retrieving=fromRack;groundDestination=true;groundFacing=facing;
+        resetRackManeuver();
         job=1;animation=0;status="DRIVER BOARDING - PALLET TO GROUND";
         return true;
     }
@@ -871,7 +872,8 @@ public final class WarehouseForklift extends PathfinderMob {
             }
             if(!groundDestination){
                 if(!enterRackSafely(world,rack,false))return;
-                if(!alignForTransfer(service(world,rack))){
+                Dock finalDock=service(world,rack);
+                if(finalDock==null||!alignForTransfer(finalDock)){
                     status="SQUARING FORKS WITH CENTER OF DESTINATION";
                     return;
                 }
