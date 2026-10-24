@@ -50,8 +50,9 @@ assert "leftArm.zRot=rightArm.zRot=0f;" in solo
 assert "leftForearm[i].xRot=0f;" in team
 
 assert "SlabType.BOTTOM" in terrain
-assert "boolean slabFloor=WarehouseTerrain.bottomSlab(level,feet)" in walk
-assert "if(slabFloor)return true;" in walk
+assert "boolean architecturalFloor=WarehouseTerrain.bottomSlab(level,feet)" in walk
+assert "||WarehouseTerrain.stairFloor(level,feet);" in walk
+assert "if(architecturalFloor)return true;" in walk
 assert "if(WarehouseTerrain.bottomSlab(level,ground))return false;" in walk
 assert "public static double standingY(ServerLevel level,BlockPos feet)" in terrain
 assert "Math.abs(standingY(level,to)-standingY(level,from))<=.501" in terrain
