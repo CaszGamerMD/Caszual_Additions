@@ -85,11 +85,15 @@ public final class WarehouseForklift extends PathfinderMob {
     private int sourceRackStage,destinationRackStage;
     private int sourceArcCursor=-1,destinationArcCursor=-1;
     private int sourceArcTurn,destinationArcTurn;
+    private double sourceReverseDepth,sourceAisleShift,
+            destinationReverseDepth,destinationAisleShift;
     private ForkliftRackManeuver.Plan sourceArc,destinationArc;
     private void resetRackManeuver(){
         sourceRackStage=0;destinationRackStage=0;
         sourceArcCursor=-1;destinationArcCursor=-1;
         sourceArcTurn=0;destinationArcTurn=0;
+        sourceReverseDepth=0;sourceAisleShift=0;
+        destinationReverseDepth=0;destinationAisleShift=0;
         sourceArc=null;destinationArc=null;
     }
     private BlockPos lastDriveGoal=BlockPos.ZERO;
@@ -627,11 +631,20 @@ public final class WarehouseForklift extends PathfinderMob {
         Dock dock=service(world,rack);
         if(dock==null)return null;
         int preferred=sourceRack?sourceArcTurn:destinationArcTurn;
+        double depth=sourceRack?sourceReverseDepth:destinationReverseDepth;
+        double shift=sourceRack?sourceAisleShift:destinationAisleShift;
         ForkliftRackManeuver.Plan planned=ForkliftRackManeuver.plan(
-                world,this,rack,dock.position(),preferred);
+                world,this,rack,dock.position(),preferred,depth,shift);
         if(planned!=null){
-            if(sourceRack){sourceArc=planned;sourceArcTurn=planned.turn();}
-            else{destinationArc=planned;destinationArcTurn=planned.turn();}
+            if(sourceRack){
+                sourceArc=planned;sourceArcTurn=planned.turn();
+                sourceReverseDepth=planned.reverseDepth();
+                sourceAisleShift=planned.aisleShift();
+            }else{
+                destinationArc=planned;destinationArcTurn=planned.turn();
+                destinationReverseDepth=planned.reverseDepth();
+                destinationAisleShift=planned.aisleShift();
+            }
         }
         return planned;
     }
@@ -709,6 +722,12 @@ public final class WarehouseForklift extends PathfinderMob {
         int stage=atSource?sourceRackStage:destinationRackStage;
         if(stage==0){
             if(!drive(world,plan.outside().position()))return false;
+            // Match the tangent of the entry curve WHILE the tines are
+            // lowered and fully outside, never snap the chassis 90 degrees
+            // once the raised tines are inside the adjacent rack row.
+            if(!turnForksToYaw(plan.outside().yaw())){
+                status="ALIGNING FORKLIFT WITH OUTER RACK TURN";return false;
+            }
             stage=1;
             if(atSource)sourceRackStage=1;else destinationRackStage=1;
         }
@@ -1062,6 +1081,10 @@ public final class WarehouseForklift extends PathfinderMob {
         out.putInt("destination_arc_cursor",destinationArcCursor);
         out.putInt("source_arc_turn",sourceArcTurn);
         out.putInt("destination_arc_turn",destinationArcTurn);
+        out.putDouble("source_reverse_depth",sourceReverseDepth);
+        out.putDouble("source_aisle_shift",sourceAisleShift);
+        out.putDouble("destination_reverse_depth",destinationReverseDepth);
+        out.putDouble("destination_aisle_shift",destinationAisleShift);
         if(driver!=null)out.putString("driver_uuid",driver.toString());
         if(!jack.isEmpty())out.store("jack",ItemStack.CODEC,jack);
     }
@@ -1089,6 +1112,10 @@ public final class WarehouseForklift extends PathfinderMob {
         destinationArcCursor=in.getIntOr("destination_arc_cursor",-1);
         sourceArcTurn=in.getIntOr("source_arc_turn",0);
         destinationArcTurn=in.getIntOr("destination_arc_turn",0);
+        sourceReverseDepth=in.getDoubleOr("source_reverse_depth",0);
+        sourceAisleShift=in.getDoubleOr("source_aisle_shift",0);
+        destinationReverseDepth=in.getDoubleOr("destination_reverse_depth",0);
+        destinationAisleShift=in.getDoubleOr("destination_aisle_shift",0);
         sourceArc=null;destinationArc=null;
         String uuid=in.getStringOr("driver_uuid","");
         try{driver=uuid.isBlank()?null:UUID.fromString(uuid);}
