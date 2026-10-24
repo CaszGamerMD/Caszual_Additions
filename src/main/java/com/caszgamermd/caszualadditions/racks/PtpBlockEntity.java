@@ -412,6 +412,27 @@ public final class PtpBlockEntity extends BlockEntity
         return count;
     }
     public OutputOrder nextOutputOrder(){return outputOrders.peekFirst();}
+    /** Rotate an unreserved Builder manifest to the first item still in
+     * real warehouse stock. Preserve ALL lines and quantities, especially
+     * those temporarily out of stock; never reshuffle a live picker ticket.
+     */
+    public OutputOrder nextStockedBuilderOrder(java.util.Set<String> stockedIds){
+        if(!builderReserved()||outputInFlight()||outputOrders.size()<2)
+            return outputOrders.peekFirst();
+        OutputOrder head=outputOrders.peekFirst();
+        if(head==null||stockedIds.contains(head.itemId()))return head;
+        int size=outputOrders.size();
+        for(int i=0;i<size;i++){
+            OutputOrder candidate=outputOrders.peekFirst();
+            if(candidate!=null&&stockedIds.contains(candidate.itemId())){
+                setChanged();
+                return candidate;
+            }
+            outputOrders.addLast(outputOrders.removeFirst());
+        }
+        // The queue is unchanged after one complete rotation.
+        return null;
+    }
     /** Read-only outstanding manifest for an assigned Builder request. */
     public java.util.Map<String,Integer> pendingOutputManifest(){
         java.util.Map<String,Integer> result=new java.util.LinkedHashMap<>();
