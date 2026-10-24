@@ -56,3 +56,27 @@ container components and concurrent edits require in-game tests.
 
 The optional public Java API is `BuilderWarehouseFulfillment`. Caszual
 Additions does not depend on Golems Plus at compile time.
+
+## Builder order dispatch and visible progress
+
+Builder orders are persisted at the reserved OUTPUT PTP and appear on the
+Rack Computer's **ORDERS → BUILDER REQUESTS** page. The selected request
+now shows the current and next batch, remaining item list, and a specific
+status such as no docked pickers, a blocked shelf exit, unreachable stock,
+missing physical Shulker Station Hopper Adapter, or no empty shulkers.
+
+A confirmed Builder reservation triggers the first available storage picker
+immediately. Later pickups are scheduled at the usual shelf tick. These
+explicit customer orders run even when **SORT: AUTO** is disabled; that
+setting continues to control only background INPUT pallet sorting.
+
+A returning picker still walks the full route, removes real stock from its
+rack and packs it into a real empty shulker at the connected station. When
+the PTP is reserved for a Builder, each physically completed picker delivery
+seals the current partially filled shulker and sends it through the adapter
+into the OUTPUT PTP. This avoids holding already collected materials until
+every later item in a multi-material request has been sourced. If the output
+pallet is full, finished shulkers remain buffered safely at the station.
+
+The Builder's courier retrieves these real filled boxes from that same
+reserved PTP. No direct material teleportation or invented items are used.
