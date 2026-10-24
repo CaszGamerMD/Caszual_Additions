@@ -68,18 +68,19 @@ public final class StorageGolemRenderer
         state.visibleCargo=state.showSharedPallet?golem.visibleCargoCount():0;
         state.heldSlots=state.carryingPallet||state.pushingEmptyPallet
                 ?0:golem.displayedLoadSlots();
-        // Use the real synced ItemStack and its item model (including
-        // modded non-block items). Only the first non-empty cargo sample
-        // is displayed between the hands, never a fake 3x3 tray.
-        ItemStack held=ItemStack.EMPTY;
-        for(int i=0;i<state.heldSlots&&i<9;i++){
-            ItemStack candidate=golem.displayedLoad(i);
-            if(!candidate.isEmpty()){held=candidate;break;}
-        }
-        if(!held.isEmpty())
-            items.updateForLiving(state.heldItem,held,
+        // Three actual distinct inventory stacks, not copies of the
+        // first item. The renderer does not change the order inventory.
+        // A fourth+ slot stays safely server-owned but invisible.
+        int visible=0;
+        for(int i=0;i<state.heldSlots&&i<9&&visible<3;i++){
+            ItemStack item=golem.displayedLoad(i);
+            if(item.isEmpty())continue;
+            items.updateForLiving(state.heldStack[visible],item,
                     ItemDisplayContext.FIXED,golem);
-        else state.heldItem.clear();
+            visible++;
+        }
+        for(int i=visible;i<3;i++)state.heldStack[i].clear();
+        state.heldSlots=visible;
         if(state.showSharedPallet||state.pushingEmptyPallet){
             Block material=Blocks.OAK_PLANKS;
             ItemStack carried=golem.displayPallet();
@@ -199,19 +200,26 @@ public final class StorageGolemRenderer
         HeldCargoLayer(StorageGolemRenderer owner){super(owner);}
         @Override public void submit(PoseStack pose,SubmitNodeCollector collector,
                 int light,StorageGolemRenderState state,float yRot,float xRot){
-            if(state.heldSlots<=0||state.carryingPallet
-                    ||state.pushingEmptyPallet||state.heldItem.isEmpty())return;
-            pose.pushPose();
-            getParentModel().translateToCargoHand(pose);
-            // The wrist points forwards. These standard hand transforms
-            // orient both flat items and cubic blocks naturally.
-            pose.mulPose(Axis.XP.rotationDegrees(-90f));
-            pose.mulPose(Axis.YP.rotationDegrees(180f));
-            pose.translate(0,.015f,-.075f);
-            pose.scale(.55f,.55f,.55f);
-            state.heldItem.submit(pose,collector,light,
-                    OverlayTexture.NO_OVERLAY,state.outlineColor);
-            pose.popPose();
+            if(state.heldSlots<=0||state.carryingPallet||state.pushingEmptyPallet)return;
+            // The hands support the BASE of the stack, not a single floating
+            // icon. Every level is a real different synced inventory entry.
+            // Scale in Minecraft-block units, from bottom to top: 75/60/50%.
+            final float[] sizes={.75f,.60f,.50f};
+            float height=0f;
+            for(int i=0;i<Math.min(3,state.heldSlots);i++){
+                if(state.heldStack[i].isEmpty())continue;
+                pose.pushPose();
+                getParentModel().translateToCargoHand(pose);
+                pose.mulPose(Axis.XP.rotationDegrees(-90f));
+                pose.mulPose(Axis.YP.rotationDegrees(180f));
+                float size=sizes[i];
+                pose.translate(0,height+size*.5f,.035f);
+                pose.scale(size,size,size);
+                state.heldStack[i].submit(pose,collector,light,
+                        OverlayTexture.NO_OVERLAY,state.outlineColor);
+                pose.popPose();
+                height+=size;
+            }
         }
     }
 
