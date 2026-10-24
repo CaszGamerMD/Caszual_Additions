@@ -18,19 +18,19 @@ assert "heldTray" not in renderer and "heldTray" not in state
 assert "Block material=PalletContent.CARDBOARD_RENDER_PROXY;" not in renderer
 assert "state.heldSlots=" in renderer
 assert "displayedLoad(i)" in renderer
-assert "ItemStack candidate=golem.displayedLoad(i);" in renderer
-assert "if(!candidate.isEmpty()){held=candidate;break;}" in renderer
-assert "items.updateForLiving(state.heldItem,held," in renderer
+assert "ItemStack item=golem.displayedLoad(i);" in renderer
+assert "if(item.isEmpty())continue;" in renderer
+assert "items.updateForLiving(state.heldStack[visible],item," in renderer
 assert "ItemDisplayContext.FIXED,golem" in renderer
-assert "else state.heldItem.clear();" in renderer
+assert "state.heldStack[i].clear();" in renderer
 assert "getItemModelResolver()" in renderer
-assert "public final ItemStackRenderState heldItem=new ItemStackRenderState();" in state
+assert "public final ItemStackRenderState[] heldStack=" in state
 assert "getParentModel().translateToCargoHand(pose);" in renderer
 assert "rightArm.translateAndRotate(pose);" in model
 assert "rightForearm.translateAndRotate(pose);" in model
 assert "addLayer(new HeldCargoLayer(this));" in renderer
 assert "extends RenderLayer<StorageGolemRenderState,StorageGolemModel>" in renderer
-assert "state.heldItem.submit(pose,collector,light," in renderer
+assert "state.heldStack[i].submit(pose,collector,light," in renderer
 assert "OverlayTexture.NO_OVERLAY,state.outlineColor" in renderer
 assert 'else if(state.heldSlots>0&&!state.carryingPallet)' in model
 assert "syncHeldVisual();" in golem
@@ -40,5 +40,7 @@ assert "syncHeldVisual();" in golem
 # replacement material map may be used.
 for item in ("minecraft:andesite","minecraft:grass_block",
              "minecraft:diamond","examplemod:custom_item"):
-    assert item and "ItemStack candidate=golem.displayedLoad(i);" in renderer
-print("PASS: no tray; real ItemStack model submitted from articulated wrist layer with entity yaw")
+    assert item and "ItemStack item=golem.displayedLoad(i);" in renderer
+assert "final float[] sizes={.75f,.60f,.50f};" in renderer
+assert "head.yRot+=.42f;" in model
+print("PASS: no tray; up to three real inventory stacks 75/60/50%, head peek and articulated wrists")
