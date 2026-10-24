@@ -56,6 +56,34 @@ public final class BuilderWarehouseFulfillment {
         left.entrySet().removeIf(entry->entry.getValue()<=0);
         return left;
     }
+    /**
+     * Read-only availability for a Builder's material checklist.
+     * This never reserves, removes or creates items. Returns null while
+     * the warehouse computer is unavailable, so the UI can show unchecked
+     * white instead of falsely reporting zero stock.
+     */
+    public static Map<String,Integer> available(ServerLevel level,BlockPos computer,
+                                                 Map<String,Long> requested){
+        if(!valid(level,computer)||requested==null||requested.size()>1024)return null;
+        Map<String,Integer> stock=new LinkedHashMap<>();
+        for(String id:requested.keySet()){
+            Identifier parsed=Identifier.tryParse(id);
+            if(parsed!=null&&BuiltInRegistries.ITEM.containsKey(parsed))
+                stock.put(id,0);
+        }
+        for(var rack:WarehouseNetwork.fromComputer(level,computer).racks()){
+            if(!rack.hasPallet()||rack.isEmpty())continue;
+            for(int slot=0;slot<rack.getContainerSize();slot++){
+                ItemStack item=rack.getItem(slot);
+                if(!item.isEmpty()){
+                    String id=itemId(item);
+                    if(stock.containsKey(id))stock.merge(id,item.getCount(),
+                            (a,b)->a>Integer.MAX_VALUE-b?Integer.MAX_VALUE:a+b);
+                }
+            }
+        }
+        return stock;
+    }
     private static Map<String,Integer> remaining(PtpBlockEntity ptp){
         return ptp.pendingOutputManifest();
     }
