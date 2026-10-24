@@ -30,7 +30,7 @@ assert 'RETURNING TO PAINTED FORKLIFT PARKING BAY' in lift
 assert 'public boolean dismissDriver(ServerLevel world)' in lift
 assert 'player.getItemInHand(hand).is(RackContent.FORKLIFT_CONTROLLER)' in lift
 assert 'GOLEM LEAVING SHELF / BOARDING FORKLIFT' in lift
-assert '!forkliftDriver&&!forkliftEscort' in golem
+assert '!forkliftEscort&&!builderPalletJob' in golem
 assert 'label=getVehicle() instanceof WarehouseForklift' in golem
 model=json.loads((resource/"models/item/forklift_controller.json").read_text())
 assert model["textures"]["layer0"]=="caszual_additions:item/forklift_controller"
