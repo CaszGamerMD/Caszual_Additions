@@ -50,7 +50,8 @@ assert "WarehouseSortingReach.groundRack(level,rack)" in carrier
 assert "if(hasPackedCargo())" in fork
 assert "ItemStack packed=jack.copy();" in fork
 assert "public boolean readyForPickup()" in fork
-assert "if(animation==0&&!drive(world,landing.position()))return;" in fork
+assert "if(!enterRackSafely(world,rack,false))return;" in fork
+assert "if(!exitRackSafely(world,origin,true))return;" in fork
 assert "busy()" in item and "nearest.order(level,rack,selectedSource)" in item
 assert "FORKLIFT_CONTROLLER" in read("RackContent.java")
 assert "selectedFloorPallet" in fork

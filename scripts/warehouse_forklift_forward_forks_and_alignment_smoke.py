@@ -26,12 +26,13 @@ assert 'setYBodyRot(yaw);' in truck
 assert 'setYHeadRot(yaw);' in truck
 assert 'boolean facing=turnForksToward(waypoint.x,waypoint.z);' in truck
 assert 'private boolean alignForTransfer(Dock dock)' in truck
-assert 'if(!alignForTransfer(pickup)){' in truck
-assert 'if(!alignForTransfer(landing)){' in truck
+assert '||!alignForTransfer(pickup)){' in truck
+assert 'if(finalDock==null||!alignForTransfer(finalDock)){' in truck
 assert 'status="SQUARING FORKS WITH CENTER OF SOURCE PALLET";' in truck
 assert 'status="SQUARING FORKS WITH CENTER OF DESTINATION";' in truck
 # Previous forklift speed and low-travel fork height remain in this build.
 assert 'DRIVE_BLOCKS_PER_TICK=0.20D' in truck
-assert 'boolean liftingAtDestination=job==3&&!groundDestination&&animation>0;' in truck
+assert 'boolean liftingAtDestination=!groundDestination' in truck
+assert '&&destinationRackStage>=1&&destinationRackStage<5' in truck
 assert 'WarehouseForkliftSeat.riderPosition(position(),getYRot())' in truck
 print("PASS: full cargo forward on long forks; travel yaw and loading/unloading alignment")
