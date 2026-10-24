@@ -504,7 +504,12 @@ public final class WarehouseForklift extends PathfinderMob {
     }
 
     private boolean drive(ServerLevel world,BlockPos goal){
-        return drive(world,Vec3.atCenterOf(goal));
+        // BlockPos is the forklift's standing FLOOR level. Vec3.atCenterOf
+        // adds +0.5 Y, but this vehicle routes only on a horizontal plane.
+        // That half-block error made the final segment fail smooth()'s
+        // height check and prevented every automatic return to parking.
+        return drive(world,new Vec3(goal.getX()+.5,goal.getY(),
+                goal.getZ()+.5));
     }
     /** Follow a routed series of aisle waypoints, never the direct bearing
      * to a blocked pallet. Replan if a path is obstructed by a newly placed
@@ -874,7 +879,8 @@ public final class WarehouseForklift extends PathfinderMob {
                     dismissAfterParking=false;
                     dismissDriver(world);
                 }
-            }else if(!status.startsWith("WAITING: FORKLIFT PATH BLOCKED"))
+            }else if(!status.startsWith("WAITING:")
+                    &&!status.startsWith("REPLANNING"))
                 status="RETURNING TO PAINTED FORKLIFT PARKING BAY";
             return;
         }
