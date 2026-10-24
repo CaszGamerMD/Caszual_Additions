@@ -88,6 +88,9 @@ public final class WarehouseForklift extends PathfinderMob {
     private double sourceReverseDepth,sourceAisleShift,
             destinationReverseDepth,destinationAisleShift;
     private ForkliftRackManeuver.Plan sourceArc,destinationArc;
+    // No-path searches sample hundreds of fork/cargo cells. Retry at most
+    // once per second if the aisle is blocked, not on every server tick.
+    private int lastSourceArcSearch=-100,lastDestinationArcSearch=-100;
     private void resetRackManeuver(){
         sourceRackStage=0;destinationRackStage=0;
         sourceArcCursor=-1;destinationArcCursor=-1;
@@ -95,6 +98,7 @@ public final class WarehouseForklift extends PathfinderMob {
         sourceReverseDepth=0;sourceAisleShift=0;
         destinationReverseDepth=0;destinationAisleShift=0;
         sourceArc=null;destinationArc=null;
+        lastSourceArcSearch=-100;lastDestinationArcSearch=-100;
     }
     private BlockPos lastDriveGoal=BlockPos.ZERO;
     private double lastDriveDistance=Double.POSITIVE_INFINITY;
@@ -628,6 +632,10 @@ public final class WarehouseForklift extends PathfinderMob {
         if(rack==null)return null;
         ForkliftRackManeuver.Plan cached=sourceRack?sourceArc:destinationArc;
         if(cached!=null)return cached;
+        int last=sourceRack?lastSourceArcSearch:lastDestinationArcSearch;
+        if(tickCount-last<20)return null;
+        if(sourceRack)lastSourceArcSearch=tickCount;
+        else lastDestinationArcSearch=tickCount;
         Dock dock=service(world,rack);
         if(dock==null)return null;
         int preferred=sourceRack?sourceArcTurn:destinationArcTurn;
