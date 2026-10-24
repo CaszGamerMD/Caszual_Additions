@@ -22,7 +22,12 @@ assert 'new Reply("QUEUED_AT_WAREHOUSE",BlockPos.ZERO' in orders
 assert "config.dequeueBuilder(pending.request(),pending.owner(),pending.table())" in orders
 assert "ptp.beginBuilderOutput(pending.request(),pending.owner()" in orders
 assert orders.index("ptp.readyForOutput()") < orders.index("ptp.beginBuilderOutput(")
-assert "public String waitingStatus(" in orders
+assert "public static String waitingStatus(" in orders
+assert "recoverMissingPalletReservations(ServerLevel level," in orders
+assert "if(station.activeCount()>0||station.finishedCount()>0" in orders
+assert "cfg.queueBuilder(ticket,owner,table,remaining)" in orders
+assert "ptp.releaseUnpreparedBuilder()" in orders
+assert "BuilderWarehouseFulfillment.recoverMissingPalletReservations(" in net
 
 # Both staged and assigned work are visible in the SAME order feed.
 assert "for(var pending:settings.waitingBuilders())" in net
