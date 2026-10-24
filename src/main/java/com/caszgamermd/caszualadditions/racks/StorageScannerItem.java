@@ -29,16 +29,16 @@ public final class StorageScannerItem extends Item {
             net.minecraft.world.item.TooltipFlag flag){
         CompoundTag tag=options(stack);
         add.accept(Component.literal("Current Mode: "+mode(stack).name().replace('_',' '))
-            .withStyle(net.minecraft.network.chat.TextColor.fromRgb(0x0c8c06)));
+            .withStyle(style->style.withColor(0x0c8c06)));
         String name=tag.getStringOr("scanner_warehouse_name","UNLINKED");
         add.accept(Component.literal(name)
-            .withStyle(net.minecraft.network.chat.TextColor.fromRgb(0x54bccc)));
+            .withStyle(style->style.withColor(0x54bccc)));
         String coords=tag.contains("warehouse_x")
             ?tag.getIntOr("warehouse_x",0)+", "+
              tag.getIntOr("warehouse_y",0)+", "+
              tag.getIntOr("warehouse_z",0):"No warehouse coordinates";
         add.accept(Component.literal(coords)
-            .withStyle(net.minecraft.network.chat.TextColor.fromRgb(0xc79408)));
+            .withStyle(style->style.withColor(0xc79408)));
         add.accept(Component.literal("Shift + Right Click: Scanner Settings")
             .withStyle(net.minecraft.ChatFormatting.GRAY));
     }
