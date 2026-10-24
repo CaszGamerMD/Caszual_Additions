@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke tests for Warehouse Scanner 4-mode migration and warehouse UI."""
+"""Smoke tests for Warehouse Scanner 7-mode screen and warehouse UI."""
 from pathlib import Path
 import json
 root=Path(__file__).resolve().parents[1]
@@ -16,8 +16,10 @@ computer=java("WarehouseComputerBlockEntity.java")
 net=java("RackComputerNet.java")
 screen=(client/"RackComputerScreen.java").read_text()
 model=(client/"WarehouseForkliftModel.java").read_text()
-assert "enum Mode { REMOTE, DIRECT, FORKLIFT, RECALL }" in scanner
-assert "Scanner in " in scanner and "mode." in scanner
+assert "enum Mode { DIRECT, REMOTE, FORKLIFT, RECALL, LINK, LOAD_UNLOAD, COMPUTER }" in scanner
+assert "ScannerControlNet.open(user,scanner)" in scanner
+assert (r/"ScannerControlNet.java").is_file()
+assert (client/"ScannerScreen.java").is_file()
 assert "Scanner is now linked to " in scanner
 assert "WarehouseComputerBlockEntity.name(level,computer)" in scanner
 assert "mode(scanner)==Mode.FORKLIFT" in scanner
@@ -47,4 +49,4 @@ assert "frontRightWheel.xRot=wheel" in model
 assert (asset/"blockstates/forklift_parking.json").is_file()
 assert (asset/"models/block/forklift_parking.json").is_file()
 assert "FORKLIFT_CONTROLLER" not in (root/"src/main/java/com/caszgamermd/caszualadditions/CaszualItemGroups.java").read_text().split("for (var item")[0].replace("RackContent.FORKLIFT_CONTROLLER,","")
-print("PASS: Scanner 4-mode behavior, physical recalls, staffed forklift transfer, parking, warehouse names and builder job summaries")
+print("PASS: Scanner 7-mode behavior, physical recalls, staffed forklift transfer, parking, warehouse names and builder job summaries")
