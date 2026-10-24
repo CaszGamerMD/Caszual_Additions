@@ -32,6 +32,9 @@ assert "packerSlotFree(" in dispatch
 assert "orderPackers()" in src(j/"WarehouseComputerBlockEntity.java")
 assert "out.store(\"order_slot_\"+i,ItemStack.CODEC" in golem
 assert "in.read(\"order_slot_\"+i" in golem
+assert "for(int i=0;i<orderCargo.size();i++){" in golem
+assert "for(int i=0;i<9;i++){\n            ItemStack box=orderCargo.get(i);" not in golem
+assert "for(int i=3;i<9;i++)if(!saved.get(i).isEmpty())" in golem
 assert "StorageGolemDispatch.insert(level,source,item)" in golem
 assert "station.accept(delivery,level,ptp)" in golem
 assert "station.finishOrder(level,ptp)" in golem
