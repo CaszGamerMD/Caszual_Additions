@@ -63,13 +63,74 @@ public final class StorageScannerItem extends Item {
 
     /** A single saved mode belongs to the SCANNER ItemStack, so switching
      * modes cannot silently dispatch four warehouse workers later. */
-    public enum Mode { REMOTE, DIRECT, FORKLIFT, RECALL }
+    public enum Mode { DIRECT, REMOTE, FORKLIFT, RECALL, LINK, LOAD_UNLOAD, COMPUTER }
     public static Mode mode(ItemStack scanner){
         CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
         if(data==null)return Mode.REMOTE;
         String name=data.copyTag().getStringOr("scanner_mode","REMOTE");
         try{return Mode.valueOf(name);}
         catch(IllegalArgumentException e){return Mode.REMOTE;}
+    }
+    /** Portable settings are on the ItemStack, not in world-level player
+     * state, so different scanners remember different jobs and warehouses. */
+    private static CompoundTag options(ItemStack scanner){
+        CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
+        return data==null?new CompoundTag():data.copyTag();
+    }
+    public static com.google.gson.JsonObject settingsSnapshot(ItemStack scanner,ServerLevel world){
+        CompoundTag tag=options(scanner);
+        com.google.gson.JsonObject json=new com.google.gson.JsonObject();
+        json.addProperty("mode",mode(scanner).name());
+        BlockPos computer=linkedComputer(scanner,world);
+        json.addProperty("name",computer==null?"UNLINKED":
+            WarehouseComputerBlockEntity.name(world,computer));
+        json.addProperty("coords",computer==null?"---":computer.toShortString());
+        json.addProperty("remoteReplace",tag.getBooleanOr("scanner_remote_replace",true));
+        json.addProperty("forkliftFollow",tag.getBooleanOr("scanner_forklift_follow",false));
+        json.addProperty("recallTarget",tag.getStringOr("scanner_recall_target","HOME_BAY"));
+        json.addProperty("recallRelease",tag.getBooleanOr("scanner_recall_release",false));
+        json.addProperty("linkType",tag.getStringOr("scanner_link_type","AIR_ROUTE"));
+        json.addProperty("loadDirection",tag.getStringOr("scanner_load_direction","LOAD"));
+        return json;
+    }
+    public static void applySetting(ItemStack scanner,String key,String value){
+        CompoundTag tag=options(scanner);
+        switch(key){
+            case "mode"->{
+                try{
+                    Mode next=Mode.valueOf(value);
+                    tag.putString("scanner_mode",next.name());
+                    if(next!=Mode.REMOTE)clearPickup(scanner);
+                }catch(IllegalArgumentException ignored){return;}
+            }
+            case "remoteReplace"->tag.putBoolean("scanner_remote_replace","true".equals(value));
+            case "forkliftFollow"->tag.putBoolean("scanner_forklift_follow","true".equals(value));
+            case "recallRelease"->tag.putBoolean("scanner_recall_release","true".equals(value));
+            case "recallTarget"->{
+                if(!java.util.List.of("GROUND","NEAREST_BAY","HOME_BAY","FOLLOW").contains(value))return;
+                tag.putString("scanner_recall_target",value);
+            }
+            case "linkType"->{
+                if(!java.util.List.of("AIR_ROUTE","WAREHOUSE").contains(value))return;
+                tag.putString("scanner_link_type",value);
+            }
+            case "loadDirection"->{
+                if(!java.util.List.of("LOAD","UNLOAD").contains(value))return;
+                tag.putString("scanner_load_direction",value);
+            }
+            default->{return;}
+        }
+        // clearPickup may have changed the live stack. Rebase onto its
+        // latest NBT so prior queued jobs cannot silently reappear.
+        if("mode".equals(key)){
+            CompoundTag fresh=options(scanner);
+            fresh.putString("scanner_mode",tag.getStringOr("scanner_mode","REMOTE"));
+            tag=fresh;
+        }
+        scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
+    }
+    public static boolean remoteReplacement(ItemStack scanner){
+        return options(scanner).getBooleanOr("scanner_remote_replace",true);
     }
     private static Mode toggleMode(ItemStack scanner){
         Mode next=Mode.values()[(mode(scanner).ordinal()+1)%Mode.values().length];
@@ -507,6 +568,17 @@ public final class StorageScannerItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
+        if(mode(scanner)==Mode.COMPUTER){
+            if(server.hasChunkAt(home)&&server.getBlockState(home).is(RackContent.RACK_COMPUTER))
+                net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(user,
+                    new RackComputerNet.Open(home));
+            else message(user,"WAREHOUSE: computer is not loaded or no longer exists.");
+            return InteractionResult.SUCCESS;
+        }
+        if(mode(scanner)==Mode.LINK||mode(scanner)==Mode.LOAD_UNLOAD){
+            message(user,ScannerTransportBridge.onBlock(server,user,scanner,clicked));
+            return InteractionResult.SUCCESS;
+        }
         if(mode(scanner)==Mode.FORKLIFT){
             message(user,forkliftTarget(server,user,scanner,clicked,
                     clicked.relative(context.getClickedFace()),home));
@@ -576,15 +648,13 @@ public final class StorageScannerItem extends Item {
             ItemStack scanner=player.getItemInHand(hand);
             BlockPos home=linkedComputer(scanner,server);
             if(player.isShiftKeyDown()){
-                Mode next=toggleMode(scanner);
-                WarehouseGolemDebug.actionBar(user,Component.literal(
-                        "Scanner in "+next.name()+" mode. "
-                        +(next==Mode.REMOTE
-                            ?"Click a wrapped ground pallet to dispatch a remote swap."
-                            :next==Mode.DIRECT?"Click a Golem Shelf for a crew, then a pallet and destination."
-                            :next==Mode.FORKLIFT?"Select a pallet, then a destination."
-                            :"Double-right-click a carrying Golem team to abort safely.")
-                        +(home==null?" Link a computer first.":"")));
+                ScannerControlNet.open(user,scanner);
+            }else if(mode(scanner)==Mode.COMPUTER){
+                if(home!=null&&server.hasChunkAt(home)
+                        &&server.getBlockState(home).is(RackContent.RACK_COMPUTER))
+                    net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(user,
+                        new RackComputerNet.Open(home));
+                else message(user,"WAREHOUSE COMPUTER: link a loaded warehouse first.");
             }else if(mode(scanner)==Mode.FORKLIFT){
                 // Retain the old controller's unobstructed 20-block rack
                 // selection after removing that second handheld tool.
