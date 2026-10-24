@@ -151,7 +151,19 @@ public final class StorageGolemDispatch {
     }
     private static boolean dispatchOutput(ServerLevel level,StorageGolemShelfEntity shelf,
             List<StorageGolemShelfEntity> group,BlockPos terminal){
-        PtpBlockEntity output=outputPoint(level,group,terminal);
+        // A Builder ticket is pinned to its reserved PTP. An operator may
+        // change the preferred output while packing is underway, but that
+        // must not strand the physical golem crew or orphan the old order.
+        // Manual orders still use the currently selected outputPoint().
+        PtpBlockEntity output=null;
+        for(PtpBlockEntity point:WarehouseNetwork.fromComputer(level,terminal).points()){
+            if(point.builderReserved()&&point.readyForOutput()
+                    &&point.pendingOutputOrders()>0){
+                output=point;
+                break;
+            }
+        }
+        if(output==null)output=outputPoint(level,group,terminal);
         if(output==null||!output.readyForOutput()
                 ||!packerSlotFree(level,terminal))return false;
         PtpBlockEntity.OutputOrder order=output.nextOutputOrder();
