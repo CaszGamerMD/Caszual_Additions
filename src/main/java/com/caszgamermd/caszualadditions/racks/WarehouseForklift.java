@@ -79,6 +79,19 @@ public final class WarehouseForklift extends PathfinderMob {
     private BlockPos cachedDockRoot=BlockPos.ZERO;
     private int cachedDockJob=-1,lastDockSearch=-100;
     private record Dock(Vec3 position,Direction forksFace) {}
+    /** Rack stages: 0 approach safe exterior, 1 lift at exterior,
+     * 2 turn gradually into rack, 3 transfer, 4 back out with mast high,
+     * 5 forks completely clear. Ground jobs keep the original flow. */
+    private int sourceRackStage,destinationRackStage;
+    private int sourceArcCursor=-1,destinationArcCursor=-1;
+    private int sourceArcTurn,destinationArcTurn;
+    private ForkliftRackManeuver.Plan sourceArc,destinationArc;
+    private void resetRackManeuver(){
+        sourceRackStage=0;destinationRackStage=0;
+        sourceArcCursor=-1;destinationArcCursor=-1;
+        sourceArcTurn=0;destinationArcTurn=0;
+        sourceArc=null;destinationArc=null;
+    }
     private BlockPos lastDriveGoal=BlockPos.ZERO;
     private double lastDriveDistance=Double.POSITIVE_INFINITY;
     private UUID driver;
@@ -304,6 +317,7 @@ public final class WarehouseForklift extends PathfinderMob {
         this.target=rack.getBlockPos().immutable();
         this.staging=proposedStaging;
         if(pickup)this.groundFacing=rack.facing();
+        resetRackManeuver();
         this.job=1;
         this.animation=0;
         this.status="DRIVER BOARDING";
@@ -346,6 +360,7 @@ public final class WarehouseForklift extends PathfinderMob {
         target=to.getBlockPos().immutable();
         staging=BlockPos.ZERO;
         retrieving=true;groundDestination=false;
+        resetRackManeuver();
         job=1;animation=0;status="DRIVER BOARDING - RACK TO RACK";
         return true;
     }
@@ -603,6 +618,131 @@ public final class WarehouseForklift extends PathfinderMob {
         }
         return cachedGroundDock;
     }
+    private ForkliftRackManeuver.Plan rackArc(ServerLevel world,
+            RackBlockEntity rack,boolean sourceRack){
+        if(rack==null)return null;
+        ForkliftRackManeuver.Plan cached=sourceRack?sourceArc:destinationArc;
+        if(cached!=null)return cached;
+        Dock dock=service(world,rack);
+        if(dock==null)return null;
+        int preferred=sourceRack?sourceArcTurn:destinationArcTurn;
+        ForkliftRackManeuver.Plan planned=ForkliftRackManeuver.plan(
+                world,this,rack,dock.position(),preferred);
+        if(planned!=null){
+            if(sourceRack){sourceArc=planned;sourceArcTurn=planned.turn();}
+            else{destinationArc=planned;destinationArcTurn=planned.turn();}
+        }
+        return planned;
+    }
+
+    /** Keep BOTH tines at rack height while tracing the reverse arc.
+     * Entering follows the same checked path in reverse, instead of turning
+     * instantly at a rack corner. No movement is allowed to skip collision
+     * checks or exceed the normal per-tick motor displacement budget. */
+    private boolean followRackArc(ServerLevel world,
+            ForkliftRackManeuver.Plan plan,RackBlockEntity rack,
+            boolean entering,boolean atSource){
+        if(plan==null)return false;
+        int cursor=atSource?sourceArcCursor:destinationArcCursor;
+        if(cursor<0)cursor=entering?plan.poses().size()-1:0;
+        int next=cursor+(entering?-1:1);
+        if(next<0||next>=plan.poses().size()){
+            if(atSource)sourceArcCursor=cursor;
+            else destinationArcCursor=cursor;
+            return true;
+        }
+        ForkliftRackManeuver.Pose nextPose=plan.poses().get(next);
+        Vec3 goal=nextPose.position();
+        double dx=goal.x-getX(),dz=goal.z-getZ();
+        double length=Math.hypot(dx,dz);
+        double remaining=Math.max(0,DRIVE_BLOCKS_PER_TICK-
+                Math.hypot(getX()-driveTickStartX,getZ()-driveTickStartZ));
+        double step=Math.min(Math.min(.12,remaining),length);
+        Vec3 delta=length<.0001?Vec3.ZERO:new Vec3(dx/length*step,0,dz/length*step);
+        Vec3 position=position().add(delta);
+        float yaw=length<.0001?nextPose.yaw():
+                ForkliftRackManeuver.angleTo(getYRot(),nextPose.yaw(),
+                        (float)Math.min(1,step/length));
+        int floor=(int)Math.floor(getY());
+        if(!ForkliftAislePath.canStand(world,this,position)
+                ||!ForkliftRackManeuver.clearForkEnvelope(world,position,yaw,
+                    floor,rack.getBlockPos().getY(),rack,true)){
+            status="WAITING: RACK MANEUVER BLOCKED; FORKS HELD AT SAFE HEIGHT";
+            getNavigation().stop();
+            return false;
+        }
+        if(step>.001){
+            double beforeX=getX(),beforeZ=getZ();
+            move(MoverType.SELF,delta);
+            if(Math.hypot(getX()-beforeX,getZ()-beforeZ)<step*.6){
+                status="WAITING: RACK AISLE OBSTRUCTION DURING BACKING TURN";
+                return false;
+            }
+        }
+        setYRot(yaw);setYBodyRot(yaw);setYHeadRot(yaw);
+        entityData.set(STEERING,Mth.clamp(
+                Mth.wrapDegrees(nextPose.yaw()-getYRot())/45f,-1f,1f));
+        setDeltaMovement(0,getDeltaMovement().y,0);
+        if(Math.hypot(goal.x-getX(),goal.z-getZ())<.045
+                &&Math.abs(Mth.wrapDegrees(nextPose.yaw()-getYRot()))<2.5f){
+            cursor=next;
+            if(atSource)sourceArcCursor=cursor;
+            else destinationArcCursor=cursor;
+        }else{
+            if(atSource)sourceArcCursor=cursor;
+            else destinationArcCursor=cursor;
+        }
+        status=entering?"CURVING INTO RACK WITH FORKS AT PALLET HEIGHT":
+                "BACKING CLEAR OF RACK WHILE GRADUALLY TURNING 90 DEGREES";
+        return false;
+    }
+    /** Approach exterior with LOW forks, raise fully clear of the racks,
+     * then steer the truck and fork tips into the exact square dock. */
+    private boolean enterRackSafely(ServerLevel world,RackBlockEntity rack,
+            boolean atSource){
+        ForkliftRackManeuver.Plan plan=rackArc(world,rack,atSource);
+        if(plan==null){
+            status="WAITING: NO SAFE STRAIGHT OR 90-DEGREE RACK APPROACH";
+            return false;
+        }
+        int stage=atSource?sourceRackStage:destinationRackStage;
+        if(stage==0){
+            if(!drive(world,plan.outside().position()))return false;
+            stage=1;
+            if(atSource)sourceRackStage=1;else destinationRackStage=1;
+        }
+        if(stage==1){
+            if(Math.abs(entityData.get(MAST)
+                    -Math.clamp(rack.getBlockPos().getY()-getY(),
+                            0,RackPickupPlan.FORKLIFT_MAX_HEIGHT))>.10f){
+                status="RAISING FORKS OUTSIDE RACK BEFORE ENTRY";return false;
+            }
+            stage=2;
+            if(atSource)sourceRackStage=2;else destinationRackStage=2;
+        }
+        if(stage==2){
+            if(!followRackArc(world,plan,rack,true,atSource))return false;
+            if(atSource)sourceRackStage=3;else destinationRackStage=3;
+        }
+        return stage==3 ||(atSource?sourceRackStage:destinationRackStage)==3;
+    }
+    private boolean exitRackSafely(ServerLevel world,RackBlockEntity rack,
+            boolean atSource){
+        ForkliftRackManeuver.Plan plan=rackArc(world,rack,atSource);
+        if(plan==null){
+            status="WAITING: SAFE RACK WITHDRAWAL UNAVAILABLE; MAST HELD";
+            return false;
+        }
+        if(!followRackArc(world,plan,rack,false,atSource))return false;
+        if(!ForkliftRackManeuver.fullyOutside(world,plan,
+                (int)Math.floor(getY()),rack.getBlockPos().getY(),rack)){
+            status="WAITING: FORKS STILL INSIDE RACK; REFUSING TO LOWER";
+            return false;
+        }
+        if(atSource)sourceRackStage=5;else destinationRackStage=5;
+        return true;
+    }
+
     @Override public void tick(){
         // Include any navigation displacement in the physical 0.20-block
         // movement budget so the forklift cannot exceed the requested speed.
@@ -628,10 +768,13 @@ public final class WarehouseForklift extends PathfinderMob {
             }
         }
         if(!(level() instanceof ServerLevel world))return;
-        // Travel with lowered forks. Raise them only while picking up from
-        // a rack, or after arriving at the destination rack and braking.
-        boolean liftingAtSource=job==2&&retrieving;
-        boolean liftingAtDestination=job==3&&!groundDestination&&animation>0;
+        // Rack mast only changes at the SAFE EXTERIOR, never during
+        // the curved 90-degree withdrawal or while forks are in a shelf.
+        boolean liftingAtSource=retrieving&&sourceRackStage>=1
+                &&sourceRackStage<5&&(job==1||job==2||job==3);
+        boolean liftingAtDestination=!groundDestination
+                &&destinationRackStage>=1&&destinationRackStage<5
+                &&(job==3||job==4);
         float goal=liftingAtSource
                 ?Math.clamp(source.getY()-blockPosition().getY(),0,
                         RackPickupPlan.FORKLIFT_MAX_HEIGHT)
@@ -683,20 +826,23 @@ public final class WarehouseForklift extends PathfinderMob {
         }
         if(retrieving&&origin==null){status="WAITING FOR SOURCE RACK";return;}
         if(job==1){
-            Dock pickup=retrieving?service(world,origin)
-                    :groundService(world,source,groundFacing);
-            if(pickup==null){status="WAITING FOR REACHABLE PALLET-SIDE AISLE";return;}
-            if(!drive(world,pickup.position()))return;
-            if(!alignForTransfer(pickup)){
-                status="SQUARING FORKS WITH CENTER OF SOURCE PALLET";
-                return;
+            if(retrieving){
+                if(!enterRackSafely(world,origin,true))return;
+            }else{
+                Dock pickup=groundService(world,source,groundFacing);
+                if(pickup==null){status="WAITING FOR REACHABLE PALLET-SIDE AISLE";return;}
+                if(!drive(world,pickup.position()))return;
+                if(!alignForTransfer(pickup)){
+                    status="SQUARING FORKS WITH CENTER OF SOURCE PALLET";return;
+                }
             }
             job=2;animation=0;
         }
         if(job==2){
             Dock pickup=retrieving?service(world,origin)
                     :groundService(world,source,groundFacing);
-            if(pickup==null||!alignForTransfer(pickup)){
+            if(pickup==null||(retrieving&&sourceRackStage!=3)
+                    ||!alignForTransfer(pickup)){
                 status="SQUARING FORKS WITH CENTER OF SOURCE PALLET";
                 return;
             }
@@ -704,45 +850,71 @@ public final class WarehouseForklift extends PathfinderMob {
             boolean ok=retrieving?origin.liftToForklift(jack):
                     ForkliftPalletIO.liftGround(world,source,jack);
             if(!ok){status="WAITING: PALLET IN USE OR ACCESS BLOCKED";animation=0;return;}
-            refreshDisplay();job=3;animation=0;
+            refreshDisplay();
+            if(retrieving){sourceRackStage=4;sourceArcCursor=0;}
+            job=3;animation=0;
         }
         if(job==3){
-            // The deposit point is directly behind the real pallet center,
-            // parallel to its rack face; do not aim at the rack controller.
-            Dock landing=groundDestination
-                    ?groundService(world,staging,groundFacing):service(world,rack);
-            if(landing==null){status="WAITING FOR REACHABLE DROP-OFF AISLE";return;}
-            // Lower the pallet before setting out for the other rack.
-            if(animation==0&&entityData.get(MAST)>.20f){
-                getNavigation().stop();
-                status="LOWERING LOADED PALLET FOR TRAVEL";
+            // The source rack stays at its original lift height until the
+            // *entire* fork envelope has moved into the aisle. Never lower
+            // the carriage or start another job while still in the rack.
+            if(retrieving&&sourceRackStage==4){
+                if(!exitRackSafely(world,origin,true))return;
+                sourceArc=null;sourceArcCursor=-1;
+            }
+            // A carried pallet travels LOW to its next destination. When
+            // that destination is a rack, the mast is raised again only
+            // at the outside end of its verified curved entrance route.
+            if(destinationRackStage==0&&entityData.get(MAST)>.20f){
+                status="LOWERING PALLET AFTER COMPLETE RACK WITHDRAWAL";
                 return;
             }
-            if(animation==0&&!drive(world,landing.position()))return;
-            if(!alignForTransfer(landing)){
-                status="SQUARING FORKS WITH CENTER OF DESTINATION";
-                return;
+            if(!groundDestination){
+                if(!enterRackSafely(world,rack,false))return;
+                if(!alignForTransfer(service(world,rack))){
+                    status="SQUARING FORKS WITH CENTER OF DESTINATION";
+                    return;
+                }
+            }else{
+                Dock landing=groundService(world,staging,groundFacing);
+                if(landing==null){status="WAITING FOR REACHABLE DROP-OFF AISLE";return;}
+                if(!drive(world,landing.position()))return;
+                if(!alignForTransfer(landing)){
+                    status="SQUARING FORKS WITH CENTER OF DESTINATION";return;
+                }
             }
-            // Animation starts ONLY once we've reached the destination aisle,
-            // and after the fork carriage points at the intended pallet bay.
             if(++animation<55
                     ||(!groundDestination&&Math.abs(entityData.get(MAST)-goal)>.12f)){
                 status=groundDestination?"LOWERING PALLET ONTO GROUND"
-                        :"RAISING PALLET TO RACK HEIGHT";
+                        :"PLACING PALLET INTO RACK AT PRESET MAST HEIGHT";
                 return;
             }
             boolean placed=groundDestination?ForkliftPalletIO.placeGround(
                     world,staging,groundFacing,jack):rack.installFromForklift(jack);
             if(!placed){status="WAITING FOR SAFE DROP LOCATION";animation=20;return;}
-            refreshDisplay();job=4;animation=0;
+            refreshDisplay();
+            if(!groundDestination){destinationRackStage=4;destinationArcCursor=0;}
+            job=4;animation=0;
         }
-        if(job==4&&++animation>=25)endTask(world);
+        if(job==4){
+            // Empty tines retract from the shelf still fully raised. The
+            // lowering animation starts only after the exterior check.
+            if(!groundDestination&&destinationRackStage==4){
+                if(!exitRackSafely(world,rack,false))return;
+                destinationArc=null;destinationArcCursor=-1;
+            }
+            if(entityData.get(MAST)>.20f){
+                status="LOWERING EMPTY FORKS CLEAR OF RACKS";return;
+            }
+            if(++animation>=25)endTask(world);
+        }
     }
     private void endTask(ServerLevel world){
         // A driver remains mounted and on duty after a pallet delivery.
         // Only a controller click on the idle forklift dismisses them.
         job=driver!=null&&!parking.equals(BlockPos.ZERO)?5:0;
         animation=0;retrieving=false;
+        resetRackManeuver();
         status=job==5?"RETURNING TO PAINTED FORKLIFT PARKING BAY"
                 :driver==null?"PARKED":"PARKED - DRIVER ON DUTY";
     }
@@ -882,6 +1054,12 @@ public final class WarehouseForklift extends PathfinderMob {
         out.putBoolean("dismiss_after_parking",dismissAfterParking);
         out.putInt("job",job);
         out.putInt("animation",animation);
+        out.putInt("source_rack_stage",sourceRackStage);
+        out.putInt("destination_rack_stage",destinationRackStage);
+        out.putInt("source_arc_cursor",sourceArcCursor);
+        out.putInt("destination_arc_cursor",destinationArcCursor);
+        out.putInt("source_arc_turn",sourceArcTurn);
+        out.putInt("destination_arc_turn",destinationArcTurn);
         if(driver!=null)out.putString("driver_uuid",driver.toString());
         if(!jack.isEmpty())out.store("jack",ItemStack.CODEC,jack);
     }
@@ -899,6 +1077,17 @@ public final class WarehouseForklift extends PathfinderMob {
         dismissAfterParking=in.getBooleanOr("dismiss_after_parking",false);
         job=in.getIntOr("job",0);
         animation=in.getIntOr("animation",0);
+        // Older in-flight transfers begin from their safest equivalent
+        // phase: loaded shelf pickup withdraws before mast lowering.
+        sourceRackStage=in.getIntOr("source_rack_stage",
+                retrieving&&job==2?3:retrieving&&job>=3?4:0);
+        destinationRackStage=in.getIntOr("destination_rack_stage",
+                job==4&&!groundDestination?4:0);
+        sourceArcCursor=in.getIntOr("source_arc_cursor",-1);
+        destinationArcCursor=in.getIntOr("destination_arc_cursor",-1);
+        sourceArcTurn=in.getIntOr("source_arc_turn",0);
+        destinationArcTurn=in.getIntOr("destination_arc_turn",0);
+        sourceArc=null;destinationArc=null;
         String uuid=in.getStringOr("driver_uuid","");
         try{driver=uuid.isBlank()?null:UUID.fromString(uuid);}
         catch(IllegalArgumentException e){driver=null;}
