@@ -23,6 +23,16 @@ assert "state.getBlock() instanceof PalletBlock" in plan
 assert "state.getBlock() instanceof PalletCargoCollisionBlock" in plan
 assert "for(int dy=0;dy<=2;dy++)" in plan
 assert "new double[]{-.92,-.70,-.46,-.22,0," in plan
+# Rack faces are serviced 2.82 blocks from the pallet center.
+# The prior 4.12-block probe incorrectly overlapped the rear bank of a
+# back-to-back rack; verify the sweep stays within the serviced bay.
+assert "for(double forward=1.65;forward<=3.68;forward+=.145)" in plan
+assert "forward<=4.12" not in plan
+# With a 2.82-block dock-to-center distance, the rear rack begins about
+# 3.82 blocks in front of the chassis.
+assert 2.82+1.0>3.68
+assert 3.68<3.82<4.12
+
 assert "sourceReverseDepth=planned.reverseDepth();" in truck
 assert "destinationAisleShift=planned.aisleShift();" in truck
 assert "if(tickCount-last<20)return null;" in truck
