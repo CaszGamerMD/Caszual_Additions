@@ -2907,7 +2907,10 @@ public final class StorageGolem extends PathfinderMob {
             cancelHaul(server);
             dropCarriedPallet(server);
         }
-        for(int i=0;i<9;i++){
+        // New order pickers carry three stacks, but old saved workers can
+        // still hold nine. Return every actual cargo slot without indexing
+        // past the new three-slot inventory when a player retrieves a Golem.
+        for(int i=0;i<orderCargo.size();i++){
             ItemStack box=orderCargo.get(i);
             if(!box.isEmpty()){
                 player.getInventory().placeItemBackInInventory(box.copy());
