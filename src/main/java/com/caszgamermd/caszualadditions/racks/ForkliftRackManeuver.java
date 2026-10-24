@@ -97,7 +97,13 @@ public final class ForkliftRackManeuver {
         int[] turns=preferredTurn!=0?new int[]{preferredTurn}:
                 new int[]{0,1,-1};
         for(int turn:turns){
-            for(double back:turn==0?new double[]{1.75,2.2,2.7}:
+            for(double back:turn==0?
+                    // 2.7 blocks clears a rack only in some layouts: the
+                    // actual tines reach 4.12 blocks forward and can still
+                    // overlap the bay after a nominal withdrawal. Search
+                    // farther on clear floors rather than insisting on a
+                    // cramped 90-degree turn alongside neighboring racks.
+                    new double[]{1.75,2.2,2.7,3.2,3.8,4.5,5.5,6.5,8.0}:
                     new double[]{.45,.7,1.0,1.25}){
                 if(preferredDepth>0&&Math.abs(back-preferredDepth)>.001)continue;
                 for(double lateral:turn==0?new double[]{0}:
@@ -135,12 +141,15 @@ public final class ForkliftRackManeuver {
             }
         }
         if(candidates.isEmpty())return null;
-        // Prefer the exterior closest to the driver's present location;
-        // straight withdrawal is preferred if equally convenient.
-        candidates.sort(java.util.Comparator.comparingDouble((Plan p)->
-                forklift.distanceToSqr(p.outside().position().x,
-                        p.outside().position().y,p.outside().position().z))
-                .thenComparingInt(p->Math.abs(p.turn())));
+        // Prefer a collision-checked straight withdrawal whenever there
+        // really is room. The previous distance-first comparison routinely
+        // chose a tight 90-degree arc over a perfectly clear straight exit.
+        // Curved exits are for genuinely narrow aisles, not the default.
+        candidates.sort(java.util.Comparator
+                .comparingInt((Plan p)->Math.abs(p.turn()))
+                .thenComparingDouble(p->forklift.distanceToSqr(
+                        p.outside().position().x,p.outside().position().y,
+                        p.outside().position().z)));
         return candidates.getFirst();
     }
     public static float angleTo(float from,float to,float fraction){
