@@ -117,7 +117,9 @@ public final class StorageGolemDispatch {
                 level,shelf.getBlockPos());
         if(group.isEmpty())return false;
         BlockPos terminal=computer(level,group);
-        return terminal!=null&&dispatchOutput(level,shelf,group,terminal);
+        return terminal!=null&&(dispatchOutput(level,shelf,group,terminal)
+                ||tryDispatchBuilderPallet(level,shelf)
+                ||dispatchPalletMagazine(level,shelf,terminal,true));
     }
     /** The computer owns the warehouse-wide packer limit (default one).
      * PTP tickets are persisted and each belongs to a real picker, so unlike
@@ -355,7 +357,7 @@ public final class StorageGolemDispatch {
      * is a Stack of Pallets inside a reachable warehouse rack.
      */
     private static boolean dispatchPalletMagazine(ServerLevel level,
-            StorageGolemShelfEntity shelf,BlockPos terminal){
+            StorageGolemShelfEntity shelf,BlockPos terminal,boolean builderOnly){
         RackBlockEntity target=null;
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
             if(!rack.hasPallet()||!WarehouseSortingReach.accessible(level,rack))continue;
@@ -379,6 +381,7 @@ public final class StorageGolemDispatch {
         if(target==null&&placed==null)return false;
         BlockPos stockDestination=placed!=null?placed.getBlockPos():target.getBlockPos();
         for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,terminal).points()){
+            if(builderOnly&&!ptp.needsBuilderPalletReturn())continue;
             if(!ptp.input()||!ptp.hasPallet()||ptp.sealed()
                     ||!ptp.emptyCargo()||!StackOfPalletsItem.isPallet(ptp.palletStack()))
                 continue;
@@ -417,7 +420,7 @@ public final class StorageGolemDispatch {
         if(dispatchOutput(level,shelf,group,terminal))return;
         if(tryDispatchBuilderPallet(level,shelf))return;
         // Empty installed INPUT pallets feed Stack of Pallets magazines.
-        if(dispatchPalletMagazine(level,shelf,terminal))return;
+        if(dispatchPalletMagazine(level,shelf,terminal,false))return;
         PtpBlockEntity ptp=inputPoint(level,group,terminal);
         if(ptp==null)return;
         ItemStack sample=ItemStack.EMPTY;
