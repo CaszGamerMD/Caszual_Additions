@@ -307,3 +307,29 @@ saved parking bay and dismisses its Golem driver. This avoids the previous
 unsafe instant switch to the parking state. If the aisle is genuinely
 blocked, resolve the obstruction; a normal recall cannot skip physical
 withdrawal. Emergency dismount remains a separate deliberate override.
+
+
+## Forklift open-aisle withdrawal recovery
+
+If the forklift has successfully lifted a wrapped pallet but stops before
+backing away from its source rack, **right-click the truck with an empty
+hand** and inspect its exact status plus `rack source <stage>/<cursor>`.
+The movement diagnostics now distinguish a chassis/floor obstruction from
+the swept volume of the raised forks and pallet.
+
+The rack planner now tests **longer straight reversing distances** through
+8 blocks and favors a straight withdrawal whenever its *complete* chassis,
+fork and pallet envelopes are safe. The earlier algorithm prioritized a
+closer 90-degree turn, even in a spacious aisle. For tight aisles it still
+checks both gradual 90-degree exit directions. No rack, pallet or terrain
+collisions are ignored.
+
+If the truck is still at its original loading dock and the next step is
+blocked for 40 ticks, it discards only the *planned arc* and searches for a
+new physically verified withdrawal. **The pallet and all 216 inventory slots
+stay owned by the forklift.** It never jumps between routes midway through
+a turn, teleports, lowers forks inside racks, or discards cargo to recover.
+
+Test with rack pickup, rack-to-rack delivery and ground staging, especially
+in three-block aisles and in larger open-floor warehouse layouts. A genuinely
+blocked aisle should continue to produce a waiting message until cleared.

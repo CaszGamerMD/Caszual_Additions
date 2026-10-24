@@ -29,6 +29,39 @@ assert "if(tickCount-last<20)return null;" in truck
 assert "public record Pose(Vec3 position,float yaw)" in plan
 assert "public record Plan(List<Pose> poses,int turn,double reverseDepth,double aisleShift)" in plan
 
+# Wide warehouses must allow an actual straight withdrawal far enough
+# to clear the full 4.12-block fork envelope, without forcing a 90-degree
+# backing turn simply because the shortest arc is closer to the truck.
+assert "new double[]{1.75,2.2,2.7,3.2,3.8,4.5,5.5,6.5,8.0}" in plan
+assert "new double[]{0,.2,.45,.7,1.0,1.25}" in plan
+assert "new double[]{1.5,1.9,2.2,2.6,3.2}" in plan
+assert "if((preferredDepth>0||preferredShift>0)" in plan
+assert "if(preferredShift>0&&Math.abs(lateral-preferredShift)>.001)" in plan
+assert ".comparingInt((Plan p)->Math.abs(p.turn()))" in plan
+assert ".thenComparingDouble(p->forklift.distanceToSqr(" in plan
+assert "sourceExitBlockedTicks" in truck
+assert "destinationExitBlockedTicks" in truck
+assert 'status="REPLANNING SAFE FORKLIFT WITHDRAWAL FROM RACK DOCK";' in truck
+assert "cursor==0" in truck
+assert "position().distanceToSqr(plan.dock().position())<.0225" in truck
+assert "sourceArc=null;sourceArcTurn=0;" in truck
+assert "destinationArc=null;destinationArcTurn=0;" in truck
+assert "WAITING: FORK/PALLET SWEEP BLOCKED" in truck
+assert "WAITING: FORKLIFT CHASSIS OR FLOOR BLOCKED" in truck
+assert '+", job "+job+", rack source "+sourceRackStage' in truck
+
+# Representative open aisle: a cargo tip extends 4.12 blocks forward of
+# the chassis. A straight reverse of 2.7 still intersects a deep obstacle
+# at z=1.8, but a 3.8-block reverse clears it. No physical rack bypass.
+dock=2.82
+front_reach=4.12
+rack_front_edge=1.8
+assert dock+2.7-front_reach < rack_front_edge
+assert dock+3.8-front_reach > rack_front_edge
+# A three-wide aisle won't fit every longer straight retreat, but that is
+# why the planner separately validates all chassis/fork poses and retains
+# the collision-checked curved fallback.
+
 # The route is traversed in reverse on entry and forwards on exit:
 # no snap rotation or raising while the tines are inside any rack.
 assert "private boolean enterRackSafely(ServerLevel world,RackBlockEntity rack," in truck
