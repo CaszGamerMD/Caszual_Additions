@@ -123,7 +123,12 @@ public final class BuilderWarehouseFulfillment {
         for(PtpBlockEntity ptp:network.points())
             if(ptp.builderMatches(request,owner,table,computer))
                 return inspect(level,computer,table,owner,request,ptp.getBlockPos());
+        BlockPos selected=level.getBlockEntity(computer)
+                instanceof WarehouseComputerBlockEntity config
+                    ?config.orderOutput():BlockPos.ZERO;
         for(PtpBlockEntity ptp:network.points()){
+            if(!selected.equals(BlockPos.ZERO)
+                    &&!selected.equals(ptp.getBlockPos()))continue;
             if(!ptp.readyForOutput()||!ptp.emptyCargo()
                     ||ptp.pendingOutputOrders()!=0||ptp.builderReserved()
                     ||ptp.outputInFlight()||ptp.hauling())continue;

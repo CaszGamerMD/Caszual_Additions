@@ -97,6 +97,8 @@ public final class RackComputerScreen extends Screen {
     private JsonArray racks=new JsonArray(), contents=new JsonArray(),
             ptps=new JsonArray(), stations=new JsonArray();
     private int selectedPtpIndex;
+    private int orderPackers=1;
+    private String packingOutput="AUTO";
     private Button ptpNextButton,ptpModeButton,ptpWrapButton,highlightButton;
     private int selectedX=Integer.MIN_VALUE, selectedY,selectedZ;
     private int totalRacks, totalItems, scroll;
@@ -209,6 +211,14 @@ public final class RackComputerScreen extends Screen {
         addWorkers(Button.builder(Component.literal("▼"),
                 b->workerScroll=Math.min(Math.max(0,workers.size()-1),workerScroll+1))
                 .bounds(width-51,height-34,25,22).build());
+        addOrders(Button.builder(Component.literal("PACKERS -"),
+                b->sendPacking(0)).bounds(22,91,103,20).build());
+        addOrders(Button.builder(Component.literal("PACKERS +"),
+                b->sendPacking(1)).bounds(130,91,103,20).build());
+        addOrders(Button.builder(Component.literal("USE SELECTED PTP"),
+                b->sendPacking(2)).bounds(239,91,151,20).build());
+        addOrders(Button.builder(Component.literal("AUTO PTP"),
+                b->sendPacking(3)).bounds(396,91,103,20).build());
         addOrders(Button.builder(Component.literal("SUBMIT ORDER LIST"),
                 b->submitOrderList()).bounds(22,height-69,Math.max(122,width/3),23).build());
         addOrders(Button.builder(Component.literal("CLEAR LIST"),
@@ -262,6 +272,22 @@ public final class RackComputerScreen extends Screen {
         workerStatus="Work request sent. Awaiting server confirmation...";
     }
 
+    private void sendPacking(int action){
+        BlockPos ptp=BlockPos.ZERO;
+        if(action==2){
+            if(ptps.isEmpty()||selectedPtpIndex>=ptps.size()){
+                orderStatus="Select an OUTPUT PTP on RACKS & PTPs first";return;
+            }
+            JsonObject row=ptps.get(selectedPtpIndex).getAsJsonObject();
+            if(row.get("input").getAsBoolean()){
+                orderStatus="Selected PTP must be OUTPUT";return;
+            }
+            ptp=new BlockPos(row.get("x").getAsInt(),
+                    row.get("y").getAsInt(),row.get("z").getAsInt());
+        }
+        ClientPlayNetworking.send(new RackComputerNet.PackingControl(
+                computer,ptp,action));
+    }
     private void sendPtpControl(int action){
         if(ptps.isEmpty()||selectedPtpIndex>=ptps.size())return;
         JsonObject ptp=ptps.get(selectedPtpIndex).getAsJsonObject();
@@ -344,6 +370,9 @@ public final class RackComputerScreen extends Screen {
             JsonObject obj=JsonParser.parseString(raw).getAsJsonObject();
             warehouseName=obj.has("warehouseName")
                     ?obj.get("warehouseName").getAsString():"Warehouse";
+            orderPackers=obj.has("orderPackers")?obj.get("orderPackers").getAsInt():1;
+            packingOutput=obj.has("orderOutput")
+                    ?obj.get("orderOutput").getAsString():"AUTO";
             builderOrders=obj.has("builderOrders")
                     ?obj.getAsJsonArray("builderOrders"):new JsonArray();
             if(warehouseNameBox!=null&&!warehouseNameBox.isFocused())
@@ -493,6 +522,8 @@ public final class RackComputerScreen extends Screen {
 
     private void drawBuilderOrders(GuiGraphicsExtractor g){
         int count=builderOrders.size();
+        g.text(font,Component.literal("PACKERS: "+orderPackers
+                +" | ASSIGNED OUTPUT PTP: "+packingOutput),22,67,0xffb3f9c1,false);
         g.text(font,Component.literal("PENDING BUILDER FULFILLMENTS: "+count),
                 22,52,0xffb3f9c1,false);
         g.text(font,Component.literal("Click a request to inspect its full material list."),
