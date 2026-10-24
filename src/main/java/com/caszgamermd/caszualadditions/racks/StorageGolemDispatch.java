@@ -162,6 +162,31 @@ public final class StorageGolemDispatch {
         return output.nextStockedBuilderOrder(present);
     }
 
+    /** A packing Golem may reach its assigned rack after another picker
+     * takes the last items. Redirect its existing reservation to real stock
+     * in a DIFFERENT rack instead of renewing a dead ticket indefinitely.
+     * Returns null when there is no more accessible physical stock.
+     */
+    static BlockPos alternateOrderStock(ServerLevel level,BlockPos shelf,
+            BlockPos exhausted,String itemId){
+        BlockPos computer=WarehouseConnections.computerForShelves(level,
+                StorageGolemShelfEntity.linked(level,shelf));
+        if(computer==null||itemId==null)return null;
+        for(RackBlockEntity rack:RackNetwork.fromComputer(level,computer)){
+            if(rack.getBlockPos().equals(exhausted)||!rack.hasPallet()
+                    ||rack.isEmpty()||!WarehouseSortingReach.accessible(level,rack))
+                continue;
+            for(int slot=0;slot<rack.getContainerSize();slot++){
+                ItemStack item=rack.getItem(slot);
+                if(!item.isEmpty()&&item.getItem().canFitInsideContainerItems()
+                        &&BuiltInRegistries.ITEM.getKey(item.getItem())
+                            .toString().equals(itemId))
+                    return rack.getBlockPos();
+            }
+        }
+        return null;
+    }
+
     /** Reuse the same Golem immediately after delivering three physical
      * stacks to a Shulker Station, with another checked FIFO reservation.
      * No new Golem, item copy, instant rack withdrawal, or shelf round trip.
