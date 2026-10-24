@@ -92,6 +92,13 @@ public final class PtpBlockEntity extends BlockEntity
     public boolean outputInFlight(){
         expireTicket();return activeTicket!=0||!extraOutputTickets.isEmpty();
     }
+    /** Real order pickers hold one durable reservation each. Count every
+     * loaded OR temporarily unloaded worker without searching world entities,
+     * and expire stale leases before deciding if another packer may start. */
+    public int activeOutputReservations(){
+        expireTicket();
+        return (activeTicket==0?0:1)+extraOutputTickets.size();
+    }
 
     private int activeTicket,ticketSequence,reservedOutput;
     // Legacy slot zero remains compatible with previously saved single
