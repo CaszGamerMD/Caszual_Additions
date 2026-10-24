@@ -23,6 +23,25 @@ import net.minecraft.world.level.Level;
  */
 public final class StorageScannerItem extends Item {
     public StorageScannerItem(Properties props){super(props);}
+    @Override public void appendHoverText(ItemStack stack,TooltipContext context,
+            net.minecraft.world.item.component.TooltipDisplay display,
+            java.util.function.Consumer<Component> add,
+            net.minecraft.world.item.TooltipFlag flag){
+        CompoundTag tag=options(stack);
+        add.accept(Component.literal("Current Mode: "+mode(stack).name().replace('_',' '))
+            .withStyle(net.minecraft.network.chat.TextColor.fromRgb(0x0c8c06)));
+        String name=tag.getStringOr("scanner_warehouse_name","UNLINKED");
+        add.accept(Component.literal(name)
+            .withStyle(net.minecraft.network.chat.TextColor.fromRgb(0x54bccc)));
+        String coords=tag.contains("warehouse_x")
+            ?tag.getIntOr("warehouse_x",0)+", "+
+             tag.getIntOr("warehouse_y",0)+", "+
+             tag.getIntOr("warehouse_z",0):"No warehouse coordinates";
+        add.accept(Component.literal(coords)
+            .withStyle(net.minecraft.network.chat.TextColor.fromRgb(0xc79408)));
+        add.accept(Component.literal("Shift + Right Click: Scanner Settings")
+            .withStyle(net.minecraft.ChatFormatting.GRAY));
+    }
 
     static BlockPos linkedComputer(ItemStack scanner,ServerLevel world){
         CustomData data=scanner.get(DataComponents.CUSTOM_DATA);
@@ -42,6 +61,8 @@ public final class StorageScannerItem extends Item {
         tag.putInt("warehouse_x",computer.getX());
         tag.putInt("warehouse_y",computer.getY());
         tag.putInt("warehouse_z",computer.getZ());
+        tag.putString("scanner_warehouse_name",
+            WarehouseComputerBlockEntity.name(world,computer));
         scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
     }
 
@@ -55,7 +76,7 @@ public final class StorageScannerItem extends Item {
         if(data==null)return;
         CompoundTag tag=data.copyTag();
         for(String key:new String[]{"warehouse_dimension","warehouse_x",
-                "warehouse_y","warehouse_z","remote_pickup_pending",
+                "warehouse_y","warehouse_z","scanner_warehouse_name","remote_pickup_pending",
                 "remote_pickup_x","remote_pickup_y","remote_pickup_z"})
             tag.remove(key);
         scanner.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
@@ -569,7 +590,7 @@ public final class StorageScannerItem extends Item {
         }
 
         if(mode(scanner)==Mode.COMPUTER){
-            if(server.hasChunkAt(home)&&server.getBlockState(home).is(RackContent.RACK_COMPUTER))
+            if(home!=null&&server.hasChunkAt(home)&&server.getBlockState(home).is(RackContent.RACK_COMPUTER))
                 net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(user,
                     new RackComputerNet.Open(home));
             else message(user,"WAREHOUSE: computer is not loaded or no longer exists.");
