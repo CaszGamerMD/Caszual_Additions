@@ -22,7 +22,7 @@ assert "state.getBlock() instanceof RackBlock" in plan
 assert "state.getBlock() instanceof PalletBlock" in plan
 assert "state.getBlock() instanceof PalletCargoCollisionBlock" in plan
 assert "public record Pose(Vec3 position,float yaw)" in plan
-assert "public record Plan(List<Pose> poses,int turn)" in plan
+assert "public record Plan(List<Pose> poses,int turn,double reverseDepth,double aisleShift)" in plan
 
 # The route is traversed in reverse on entry and forwards on exit:
 # no snap rotation or raising while the tines are inside any rack.
