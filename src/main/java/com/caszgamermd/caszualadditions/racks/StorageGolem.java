@@ -1669,7 +1669,10 @@ public final class StorageGolem extends PathfinderMob {
             return orderAccessGoal;
         orderAccessTarget=place.immutable();
         orderAccessStage=stage;
-        orderAccessExpires=tickCount+60;
+        // Keep the selected rack-front/service aisle stable while the
+        // worker walks an actual long corridor. Choosing a different
+        // nearby service square every three seconds made workers oscillate.
+        orderAccessExpires=tickCount+180;
         BlockEntity machine=level.hasChunkAt(place)?level.getBlockEntity(place):null;
         java.util.LinkedHashSet<BlockPos> choices=new java.util.LinkedHashSet<>();
         if(machine instanceof RackBlockEntity rack){
