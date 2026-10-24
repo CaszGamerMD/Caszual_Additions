@@ -44,7 +44,7 @@ assert "sourceArc=null;sourceArcTurn=0;" in truck
 assert "destinationArc=null;destinationArcTurn=0;" in truck
 assert "WAITING: FORK/PALLET SWEEP BLOCKED" in truck
 assert "WAITING: FORKLIFT CHASSIS OR FLOOR BLOCKED" in truck
-assert '"+", job "+job+", rack source "+sourceRackStage' in truck
+assert '+", job "+job+", rack source "+sourceRackStage' in truck
 
 # Representative open aisle: a cargo tip extends 4.12 blocks forward of
 # the chassis. A straight reverse of 2.7 still intersects a deep obstacle
