@@ -127,29 +127,51 @@ public final class StoragePalletCrew {
             return "No Rack Computer at that location.";
         List<StorageGolemShelfEntity> connected=RackComputerNet.nearbyShelves(level,computer);
         if(selectedShelf!=null){
+            // The clicked shelf selects the warehouse, NOT a preference for
+            // that shelf's workers. Summon the four NEAREST available workers
+            // to the PLAYER across every shelf attached to this computer.
             boolean valid=connected.stream().anyMatch(
                     shelf->shelf.getBlockPos().equals(selectedShelf));
             if(!valid)return "DIRECT: this Golem Shelf is not connected to "
                     +"the scanner's linked warehouse.";
-            // Prefer selected shelf's workers, then its other linked shelves.
-            connected.sort(java.util.Comparator.comparingInt(
-                    shelf->shelf.getBlockPos().equals(selectedShelf)?0:1));
         }
-        List<StorageGolemShelfEntity> available=new ArrayList<>();
-        for(StorageGolemShelfEntity shelf:connected)
-            for(int i=0;i<shelf.docked();i++)available.add(shelf);
-        if(available.size()<4)return "Four docked Storage Golems required: "
-                +available.size()+" currently available.";
+        // Each docked worker is one distinct shelf token (up to two per
+        // shelf). Measure to the shelf's *physical front exit*, where the
+        // Golem really emerges, rather than warehouse discovery order.
+        // Skip blocked shelf exits before making a reservation. Deterministic
+        // coordinate tie-breaking keeps dispatch stable across server runs.
+        record NearbyWorker(StorageGolemShelfEntity shelf,BlockPos exit,double distance){}
+        List<NearbyWorker> available=new ArrayList<>();
+        int docked=0;
+        for(StorageGolemShelfEntity shelf:connected){
+            docked+=shelf.docked();
+            if(shelf.docked()<=0)continue;
+            BlockPos door=StorageGolemShelfDoor.exit(level,shelf);
+            if(door==null)continue;
+            double distance=player.distanceToSqr(
+                    door.getX()+.5,door.getY(),door.getZ()+.5);
+            for(int i=0;i<shelf.docked();i++)
+                available.add(new NearbyWorker(shelf,door,distance));
+        }
+        available.sort(java.util.Comparator.comparingDouble(NearbyWorker::distance)
+                .thenComparingInt(w->w.shelf().getBlockPos().getX())
+                .thenComparingInt(w->w.shelf().getBlockPos().getY())
+                .thenComparingInt(w->w.shelf().getBlockPos().getZ()));
+        if(available.size()<4)return "DIRECT: need four docked Golems with "
+                +"clear exits; "+available.size()+" available near you ("
+                +docked+" docked in linked warehouse).";
         List<StorageGolem> spawned=new ArrayList<>();
         List<StorageGolemShelfEntity> withdrawn=new ArrayList<>();
         List<String> withdrawnNames=new ArrayList<>();
-        for(int i=0;i<4;i++){
-            StorageGolemShelfEntity shelf=available.get(i);
+        // A shelf's second worker may need the next free exit cell after
+        // the first worker appears. If that exit becomes blocked, try the
+        // next closest shelf. The four-person team is all-or-nothing.
+        for(NearbyWorker candidate:available){
+            if(spawned.size()==4)break;
+            StorageGolemShelfEntity shelf=candidate.shelf();
+            if(shelf.docked()<=0)continue;
             BlockPos shelfDoor=StorageGolemShelfDoor.exit(level,shelf);
-            if(shelfDoor==null){
-                rollback(spawned,withdrawn,withdrawnNames);
-                return "Shelf front opening is blocked; clear the aisle before dispatching the crew.";
-            }
+            if(shelfDoor==null)continue;
             StorageGolem golem=RackContent.STORAGE_GOLEM_TYPE.create(level,EntitySpawnReason.EVENT);
             if(golem==null){
                 rollback(spawned,withdrawn,withdrawnNames);
@@ -162,7 +184,7 @@ public final class StoragePalletCrew {
             }
             withdrawn.add(shelf);
             withdrawnNames.add(name);
-            golem.assignPlayerCrew(shelf.getBlockPos(),i,player.getUUID());
+            golem.assignPlayerCrew(shelf.getBlockPos(),spawned.size(),player.getUUID());
             golem.setGolemName(name);
             StorageGolemShelfDoor.emerge(golem,shelfDoor,
                     StorageGolemShelfDoor.front(shelf));
@@ -172,10 +194,15 @@ public final class StoragePalletCrew {
             }
             spawned.add(golem);
         }
-        return "DIRECT: four Storage Golems called from linked shelves; "
-                +"they are following you. Right-click a wrapped pallet on "
-                +"a PTP, rack, or ground to pick it up. Then click an empty "
-                +"rack or block face for them to place it.";
+        if(spawned.size()<4){
+            int ready=spawned.size();
+            rollback(spawned,withdrawn,withdrawnNames);
+            return "DIRECT: only "+ready+" of four nearest Golems could exit "
+                    +"their shelves; cleared no stock. Open nearby shelf fronts.";
+        }
+        return "DIRECT: four closest available Storage Golems called from "
+                +"linked shelves; they are following you. Right-click a wrapped "
+                +"pallet on a PTP, rack, or ground, then an empty destination.";
     }
     private static void rollback(List<StorageGolem> workers,
             List<StorageGolemShelfEntity> shelves,List<String> names){
