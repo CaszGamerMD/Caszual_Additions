@@ -492,7 +492,34 @@ public final class RackComputerNet {
             root.addProperty("orderPackers",settings.orderPackers());
             root.addProperty("orderOutput",settings.orderOutput().toShortString());
         }
+        // Rescue any old-world locked PTP whose pallet vanished before
+        // rendering the queue. Never migrate if items or shulkers exist.
+        BuilderWarehouseFulfillment.recoverMissingPalletReservations(
+                level,computer);
         JsonArray builderOrders=new JsonArray();
+        if(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity settings)
+            for(var pending:settings.waitingBuilders()){
+                JsonObject order=new JsonObject();
+                order.addProperty("ptp","UNASSIGNED");
+                order.addProperty("owner",pending.owner().toString().substring(0,8));
+                order.addProperty("table",pending.table().toShortString());
+                order.addProperty("status","QUEUED AT WAREHOUSE");
+                order.addProperty("reason",
+                        BuilderWarehouseFulfillment.waitingStatus(level,computer));
+                JsonArray demand=new JsonArray();
+                for(var entry:pending.manifest().entrySet()){
+                    JsonObject row=new JsonObject();
+                    row.addProperty("id",entry.getKey());
+                    row.addProperty("remaining",entry.getValue());
+                    demand.add(row);
+                }
+                order.add("items",demand);
+                order.addProperty("currentItem","");
+                order.addProperty("currentQuantity",0);
+                order.addProperty("nextItem","");
+                order.addProperty("nextQuantity",0);
+                builderOrders.add(order);
+            }
         for(PtpBlockEntity point:WarehouseNetwork.fromComputer(level,computer).points()){
             if(!point.builderReserved())continue;
             JsonObject order=new JsonObject();
@@ -539,6 +566,10 @@ public final class RackComputerNet {
             cell.addProperty("orders",point.pendingOutputOrders());
             cell.addProperty("hauling",point.hauling());
             cell.addProperty("modeLocked",!point.modeChangeProblem().isEmpty());
+            cell.addProperty("lockReason",point.modeChangeProblem());
+            cell.addProperty("builderReserved",point.builderReserved());
+            cell.addProperty("builderTable",point.builderReserved()
+                    ?point.builderTablePos().toShortString():"");
             transferPoints.add(cell);
         }
         root.add("ptps",transferPoints);

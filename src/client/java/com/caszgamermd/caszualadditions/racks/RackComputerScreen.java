@@ -22,7 +22,7 @@ public final class RackComputerScreen extends Screen {
     private final BlockPos computer;
     private EditBox search, orderQuantity,warehouseNameBox;
     private Button warehouseRenameButton;
-    private boolean showBuilderOrders;
+    private boolean showBuilderOrders; // auto-switch on first new Builder request
     private String warehouseName="Warehouse";
     private JsonArray builderOrders=new JsonArray();
     private int selectedBuilderOrder;
@@ -100,6 +100,7 @@ public final class RackComputerScreen extends Screen {
     private int orderPackers=1;
     private String packingOutput="AUTO";
     private Button ptpNextButton,ptpModeButton,ptpWrapButton,highlightButton;
+    private Button orderPageButton,builderRequestsButton;
     private int selectedX=Integer.MIN_VALUE, selectedY,selectedZ;
     private int totalRacks, totalItems, scroll;
     private String status="Connecting to racks...";
@@ -127,7 +128,7 @@ public final class RackComputerScreen extends Screen {
                 b->showPage(0)).bounds(tabLeft,13,99,20).build());
         addRenderableWidget(Button.builder(Component.literal("GOLEMS"),
                 b->showPage(1)).bounds(tabLeft+102,13,88,20).build());
-        addRenderableWidget(Button.builder(Component.literal("ORDER LIST"),
+        orderPageButton=addRenderableWidget(Button.builder(Component.literal("ORDER LIST"),
                 b->showPage(2)).bounds(tabLeft+193,13,96,20).build());
         addRenderableWidget(Button.builder(Component.literal("DEBUG"),
                 b->showPage(3)).bounds(tabLeft+292,13,75,20).build());
@@ -224,7 +225,7 @@ public final class RackComputerScreen extends Screen {
         addOrders(Button.builder(Component.literal("CLEAR LIST"),
                 b->{orderList.clear();saveDraft();orderStatus="Order list cleared.";})
                 .bounds(27+Math.max(122,width/3),height-69,104,23).build());
-        addOrders(Button.builder(Component.literal("BUILDER REQUESTS"),
+        builderRequestsButton=addOrders(Button.builder(Component.literal("BUILDER REQUESTS"),
                 b->{showBuilderOrders=!showBuilderOrders;orderScroll=0;})
                 .bounds(Math.max(140,width-275),height-41,125,21).build());
         addOrders(Button.builder(Component.literal("REMOVE LAST"),
@@ -377,8 +378,17 @@ public final class RackComputerScreen extends Screen {
             orderPackers=obj.has("orderPackers")?obj.get("orderPackers").getAsInt():1;
             packingOutput=obj.has("orderOutput")
                     ?obj.get("orderOutput").getAsString():"AUTO";
+            int priorBuilderCount=builderOrders.size();
             builderOrders=obj.has("builderOrders")
                     ?obj.getAsJsonArray("builderOrders"):new JsonArray();
+            if(priorBuilderCount==0&&builderOrders.size()>0)
+                showBuilderOrders=true; // Show the newly received request now.
+            if(orderPageButton!=null)
+                orderPageButton.setMessage(Component.literal(builderOrders.size()>0
+                        ?"ORDERS ("+builderOrders.size()+")":"ORDER LIST"));
+            if(builderRequestsButton!=null)
+                builderRequestsButton.setMessage(Component.literal(showBuilderOrders
+                        ?"MANUAL LIST":"BUILDER ("+builderOrders.size()+")"));
             if(warehouseNameBox!=null&&!warehouseNameBox.isFocused())
                 warehouseNameBox.setValue(warehouseName);
             racks=obj.getAsJsonArray("racks");
@@ -530,7 +540,7 @@ public final class RackComputerScreen extends Screen {
                 +" | ASSIGNED OUTPUT PTP: "+packingOutput),22,67,0xffb3f9c1,false);
         g.text(font,Component.literal("PENDING BUILDER FULFILLMENTS: "+count),
                 22,52,0xffb3f9c1,false);
-        g.text(font,Component.literal("Click a request to inspect its full material list."),
+        g.text(font,Component.literal("Builder orders are saved at the warehouse even before a PTP is ready."),
                 22,75,0xffa4d5b7,false);
         if(count==0){
             g.text(font,Component.literal("No active Builder Golem requests."),
@@ -667,7 +677,10 @@ public final class RackComputerScreen extends Screen {
 
     @Override public void tick(){
         super.tick();
-        if(page==1&&++refreshTicks%60==0)sendQuery();
+        // The old screen only refreshed the GOLEMS tab. Builder requests
+        // therefore appeared absent until another manual refresh or reopen.
+        // Poll the ORDER LIST and PTP tab too while the computer is open.
+        if(++refreshTicks%60==0&&page!=3)sendQuery();
     }
 
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {

@@ -96,13 +96,47 @@ public final class BuilderWarehouseFulfillment {
         }
         return boxes;
     }
+    /** An order is accepted by the WAREHOUSE before touching the PTP.
+     * A ticket in this saved queue never locks a pallet or changes its mode.
+     * Every retry uses the same UUID; assignment is atomic on the main thread.
+     */
+    /** Migrate a broken old-world PTP lock back to the durable warehouse
+     * queue ONLY if its pallet is missing and no physical package, shulker
+     * contents or picker is active anywhere in this warehouse. Never
+     * destroy actual items to repair an unready Builder order.
+     */
+    public static int recoverMissingPalletReservations(ServerLevel level,
+            BlockPos computer){
+        if(!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity cfg))
+            return 0;
+        var network=WarehouseNetwork.fromComputer(level,computer);
+        for(var station:network.tanks())
+            if(station.activeCount()>0||station.finishedCount()>0
+                    ||station.bufferedItems()>0)return 0;
+        int migrated=0;
+        for(PtpBlockEntity ptp:network.points()){
+            if(!ptp.builderReserved()||ptp.hasPallet()||!ptp.emptyCargo()
+                    ||ptp.outputInFlight()||ptp.hauling())continue;
+            var ticket=ptp.builderRequestId();
+            var owner=ptp.builderOwnerId();
+            var table=ptp.builderTablePos();
+            Map<String,Integer> remaining=ptp.pendingOutputManifest();
+            if(ticket==null||owner==null||table.equals(BlockPos.ZERO)
+                    ||remaining.isEmpty())continue;
+            if(cfg.queueBuilder(ticket,owner,table,remaining)
+                    &&ptp.releaseUnpreparedBuilder())migrated++;
+        }
+        return migrated;
+    }
+
     public static Reply request(ServerLevel level,BlockPos computer,BlockPos table,
             UUID owner,UUID request,Map<String,Integer> manifest){
         if(owner==null||request==null||table==null||computer==null
                 ||!level.hasChunkAt(table)
                 ||!BuiltInRegistries.BLOCK.getKey(level.getBlockState(table).getBlock())
                         .toString().equals("golems_plus:builder_table")
-                ||!valid(level,computer))
+                ||!valid(level,computer)
+                ||!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity config))
             return new Reply("WAREHOUSE_OFFLINE",BlockPos.ZERO,Map.of(),0,0);
         if(manifest==null||manifest.isEmpty()||manifest.size()>16)
             return new Reply("INVALID_MANIFEST",BlockPos.ZERO,Map.of(),0,0);
@@ -115,39 +149,81 @@ public final class BuilderWarehouseFulfillment {
                 return new Reply("INVALID_MANIFEST",BlockPos.ZERO,Map.of(),0,0);
             lines.add(new PtpBlockEntity.OutputOrder(id.toString(),qty));
         }
+        recoverMissingPalletReservations(level,computer);
         var network=WarehouseNetwork.fromComputer(level,computer);
-        if(network.shelves().isEmpty()||network.racks().isEmpty())
-            return new Reply("NO_WORKERS_OR_RACKS",BlockPos.ZERO,Map.of(),0,0);
-        // Idempotent retry: same request always recovers its prior PTP,
-        // and cannot add duplicate output orders after a server restart.
+        // Idempotent live reservation, including old worlds where the PTP
+        // already owns a job from before the computer queue was introduced.
         for(PtpBlockEntity ptp:network.points())
             if(ptp.builderMatches(request,owner,table,computer))
                 return inspect(level,computer,table,owner,request,ptp.getBlockPos());
+        if(!config.queueBuilder(request,owner,table,manifest))
+            return new Reply("WAREHOUSE_ORDER_CONFLICT",BlockPos.ZERO,Map.of(),0,0);
+        // The exact queued UUID survives world reload even when no pallet,
+        // Hopper Adapter or shulker station is currently available.
+        return assignWaiting(level,computer,config,
+                config.waitingBuilder(request),lines,network);
+    }
+
+    private static Reply assignWaiting(ServerLevel level,BlockPos computer,
+            WarehouseComputerBlockEntity config,
+            WarehouseComputerBlockEntity.PendingBuilder pending,
+            List<PtpBlockEntity.OutputOrder> lines,WarehouseNetwork.Result network){
+        if(pending==null)
+            return new Reply("RESERVATION_MISSING",BlockPos.ZERO,Map.of(),0,0);
+        BlockPos selected=config.orderOutput();
+        if(!network.shelves().isEmpty()&&!network.racks().isEmpty())
+            for(PtpBlockEntity ptp:network.points()){
+                if(!selected.equals(BlockPos.ZERO)
+                        &&!selected.equals(ptp.getBlockPos()))continue;
+                if(!ptp.readyForOutput()||!ptp.emptyCargo()
+                        ||ptp.pendingOutputOrders()!=0||ptp.builderReserved()
+                        ||ptp.outputInFlight()||ptp.hauling())continue;
+                var station=tank(level,computer,ptp);
+                if(station==null||station.activeCount()!=0
+                        ||station.finishedCount()!=0||station.bufferedItems()!=0)
+                    continue;
+                if(!ptp.beginBuilderOutput(pending.request(),pending.owner(),
+                        pending.table(),computer,lines))continue;
+                config.dequeueBuilder(pending.request(),pending.owner(),pending.table());
+                for(StorageGolemShelfEntity shelf:network.shelves())
+                    if(shelf.docked()>0&&StorageGolemDispatch
+                            .tryDispatchQueuedOutput(level,shelf))break;
+                return inspect(level,computer,pending.table(),pending.owner(),
+                        pending.request(),ptp.getBlockPos());
+            }
+        return new Reply("QUEUED_AT_WAREHOUSE",BlockPos.ZERO,Map.of(),
+                lines.size(),0);
+    }
+
+    /** Human-facing diagnostic for a staged but not yet PTP-assigned order. */
+    public static String waitingStatus(ServerLevel level,BlockPos computer){
+        var network=WarehouseNetwork.fromComputer(level,computer);
+        if(network.shelves().isEmpty())return "WAITING: CONNECT STORAGE GOLEM SHELVES";
+        if(network.racks().isEmpty())return "WAITING: CONNECT STOCK RACKS";
         BlockPos selected=level.getBlockEntity(computer)
-                instanceof WarehouseComputerBlockEntity config
-                    ?config.orderOutput():BlockPos.ZERO;
+                instanceof WarehouseComputerBlockEntity cfg
+                    ?cfg.orderOutput():BlockPos.ZERO;
+        boolean output=false;
+        boolean ready=false;
         for(PtpBlockEntity ptp:network.points()){
             if(!selected.equals(BlockPos.ZERO)
                     &&!selected.equals(ptp.getBlockPos()))continue;
-            if(!ptp.readyForOutput()||!ptp.emptyCargo()
-                    ||ptp.pendingOutputOrders()!=0||ptp.builderReserved()
-                    ||ptp.outputInFlight()||ptp.hauling())continue;
+            if(ptp.input())continue;
+            output=true;
+            if(!ptp.readyForOutput()||ptp.builderReserved()
+                    ||ptp.outputInFlight()||ptp.hauling()
+                    ||ptp.pendingOutputOrders()!=0||!ptp.emptyCargo())continue;
+            ready=true;
             var station=tank(level,computer,ptp);
-            if(station==null||station.activeCount()!=0
-                    ||station.finishedCount()!=0||station.bufferedItems()!=0)
-                continue;
-            if(!ptp.beginBuilderOutput(request,owner,table,computer,lines))
-                continue;
-            // Don't wait for an unrelated INPUT sorting event before
-            // starting the Builder's reserved outbound order. The normal
-            // ticket lease and shelf tick still handle subsequent batches.
-            for(StorageGolemShelfEntity shelf:network.shelves())
-                if(shelf.docked()>0&&StorageGolemDispatch
-                        .tryDispatchQueuedOutput(level,shelf))break;
-            return inspect(level,computer,table,owner,request,ptp.getBlockPos());
+            if(station!=null&&station.activeCount()==0
+                    &&station.finishedCount()==0&&station.bufferedItems()==0)
+                return "WAITING: OUTPUT PALLET READY; ASSIGNING NEXT TICKET";
         }
-        return new Reply("NO_EMPTY_OUTPUT_PTP",BlockPos.ZERO,Map.of(),0,0);
+        if(!output)return "WAITING: SET A CONNECTED PTP TO OUTPUT";
+        if(!ready)return "WAITING: OUTPUT PTP NEEDS PALLET OR IS BUSY";
+        return "WAITING: CONNECT SHULKER STATION TO CORNER HOPPER ADAPTER";
     }
+
     /** Human-readable state of the actual reserved packing lane, shown
      * on the Rack Computer beside the Builder manifest. All checks are
      * read-only and never withdraw stock or create worker entities. */
@@ -199,12 +275,25 @@ public final class BuilderWarehouseFulfillment {
 
     public static Reply inspect(ServerLevel level,BlockPos computer,BlockPos table,
             UUID owner,UUID request,BlockPos ptpPos){
+        if(valid(level,computer))recoverMissingPalletReservations(level,computer);
         if(ptpPos==null||!level.hasChunkAt(ptpPos)||!valid(level,computer))
             return new Reply("WAREHOUSE_OFFLINE",ptpPos==null?BlockPos.ZERO:ptpPos,
                     Map.of(),0,0);
         if(!(level.getBlockEntity(ptpPos) instanceof PtpBlockEntity ptp)
-                ||!ptp.builderMatches(request,owner,table,computer))
+                ||!ptp.builderMatches(request,owner,table,computer)){
+            // If an old empty PTP was safely migrated, keep the same UUID
+            // and tell the Builder to clear its old PTP assignment and
+            // resume polling the computer queue instead of creating copies.
+            if(level.getBlockEntity(computer)
+                    instanceof WarehouseComputerBlockEntity cfg){
+                var pending=cfg.waitingBuilder(request);
+                if(pending!=null&&pending.owner().equals(owner)
+                        &&pending.table().equals(table))
+                    return new Reply("QUEUED_AT_WAREHOUSE",
+                            BlockPos.ZERO,Map.of(),pending.manifest().size(),0);
+            }
             return new Reply("RESERVATION_MISSING",ptpPos,Map.of(),0,0);
+        }
         int boxed=packed(ptp);
         var station=tank(level,computer,ptp);
         int pending=ptp.pendingOutputOrders();

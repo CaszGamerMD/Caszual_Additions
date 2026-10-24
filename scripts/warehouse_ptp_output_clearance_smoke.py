@@ -32,14 +32,13 @@ assert "cell.addProperty(\"modeLocked\"," in net
 assert 'point.get("modeLocked").getAsBoolean()' in screen
 assert 'answer(player,new Query(computer,"",BlockPos.ZERO));' in net
 
-# Empty pallet requires only a usable access layer, NOT an empty 3x3x3
-# cargo tower. If a real obstacle remains, show its exact block position/type
-# instead of accusing an already-empty whole PTP.
+# Three clear air blocks are required above the full 3x3 floor to allow
+# cargo and its pallet to render and move without clipping.
 start = state.index("public String palletInstallProblem()")
 end = state.index("public boolean canInstallPallet()")
 clearance = state[start:end]
-assert "root.offset(x,1,z)" in clearance
-assert "for(int y=1;y<=3;y++)" not in clearance
+assert "for(int height=1;height<=3;height++)" in clearance
+assert "root.offset(x,height,z)" in clearance
 assert "p.toShortString()" in clearance
 assert "BuiltInRegistries.BLOCK" in clearance
 assert "obstruction.canBeReplaced()" in clearance
@@ -49,4 +48,4 @@ assert '"Cannot load pallet: "+ptp.palletInstallProblem()' in ptp
 # Builder output requires a real unsealed pallet in OUTPUT mode.
 assert "public boolean readyForOutput(){return !input&&!sealed&&hasPallet();}" in state
 assert "ptp.readyForOutput()" in builder
-print("PASS: existing-pallet INPUT/OUTPUT toggles, safe Builder reservations, precise one-layer clearance diagnostics")
+print("PASS: existing-pallet INPUT/OUTPUT toggles, safe Builder reservations, precise three-layer clearance diagnostics")
