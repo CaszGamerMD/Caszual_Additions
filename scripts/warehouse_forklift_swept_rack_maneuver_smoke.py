@@ -33,6 +33,10 @@ assert "public record Plan(List<Pose> poses,int turn,double reverseDepth,double 
 # to clear the full 4.12-block fork envelope, without forcing a 90-degree
 # backing turn simply because the shortest arc is closer to the truck.
 assert "new double[]{1.75,2.2,2.7,3.2,3.8,4.5,5.5,6.5,8.0}" in plan
+assert "new double[]{0,.2,.45,.7,1.0,1.25}" in plan
+assert "new double[]{1.5,1.9,2.2,2.6,3.2}" in plan
+assert "if((preferredDepth>0||preferredShift>0)" in plan
+assert "if(preferredShift>0&&Math.abs(lateral-preferredShift)>.001)" in plan
 assert ".comparingInt((Plan p)->Math.abs(p.turn()))" in plan
 assert ".thenComparingDouble(p->forklift.distanceToSqr(" in plan
 assert "sourceExitBlockedTicks" in truck
