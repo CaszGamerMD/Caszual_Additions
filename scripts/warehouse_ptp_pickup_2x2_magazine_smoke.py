@@ -20,7 +20,7 @@ for clause in ("hasPallet()&&!sealed&&emptyCargo()&&!hauling()",
                "return canRemoveEmptyPallet()?dropPallet():ItemStack.EMPTY;"):
     assert clause in storage
 assert "retrieveEmptyPallet(ptp,player)" in ptp
-assert "player.isShiftKeyDown()&&ptp.hasPallet()" in ptp
+assert "if(player.isShiftKeyDown()) {" in ptp
 assert "player.getInventory().placeItemBackInInventory(recovered)" in ptp
 assert 'Unwrap the pallet with shears before removing it.' in ptp
 assert "ptp.changeModeFromComputer()" in ptp
