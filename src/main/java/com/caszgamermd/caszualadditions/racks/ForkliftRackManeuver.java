@@ -22,7 +22,7 @@ import net.minecraft.world.phys.Vec3;
 public final class ForkliftRackManeuver {
     public record Pose(Vec3 position,float yaw){}
     /** Poses are ordered dock -> safe exterior. */
-    public record Plan(List<Pose> poses,int turn) {
+    public record Plan(List<Pose> poses,int turn,double reverseDepth,double aisleShift) {
         public Pose outside(){return poses.getLast();}
         public Pose dock(){return poses.getFirst();}
     }
@@ -81,7 +81,8 @@ public final class ForkliftRackManeuver {
      * remain solid even when the forklift itself has a clear chassis path.
      */
     public static Plan plan(ServerLevel world,WarehouseForklift forklift,
-            RackBlockEntity rack,Vec3 dock,int preferredTurn){
+            RackBlockEntity rack,Vec3 dock,int preferredTurn,
+            double preferredDepth,double preferredShift){
         Direction outward=rack.facing();
         Direction inward=outward.getOpposite();
         int floorY=(int)Math.floor(dock.y);
@@ -94,8 +95,11 @@ public final class ForkliftRackManeuver {
         for(int turn:turns){
             for(double back:turn==0?new double[]{1.75,2.2,2.7}:
                     new double[]{.45,.7,1.0,1.25}){
+                if(preferredDepth>0&&Math.abs(back-preferredDepth)>.001)continue;
                 for(double lateral:turn==0?new double[]{0}:
                         new double[]{1.9,2.2,2.6}){
+                    if(preferredDepth>0&&Math.abs(lateral-preferredShift)>.001)
+                        continue;
                     List<Pose> poses=new ArrayList<>();
                     boolean valid=true;
                     float start=dockYaw(inward);
@@ -120,7 +124,7 @@ public final class ForkliftRackManeuver {
                         poses.add(pose);
                     }
                     if(!valid)continue;
-                    Plan path=new Plan(List.copyOf(poses),turn);
+                    Plan path=new Plan(List.copyOf(poses),turn,back,lateral);
                     if(!fullyOutside(world,path,floorY,palletY,rack))continue;
                     candidates.add(path);
                 }
