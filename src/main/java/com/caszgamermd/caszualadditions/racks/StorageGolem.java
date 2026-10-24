@@ -1709,10 +1709,25 @@ public final class StorageGolem extends PathfinderMob {
                     WarehousePreferredPath.leg(feet,cell,
                             p->openWalkway(level,p),BlockPos.ZERO,
                             p->WarehouseTerrain.standingY(level,p));
-            if(route!=null&&(route.isEmpty()||route.getLast().equals(cell))
-                    &&route.size()<bestLength){
+            if(route==null)continue;
+            boolean exact=route.isEmpty()||route.getLast().equals(cell);
+            // Long warehouse aisles use 36-block partial *walking* legs.
+            // The final service square is still checked for clearance, but
+            // a courier more than 36 blocks away cannot prove the entire
+            // route in one bounded path search. Accept only a partial leg
+            // that makes substantial forward progress; the actual pickup
+            // still requires reaching the verified service cell in person.
+            int startDist=Math.abs(feet.getX()-cell.getX())
+                    +Math.abs(feet.getZ()-cell.getZ());
+            int endDist=route.isEmpty()?startDist:
+                    Math.abs(route.getLast().getX()-cell.getX())
+                    +Math.abs(route.getLast().getZ()-cell.getZ());
+            boolean advances=startDist>WarehousePreferredPath.RADIUS
+                    &&!route.isEmpty()&&endDist<=startDist-8;
+            if((exact||advances)
+                    &&route.size()+endDist<bestLength){
                 best=cell;
-                bestLength=route.size();
+                bestLength=route.size()+endDist;
             }
         }
         if(best==null){
