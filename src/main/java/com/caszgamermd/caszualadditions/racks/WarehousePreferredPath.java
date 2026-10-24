@@ -37,18 +37,27 @@ public final class WarehousePreferredPath {
     public static java.util.List<BlockPos> leg(BlockPos start,BlockPos target,
             Predicate<BlockPos> passable,BlockPos blocked,
             java.util.function.ToDoubleFunction<BlockPos> standingY){
+        // Keep world lookups bounded: the flat and terrain alternatives
+        // share ONE request-local cache of loaded tile collision and
+        // standing heights. Cache does not escape this search, so block
+        // placement is reflected on the next replanning event.
+        Map<BlockPos,Boolean> validCache=new HashMap<>();
+        Map<BlockPos,Double> heightCache=new HashMap<>();
+        Predicate<BlockPos> checked=p->validCache.computeIfAbsent(p,passable::test);
+        java.util.function.ToDoubleFunction<BlockPos> height=p->
+                heightCache.computeIfAbsent(p,standingY::applyAsDouble);
         // A flat route is cheap and normally ideal, but NOT mandatory:
         // a giant same-level detour should lose to two short, legal
         // one-block transitions. Compare its excess distance against the
         // exact height-change penalty (up + down), rather than forbidding
         // all climbs merely because a very long flat route exists.
         var flat=start.getY()==target.getY()
-                ?find(start,target,passable,blocked,false,standingY):null;
+                ?find(start,target,checked,blocked,false,height):null;
         int direct=Math.abs(start.getX()-target.getX())
                 +Math.abs(start.getZ()-target.getZ());
         if(flat!=null&&flat.size()<=direct+STEP_HEIGHT_COST*2)
             return flat;
-        var terrain=find(start,target,passable,blocked,true,standingY);
+        var terrain=find(start,target,checked,blocked,true,height);
         if(flat==null)return terrain;
         if(terrain==null)return flat;
         // A partial forward leg must not outrank an exact 3-D arrival.
@@ -59,13 +68,90 @@ public final class WarehousePreferredPath {
         BlockPos previous=start;
         for(BlockPos cell:terrain){
             terrainCost+=(int)Math.round(Math.max(0,
-                    Math.abs(standingY.applyAsDouble(cell)
-                            -standingY.applyAsDouble(previous))-.501)
+                    Math.abs(height.applyAsDouble(cell)
+                            -height.applyAsDouble(previous))-.501)
                     *STEP_HEIGHT_COST);
             previous=cell;
         }
         return flat.size()<=terrainCost?flat:terrain;
     }
+    /**
+     * Select the CHEAPEST truly reachable service square in a single
+     * multi-destination Dijkstra search. The former approach performed
+     * twelve separate A* searches, then chose a geometrically close cell
+     * that could be blocked by racks, a stair, or another workbench.
+     *
+     * Only cardinal, loaded and collision-approved tiles are passed by
+     * the caller. A one-block rise is allowed but costs more than flat
+     * aisle movement. The first settled service cell is therefore the
+     * globally shortest weighted route within the bounded search window.
+     * The expensive search is run on task change / stall, never per tick.
+     */
+    public static BlockPos cheapestService(BlockPos from,
+            java.util.Collection<BlockPos> options,
+            Predicate<BlockPos> walkable,
+            java.util.function.ToDoubleFunction<BlockPos> standingY){
+        if(options==null||options.isEmpty())return null;
+        var targets=new java.util.HashSet<BlockPos>();
+        // Avoid repeated per-block server shape lookups while exploring
+        // neighboring warehouse tiles. This cache lives ONLY for the
+        // current bounded route search; it is never stale after a block
+        // is placed or a door is changed.
+        Map<BlockPos,Boolean> validCache=new HashMap<>();
+        Map<BlockPos,Double> floorCache=new HashMap<>();
+        for(BlockPos target:options)
+            if(validCache.computeIfAbsent(target,walkable::test))
+                targets.add(target);
+        if(targets.isEmpty())return null;
+        if(targets.contains(from))return from;
+        PriorityQueue<Node> queue=new PriorityQueue<>(
+                java.util.Comparator.comparingInt(Node::cost));
+        Map<BlockPos,Integer> costs=new HashMap<>();
+        queue.add(new Node(from,0,0));
+        costs.put(from,0);
+        int expanded=0;
+        while(!queue.isEmpty()&&expanded<4000){
+            Node node=queue.poll();
+            if(node.cost()!=costs.getOrDefault(node.pos(),Integer.MAX_VALUE))
+                continue;
+            expanded++;
+            BlockPos here=node.pos();
+            if(targets.contains(here))return here;
+            for(Direction dir:Direction.Plane.HORIZONTAL){
+                BlockPos adjacent=here.relative(dir);
+                for(int dy:new int[]{0,-1,1}){
+                    BlockPos next=adjacent.offset(0,dy,0);
+                    if(Math.abs(next.getX()-from.getX())>RADIUS
+                            ||Math.abs(next.getZ()-from.getZ())>RADIUS
+                            ||Math.abs(next.getY()-from.getY())>MAX_ELEVATION_FROM_START
+                            ||!validCache.computeIfAbsent(next,walkable::test))continue;
+                    double rise=Math.abs(floorCache.computeIfAbsent(next,
+                            standingY::applyAsDouble)-floorCache.computeIfAbsent(
+                                    here,standingY::applyAsDouble));
+                    if(!Double.isFinite(rise)||rise>1.001)continue;
+                    int newCost=node.cost()+10+(rise>.501?15:0);
+                    if(newCost>=costs.getOrDefault(next,Integer.MAX_VALUE))continue;
+                    costs.put(next,newCost);
+                    queue.add(new Node(next,newCost,newCost));
+                }
+            }
+        }
+        // For very remote shelves, only the first 36-block route leg is
+        // knowable without generating chunks. Aim at the nearest safe
+        // service cell and re-evaluate once the worker enters search range.
+        int nearest=Integer.MAX_VALUE;
+        BlockPos remote=null;
+        boolean distant=true;
+        for(BlockPos cell:targets){
+            int horizontal=Math.abs(cell.getX()-from.getX())
+                    +Math.abs(cell.getZ()-from.getZ());
+            if(horizontal<=RADIUS)distant=false;
+            int score=horizontal*10+Math.abs(cell.getY()-from.getY())*20;
+            if(score<nearest){nearest=score;remote=cell;}
+        }
+        return distant?remote:null;
+    }
+
     private static java.util.List<BlockPos> find(BlockPos start,BlockPos target,
             Predicate<BlockPos> passable,BlockPos blocked,boolean allowElevation,
             java.util.function.ToDoubleFunction<BlockPos> standingY){
