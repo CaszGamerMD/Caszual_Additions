@@ -136,17 +136,45 @@ public final class StorageGolemDispatch {
         }
         return true;
     }
+    /** Do not let a temporarily out-of-stock FIFO head stall all other
+     * stocked Builder materials. Scan the REAL connected racks; a picker
+     * ticket already carrying items is never reordered.
+     */
+    private static PtpBlockEntity.OutputOrder nextStockedBuilderOrder(
+            ServerLevel level,BlockPos computer,PtpBlockEntity output){
+        if(output==null)return null;
+        if(!output.builderReserved())return output.nextOutputOrder();
+        java.util.Set<String> present=new java.util.HashSet<>();
+        var needed=output.pendingOutputManifest();
+        if(needed.isEmpty())return output.nextOutputOrder();
+        for(RackBlockEntity rack:RackNetwork.fromComputer(level,computer)){
+            if(!rack.hasPallet()||rack.isEmpty()
+                    ||!WarehouseSortingReach.accessible(level,rack))continue;
+            for(int slot=0;slot<rack.getContainerSize();slot++){
+                ItemStack stack=rack.getItem(slot);
+                if(stack.isEmpty()||!stack.getItem().canFitInsideContainerItems())
+                    continue;
+                String id=BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                if(needed.containsKey(id))present.add(id);
+            }
+            if(present.size()>=needed.size())break;
+        }
+        return output.nextStockedBuilderOrder(present);
+    }
+
     /** Reuse the same Golem immediately after delivering three physical
      * stacks to a Shulker Station, with another checked FIFO reservation.
      * No new Golem, item copy, instant rack withdrawal, or shelf round trip.
      */
     static boolean continuePacking(ServerLevel level,StorageGolem worker,
             BlockPos home,PtpBlockEntity output,ShulkerTankEntity station){
-        if(output==null||station==null||output.nextOutputOrder()==null)return false;
-        PtpBlockEntity.OutputOrder order=output.nextOutputOrder();
+        if(output==null||station==null)return false;
         BlockPos computer=WarehouseConnections.computerForShelves(level,
                 StorageGolemShelfEntity.linked(level,home));
         if(computer==null)return false;
+        PtpBlockEntity.OutputOrder order=nextStockedBuilderOrder(
+                level,computer,output);
+        if(order==null)return false;
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,computer)){
             if(!rack.hasPallet()||rack.isEmpty()
                     ||!WarehouseSortingReach.accessible(level,rack))continue;
@@ -220,7 +248,8 @@ public final class StorageGolemDispatch {
         if(output==null)output=outputPoint(level,group,terminal);
         if(output==null||!output.readyForOutput()
                 ||!packerSlotFree(level,terminal))return false;
-        PtpBlockEntity.OutputOrder order=output.nextOutputOrder();
+        PtpBlockEntity.OutputOrder order=nextStockedBuilderOrder(
+                level,terminal,output);
         if(order==null)return false;
         ShulkerTankEntity station=null;
         for(ShulkerTankEntity candidate:WarehouseNetwork

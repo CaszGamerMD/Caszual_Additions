@@ -107,6 +107,8 @@ jobs:
         run: python3 scripts/warehouse_pallet_stacks_navigation_smoke.py
       - name: Verify Golems and pallet rigs route around even low or empty pallet stacks
         run: python3 scripts/warehouse_pallet_stack_pathfinding_smoke.py
+      - name: Verify continuous stocked-item Builder shulker packing
+        run: python3 scripts/warehouse_builder_continuous_fill_smoke.py
       - name: Verify physical Builder pallet prep and return (blocking)
         run: python3 scripts/warehouse_builder_pallet_setup_smoke.py
       - name: Verify warehouse-first Builder order queue and visibility (blocking)
