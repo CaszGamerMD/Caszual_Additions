@@ -1696,21 +1696,29 @@ public final class StorageGolem extends PathfinderMob {
         for(BlockPos cell:choices){
             if(!openWalkway(level,cell)
                     ||occupied.contains(cell)&&!cell.equals(feet))continue;
-            List<BlockPos> route=StorageGolemReturnPath.steps(feet,cell,
-                    p->openWalkway(level,p)&&!occupied.contains(p));
-            if(route!=null&&route.size()<bestLength){
+            // The old same-Y breadth-first search rejected an otherwise
+            // clear warehouse route when it crossed one real stair/slab.
+            // Use the same weighted terrain-aware router that physically
+            // moves Storage Golems. Moving robots are excluded only from
+            // the FINAL service square, not permanently as static walls
+            // across a whole aisle.
+            List<BlockPos> route=cell.equals(feet)?List.of():
+                    WarehousePreferredPath.leg(feet,cell,
+                            p->openWalkway(level,p),BlockPos.ZERO,
+                            p->WarehouseTerrain.standingY(level,p));
+            if(route!=null&&(route.isEmpty()||route.getLast().equals(cell))
+                    &&route.size()<bestLength){
                 best=cell;
                 bestLength=route.size();
             }
         }
         if(best==null){
-            // Keep the task pending until an aisle opens; never silently
-            // choose a route through the solid rack as a fallback.
-            routeIssue="WAITING FOR ORDER ACCESS";
-            // Wait at the FIRST front/service position, never select an
-            // unverified rear rack face or accidentally complete a pickup
-            // from behind a solid frame.
-            return choices.isEmpty()?place:choices.iterator().next();
+            // No safe final approach: keep the real order and its
+            // reservation intact. Do not select the first unverified
+            // blocked service tile or pretend the stock was collected.
+            routeIssue="WAITING FOR REACHABLE ORDER ACCESS";
+            orderAccessGoal=BlockPos.ZERO;
+            return feet;
         }
         orderAccessGoal=best.immutable();
         routeIssue="";
@@ -2296,6 +2304,10 @@ public final class StorageGolem extends PathfinderMob {
         BlockPos target=stage==0||stage==3?source
                 :stage==1?destination:stage==4||stage==5?magazine:home;
         BlockPos walkway=approach(level,target);
+        if(stationOrder&&routeIssue.equals("WAITING FOR REACHABLE ORDER ACCESS")){
+            getNavigation().stop();
+            return;
+        }
         if(!level.hasChunkAt(target) || !level.hasChunkAt(walkway))return;
         if(!closeTo(walkway)){
             walkTo(level,walkway,1.10);
