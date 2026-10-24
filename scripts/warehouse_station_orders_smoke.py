@@ -43,6 +43,24 @@ assert "acceptOrderList(ServerPlayer player,OrderListRequest order)" in net
 assert "requested.containsKey(id.toString())" in net
 assert "output.queueOutputList(lines)" in net
 assert "return floorApproach(level,place);" in golem
+# Explicit Builder orders must dispatch even when automatic INPUT sorting is off.
+builder=src(j/"BuilderWarehouseFulfillment.java")
+shelf=src(j/"StorageGolemShelfEntity.java")
+ui=src(c/"RackComputerScreen.java")
+assert "tryDispatchQueuedOutput(level,shelf)" in shelf
+assert "if(shelf.sortingEnabled)StorageGolemDispatch.tryDispatch(level,shelf);" in shelf
+assert "public static boolean tryDispatchQueuedOutput(" in dispatch
+assert "tryDispatchQueuedOutput(level,shelf))break;" in builder
+assert 'order.addProperty("reason",BuilderWarehouseFulfillment.workStatus(' in net
+assert "STATUS: " in ui
+assert "NO SHULKER STATION HOPPER ADAPTER LINK" in builder
+assert "PICKER CANNOT REACH SOURCE RACK" in builder
+assert "public void flushBuilderBatch(ServerLevel level,PtpBlockEntity ptp)" in station
+assert "if(ptp.builderReserved())" in golem
+assert "station.flushBuilderBatch(level,ptp);" in golem
+assert "if(ptp==null||!ptp.builderReserved()||attachedOutput(level)!=ptp)return;" in station
+assert "flushFinished(level,ptp,true);" in station
+
 assert "StorageGolemReturnPath.walkable(level,p)" in golem
 assert "feetState.getBlock() instanceof RackBlock" in router
 print("PASS: atomic order list, nine-slot runner, three-lane saved shulker station, adapter-only transfer, walking goals")
