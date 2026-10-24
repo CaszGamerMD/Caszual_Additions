@@ -22,12 +22,13 @@ assert "private BlockPos orderApproach(" in golem
 assert "WarehousePreferredPath.cheapestService(" in golem
 assert "WarehouseSortingReach.withinReach(service,rack)" in golem
 assert "openWalkway(level,cell)" in golem
-assert "orderAccessExpires=tickCount+180" in golem
+assert "orderAccessExpires=tickCount+600" in golem  # stable service tile; reassess obstruction or job change
 assert "stage==0||stage==1||stage==3" in golem
 assert "routeIssue=\"WAITING FOR REACHABLE ORDER ACCESS\"" in golem
 assert "WAITING FOR SHULKER SPACE" in golem
 assert "WAITING FOR STATION SPACE" in golem
-assert "WAITING FOR ORDER STOCK" in golem
+assert "ORDER OUT OF STOCK: RELEASING PICKER" in golem
+assert "ORDER RACK EMPTY: MOVING TO NEXT STOCK" in golem
 assert "WAITING FOR ORDER DESTINATION" in golem
 assert "WAITING FOR OUTPUT SPACE" in golem
 assert "STATIONS" not in golem or True
