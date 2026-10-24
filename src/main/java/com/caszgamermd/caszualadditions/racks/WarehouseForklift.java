@@ -961,6 +961,21 @@ public final class WarehouseForklift extends PathfinderMob {
         if(parking.equals(BlockPos.ZERO))
             return "FORKLIFT: no saved parking bay. Sneak-click the forklift "
                     +"with empty hand for an emergency driver release.";
+        // A recall during an elevated transfer used to set job=5 at once.
+        // That instantly lowered the mast while the tines were still inside
+        // the rack, bypassing the collision-checked withdrawal arc. Keep the
+        // actual job running until both rack exits are complete. The normal
+        // task completion path already returns to parking and dismisses the
+        // operator when dismissAfterParking is set.
+        boolean forksInSource=sourceRackStage>=1&&sourceRackStage<5;
+        boolean forksInDestination=destinationRackStage>=1&&destinationRackStage<5;
+        if(forksInSource||forksInDestination){
+            dismissAfterParking=true;
+            status="RECALL QUEUED: RETRACTING FORKS BEFORE PARKING";
+            return "FORKLIFT: recall queued until the forks have safely left "
+                    +"the rack. The current transfer will finish first; then "
+                    +"the driver will park and return to the shelf.";
+        }
         if(atParkingBay()){
             job=0;animation=0;dismissAfterParking=false;
             return dismissDriver(world)
