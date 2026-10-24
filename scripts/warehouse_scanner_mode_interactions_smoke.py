@@ -39,6 +39,9 @@ assert "else ServerPlayNetworking.send(user,new RackComputerNet.Open(pos))" in t
 assert "StorageScannerItem.onShelfClick(server,user,held,pos)" in shelf
 assert "List<StorageGolemShelfEntity> connected=RackComputerNet.nearbyShelves(level,computer)" in crew
 assert "shelf->shelf.getBlockPos().equals(selectedShelf)" in crew
+assert "player.distanceToSqr(" in crew
+assert "available.sort(java.util.Comparator.comparingDouble(NearbyWorker::distance)" in crew
+assert "golem.assignPlayerCrew(shelf.getBlockPos(),spawned.size(),player.getUUID());" in crew
 assert "if(!valid)return" in crew
 assert "private static String enlistAt(" in crew
 assert "StoragePalletCrew.enlist(level,player,computer)" not in net

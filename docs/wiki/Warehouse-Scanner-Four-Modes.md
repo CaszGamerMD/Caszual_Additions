@@ -19,7 +19,12 @@ Shift-right-click in air to rotate the modes:
   open ground-level Input aisle racks, then ordinary ground racks. If
   no rack is available it stays loaded and waits for a player to help. A
   returning remote crew does not silently put its pallet into a PTP.
-- **DIRECT** – right-click a linked Golem Shelf for four actual workers,
+- **DIRECT** – right-click any Golem Shelf connected to your scanner's
+  warehouse to summon the **four closest eligible docked Golems to your
+  player position**, across all its shelves. The clicked shelf only
+  validates which warehouse is linked; it no longer gets priority. Each
+  shelf may supply up to two workers, only if its exit is clear. Busy
+  workers are never taken from existing jobs. After the crew arrives,
   then pick a wrapped pallet on ground, PTP or accessible rack. Click
   a ground pad, PTP or rack to direct the delivery. For a stacked rack,
   a Golem-driven forklift from the linked warehouse is required: the
