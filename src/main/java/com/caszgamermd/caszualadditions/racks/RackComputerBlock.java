@@ -32,7 +32,7 @@ public final class RackComputerBlock extends Block implements net.minecraft.worl
     @Override public net.minecraft.world.level.block.entity.BlockEntity newBlockEntity(
             BlockPos pos,BlockState state){return new WarehouseComputerBlockEntity(pos,state);}
     @Override public <T extends net.minecraft.world.level.block.entity.BlockEntity>
-            @Nullable net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+            net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
             Level level,BlockState state,
             net.minecraft.world.level.block.entity.BlockEntityType<T> type){
         if(level.isClientSide())return null;
