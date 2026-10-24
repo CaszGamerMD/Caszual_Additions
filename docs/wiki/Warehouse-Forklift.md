@@ -372,8 +372,8 @@ overshot the serviced 2-deep rack bay and could mistake a normal rack
 being retrieved. A supposedly clear dock then failed to produce any
 entry/withdrawal maneuver.
 
-The planner now samples the actual 3.68-block forward service envelope,
-maintaining the full 1.8-block cargo width and three-block cargo height,
+The planner now samples the actual 3.75-block forward service envelope,
+with the visible fork tips shortened by four model pixels to match, maintaining the full 1.8-block cargo width and three-block cargo height,
 including checks against all other racks, pallets and physical obstructions.
 Unreachable or obstructed aisle segments still remain invalid. The forklift
 must still keep the mast raised until the checked exit is complete.
