@@ -81,6 +81,7 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
         super.setupAnim(state);
         head.xRot=state.xRot*Mth.DEG_TO_RAD;
         head.yRot=state.yRot*Mth.DEG_TO_RAD;
+        head.zRot=0f;
         float phase=state.walkAnimationPos*.55f;
         // Vanilla can retain a tiny residual limb-swing value even after
         // navigation stops. Zero it out so an idle worker is truly neutral.
@@ -123,12 +124,18 @@ public final class StorageGolemModel extends EntityModel<StorageGolemRenderState
         }else if(state.heldSlots>0&&!state.carryingPallet){
             // A runner cups the real picked-up item between both wrists.
             // The model's right forearm is the attachment anchor.
-            leftArm.xRot=-1.36f;
-            rightArm.xRot=-1.36f;
-            leftForearm.xRot=-.38f;
-            rightForearm.xRot=-.38f;
+            leftArm.xRot=-1.45f;
+            rightArm.xRot=-1.45f;
+            leftForearm.xRot=-.55f;
+            rightForearm.xRot=-.55f;
             leftArm.zRot=-.14f;
             rightArm.zRot=.14f;
+            if(state.heldSlots>=3){
+                // The top stack reaches the golem's sight line. Peer around
+                // it rather than letting the eyes disappear behind cargo.
+                head.yRot+=.42f;
+                head.zRot=.13f;
+            }
         }else if(state.carryingPallet){
             // Four manual crew workers hold the SAME real pallet by hand.
             leftArm.xRot=-1.85f;
