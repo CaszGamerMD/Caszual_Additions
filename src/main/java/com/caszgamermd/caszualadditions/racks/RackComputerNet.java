@@ -124,6 +124,19 @@ public final class RackComputerNet {
     }
     /** Exactly one server-authorized pallet highlight across all viewers.
      * The renderer uses the existing sea-lantern-style emissive rack edges. */
+    /** action 0/1: decrease/increase packers; 2: select a linked OUTPUT PTP;
+     * 3: reset output selection to automatic.
+     */
+    public record PackingControl(BlockPos computer,BlockPos point,int action)
+            implements CustomPacketPayload {
+        public static final Type<PackingControl> TYPE=new Type<>(
+                CaszualAdditions.id("rack_order_packing_control"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,PackingControl> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,PackingControl::computer,
+                        BlockPos.STREAM_CODEC,PackingControl::point,
+                        ByteBufCodecs.INT,PackingControl::action,PackingControl::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
     public record HighlightRequest(BlockPos computer,BlockPos rack)
             implements CustomPacketPayload {
         public static final Type<HighlightRequest> TYPE=new Type<>(
@@ -156,6 +169,7 @@ public final class RackComputerNet {
         PayloadTypeRegistry.clientboundPlay().register(OrderReply.TYPE,OrderReply.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GolemControl.TYPE,GolemControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(PtpControl.TYPE,PtpControl.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(PackingControl.TYPE,PackingControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GolemWork.TYPE,GolemWork.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(DebugControl.TYPE,DebugControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(HighlightRequest.TYPE,HighlightRequest.CODEC);
@@ -172,6 +186,8 @@ public final class RackComputerNet {
                 context.server().execute(()->setGolemSorting(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(PtpControl.TYPE,(payload,context)->
                 context.server().execute(()->controlPtp(context.player(),payload)));
+        ServerPlayNetworking.registerGlobalReceiver(PackingControl.TYPE,(payload,context)->
+                context.server().execute(()->controlPacking(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(GolemWork.TYPE,(payload,context)->
                 context.server().execute(()->requestGolemWork(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(DebugControl.TYPE,(payload,context)->
@@ -223,6 +239,34 @@ public final class RackComputerNet {
                 :"PTP operation blocked: check pallet, Wrap Unit, pending orders or active haul.");
     }
 
+    private static void controlPacking(ServerPlayer player,PackingControl request){
+        ServerLevel level=player.level();
+        BlockPos pos=request.computer();
+        if(!level.hasChunkAt(pos)
+                ||!(level.getBlockEntity(pos) instanceof WarehouseComputerBlockEntity cfg)
+                ||player.distanceToSqr(pos.getX()+.5,pos.getY()+.5,pos.getZ()+.5)>100)
+            return;
+        switch(request.action()){
+            case 0 -> cfg.configurePackers(cfg.orderPackers()-1);
+            case 1 -> cfg.configurePackers(cfg.orderPackers()+1);
+            case 2 -> {
+                // Prevent a malicious packet from choosing a non-warehouse
+                // or INPUT transfer node.
+                boolean valid=false;
+                for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,pos).points())
+                    if(ptp.getBlockPos().equals(request.point())
+                            &&!ptp.input()){valid=true;break;}
+                if(!valid){reply(player,"Select a connected OUTPUT PTP first");return;}
+                cfg.selectOrderOutput(request.point());
+            }
+            case 3 -> cfg.selectOrderOutput(BlockPos.ZERO);
+            default -> {return;}
+        }
+        reply(player,"Order packers: "+cfg.orderPackers()
+                +" | PTP: "+(cfg.orderOutput().equals(BlockPos.ZERO)
+                        ?"AUTO":cfg.orderOutput().toShortString()));
+        answer(player,new Query(pos,"",BlockPos.ZERO));
+    }
     private static void requestHighlight(ServerPlayer player,HighlightRequest request){
         ServerLevel level=player.level();
         BlockPos computer=request.computer();
@@ -438,6 +482,10 @@ public final class RackComputerNet {
         JsonArray highlights=new JsonArray();
         root.addProperty("query",term);
         root.addProperty("warehouseName",WarehouseComputerBlockEntity.name(level,computer));
+        if(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity settings){
+            root.addProperty("orderPackers",settings.orderPackers());
+            root.addProperty("orderOutput",settings.orderOutput().toShortString());
+        }
         JsonArray builderOrders=new JsonArray();
         for(PtpBlockEntity point:WarehouseNetwork.fromComputer(level,computer).points()){
             if(!point.builderReserved())continue;

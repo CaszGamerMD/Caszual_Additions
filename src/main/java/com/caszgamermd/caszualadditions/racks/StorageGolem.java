@@ -203,7 +203,7 @@ public final class StorageGolem extends PathfinderMob {
     private BlockPos magazine=BlockPos.ZERO;
     private ItemStack emptyBox=ItemStack.EMPTY;
     private int packedItemCount;
-    // An order runner has nine REAL cargo slots. Its shulker is packed at
+    // An order picker has three REAL cargo slots. Its shulker is packed at
     // the station, not invisibly inside the worker.
     private boolean stationOrder;
     private boolean palletStackJob;
@@ -212,7 +212,7 @@ public final class StorageGolem extends PathfinderMob {
     private long rackStairDeadline;
     private BlockPos rackStairLast=BlockPos.ZERO;
     private BlockPos orderPoint=BlockPos.ZERO;
-    private NonNullList<ItemStack> orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
+    private NonNullList<ItemStack> orderCargo=NonNullList.withSize(3,ItemStack.EMPTY);
     // Four workers are independently saved and physically navigate both
     // checkpoints; their sealed pallet remains escrowed on the source PTP.
     private boolean haulJob;
@@ -1018,8 +1018,8 @@ public final class StorageGolem extends PathfinderMob {
         stationOrder=true;
         destination=station.immutable();
         orderPoint=ptp.immutable();
-        pickupLimit=Math.clamp(amount,1,9*64);
-        orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
+        pickupLimit=Math.clamp(amount,1,3*64);
+        orderCargo=NonNullList.withSize(3,ItemStack.EMPTY);
         stage=0;
     }
     private List<ItemStack> orderItems(){
@@ -1028,7 +1028,7 @@ public final class StorageGolem extends PathfinderMob {
         return stacks;
     }
     private void dropOrderCargo(ServerLevel level){
-        for(int i=0;i<9;i++){
+        for(int i=0;i<orderCargo.size();i++){
             ItemStack item=orderCargo.get(i);
             if(!item.isEmpty())
                 Containers.dropItemStack(level,getX(),getY(),getZ(),item.copy());
@@ -1149,7 +1149,7 @@ public final class StorageGolem extends PathfinderMob {
             default->"RETURNING TO SHELF";
         };
         if(outputJob)return switch(stage){
-            case 0->stationOrder?"PICKING 9-SLOT ORDER":"PICKING OUTPUT ORDER";
+            case 0->stationOrder?"PICKING 3-SLOT ORDER":"PICKING OUTPUT ORDER";
             case 1->stationOrder?"DELIVERING TO SHULKER STATION":"DELIVERING OUTPUT ORDER";
             case 3->"RETURNING REJECTED ORDER";
             default->"RETURNING TO SHELF";
@@ -1159,10 +1159,14 @@ public final class StorageGolem extends PathfinderMob {
             default->"RETURNING TO SHELF";
         };
     }
+    public boolean activeOrderPacking(){
+        return stationOrder&&outputJob&&stage!=2&&stage!=3;
+    }
+    public BlockPos packingOutput(){return orderPoint;}
     public String carriedDescription(){
         if(holdsPallet())return "WRAPPED PALLET";
         if(stationOrder&&!orderItems().isEmpty())
-            return "ORDER: "+orderItems().size()+"/9 slots";
+            return "ORDER: "+orderItems().size()+"/3 slots";
         if(!cargo.isEmpty())return cargo.getHoverName().getString()
                 +" x"+cargo.getCount();
         return emptyBox.isEmpty()?"EMPTY":"EMPTY SHULKER";
@@ -2370,10 +2374,10 @@ public final class StorageGolem extends PathfinderMob {
                     routeIssue="WAITING FOR ORDER SOURCE / STATION";
                     return;
                 }
-                List<ItemStack> preview=new ArrayList<>(9);
-                List<Integer> slots=new ArrayList<>(9);
+                List<ItemStack> preview=new ArrayList<>(orderCargo.size());
+                List<Integer> slots=new ArrayList<>(orderCargo.size());
                 int collected=0;
-                for(int i=0;i<stock.getContainerSize()&&preview.size()<9
+                for(int i=0;i<stock.getContainerSize()&&preview.size()<orderCargo.size()
                         &&collected<pickupLimit;i++){
                     ItemStack item=stock.getItem(i);
                     if(item.isEmpty()||!net.minecraft.core.registries.BuiltInRegistries.ITEM
@@ -2400,7 +2404,7 @@ public final class StorageGolem extends PathfinderMob {
                     routeIssue="WAITING FOR RACK STOCK";
                     return;
                 }
-                orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
+                orderCargo=NonNullList.withSize(orderCargo.size(),ItemStack.EMPTY);
                 for(int i=0;i<taken.size();i++)orderCargo.set(i,taken.get(i));
                 stage=1;waitTicks=0;return;
             }
@@ -2487,11 +2491,19 @@ public final class StorageGolem extends PathfinderMob {
                 }
                 if(station.accept(delivery,level,ptp)){
                     int count=delivery.stream().mapToInt(ItemStack::getCount).sum();
-                    for(int i=0;i<9;i++)orderCargo.set(i,ItemStack.EMPTY);
+                    for(int i=0;i<orderCargo.size();i++)
+                        orderCargo.set(i,ItemStack.EMPTY);
                     ptp.outputDelivered(outputTicket,count);
                     if(ptp.builderReserved())
                         station.flushBuilderBatch(level,ptp);
                     else station.finishOrder(level,ptp);
+                    // Keep the SAME physical packer working: after
+                    // depositing three carried stacks, reserve its next
+                    // real rack pickup without returning to its shelf.
+                    if(StorageGolemDispatch.continuePacking(
+                            level,this,home,ptp,station)){
+                        waitTicks=0;return;
+                    }
                     stage=2;waitTicks=0;return;
                 }
                 // A busy 3-shulker station is NOT a rejected order.
@@ -2544,7 +2556,7 @@ public final class StorageGolem extends PathfinderMob {
         }
         if(stage==3){
             if(stationOrder){
-                for(int i=0;i<9;i++){
+                for(int i=0;i<orderCargo.size();i++){
                     ItemStack item=orderCargo.get(i);
                     if(item.isEmpty())continue;
                     StorageGolemDispatch.insert(level,source,item);
@@ -2622,7 +2634,7 @@ public final class StorageGolem extends PathfinderMob {
         out.putBoolean("packed_job",packedJob);
         out.putBoolean("station_order",stationOrder);
         out.store("order_ptp",BlockPos.CODEC,orderPoint);
-        for(int i=0;i<9;i++)if(!orderCargo.get(i).isEmpty())
+        for(int i=0;i<orderCargo.size();i++)if(!orderCargo.get(i).isEmpty())
             out.store("order_slot_"+i,ItemStack.CODEC,orderCargo.get(i));
         out.store("magazine",BlockPos.CODEC,magazine);
         out.putInt("packed_item_count",packedItemCount);
@@ -2706,9 +2718,15 @@ public final class StorageGolem extends PathfinderMob {
         packedJob=in.getBooleanOr("packed_job",false);
         stationOrder=in.getBooleanOr("station_order",false);
         orderPoint=in.read("order_ptp",BlockPos.CODEC).orElse(BlockPos.ZERO);
-        orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
-        for(int i=0;i<9;i++)orderCargo.set(i,in.read("order_slot_"+i,
+        // Safely finish any nine-slot cargo from older saves; newly
+        // assigned orders are always restricted to exactly three slots.
+        NonNullList<ItemStack> saved=NonNullList.withSize(9,ItemStack.EMPTY);
+        for(int i=0;i<9;i++)saved.set(i,in.read("order_slot_"+i,
                 ItemStack.CODEC).orElse(ItemStack.EMPTY));
+        int capacity=3;
+        for(int i=3;i<9;i++)if(!saved.get(i).isEmpty()){capacity=9;break;}
+        orderCargo=NonNullList.withSize(capacity,ItemStack.EMPTY);
+        for(int i=0;i<capacity;i++)orderCargo.set(i,saved.get(i));
         magazine=in.read("magazine",BlockPos.CODEC).orElse(BlockPos.ZERO);
         packedItemCount=Math.max(0,in.getIntOr("packed_item_count",0));
         emptyBox=in.read("empty_box",ItemStack.CODEC).orElse(ItemStack.EMPTY);
@@ -2889,7 +2907,10 @@ public final class StorageGolem extends PathfinderMob {
             cancelHaul(server);
             dropCarriedPallet(server);
         }
-        for(int i=0;i<9;i++){
+        // New order pickers carry three stacks, but old saved workers can
+        // still hold nine. Return every actual cargo slot without indexing
+        // past the new three-slot inventory when a player retrieves a Golem.
+        for(int i=0;i<orderCargo.size();i++){
             ItemStack box=orderCargo.get(i);
             if(!box.isEmpty()){
                 player.getInventory().placeItemBackInInventory(box.copy());

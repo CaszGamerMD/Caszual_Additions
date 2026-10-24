@@ -26,15 +26,28 @@ assert "attachedOutput(level)!=requested" in station
 assert "StorageGolemDispatch.insert(level,ptp.getBlockPos(),moving)==1" in station
 assert "takePackedOnBreak()" in station_block
 assert "BlockEntityTicker<T> getTicker" in station_block
-assert "NonNullList.withSize(9,ItemStack.EMPTY)" in golem
+assert "orderCargo=NonNullList.withSize(3,ItemStack.EMPTY)" in golem
+assert "continuePacking(" in golem
+assert "packerSlotFree(" in dispatch
+assert "public int activeOutputReservations()" in ptp
+assert "point.activeOutputReservations()" in dispatch
+assert "if(running>=cfg.orderPackers())return false;" in dispatch
+# Changing the selected PTP cannot steal dispatch from an already reserved
+# Builder shipment; the manual-order selection must remain unchanged.
+assert "if(output==null)output=outputPoint(level,group,terminal);" in dispatch
+assert "if(point.builderReserved()&&point.readyForOutput()" in dispatch
+assert "orderPackers()" in src(j/"WarehouseComputerBlockEntity.java")
 assert "out.store(\"order_slot_\"+i,ItemStack.CODEC" in golem
 assert "in.read(\"order_slot_\"+i" in golem
+assert "for(int i=0;i<orderCargo.size();i++){" in golem
+assert "for(int i=0;i<9;i++){\n            ItemStack box=orderCargo.get(i);" not in golem
+assert "for(int i=3;i<9;i++)if(!saved.get(i).isEmpty())" in golem
 assert "StorageGolemDispatch.insert(level,source,item)" in golem
 assert "station.accept(delivery,level,ptp)" in golem
 assert "station.finishOrder(level,ptp)" in golem
 assert "assignStationOrder" in golem
 assert "station.canAccept(preview,level,output)" in dispatch
-assert "amount<order.remaining()" in dispatch and "preview.size()<9" in dispatch
+assert "amount<order.remaining()" in dispatch and "preview.size()<3" in dispatch
 assert "queueOutputList" in ptp and "outputOrders.addAll(lines)" in ptp
 assert 'new OrderListRequest(computer,rows.toString())' in screen or 'new RackComputerNet.OrderListRequest(' in screen
 assert "orderList.put(selectedItemId,total)" in screen
@@ -63,4 +76,8 @@ assert "flushFinished(level,ptp,true);" in station
 
 assert "StorageGolemReturnPath.walkable(level,p)" in golem
 assert "feetState.getBlock() instanceof RackBlock" in router
-print("PASS: atomic order list, nine-slot runner, three-lane saved shulker station, adapter-only transfer, walking goals")
+print("PASS: atomic order list, three-slot packer, persisted packer count and PTP, full/finished shulkers, adapter-only transfer")
+
+assert "if(ptp.pendingOutputOrders()==0&&!ptp.outputInFlight())" in station
+assert "public record PackingControl(" in net
+assert "configurePackers(" in net
