@@ -16,7 +16,7 @@ public final class StorageGolemRenderState extends LivingEntityRenderState {
     // One real item model held between the worker's wrists. All nine
     // actual inventory slots remain synced independently server-side;
     // rendering never substitutes a fake tray or cardboard proxy.
-    public final ItemStackRenderState heldItem=new ItemStackRenderState();
+    public final ItemStackRenderState[] heldStack={new ItemStackRenderState(),new ItemStackRenderState(),new ItemStackRenderState()};
     public final BlockModelRenderState palletDeck=new BlockModelRenderState();
     public final BlockModelRenderState[] courierBoards={new BlockModelRenderState(),new BlockModelRenderState(),new BlockModelRenderState(),new BlockModelRenderState()};
     public final BlockModelRenderState palletSupport=new BlockModelRenderState();
