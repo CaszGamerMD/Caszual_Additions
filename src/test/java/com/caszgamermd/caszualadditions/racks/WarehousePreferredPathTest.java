@@ -116,4 +116,29 @@ final class WarehousePreferredPathTest {
         assertTrue(legs>=3,"A distant warehouse cannot use an imaginary 84-block jump");
     }
 
+    @Test void choosesReachableDetourOverCloserBlockedServiceTile(){
+        BlockPos from=at(0,64,0),closer=at(4,64,0),further=at(0,64,6);
+        Set<BlockPos> dry=new HashSet<>();
+        for(int z=0;z<=6;z++)dry.add(at(0,64,z));
+        dry.add(closer); // isolated behind an obstacle, cannot actually reach
+        BlockPos chosen=WarehousePreferredPath.cheapestService(
+                from,List.of(closer,further),dry::contains,BlockPos::getY);
+        assertEquals(further,chosen,
+                "Never select an unavailable short-looking path over a valid detour");
+    }
+    @Test void choosesShortestReachableServicePathNotFirstOption(){
+        BlockPos from=at(0,64,0),shortRoute=at(0,64,3),longRoute=at(6,64,0);
+        Set<BlockPos> dry=new HashSet<>();
+        for(int x=0;x<=6;x++)dry.add(at(x,64,0));
+        for(int z=0;z<=3;z++)dry.add(at(0,64,z));
+        assertEquals(shortRoute,WarehousePreferredPath.cheapestService(
+                from,List.of(longRoute,shortRoute),dry::contains,BlockPos::getY));
+    }
+    @Test void avoidsTwoBlockJumpForWarehouseServiceSelection(){
+        BlockPos from=at(0,64,0),high=at(1,66,0),safe=at(0,64,2);
+        Set<BlockPos> dry=Set.of(from,high,at(0,64,1),safe);
+        assertEquals(safe,WarehousePreferredPath.cheapestService(
+                from,List.of(high,safe),dry::contains,BlockPos::getY));
+    }
+
 }

@@ -29,8 +29,8 @@ assert "new BlockPos(" in source("RackPickupPlan.java")
 # Output picking now validates the exact service cell with the weighted,
 # terrain-aware path used by the real worker. Keep the rack's safe final
 # access requirement: a partial route is NEVER an acceptable pickup.
-assert "WarehousePreferredPath.leg(" in golem
-assert "route.getLast().equals(cell)" in golem
+assert "WarehousePreferredPath.cheapestService(" in golem
+assert "openWalkway(level,cell)" in golem
 assert "StorageGolemReturnPath." in golem
 assert "public boolean liftToCarrier(StorageGolem leader)" in rack
 assert "PalletData.applyFilterSettings(pallet,this)" in rack
