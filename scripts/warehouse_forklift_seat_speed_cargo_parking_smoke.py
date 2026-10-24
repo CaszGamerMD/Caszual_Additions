@@ -14,12 +14,13 @@ assert ".add(Attributes.MOVEMENT_SPEED,DRIVE_SPEED)" in lift
 assert "List<Vec3> raw=ForkliftAislePath.route(world,this,goal);" in lift
 assert "aisleRoute=ForkliftAislePath.smooth(world,this,raw," in lift
 assert "ForkliftAislePath.canStand(world,this,next)" in lift
-assert "boolean liftingAtSource=job==2&&retrieving;" in lift
-assert "boolean liftingAtDestination=job==3&&!groundDestination&&animation>0;" in lift
-assert 'status="LOWERING LOADED PALLET FOR TRAVEL"' in lift
+assert "boolean liftingAtSource=retrieving&&sourceRackStage>=1" in lift
+assert "boolean liftingAtDestination=!groundDestination" in lift
+assert 'status="LOWERING PALLET AFTER COMPLETE RACK WITHDRAWAL"' in lift
 assert 'status=groundDestination?"LOWERING PALLET ONTO GROUND"' in lift
-assert ':"RAISING PALLET TO RACK HEIGHT"' in lift
-assert "if(animation==0&&!drive(world,landing.position()))return;" in lift
+assert ':"PLACING PALLET INTO RACK AT PRESET MAST HEIGHT"' in lift
+assert "if(!enterRackSafely(world,rack,false))return;" in lift
+assert "if(!exitRackSafely(world,rack,false))return;" in lift
 assert "entityData.set(CARGO_CRATES,Math.min(27,visible));" in lift
 assert "state.visibleCargo=deck.isEmpty()?0:vehicle.displayedCargoCrates();" in view
 assert "state.hasPallet=!deck.isEmpty();" in view
