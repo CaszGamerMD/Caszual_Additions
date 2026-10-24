@@ -296,9 +296,19 @@ public final class PtpBlockEntity extends BlockEntity
     public boolean readyForOutput(){return !input&&!sealed&&hasPallet();}
     /** Explicit workstation controls refuse to interrupt live deliveries or
      * invalidate a wrapped pallet's four-worker escrow. */
+    /** Shared safety rule for the in-world empty-hand control AND the
+     * Rack Computer. Existing Builder/courier reservations must never move
+     * silently to the opposite direction.
+     */
+    public String modeChangeProblem(){
+        if(builderReserved())return "A Builder order is reserved on this PTP";
+        if(hauling())return "A pallet hauling crew is using this PTP";
+        if(outputInFlight())return "Warehouse pickers still have reserved output items";
+        if(pendingOutputOrders()>0)return "Finish or cancel queued output orders first";
+        return "";
+    }
     public boolean changeModeFromComputer(){
-        expireTicket();
-        if(builderReserved()||hauling()||outputInFlight()||pendingOutputOrders()>0)return false;
+        if(!modeChangeProblem().isEmpty())return false;
         setInput(!input);
         return true;
     }
@@ -411,17 +421,39 @@ public final class PtpBlockEntity extends BlockEntity
             if(level.getBlockState(PtpBlock.cell(root,p)).is(RackContent.PTP_WRAP))return true;
         return false;
     }
-    public boolean canInstallPallet(){
-        if(builderReserved()||hasPallet()||level==null||hauling()||pendingOutputOrders()>0)
-            return false;
+    /** An EMPTY pallet is only a low platform. Its taller cargo is
+     * loaded later; requiring three empty levels across a whole 3x3 area
+     * made an otherwise usable PTP impossible to initialize in warehouses
+     * with a two- or three-block ceiling. Diagnose the real offending cell
+     * instead of blaming all failures on nonexistent overhead blocks.
+     */
+    public String palletInstallProblem(){
+        if(level==null)return "PTP world not loaded";
+        if(builderReserved())return "PTP already reserved for a Builder order";
+        if(hasPallet())return "A pallet is already installed";
+        if(hauling())return "PTP is currently hauling a pallet";
+        if(outputInFlight())return "Warehouse Golems still hold output reservations";
+        if(pendingOutputOrders()>0)return "PTP has pending output orders";
         BlockPos root=worldPosition.offset(-1,0,-1);
-        for(int y=1;y<=3;y++)for(int z=0;z<3;z++)for(int x=0;x<3;x++){
-            BlockPos p=root.offset(x,y,z);
-            if(level.isOutsideBuildHeight(p)||!level.hasChunkAt(p)
-                    ||!level.getBlockState(p).canBeReplaced())return false;
+        // Only the FIRST layer above the 3x3 floor is necessary for an
+        // unloaded pallet and safe worker access. Do not demand cargo space
+        // that does not exist yet.
+        for(int z=0;z<3;z++)for(int x=0;x<3;x++){
+            BlockPos p=root.offset(x,1,z);
+            if(level.isOutsideBuildHeight(p))
+                return "PTP too close to the world height limit at "+p.toShortString();
+            if(!level.hasChunkAt(p))
+                return "PTP overhead chunk not loaded at "+p.toShortString();
+            BlockState obstruction=level.getBlockState(p);
+            if(!obstruction.canBeReplaced())
+                return "Block above PTP at "+p.toShortString()+": "
+                        +net.minecraft.core.registries.BuiltInRegistries.BLOCK
+                                .getKey(obstruction.getBlock())
+                        +". Clear one block above the 3x3 platform";
         }
-        return true;
+        return "";
     }
+    public boolean canInstallPallet(){return palletInstallProblem().isEmpty();}
     public boolean installPallet(ItemStack stack){
         if(!canInstallPallet())return false;
         pallet=stack.copyWithCount(1);
