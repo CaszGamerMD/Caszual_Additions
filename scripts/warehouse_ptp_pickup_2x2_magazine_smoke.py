@@ -16,7 +16,7 @@ renderstate=(client/"racks/StackOfPalletsRenderState.java").read_text()
 registry=(client/"CaszualAdditionsClient.java").read_text()
 assert "public boolean canRemoveEmptyPallet()" in storage
 for clause in ("hasPallet()&&!sealed&&emptyCargo()&&!hauling()",
-               "activeTicket==0&&pendingOutputOrders()==0",
+               "!outputInFlight()&&pendingOutputOrders()==0",
                "return canRemoveEmptyPallet()?dropPallet():ItemStack.EMPTY;"):
     assert clause in storage
 assert "retrieveEmptyPallet(ptp,player)" in ptp
