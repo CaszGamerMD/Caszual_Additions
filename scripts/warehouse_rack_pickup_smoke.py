@@ -26,7 +26,12 @@ assert "RackPickupPlan.find(level,rack)" in crew
 assert "rack.startPull(owner,rackFloorY)" in golem
 assert "rack.pullProgress()>=RackPickupPlan.PULL_TICKS" in golem
 assert "new BlockPos(" in source("RackPickupPlan.java")
-assert "StorageGolemReturnPath.steps(" in golem
+# Output picking now validates the exact service cell with the weighted,
+# terrain-aware path used by the real worker. Keep the rack's safe final
+# access requirement: a partial route is NEVER an acceptable pickup.
+assert "WarehousePreferredPath.leg(" in golem
+assert "route.getLast().equals(cell)" in golem
+assert "StorageGolemReturnPath." in golem
 assert "public boolean liftToCarrier(StorageGolem leader)" in rack
 assert "PalletData.applyFilterSettings(pallet,this)" in rack
 assert "stock.set(i,items.get(i).copy())" in rack
