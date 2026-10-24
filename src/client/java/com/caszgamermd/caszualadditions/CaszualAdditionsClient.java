@@ -54,6 +54,7 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         CaszUtilsClient.initialize();
         HeadVendingClient.initialize();
         RackComputerClient.initialize();
+        com.caszgamermd.caszualadditions.racks.ScannerControlClient.initialize();
         IndustrialPaintClient.initialize();
         ModelLayerRegistry.registerModelLayer(
                 com.caszgamermd.caszualadditions.antiwarden.WoolGearLayer.LAYER,
