@@ -34,6 +34,7 @@ public final class PtpBlockEntity extends BlockEntity
     private int filterMode,filterScope;
     private String filterTarget="",filterSignature="";
     private boolean input=true,sealed;
+    private boolean returnBuilderPallet; // Persistent physical cleanup job.
     // Orders belong to the output endpoint, not a remote/global virtual hub.
     // A persisted reservation prevents multiple walking workers from
     // withdrawing more than the head order requests.
@@ -43,8 +44,59 @@ public final class PtpBlockEntity extends BlockEntity
     // Reserved, single-consumer Builder output lane. UUID and destination are
     // stored at the actual pallet controller, not in a global temporary map.
     private java.util.UUID builderRequest, builderOwner;
+    // Setup reservation is DIFFERENT from a live Builder shipment: it
+    // still allows the real pallet to be installed by a Storage Golem.
+    private java.util.UUID builderPreparing,palletSetupWorker;
+    private long palletSetupDeadline;
     private BlockPos builderTable=BlockPos.ZERO, builderComputer=BlockPos.ZERO;
     public boolean builderReserved(){return builderRequest!=null;}
+    public boolean preparingForBuilder(){return builderPreparing!=null;}
+    public boolean preparationMatches(java.util.UUID request){
+        return request!=null&&request.equals(builderPreparing);
+    }
+    /** The Computer exclusively owns the order manifest until the PTP has
+     * a pallet. Only reserve a vacant PTP with proper overhead clearance.
+     * Set OUTPUT mode immediately so the logistics crew sees the right lane.
+     */
+    public boolean prepareBuilder(java.util.UUID request){
+        if(request==null||builderReserved()||hauling()||outputInFlight()
+                ||pendingOutputOrders()>0||!emptyCargo()||sealed)return false;
+        if(preparingForBuilder())return preparationMatches(request);
+        if(!hasPallet()&&!palletInstallProblem().isEmpty())return false;
+        builderPreparing=request;
+        input=false;
+        setChanged();return true;
+    }
+    public boolean reservePalletSetup(java.util.UUID request,java.util.UUID worker){
+        if(!preparationMatches(request)||worker==null||hasPallet()||level==null)
+            return false;
+        if(palletSetupWorker!=null&&level.getGameTime()<palletSetupDeadline)
+            return palletSetupWorker.equals(worker);
+        palletSetupWorker=worker;palletSetupDeadline=level.getGameTime()+2400;
+        setChanged();return true;
+    }
+    public boolean palletSetupMatches(java.util.UUID request,java.util.UUID worker){
+        return preparationMatches(request)&&worker!=null
+                &&worker.equals(palletSetupWorker);
+    }
+    public void renewPalletSetup(java.util.UUID request,java.util.UUID worker){
+        if(palletSetupMatches(request,worker)&&level!=null)
+            palletSetupDeadline=level.getGameTime()+2400;
+    }
+    public void finishPalletSetup(java.util.UUID request,java.util.UUID worker){
+        if(palletSetupMatches(request,worker)){
+            palletSetupWorker=null;palletSetupDeadline=0;setChanged();
+        }
+    }
+    public boolean cancelBuilderPreparation(java.util.UUID request){
+        if(!preparationMatches(request)||builderReserved()||outputInFlight()
+                ||hauling())return false;
+        builderPreparing=null;
+        // An in-flight delivery worker must return its real pallet
+        // physically to the dispenser if no longer reserved here.
+        palletSetupWorker=null;palletSetupDeadline=0;
+        setChanged();return true;
+    }
     public String builderOwnerName(){
         return builderOwner==null?"":builderOwner.toString().substring(0,8);
     }
@@ -82,11 +134,13 @@ public final class PtpBlockEntity extends BlockEntity
             BlockPos table,BlockPos computer,java.util.List<OutputOrder> lines){
         expireTicket();
         if(builderReserved()||request==null||owner==null||table==null
-                ||computer==null||!readyForOutput()||!emptyCargo()
+                ||computer==null||(preparingForBuilder()
+                    &&!preparationMatches(request))||!readyForOutput()||!emptyCargo()
                 ||!outputOrders.isEmpty()||outputInFlight()||hauling()
                 ||lines.isEmpty()||lines.size()>MAX_OUTPUT_ORDERS)return false;
         for(OutputOrder line:lines)if(line.itemId()==null||line.itemId().isBlank()
                 ||line.remaining()<1||line.remaining()>4096)return false;
+        builderPreparing=null;palletSetupWorker=null;palletSetupDeadline=0;
         builderRequest=request;builderOwner=owner;
         builderTable=table.immutable();builderComputer=computer.immutable();
         outputOrders.addAll(lines);
@@ -101,6 +155,7 @@ public final class PtpBlockEntity extends BlockEntity
                 ||!emptyCargo()||hauling())return false;
         builderRequest=null;builderOwner=null;
         builderTable=BlockPos.ZERO;builderComputer=BlockPos.ZERO;
+        input=true;returnBuilderPallet=hasPallet();
         setChanged();return true;
     }
     public boolean outputInFlight(){
@@ -307,6 +362,10 @@ public final class PtpBlockEntity extends BlockEntity
     public boolean sealed(){return sealed;}
     public void setSealed(boolean v){if(hasPallet()&&!hauling()){sealed=v;setChanged();}}
     public boolean hasPallet(){return !pallet.isEmpty();}
+    public boolean needsBuilderPalletReturn(){
+        return returnBuilderPallet&&!builderReserved()&&!preparingForBuilder()
+                &&hasPallet()&&emptyCargo()&&!outputInFlight()&&!hauling();
+    }
     public boolean readyForOutput(){return !input&&!sealed&&hasPallet();}
     /** Explicit workstation controls refuse to interrupt live deliveries or
      * invalidate a wrapped pallet's four-worker escrow. */
@@ -316,6 +375,7 @@ public final class PtpBlockEntity extends BlockEntity
      */
     public String modeChangeProblem(){
         if(builderReserved())return "A Builder order is reserved on this PTP";
+        if(preparingForBuilder())return "Warehouse Golem preparing OUTPUT pallet for Builder order";
         if(hauling())return "A pallet hauling crew is using this PTP";
         if(outputInFlight())return "Warehouse pickers still have reserved output items";
         if(pendingOutputOrders()>0)return "Finish or cancel queued output orders first";
@@ -489,6 +549,7 @@ public final class PtpBlockEntity extends BlockEntity
         if(builderReserved()||!hasPallet()||hauling())return ItemStack.EMPTY;
         ItemStack result=PalletData.applyFilterSettings(pallet,this);
         pallet=ItemStack.EMPTY;filterUpgrade=ItemStack.EMPTY;
+        returnBuilderPallet=false;
         filterTarget="";filterSignature="";sealed=false;
         setChanged();return result;
     }
@@ -553,6 +614,13 @@ public final class PtpBlockEntity extends BlockEntity
         out.putInt("filter_mode",filterMode);
         out.putInt("filter_scope",filterScope);
         out.putBoolean("input",input);out.putBoolean("sealed",sealed);
+        out.putBoolean("return_builder_pallet",returnBuilderPallet);
+        if(builderPreparing!=null)
+            out.putString("builder_preparing",builderPreparing.toString());
+        if(palletSetupWorker!=null){
+            out.putString("pallet_setup_worker",palletSetupWorker.toString());
+            out.putLong("pallet_setup_deadline",palletSetupDeadline);
+        }
         if(builderRequest!=null){
             out.putString("builder_request",builderRequest.toString());
             out.putString("builder_owner",builderOwner.toString());
@@ -601,6 +669,16 @@ public final class PtpBlockEntity extends BlockEntity
         filterScope=Math.clamp(in.getIntOr("filter_scope",0),0,3);
         input=in.getBooleanOr("input",true);
         sealed=in.getBooleanOr("sealed",false)&&hasPallet();
+        returnBuilderPallet=in.getBooleanOr("return_builder_pallet",false)&&hasPallet();
+        builderPreparing=palletSetupWorker=null;palletSetupDeadline=0;
+        try{
+            builderPreparing=java.util.UUID.fromString(in.getStringOr("builder_preparing",""));
+        }catch(IllegalArgumentException ignored){}
+        try{
+            palletSetupWorker=java.util.UUID.fromString(in.getStringOr("pallet_setup_worker",""));
+            palletSetupDeadline=in.getLongOr("pallet_setup_deadline",0L);
+        }catch(IllegalArgumentException ignored){}
+        if(builderPreparing==null)palletSetupWorker=null;
         builderRequest=builderOwner=null;
         try{
             builderRequest=java.util.UUID.fromString(in.getStringOr("builder_request",""));

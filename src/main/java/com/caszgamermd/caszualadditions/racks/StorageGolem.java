@@ -207,6 +207,10 @@ public final class StorageGolem extends PathfinderMob {
     // the station, not invisibly inside the worker.
     private boolean stationOrder;
     private boolean palletStackJob;
+    // A real Storage Golem physically carries a dispenser pallet to an
+    // empty Builder OUTPUT PTP. Both its held item and mission UUID save.
+    private boolean builderPalletJob;
+    private UUID builderPalletTicket;
     private boolean rackStairMover;
     private boolean rackStairRequestChecked,rackStairRequestActive;
     private long rackStairDeadline;
@@ -1000,6 +1004,69 @@ public final class StorageGolem extends PathfinderMob {
         this.packedJob=false;this.magazine=BlockPos.ZERO;
         this.emptyBox=ItemStack.EMPTY;this.packedItemCount=0;
     }
+    public void assignBuilderPallet(BlockPos shelf,BlockPos dispenser,
+            BlockPos point,UUID request){
+        assign(shelf,dispenser,point,new ItemStack(RackContent.STACK_OF_PALLETS));
+        builderPalletJob=true;builderPalletTicket=request;
+        palletStackJob=false;
+        cargo=ItemStack.EMPTY;stage=0;
+    }
+    public boolean builderPalletDeliveryTo(BlockPos point){
+        return builderPalletJob&&stage!=2&&destination.equals(point);
+    }
+    private void tickBuilderPallet(ServerLevel level){
+        PtpBlockEntity ptp=level.hasChunkAt(destination)
+                &&level.getBlockEntity(destination) instanceof PtpBlockEntity p?p:null;
+        if(ptp!=null&&builderPalletTicket!=null)
+            ptp.renewPalletSetup(builderPalletTicket,getUUID());
+        if(stage==0&&(ptp==null||!ptp.preparationMatches(builderPalletTicket)
+                ||ptp.hasPallet())){
+            if(ptp!=null)ptp.finishPalletSetup(builderPalletTicket,getUUID());
+            stage=2;return;
+        }
+        if(stage==1&&(ptp==null||!ptp.preparationMatches(builderPalletTicket)
+                ||ptp.hasPallet()))stage=3;
+        BlockPos goal=stage==0||stage==3?source:destination;
+        if(!level.hasChunkAt(goal))return;
+        BlockPos tile=approach(level,goal);
+        if(!level.hasChunkAt(tile))return;
+        if(!closeTo(tile)){
+            walkTo(level,tile,1.10);
+            return;
+        }
+        getNavigation().stop();
+        if(stage==0){
+            if(!(level.getBlockEntity(source)
+                    instanceof StackOfPalletsBlockEntity dispenser)){
+                routeIssue="WAITING FOR PALLET DISPENSER";
+                return;
+            }
+            ItemStack picked=dispenser.take();
+            if(picked.isEmpty()){
+                routeIssue="PALLET DISPENSER EMPTY";return;
+            }
+            cargo=picked.copyWithCount(1);
+            stage=1;routeIssue="";
+        }else if(stage==1){
+            if(ptp==null||!ptp.preparationMatches(builderPalletTicket)){
+                stage=3;return;
+            }
+            if(ptp.installPallet(cargo.copyWithCount(1))){
+                cargo=ItemStack.EMPTY;
+                ptp.finishPalletSetup(builderPalletTicket,getUUID());
+                stage=2;routeIssue="";
+            }else routeIssue="PTP PALLET BLOCKED: "+ptp.palletInstallProblem();
+        }else if(stage==3){
+            // Cancelled/superseded before delivery: bring the ACTUAL pallet
+            // back to its dispenser. Do not drop or duplicate on reroute.
+            if(cargo.isEmpty()){stage=2;return;}
+            if(level.getBlockEntity(source)
+                    instanceof StackOfPalletsBlockEntity dispenser
+                    &&dispenser.put(cargo.copyWithCount(1))){
+                cargo=ItemStack.EMPTY;stage=2;routeIssue="";
+            }else routeIssue="PALLET DISPENSER FULL; WORKER RETAINS PALLET";
+        }
+    }
     public void assignPalletStack(BlockPos shelf,BlockPos sourcePtp,BlockPos rack){
         assign(shelf,sourcePtp,rack,new ItemStack(RackContent.STACK_OF_PALLETS));
         palletStackJob=true;
@@ -1130,6 +1197,10 @@ public final class StorageGolem extends PathfinderMob {
     public String currentWork(){
         if(remotePickup)return "WALKING EMPTY HANDED TO WRAPPED REMOTE PALLET";
         if(remoteCourier)return remoteCourierPhase==0?"PUSHING UNWRAPPED EMPTY PALLET":"JOINING LOADED THREE-GOLEM TEAM";
+        if(builderPalletJob)return stage==0?"PICKING PALLET FROM DISPENSER":
+                stage==1?"DELIVERING PALLET TO BUILDER OUTPUT PTP":
+                stage==3?"RETURNING CANCELLED PALLET TO DISPENSER":
+                        "RETURNING TO SHELF";
         if(palletStackJob)return stage==0?"COLLECTING EMPTY PALLET":stage==1?"STACKING EMPTY PALLET":"RETURNING TO SHELF";
         if(playerHaul)return switch(stage){
             case 0->"LIFTING WRAPPED PALLET";
@@ -2254,7 +2325,8 @@ public final class StorageGolem extends PathfinderMob {
         if(!(level() instanceof ServerLevel level))return;
         // An assigned forklift operator ignores ordinary warehouse recall:
         // only the controller's explicit dismiss command sends it home.
-        if(!remoteCourier&&!remotePickup&&!nodePush&&!forkliftDriver&&!forkliftEscort)
+        if(!remoteCourier&&!remotePickup&&!nodePush&&!forkliftDriver
+                &&!forkliftEscort&&!builderPalletJob)
             checkPendingRecall(level);
         // Status strings from task transitions should not leak into
         // player-visible nameplates for 10 ticks when debug is disabled.
@@ -2298,6 +2370,7 @@ public final class StorageGolem extends PathfinderMob {
             returnToShelf(level);
             return;
         }
+        if(builderPalletJob){tickBuilderPallet(level);return;}
         if(palletStackJob){tickPalletStackJob(level);return;}
         if(haulJob){
             if(playerHaul)tickPlayerHaul(level);
@@ -2618,6 +2691,9 @@ public final class StorageGolem extends PathfinderMob {
         out.putInt("stage",stage);out.putString("item",itemId);out.putInt("wait",waitTicks);
         out.putBoolean("output_job",outputJob);
         out.putBoolean("pallet_stack_job",palletStackJob);
+        out.putBoolean("builder_pallet_job",builderPalletJob);
+        if(builderPalletTicket!=null)
+            out.putString("builder_pallet_ticket",builderPalletTicket.toString());
         out.putBoolean("forklift_escort",forkliftEscort);
         if(forkliftEscortOwner!=null)
             out.putString("forklift_escort_owner",forkliftEscortOwner.toString());
@@ -2696,6 +2772,10 @@ public final class StorageGolem extends PathfinderMob {
         waitTicks=Math.max(0,in.getIntOr("wait",0));
         outputJob=in.getBooleanOr("output_job",false);
         palletStackJob=in.getBooleanOr("pallet_stack_job",false);
+        builderPalletJob=in.getBooleanOr("builder_pallet_job",false);
+        try{builderPalletTicket=UUID.fromString(in.getStringOr("builder_pallet_ticket",""));}
+        catch(IllegalArgumentException ex){builderPalletTicket=null;}
+        if(builderPalletTicket==null)builderPalletJob=false;
         forkliftEscort=in.getBooleanOr("forklift_escort",false);
         try{
             String owner=in.getStringOr("forklift_escort_owner","");
