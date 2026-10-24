@@ -48,12 +48,16 @@ public final class ForkliftRackManeuver {
         double sx=fz,sz=-fx;
         int height=Math.max(floorY,palletY);
         for(double forward=1.65;forward<=4.12;forward+=.19){
-            for(double across:new double[]{-.66,-.44,0,.44,.66}){
+            // Full 1.8-wide wrapped pallet, not just the fork metal.
+            // Center + opposite side rails are sampled across its width.
+            for(double across:new double[]{-.92,-.70,-.46,-.22,0,
+                    .22,.46,.70,.92}){
                 double x=center.x+fx*forward+sx*across;
                 double z=center.z+fz*forward+sz*across;
-                // Cross-section of both tines AND a wrapped cargo base,
-                // including a second sample one block above the pallet.
-                for(int dy=0;dy<=1;dy++){
+                // Cross-section of both tines plus the complete three-block
+                // high wrapped cargo envelope; loaded crates must not sweep
+                // through a neighboring rack while the truck curves away.
+                for(int dy=0;dy<=2;dy++){
                     BlockPos p=BlockPos.containing(x,height+dy+.15,z);
                     if(!world.hasChunkAt(p))return false;
                     var state=world.getBlockState(p);
