@@ -51,6 +51,60 @@ public final class StorageGolemDispatch {
             if(!point.input()&&!point.builderReserved())return point;
         return null;
     }
+    /** Physically carry one pallet from the existing Stack of Pallets
+     * (displayed as "Pallet Dispenser") onto the prepared empty PTP.
+     * This is explicit Builder work even when automatic INPUT sorting is off.
+     * One persisted UUID lease at the PTP prevents double dispatch.
+     */
+    public static boolean tryDispatchBuilderPallet(ServerLevel level,
+            StorageGolemShelfEntity shelf){
+        if(shelf.docked()<=0)return false;
+        List<StorageGolemShelfEntity> group=StorageGolemShelfEntity.linked(
+                level,shelf.getBlockPos());
+        if(group.isEmpty())return false;
+        BlockPos terminal=computer(level,group);
+        if(terminal==null)return false;
+        var network=WarehouseNetwork.fromComputer(level,terminal);
+        BlockPos doorway=StorageGolemShelfDoor.exit(level,shelf);
+        if(doorway==null)return false;
+        for(PtpBlockEntity ptp:network.points()){
+            if(!ptp.preparingForBuilder()||ptp.hasPallet()
+                    ||!ptp.emptyCargo()||!ptp.canInstallPallet())continue;
+            var config=level.getBlockEntity(terminal)
+                    instanceof WarehouseComputerBlockEntity c?c:null;
+            if(config==null)continue;
+            WarehouseComputerBlockEntity.PendingBuilder order=null;
+            for(var pending:config.waitingBuilders())
+                if(ptp.preparationMatches(pending.request())){order=pending;break;}
+            if(order==null)continue;
+            for(StackOfPalletsBlockEntity dispenser:network.magazines()){
+                if(dispenser.count()==0)continue;
+                StorageGolem worker=RackContent.STORAGE_GOLEM_TYPE.create(level,
+                        net.minecraft.world.entity.EntitySpawnReason.EVENT);
+                if(worker==null)return false;
+                if(!ptp.reservePalletSetup(order.request(),worker.getUUID()))
+                    continue;
+                worker.assignBuilderPallet(shelf.getBlockPos(),
+                        dispenser.getBlockPos(),ptp.getBlockPos(),order.request());
+                StorageGolemShelfDoor.emerge(worker,doorway,
+                        StorageGolemShelfDoor.front(shelf));
+                String name=shelf.takeNamed();
+                if(name==null){
+                    ptp.finishPalletSetup(order.request(),worker.getUUID());
+                    return false;
+                }
+                worker.setGolemName(name);
+                if(!level.addFreshEntity(worker)){
+                    shelf.addNamed(name);
+                    ptp.finishPalletSetup(order.request(),worker.getUUID());
+                    return false;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Builder and manually queued output orders are explicit work, not
      * automatic INPUT sorting. Recalling Golems disables auto sorting, but
      * a later Builder order must still dispatch from a docked shelf.
@@ -361,6 +415,7 @@ public final class StorageGolemDispatch {
         // Real outbound orders take priority; input sorting continues whenever
         // there is no dispatchable output item or output space.
         if(dispatchOutput(level,shelf,group,terminal))return;
+        if(tryDispatchBuilderPallet(level,shelf))return;
         // Empty installed INPUT pallets feed Stack of Pallets magazines.
         if(dispatchPalletMagazine(level,shelf,terminal))return;
         PtpBlockEntity ptp=inputPoint(level,group,terminal);
