@@ -95,4 +95,25 @@ final class WarehousePreferredPathTest {
                 from,to,cliff::contains,BlockPos.ZERO),
                 "Two-block wall must not become a jump shortcut");
     }
+    @Test void distantPackingStationIsReachedThroughRealPartialWalkingLegs(){
+        BlockPos current=at(0,64,0),target=at(84,64,0);
+        Set<BlockPos> floor=new HashSet<>();
+        for(int x=0;x<=84;x++)floor.add(at(x,64,0));
+        int legs=0;
+        while(!current.equals(target)&&legs<8){
+            List<BlockPos> path=WarehousePreferredPath.leg(
+                    current,target,floor::contains,BlockPos.ZERO);
+            assertNotNull(path,"Each 36-block warehouse leg must remain reachable");
+            assertFalse(path.isEmpty());
+            checkedSteps(current,path,floor);
+            BlockPos next=path.getLast();
+            assertTrue(next.getX()>current.getX(),
+                    "A partial path may not stall on the same cell");
+            current=next;
+            legs++;
+        }
+        assertEquals(target,current,"Physical golem should finish at its service aisle");
+        assertTrue(legs>=3,"A distant warehouse cannot use an imaginary 84-block jump");
+    }
+
 }
