@@ -235,8 +235,14 @@ public final class RackComputerNet {
             default->false;
         };
         reply(player,success
-                ?"PTP updated at "+target.getBlockPos().toShortString()
-                :"PTP operation blocked: check pallet, Wrap Unit, pending orders or active haul.");
+                ?"PTP "+target.getBlockPos().toShortString()+" is now "
+                    +(target.input()?"INPUT":"OUTPUT")
+                :control.action()==0
+                    ?"PTP mode locked: "+target.modeChangeProblem()
+                    :"Cannot wrap/unwrap: check pallet, Wrap Unit and active work.");
+        // Refresh the Rack Computer immediately so its MODE and packing
+        // assignment buttons don't keep showing stale INPUT/OUTPUT state.
+        answer(player,new Query(computer,"",BlockPos.ZERO));
     }
 
     private static void controlPacking(ServerPlayer player,PackingControl request){
@@ -532,6 +538,7 @@ public final class RackComputerNet {
             cell.addProperty("hopper",point.hasAdapter());
             cell.addProperty("orders",point.pendingOutputOrders());
             cell.addProperty("hauling",point.hauling());
+            cell.addProperty("modeLocked",!point.modeChangeProblem().isEmpty());
             transferPoints.add(cell);
         }
         root.add("ptps",transferPoints);
