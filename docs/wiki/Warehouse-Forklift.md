@@ -298,3 +298,12 @@ end and through a 90-degree turn. Check a pickup, a placement and a
 rack-to-rack transfer, including server restart halfway through withdrawal.
 Some layouts cannot safely accommodate a forklift's real fork length and
 may need a free turn direction or an open aisle end.
+
+**Recall during a raised-rack operation:** A normal scanner/controller
+recall is queued while the forks are inserted or withdrawing. The current
+transfer finishes, its tines back out on the checked arc and the carriage
+lowers only after it is safely outside. The forklift then returns to its
+saved parking bay and dismisses its Golem driver. This avoids the previous
+unsafe instant switch to the parking state. If the aisle is genuinely
+blocked, resolve the obstruction; a normal recall cannot skip physical
+withdrawal. Emergency dismount remains a separate deliberate override.
