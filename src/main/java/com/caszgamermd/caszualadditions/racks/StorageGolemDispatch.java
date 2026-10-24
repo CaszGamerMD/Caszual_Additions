@@ -90,10 +90,10 @@ public final class StorageGolemDispatch {
             BlockPos home,PtpBlockEntity output,ShulkerTankEntity station){
         if(output==null||station==null||output.nextOutputOrder()==null)return false;
         PtpBlockEntity.OutputOrder order=output.nextOutputOrder();
-        for(RackBlockEntity rack:RackNetwork.fromComputer(level,
-                output.builderReserved()?output.builderComputerPos()
-                        :WarehouseConnections.computerForShelves(level,
-                                StorageGolemShelfEntity.linked(level,home)))){
+        BlockPos computer=WarehouseConnections.computerForShelves(level,
+                StorageGolemShelfEntity.linked(level,home));
+        if(computer==null)return false;
+        for(RackBlockEntity rack:RackNetwork.fromComputer(level,computer)){
             if(!rack.hasPallet()||rack.isEmpty()
                     ||!WarehouseSortingReach.accessible(level,rack))continue;
             List<ItemStack> preview=new java.util.ArrayList<>(3);
