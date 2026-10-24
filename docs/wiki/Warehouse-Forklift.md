@@ -239,3 +239,26 @@ clearance, forklift inventory, docking geometry, parking or driver rescue.
 by a 90-degree turn, watch from third-person side and rear views, and
 verify the golem stays on the seat while the carriage and roof remain free
 of visual flicker.
+
+
+## Stable-segment motor update
+
+The forklift now generates **a fixed list of safe route segments** when
+a warehouse job begins. It follows each segment completely before turning
+toward the next one. The route is calculated from the same A* aisle path as
+before, and each omitted intermediate point is checked with the entire
+vehicle's collision box, so corners and three-block aisles remain protected.
+
+It no longer sends a conflicting zero-speed instruction to vanilla mob
+MoveControl every driving tick. Motor acceleration reaches the existing
+0.20 blocks/tick limit over four driving ticks on a clear straight road.
+True blockages can still cause a controlled stop and route recalculation.
+
+**Measured-speed diagnostics:** Right-click the forklift with an empty hand
+(without sneaking). The returned text contains the actual measured
+blocks/second over the last 20 server ticks, the current route segment, and
+the current heading error. For example, a clear aisle should approach
+`measured 4.0 blocks/s` at 20 TPS. A server running below 20 TPS will
+appear slower to the player even if the per-tick motion cap is reached.
+If movement is still poor, report this exact message and whether the aisle
+is straight, near a rack corner, or near the final docking position.
