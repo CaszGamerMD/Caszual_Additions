@@ -230,6 +230,26 @@ public final class BuilderWarehouseFulfillment {
                 lines.size(),0);
     }
 
+    /** Progress the computer-owned queue on the warehouse side independently
+     * of Builder entity ticks and the online player. Shelf ticks drive this
+     * only once per 40 server ticks and only through the connected network.
+     */
+    public static void progressWaiting(ServerLevel level,BlockPos computer){
+        if(!valid(level,computer)
+                ||!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity cfg)
+                ||cfg.waitingBuilders().isEmpty())return;
+        var network=WarehouseNetwork.fromComputer(level,computer);
+        // Make one assignment per tick: each filled physical output pallet
+        // then becomes its own independent packing mission.
+        for(var job:cfg.waitingBuilders()){
+            List<PtpBlockEntity.OutputOrder> lines=new ArrayList<>();
+            for(var item:job.manifest().entrySet())
+                lines.add(new PtpBlockEntity.OutputOrder(item.getKey(),item.getValue()));
+            Reply state=assignWaiting(level,computer,cfg,job,lines,network);
+            if(!state.ptp().equals(BlockPos.ZERO))break;
+        }
+    }
+
     /** Human-facing diagnostic for a staged but not yet PTP-assigned order. */
     public static String waitingStatus(ServerLevel level,BlockPos computer){
         var network=WarehouseNetwork.fromComputer(level,computer);
