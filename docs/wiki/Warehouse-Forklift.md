@@ -262,3 +262,39 @@ the current heading error. For example, a clear aisle should approach
 appear slower to the player even if the per-tick motion cap is reached.
 If movement is still poor, report this exact message and whether the aisle
 is straight, near a rack corner, or near the final docking position.
+
+
+## Safe raised-fork rack entry and curved 90-degree withdrawal
+
+Previously the forklift sometimes lowered a retrieved pallet while its tines
+were still inside a rack, or raised the carriage only after driving into
+the target bay. Rack loading now uses a staged, physical process:
+
+1. Find a **real supported staging position outside the rack**, using a
+   clear straight withdrawal or a gradual **left/right 90-degree backing
+   arc** through the working aisle. Validate wheel clearance and a full
+   1.8-block-wide, three-block-tall pallet/fork envelope throughout the arc.
+2. Approach that exterior position with **lowered forks**, turn to align with
+   the entry tangent, and **raise the mast outside the rack** to the exact
+   shelf height.
+3. Enter on the collision-checked arc, square with the pallet center, and
+   lift/place the original wrapped pallet with its complete 216 slots.
+4. **Back out along the verified arc with the mast still raised.** Forks
+   rotate gradually as the forklift reverses. Lower them only when the
+   envelope has left *all* surrounding rack blocks.
+5. Continue to the next destination, lower for normal aisle driving, or
+   park as usual.
+
+If the opposite rack row, a wall, a pallet or a blocked aisle leaves no
+safe straight or curved exit, the vehicle waits with its mast and original
+cargo intact. It must not teleport, move through racks, or release a pallet
+halfway through an obstruction. The chosen exit side, arc depth and progress
+are saved with the forklift so a chunk unload does not invent a different
+turn midway through the maneuver.
+
+**In-game verification:** face two rack banks across a three-block aisle,
+retrieve a pallet from an elevated shelf, and watch the forks at the aisle's
+end and through a 90-degree turn. Check a pickup, a placement and a
+rack-to-rack transfer, including server restart halfway through withdrawal.
+Some layouts cannot safely accommodate a forklift's real fork length and
+may need a free turn direction or an open aisle end.
