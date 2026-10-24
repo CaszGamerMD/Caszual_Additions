@@ -23,7 +23,9 @@ assert "retrieveEmptyPallet(ptp,player)" in ptp
 assert "player.isShiftKeyDown()&&ptp.hasPallet()" in ptp
 assert "player.getInventory().placeItemBackInInventory(recovered)" in ptp
 assert 'Unwrap the pallet with shears before removing it.' in ptp
-assert "ptp.setInput(!ptp.input());" in ptp
+assert "ptp.changeModeFromComputer()" in ptp
+assert "Cannot change PTP mode:" in ptp
+assert "Cannot load pallet: "+\u0022\u0022 not in ptp  # diagnostic comes from controller state
 
 assert "IntegerProperty.create(\"part\",0,3)" in stack
 assert "level.getWorldBorder().isWithinBounds(pos)" in stack
