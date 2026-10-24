@@ -37,18 +37,27 @@ public final class WarehousePreferredPath {
     public static java.util.List<BlockPos> leg(BlockPos start,BlockPos target,
             Predicate<BlockPos> passable,BlockPos blocked,
             java.util.function.ToDoubleFunction<BlockPos> standingY){
+        // Keep world lookups bounded: the flat and terrain alternatives
+        // share ONE request-local cache of loaded tile collision and
+        // standing heights. Cache does not escape this search, so block
+        // placement is reflected on the next replanning event.
+        Map<BlockPos,Boolean> validCache=new HashMap<>();
+        Map<BlockPos,Double> heightCache=new HashMap<>();
+        Predicate<BlockPos> checked=p->validCache.computeIfAbsent(p,passable::test);
+        java.util.function.ToDoubleFunction<BlockPos> height=p->
+                heightCache.computeIfAbsent(p,standingY::applyAsDouble);
         // A flat route is cheap and normally ideal, but NOT mandatory:
         // a giant same-level detour should lose to two short, legal
         // one-block transitions. Compare its excess distance against the
         // exact height-change penalty (up + down), rather than forbidding
         // all climbs merely because a very long flat route exists.
         var flat=start.getY()==target.getY()
-                ?find(start,target,passable,blocked,false,standingY):null;
+                ?find(start,target,checked,blocked,false,height):null;
         int direct=Math.abs(start.getX()-target.getX())
                 +Math.abs(start.getZ()-target.getZ());
         if(flat!=null&&flat.size()<=direct+STEP_HEIGHT_COST*2)
             return flat;
-        var terrain=find(start,target,passable,blocked,true,standingY);
+        var terrain=find(start,target,checked,blocked,true,height);
         if(flat==null)return terrain;
         if(terrain==null)return flat;
         // A partial forward leg must not outrank an exact 3-D arrival.
@@ -59,8 +68,8 @@ public final class WarehousePreferredPath {
         BlockPos previous=start;
         for(BlockPos cell:terrain){
             terrainCost+=(int)Math.round(Math.max(0,
-                    Math.abs(standingY.applyAsDouble(cell)
-                            -standingY.applyAsDouble(previous))-.501)
+                    Math.abs(height.applyAsDouble(cell)
+                            -height.applyAsDouble(previous))-.501)
                     *STEP_HEIGHT_COST);
             previous=cell;
         }
