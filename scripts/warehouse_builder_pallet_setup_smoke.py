@@ -46,4 +46,9 @@ assert "TicketType.FLAG_SIMULATION" in ticket
 assert "MAX_CENTERS=16" in ticket
 assert "WarehouseOrderTickets.keep(server,pos,network)" in computerBlock
 assert "BuilderWarehouseFulfillment.progressWaiting(server,pos)" in computerBlock
+assert "public static boolean cancel(ServerLevel level,BlockPos computer,BlockPos table," in fulfill
+assert "cfg.dequeueBuilder(request,owner,table)" in fulfill
+assert "ptp.cancelUnshippedBuilder(request,owner,table,computer)" in fulfill
+assert "cancelBuilderPreparation(java.util.UUID request)" in ptp
+assert "returnBuilderPallet=hasPallet();" in ptp
 print("PASS: durable Builder PTP preparation, actual pallet courier, packing handoff and empty pallet return")
