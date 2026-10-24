@@ -2489,7 +2489,9 @@ public final class StorageGolem extends PathfinderMob {
                     int count=delivery.stream().mapToInt(ItemStack::getCount).sum();
                     for(int i=0;i<9;i++)orderCargo.set(i,ItemStack.EMPTY);
                     ptp.outputDelivered(outputTicket,count);
-                    station.finishOrder(level,ptp);
+                    if(ptp.builderReserved())
+                        station.flushBuilderBatch(level,ptp);
+                    else station.finishOrder(level,ptp);
                     stage=2;waitTicks=0;return;
                 }
                 // A busy 3-shulker station is NOT a rejected order.
