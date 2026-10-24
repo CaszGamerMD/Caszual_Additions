@@ -379,6 +379,39 @@ public final class BuilderWarehouseFulfillment {
         }
         return ItemStack.EMPTY;
     }
+    /** Cancel warehouse-owned Builder orders without deleting real cargo.
+     * Pending PTP preparation is canceled immediately. An already assigned
+     * order can be canceled only if no physical items or pickers have left
+     * storage; otherwise its UUID remains alive for safe recovery.
+     */
+    public static boolean cancel(ServerLevel level,BlockPos computer,BlockPos table,
+            UUID owner,UUID request,BlockPos ptpPos){
+        if(!valid(level,computer)||request==null||owner==null||table==null)
+            return false;
+        if(!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity cfg))
+            return false;
+        var pending=cfg.waitingBuilder(request);
+        if(pending!=null){
+            if(!pending.owner().equals(owner)||!pending.table().equals(table))
+                return false;
+            for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,computer).points())
+                if(ptp.preparationMatches(request)
+                        &&!ptp.cancelBuilderPreparation(request))return false;
+            return cfg.dequeueBuilder(request,owner,table);
+        }
+        for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,computer).points()){
+            if(!ptp.builderMatches(request,owner,table,computer))continue;
+            var station=tank(level,computer,ptp);
+            // Never throw away packed shulkers, partial station contents,
+            // or items owned by a Storage Golem in flight.
+            if(station==null||station.activeCount()>0||station.finishedCount()>0
+                    ||station.bufferedItems()>0)return false;
+            return ptp.cancelUnshippedBuilder(request,owner,table,computer);
+        }
+        // Idempotent: the ticket is no longer owned by this warehouse.
+        return false;
+    }
+
     /** Can release only after all worker deliveries and boxed inventory clear. */
     public static boolean release(ServerLevel level,BlockPos computer,BlockPos table,
             UUID owner,UUID request,BlockPos ptpPos){
