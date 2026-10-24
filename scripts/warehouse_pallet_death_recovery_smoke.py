@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """A killed loaded Golem must preserve the ONE pallet and all 216 indexed slots.
 
-Unlike the removed scanner reset, Shift-right-click AIR always swaps
-REMOTE/DIRECT mode. Killing a remote carrier must not scatter its cargo.
+Unlike the removed scanner reset, Shift-right-click AIR opens
+seven-mode scanner settings, without cancelling ongoing missions. Killing a remote carrier must not scatter its cargo.
 """
 from pathlib import Path
 from collections import Counter
@@ -23,9 +23,9 @@ for name,src in (("MovingPallet",rig),("StorageGolem",worker),("StorageScannerIt
     assert "RemotePalletReset" not in src, name
 assert "warehouse_remote_cancel_reset_smoke.py" not in workflow
 assert "RemotePalletReset.activeMission" not in scanner
-assert "Mode next=toggleMode(scanner)" in scanner
+assert "ScannerControlNet.open(user,scanner)" in scanner
 assert "if(player.isShiftKeyDown()){" in scanner
-assert scanner.count("Mode next=toggleMode(scanner)") == 1
+assert scanner.count("ScannerControlNet.open(user,scanner)") == 1
 
 assert "PalletDeathRecovery.release(level,blockPosition(),getX(),getY(),getZ()," in rig
 assert "PalletDeathRecovery.release(level,blockPosition(),getX(),getY(),getZ()," in worker
@@ -67,5 +67,5 @@ for has_safe_floor in (True,False):
     assert sum(bool(x) for x in (placed,item))==1
     assert (placed or item)==cargo
     assert sorted((placed or item))==[0,11,215]
-print("PASS: no scanner reset, mode toggle restored, intact full 2x2 death recovery"
+print("PASS: no scanner reset, seven-mode scanner menu, intact full 2x2 death recovery"
       " with 216-slot packed pallet fallback and no scattered cargo")
