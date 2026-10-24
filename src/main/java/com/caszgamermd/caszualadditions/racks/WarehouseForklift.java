@@ -91,6 +91,9 @@ public final class WarehouseForklift extends PathfinderMob {
     // No-path searches sample hundreds of fork/cargo cells. Retry at most
     // once per second if the aisle is blocked, not on every server tick.
     private int lastSourceArcSearch=-100,lastDestinationArcSearch=-100;
+    /** Retry an alternate verified exit only while still at the dock.
+     * Never change an arc midway through a pallet withdrawal. */
+    private int sourceExitBlockedTicks,destinationExitBlockedTicks;
     private void resetRackManeuver(){
         sourceRackStage=0;destinationRackStage=0;
         sourceArcCursor=-1;destinationArcCursor=-1;
@@ -99,6 +102,7 @@ public final class WarehouseForklift extends PathfinderMob {
         destinationReverseDepth=0;destinationAisleShift=0;
         sourceArc=null;destinationArc=null;
         lastSourceArcSearch=-100;lastDestinationArcSearch=-100;
+        sourceExitBlockedTicks=0;destinationExitBlockedTicks=0;
     }
     private BlockPos lastDriveGoal=BlockPos.ZERO;
     private double lastDriveDistance=Double.POSITIVE_INFINITY;
@@ -205,7 +209,11 @@ public final class WarehouseForklift extends PathfinderMob {
         return "measured "+speed+" blocks/s, segment "
                 +(aisleRoute.isEmpty()?0:Math.min(routeStep+1,aisleRoute.size()))
                 +"/"+aisleRoute.size()+", yaw error "
-                +Math.round(lastHeadingError)+" deg";
+                +Math.round(lastHeadingError)+" deg"
+                +", job "+job+", rack source "+sourceRackStage
+                +"/"+sourceArcCursor+", rack target "+destinationRackStage
+                +"/"+destinationArcCursor
+                +", mast "+Math.round(mastHeight()*10f)/10f;
     }
     private void measureActualMotion(){
         if(Double.isFinite(telemetryX)){
@@ -686,10 +694,14 @@ public final class WarehouseForklift extends PathfinderMob {
                 ForkliftRackManeuver.angleTo(getYRot(),nextPose.yaw(),
                         (float)Math.min(1,step/length));
         int floor=(int)Math.floor(getY());
-        if(!ForkliftAislePath.canStand(world,this,position)
-                ||!ForkliftRackManeuver.clearForkEnvelope(world,position,yaw,
-                    floor,rack.getBlockPos().getY(),rack,true)){
-            status="WAITING: RACK MANEUVER BLOCKED; FORKS HELD AT SAFE HEIGHT";
+        boolean chassisClear=ForkliftAislePath.canStand(world,this,position);
+        boolean forksClear=chassisClear
+                &&ForkliftRackManeuver.clearForkEnvelope(world,position,yaw,
+                    floor,rack.getBlockPos().getY(),rack,true);
+        if(!chassisClear||!forksClear){
+            status=chassisClear
+                    ?"WAITING: FORK/PALLET SWEEP BLOCKED; MAST HELD HIGH"
+                    :"WAITING: FORKLIFT CHASSIS OR FLOOR BLOCKED; MAST HELD HIGH";
             getNavigation().stop();
             return false;
         }
@@ -761,7 +773,37 @@ public final class WarehouseForklift extends PathfinderMob {
             status="WAITING: SAFE RACK WITHDRAWAL UNAVAILABLE; MAST HELD";
             return false;
         }
-        if(!followRackArc(world,plan,rack,false,atSource))return false;
+        if(!followRackArc(world,plan,rack,false,atSource)){
+            // A changed obstacle may block the first move of a previously
+            // chosen arc. In a wide aisle another exit can be available.
+            // Replan ONLY while still essentially at the dock, so an
+            // in-progress curved turn is never replaced or snapped.
+            boolean blocked=status.startsWith("WAITING: FORK/PALLET SWEEP BLOCKED")
+                    ||status.startsWith("WAITING: FORKLIFT CHASSIS OR FLOOR BLOCKED")
+                    ||status.startsWith("WAITING: RACK AISLE OBSTRUCTION");
+            int cursor=atSource?sourceArcCursor:destinationArcCursor;
+            if(blocked&&cursor==0
+                    &&position().distanceToSqr(plan.dock().position())<.0225){
+                int ticks=atSource?++sourceExitBlockedTicks:
+                        ++destinationExitBlockedTicks;
+                if(ticks>=40){
+                    if(atSource){
+                        sourceArc=null;sourceArcTurn=0;
+                        sourceReverseDepth=0;sourceAisleShift=0;
+                        sourceExitBlockedTicks=0;lastSourceArcSearch=-100;
+                    }else{
+                        destinationArc=null;destinationArcTurn=0;
+                        destinationReverseDepth=0;destinationAisleShift=0;
+                        destinationExitBlockedTicks=0;
+                        lastDestinationArcSearch=-100;
+                    }
+                    status="REPLANNING SAFE FORKLIFT WITHDRAWAL FROM RACK DOCK";
+                }
+            }
+            return false;
+        }
+        if(atSource)sourceExitBlockedTicks=0;
+        else destinationExitBlockedTicks=0;
         if(!ForkliftRackManeuver.fullyOutside(world,plan,
                 (int)Math.floor(getY()),rack.getBlockPos().getY(),rack)){
             status="WAITING: FORKS STILL INSIDE RACK; REFUSING TO LOWER";
