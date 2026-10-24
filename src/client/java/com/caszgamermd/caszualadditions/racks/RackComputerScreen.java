@@ -514,7 +514,11 @@ public final class RackComputerScreen extends Screen {
         }
         int selected=Math.clamp(selectedBuilderOrder,0,count-1);
         JsonObject active=builderOrders.get(selected).getAsJsonObject();
-        int y=239;
+        int y=261;
+        String reason=active.has("reason")?
+                active.get("reason").getAsString():"QUEUED FOR PICKING";
+        g.text(font,Component.literal(compact("STATUS: "+reason,
+                Math.max(18,(width-55)/6))),28,y-22,0xffedca8c,false);
         g.text(font,Component.literal("CURRENT BATCH: "
                 +active.get("currentItem").getAsString()+" x"
                 +active.get("currentQuantity").getAsInt()),28,y,0xffe8ca82,false);
@@ -533,8 +537,10 @@ public final class RackComputerScreen extends Screen {
     }
     private void drawOrderList(GuiGraphicsExtractor graphics){
         if(showBuilderOrders){drawBuilderOrders(graphics);return;}
-        graphics.text(font,Component.literal("ORDER BUILDER  •  "+orderList.size()
-                +" / 16 item types"),22,50,0xffb3f9c1,false);
+        graphics.text(font,Component.literal(compact("ORDER BUILDER  •  "
+                +orderList.size()+"/16 manual | BUILDER REQUESTS: "
+                +builderOrders.size(),Math.max(24,(width-48)/6))),
+                22,50,0xffb3f9c1,false);
         graphics.text(font,Component.literal(compact(orderStatus,
                 Math.max(20,(width-45)/6))),22,75,0xff9fedaf,false);
         graphics.text(font,Component.literal(

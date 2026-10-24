@@ -47,7 +47,13 @@ public final class ForkliftRackManeuver {
         double fx=-Math.sin(angle),fz=Math.cos(angle);
         double sx=fz,sz=-fx;
         int height=Math.max(floorY,palletY);
-        for(double forward=1.65;forward<=4.12;forward+=.19){
+        // The service dock is 2.82 blocks in front of the pallet center.
+        // The pallet bay ends ~3.82 blocks ahead of the chassis. Checking
+        // 4.12 blocks treated a separate back-to-back rack BEHIND this bay
+        // as if the tines had to pass through it; every valid dock became
+        // impossible even when the pallet and aisle were clear. Check the
+        // actual bay-contained 3.75-block fork/load sweep instead.
+        for(double forward=1.65;forward<=3.75;forward+=.15){
             // Full 1.8-wide wrapped pallet, not just the fork metal.
             // Center + opposite side rails are sampled across its width.
             for(double across:new double[]{-.92,-.70,-.46,-.22,0,

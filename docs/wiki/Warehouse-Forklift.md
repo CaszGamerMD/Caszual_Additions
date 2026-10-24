@@ -362,3 +362,21 @@ unless dismissed with the controller/scanner, as before.
 **In-world checklist:** newly placed forklift + boarded driver + source rack;
 ground-pallet-to-rack; raised rack-to-rack transfer; completed-job auto-return
 to the same painted bay; right-click status when genuinely obstructed.
+
+## Forklift stuck at pallet pickup: back-to-back rack clearance
+
+The rack-pickup movement planner previously checked a 4.12-block forward
+fork envelope from a dock 2.82 blocks in front of the pallet center. This
+overshot the serviced 2-deep rack bay and could mistake a normal rack
+**behind** it in a back-to-back rack bank for an obstruction to the pallet
+being retrieved. A supposedly clear dock then failed to produce any
+entry/withdrawal maneuver.
+
+The planner now samples the actual 3.75-block forward service envelope,
+with the visible fork tips shortened by four model pixels to match, maintaining the full 1.8-block cargo width and three-block cargo height,
+including checks against all other racks, pallets and physical obstructions.
+Unreachable or obstructed aisle segments still remain invalid. The forklift
+must still keep the mast raised until the checked exit is complete.
+
+If pickup still stops, right-click the forklift with an empty hand and send
+the status including the rack stage/cursor and mast height.

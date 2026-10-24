@@ -447,6 +447,8 @@ public final class RackComputerNet {
             order.addProperty("table",point.builderTablePos().toShortString());
             order.addProperty("status",point.pendingOutputOrders()>0
                     ?"PENDING FULFILLMENT":"PACKING / AWAITING PICKUP");
+            order.addProperty("reason",BuilderWarehouseFulfillment.workStatus(
+                    level,computer,point));
             JsonArray demand=new JsonArray();
             for(var entry:point.pendingOutputManifest().entrySet()){
                 JsonObject row=new JsonObject();

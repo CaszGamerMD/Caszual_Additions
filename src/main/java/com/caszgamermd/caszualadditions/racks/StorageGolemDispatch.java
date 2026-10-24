@@ -42,6 +42,20 @@ public final class StorageGolemDispatch {
             if(!point.input()&&!point.builderReserved())return point;
         return null;
     }
+    /** Builder and manually queued output orders are explicit work, not
+     * automatic INPUT sorting. Recalling Golems disables auto sorting, but
+     * a later Builder order must still dispatch from a docked shelf.
+     * Reserve the output ticket before spawning, so two shelf ticks never
+     * assign the same remaining items to multiple pickers. */
+    public static boolean tryDispatchQueuedOutput(ServerLevel level,
+            StorageGolemShelfEntity shelf){
+        if(shelf.docked()==0)return false;
+        List<StorageGolemShelfEntity> group=StorageGolemShelfEntity.linked(
+                level,shelf.getBlockPos());
+        if(group.isEmpty())return false;
+        BlockPos terminal=computer(level,group);
+        return terminal!=null&&dispatchOutput(level,shelf,group,terminal);
+    }
     /** A Shulker Tank can now connect through any warehouse component,
      * including IGC floors and adjacent racks. */
     private static ShulkerTankEntity tank(ServerLevel level,

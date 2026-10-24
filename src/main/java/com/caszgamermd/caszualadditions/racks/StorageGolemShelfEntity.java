@@ -124,7 +124,11 @@ public final class StorageGolemShelfEntity extends BlockEntity {
         return ClientboundBlockEntityDataPacket.create(this);
     }
     public static void tick(ServerLevel level,StorageGolemShelfEntity shelf){
-        if(level.getGameTime()%40==0 &&shelf.sortingEnabled&&shelf.docked()>0)
-            StorageGolemDispatch.tryDispatch(level,shelf);
+        if(level.getGameTime()%40!=0||shelf.docked()==0)return;
+        // SORT: OFF only stops automatic INPUT sorting. An explicit Builder
+        // order still summons available pickers and never requires a player
+        // to toggle the warehouse back to automatic sorting.
+        if(shelf.sortingEnabled)StorageGolemDispatch.tryDispatch(level,shelf);
+        else StorageGolemDispatch.tryDispatchQueuedOutput(level,shelf);
     }
 }

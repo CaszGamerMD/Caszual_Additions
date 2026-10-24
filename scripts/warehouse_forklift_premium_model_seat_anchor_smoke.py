@@ -74,8 +74,8 @@ for wheel in ('wheel_front_left','wheel_front_right',
     assert '"'+wheel+'"' in geometry
 assert 'LayerDefinition.create(mesh,128,128)' in geometry
 assert 'pose.translate(-.90f,.32f+state.mastHeight,-3.72f);' in renderer
-assert 'addBox(-10,-3,-61,4,3,30)' in geometry
-assert 'addBox(6,-3,-61,4,3,30)' in geometry
+assert 'addBox(-10,-3,-57,4,3,26)' in geometry
+assert 'addBox(6,-3,-57,4,3,26)' in geometry
 assert 'DRIVE_BLOCKS_PER_TICK=0.20D' in truck
 assert 'ForkliftAislePath.route(world,this,goal)' in truck
 print('PASS: premium forklift mesh, synced steering, exact rotating rider anchor, 4m/s aisle routing preserved')

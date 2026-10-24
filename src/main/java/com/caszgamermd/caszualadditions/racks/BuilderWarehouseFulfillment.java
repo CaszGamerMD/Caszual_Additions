@@ -133,10 +133,65 @@ public final class BuilderWarehouseFulfillment {
                 continue;
             if(!ptp.beginBuilderOutput(request,owner,table,computer,lines))
                 continue;
+            // Don't wait for an unrelated INPUT sorting event before
+            // starting the Builder's reserved outbound order. The normal
+            // ticket lease and shelf tick still handle subsequent batches.
+            for(StorageGolemShelfEntity shelf:network.shelves())
+                if(shelf.docked()>0&&StorageGolemDispatch
+                        .tryDispatchQueuedOutput(level,shelf))break;
             return inspect(level,computer,table,owner,request,ptp.getBlockPos());
         }
         return new Reply("NO_EMPTY_OUTPUT_PTP",BlockPos.ZERO,Map.of(),0,0);
     }
+    /** Human-readable state of the actual reserved packing lane, shown
+     * on the Rack Computer beside the Builder manifest. All checks are
+     * read-only and never withdraw stock or create worker entities. */
+    public static String workStatus(ServerLevel level,BlockPos computer,
+            PtpBlockEntity ptp){
+        if(!valid(level,computer)||ptp==null)return "WAREHOUSE OFFLINE";
+        if(!ptp.readyForOutput())return "OUTPUT PTP NEEDS AN UNSEALED PALLET";
+        var network=WarehouseNetwork.fromComputer(level,computer);
+        var station=tank(level,computer,ptp);
+        if(station==null)return "NO SHULKER STATION HOPPER ADAPTER LINK";
+        if(ptp.outputInFlight())return "PICKER DISPATCHED / STOCK IN TRANSIT";
+        if(ptp.pendingOutputOrders()==0)
+            return station.activeCount()>0||station.finishedCount()>0
+                    ?"PACKING SHULKERS":"WAITING FOR BUILDER COLLECTION";
+        if(station.count()==0&&station.activeCount()==0
+                &&station.finishedCount()==0&&station.bufferedItems()==0)
+            return "SHULKER STATION NEEDS EMPTY SHULKERS";
+        int workers=0;
+        int clearExits=0;
+        for(StorageGolemShelfEntity shelf:network.shelves()){
+            if(shelf.docked()<=0)continue;
+            workers+=shelf.docked();
+            if(StorageGolemShelfDoor.exit(level,shelf)!=null)clearExits++;
+        }
+        if(workers==0)return "NO DOCKED PICKER GOLEMS";
+        if(clearExits==0)return "PICKER SHELF EXITS BLOCKED";
+        var order=ptp.nextOutputOrder();
+        if(order==null)return "WAITING FOR MATERIALS";
+        boolean stocked=false;
+        boolean reachable=false;
+        for(RackBlockEntity rack:network.racks()){
+            if(!rack.hasPallet())continue;
+            for(int slot=0;slot<rack.getContainerSize();slot++){
+                ItemStack stack=rack.getItem(slot);
+                if(!stack.isEmpty()&&itemId(stack).equals(order.itemId())){
+                    stocked=true;
+                    if(WarehouseSortingReach.accessible(level,rack)
+                            &&stack.getItem().canFitInsideContainerItems())
+                        reachable=true;
+                    break;
+                }
+            }
+            if(reachable)break;
+        }
+        if(!stocked)return "REQUESTED BLOCKS NOT IN CONNECTED RACKS";
+        if(!reachable)return "PICKER CANNOT REACH SOURCE RACK";
+        return "QUEUED FOR PICKING";
+    }
+
     public static Reply inspect(ServerLevel level,BlockPos computer,BlockPos table,
             UUID owner,UUID request,BlockPos ptpPos){
         if(ptpPos==null||!level.hasChunkAt(ptpPos)||!valid(level,computer))

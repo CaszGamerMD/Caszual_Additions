@@ -23,6 +23,19 @@ assert "state.getBlock() instanceof PalletBlock" in plan
 assert "state.getBlock() instanceof PalletCargoCollisionBlock" in plan
 assert "for(int dy=0;dy<=2;dy++)" in plan
 assert "new double[]{-.92,-.70,-.46,-.22,0," in plan
+# Rack faces are serviced 2.82 blocks from the pallet center.
+# The prior 4.12-block probe incorrectly overlapped the rear bank of a
+# back-to-back rack; verify the sweep stays within the serviced bay.
+assert "for(double forward=1.65;forward<=3.75;forward+=.15)" in plan
+model=(root/"src/client/java/com/caszgamermd/caszualadditions/racks/WarehouseForkliftModel.java").read_text()
+assert ".addBox(-9,-2,-60,2,2,3)" in model
+assert ".addBox(7,-2,-60,2,2,3)" in model
+assert "forward<=4.12" not in plan
+# With a 2.82-block dock-to-center distance, the rear rack begins about
+# 3.82 blocks in front of the chassis.
+assert 2.82+1.0>3.75
+assert 3.75<3.82<4.12
+
 assert "sourceReverseDepth=planned.reverseDepth();" in truck
 assert "destinationAisleShift=planned.aisleShift();" in truck
 assert "if(tickCount-last<20)return null;" in truck
@@ -30,7 +43,7 @@ assert "public record Pose(Vec3 position,float yaw)" in plan
 assert "public record Plan(List<Pose> poses,int turn,double reverseDepth,double aisleShift)" in plan
 
 # Wide warehouses must allow an actual straight withdrawal far enough
-# to clear the full 4.12-block fork envelope, without forcing a 90-degree
+# to clear the full 3.75-block fork envelope, without forcing a 90-degree
 # backing turn simply because the shortest arc is closer to the truck.
 assert "new double[]{1.75,2.2,2.7,3.2,3.8,4.5,5.5,6.5,8.0}" in plan
 assert "new double[]{0,.2,.45,.7,1.0,1.25}" in plan
@@ -50,11 +63,11 @@ assert "WAITING: FORK/PALLET SWEEP BLOCKED" in truck
 assert "WAITING: FORKLIFT CHASSIS OR FLOOR BLOCKED" in truck
 assert '+", job "+job+", rack source "+sourceRackStage' in truck
 
-# Representative open aisle: a cargo tip extends 4.12 blocks forward of
+# Representative open aisle: a cargo tip extends 3.75 blocks forward of
 # the chassis. A straight reverse of 2.7 still intersects a deep obstacle
 # at z=1.8, but a 3.8-block reverse clears it. No physical rack bypass.
 dock=2.82
-front_reach=4.12
+front_reach=3.75
 rack_front_edge=1.8
 assert dock+2.7-front_reach < rack_front_edge
 assert dock+3.8-front_reach > rack_front_edge
