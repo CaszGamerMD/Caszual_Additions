@@ -186,7 +186,7 @@ public final class PtpBlock extends Block implements EntityBlock {
                 }else if(ptp.installPallet(held.copyWithCount(1))) {
                     if(!player.getAbilities().instabuild)held.shrink(1);
                 }else player.sendSystemMessage(Component.literal(
-                        "Clear the three blocks above the transfer point before loading a pallet."));
+                        "Cannot load pallet: "+ptp.palletInstallProblem()));
             }
             return InteractionResult.SUCCESS;
         }
@@ -201,20 +201,24 @@ public final class PtpBlock extends Block implements EntityBlock {
         PtpBlockEntity ptp=controller(level,pos);
         if(ptp==null)return InteractionResult.PASS;
         if(!level.isClientSide()){
-            if(kind==Kind.WRAP && !player.isShiftKeyDown() && ptp.hasPallet()){
+            if(player.isShiftKeyDown()){
+                // Empty-hand sneak-click ALWAYS changes direction, even with
+                // a pallet installed. To reclaim an empty pallet, sneak-click
+                // while holding another Pallet item, or use the workstation.
+                // Never disrupt an outstanding Builder shipment or active
+                // order reservation.
+                if(ptp.changeModeFromComputer())
+                    player.sendSystemMessage(Component.literal(
+                            "Transfer Point: "+(ptp.input()?"INPUT":"OUTPUT")));
+                else player.sendSystemMessage(Component.literal(
+                        "Cannot change PTP mode: "+ptp.modeChangeProblem()));
+            }else if(kind==Kind.WRAP && ptp.hasPallet()){
                 if(!ptp.sealed()){
                     ptp.setSealed(true);
                     player.sendSystemMessage(Component.literal(
                             "Pallet sealed. Only shears can unwrap it."));
                 } else player.sendSystemMessage(Component.literal(
                         "Pallet is sealed. Use shears to unwrap."));
-            } else if(player.isShiftKeyDown()&&ptp.hasPallet()){
-                retrieveEmptyPallet(ptp,player);
-            } else if(player.isShiftKeyDown()){
-                // Existing mode toggle remains available when the PTP is vacant.
-                ptp.setInput(!ptp.input());
-                player.sendSystemMessage(Component.literal(
-                        "Transfer Point: "+(ptp.input()?"INPUT":"OUTPUT")));
             }else if(ptp.sealed()){
                 player.sendSystemMessage(Component.literal("Pallet is sealed. Use shears."));
             }else if(ptp.hasPallet()&&player instanceof ServerPlayer server)server.openMenu(ptp);
