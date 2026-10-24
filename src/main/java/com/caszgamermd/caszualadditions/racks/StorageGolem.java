@@ -1678,12 +1678,21 @@ public final class StorageGolem extends PathfinderMob {
         if(machine instanceof RackBlockEntity rack){
             // The rack is opaque to Golems: approach ONLY from its FRONT,
             // never through a side/back frame or its upper cargo bays.
-            for(int depth=1;depth<=3;depth++)
+            for(int depth=1;depth<=2;depth++)
                 for(int col=0;col<2;col++){
                     BlockPos cell=RackBlock.cell(place,rack.facing(),col)
                             .relative(rack.facing(),depth);
-                    choices.add(new BlockPos(cell.getX(),blockPosition().getY(),
-                            cell.getZ()));
+                    // Three-block-deep aisle cells are walkable, but
+                    // OUTSIDE the Golem's legitimate two-block rack reach.
+                    // Also consider real raised stair/scaffold landings for
+                    // elevated racks, instead of forever selecting the same
+                    // unreachable ground-level service cell.
+                    for(int dy=-2;dy<=0;dy++){
+                        BlockPos service=new BlockPos(cell.getX(),
+                                place.getY()+dy,cell.getZ());
+                        if(WarehouseSortingReach.withinReach(service,rack))
+                            choices.add(service);
+                    }
                 }
         }else{
             for(int depth=1;depth<=2;depth++)
