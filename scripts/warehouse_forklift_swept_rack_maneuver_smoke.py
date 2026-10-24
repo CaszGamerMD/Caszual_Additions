@@ -62,6 +62,14 @@ assert dock+3.8-front_reach > rack_front_edge
 # why the planner separately validates all chassis/fork poses and retains
 # the collision-checked curved fallback.
 
+# Do not dispatch a fresh forklift toward an exit on the other side
+# of inaccessible rack banks. The outward swept maneuver alone is not
+# sufficient: its exterior must also be reachable via chassis pathfinding.
+assert "for(Plan candidate:candidates){" in plan
+assert "ForkliftAislePath.route(world,forklift,outside)" in plan
+assert "if(resuming)return candidates.getFirst();" in plan
+assert "return null;" in plan
+
 # The route is traversed in reverse on entry and forwards on exit:
 # no snap rotation or raising while the tines are inside any rack.
 assert "private boolean enterRackSafely(ServerLevel world,RackBlockEntity rack," in truck
