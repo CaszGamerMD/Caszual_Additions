@@ -310,7 +310,11 @@ public final class RackComputerScreen extends Screen {
         JsonObject point=ptps.get(selectedPtpIndex).getAsJsonObject();
         boolean busy=point.get("hauling").getAsBoolean()
                 ||point.get("orders").getAsInt()>0;
-        ptpModeButton.active=!busy;
+        // Explicit Builder reservations can remain with zero queued lines
+        // while a shulker is in transit. Honor the server's lock status.
+        boolean modeLocked=point.has("modeLocked")
+                ?point.get("modeLocked").getAsBoolean():busy;
+        ptpModeButton.active=!modeLocked;
         ptpModeButton.setMessage(Component.literal(point.get("input").getAsBoolean()
                 ?"SET OUTPUT":"SET INPUT"));
         ptpWrapButton.active=point.get("wrap").getAsBoolean()
