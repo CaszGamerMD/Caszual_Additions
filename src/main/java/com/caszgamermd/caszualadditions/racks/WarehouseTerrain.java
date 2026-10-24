@@ -3,6 +3,8 @@ package com.caszgamermd.caszualadditions.racks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.SlabType;
 
@@ -26,15 +28,32 @@ public final class WarehouseTerrain {
                 &&level.getFluidState(feet).isEmpty();
     }
 
+    /** A stair's center-path node can be inside the stair block itself.
+     * Like a bottom slab, this is an actual collision floor rather than a
+     * full-block obstacle. Pallets and thin warehouse structures are NEVER
+     * treated as architectural steps.
+     */
+    public static boolean stairFloor(ServerLevel level,BlockPos feet){
+        BlockState state=level.getBlockState(feet);
+        return state.getBlock() instanceof StairBlock
+                &&level.getFluidState(feet).isEmpty();
+    }
     public static double standingY(ServerLevel level,BlockPos feet){
-        return feet.getY()+(bottomSlab(level,feet)?.5:0);
+        if(bottomSlab(level,feet))return feet.getY()+.5;
+        if(stairFloor(level,feet)){
+            var shape=level.getBlockState(feet).getCollisionShape(level,feet);
+            return feet.getY()+(shape.isEmpty()?0:
+                    shape.max(Direction.Axis.Y));
+        }
+        return feet.getY();
     }
 
     public static boolean smoothHalfStep(ServerLevel level,BlockPos from,
             BlockPos to){
         if(Math.abs(from.getX()-to.getX())
                 +Math.abs(from.getZ()-to.getZ())!=1)return false;
-        return (bottomSlab(level,from)||bottomSlab(level,to))
+        return (bottomSlab(level,from)||bottomSlab(level,to)
+                    ||stairFloor(level,from)||stairFloor(level,to))
                 &&Math.abs(standingY(level,to)-standingY(level,from))<=.501;
     }
 
