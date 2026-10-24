@@ -69,7 +69,7 @@ public final class PtpBlockEntity extends BlockEntity
         expireTicket();
         if(builderReserved()||request==null||owner==null||table==null
                 ||computer==null||!readyForOutput()||!emptyCargo()
-                ||!outputOrders.isEmpty()||activeTicket!=0||hauling()
+                ||!outputOrders.isEmpty()||outputInFlight()||hauling()
                 ||lines.isEmpty()||lines.size()>MAX_OUTPUT_ORDERS)return false;
         for(OutputOrder line:lines)if(line.itemId()==null||line.itemId().isBlank()
                 ||line.remaining()<1||line.remaining()>4096)return false;
@@ -83,17 +83,29 @@ public final class PtpBlockEntity extends BlockEntity
             BlockPos table,BlockPos computer){
         expireTicket();
         if(!builderMatches(request,owner,table,computer)
-                ||!outputOrders.isEmpty()||activeTicket!=0
+                ||!outputOrders.isEmpty()||outputInFlight()
                 ||!emptyCargo()||hauling())return false;
         builderRequest=null;builderOwner=null;
         builderTable=BlockPos.ZERO;builderComputer=BlockPos.ZERO;
         setChanged();return true;
     }
     public boolean outputInFlight(){
-        expireTicket();return activeTicket!=0;
+        expireTicket();return activeTicket!=0||!extraOutputTickets.isEmpty();
     }
 
     private int activeTicket,ticketSequence,reservedOutput;
+    // Legacy slot zero remains compatible with previously saved single
+    // Golem tickets. Additional real packers have their OWN reservations,
+    // persisted per PTP, so two workers never reserve the same stock.
+    private record ExtraOutput(int quantity,long deadline){}
+    private final java.util.Map<Integer,ExtraOutput> extraOutputTickets=
+            new java.util.LinkedHashMap<>();
+    private int reservedTotal(){
+        int count=reservedOutput;
+        for(ExtraOutput extra:extraOutputTickets.values())
+            count+=extra.quantity();
+        return count;
+    }
     // Leases survive reload. A missing worker cannot permanently block FIFO.
     private long ticketDeadline;
     private static final long TICKET_LEASE_TICKS=12000; // ten minutes: reroutes can take time
@@ -168,7 +180,7 @@ public final class PtpBlockEntity extends BlockEntity
     public int beginHaul(BlockPos destination){
         expireHaul();
         if(level==null||haulTicket!=0||!sealed||!hasPallet()
-                ||destination==null||!outputOrders.isEmpty()||activeTicket!=0)
+                ||destination==null||!outputOrders.isEmpty()||outputInFlight())
             return 0;
         haulSequence=haulSequence==Integer.MAX_VALUE?1:haulSequence+1;
         haulTicket=haulSequence;haulRack=destination.immutable();
@@ -249,16 +261,23 @@ public final class PtpBlockEntity extends BlockEntity
         return true;
     }
     private void expireTicket(){
-        if(activeTicket!=0 && level!=null && level.getGameTime()>ticketDeadline){
-            activeTicket=0;reservedOutput=0;ticketDeadline=0;
-            setChanged();
+        if(level==null)return;
+        boolean changed=false;
+        if(activeTicket!=0&&level.getGameTime()>ticketDeadline){
+            activeTicket=0;reservedOutput=0;ticketDeadline=0;changed=true;
         }
+        if(extraOutputTickets.entrySet().removeIf(e->
+                level.getGameTime()>e.getValue().deadline()))changed=true;
+        if(changed)setChanged();
     }
     public void renewOutput(int ticket){
-        if(ticket!=0&&ticket==activeTicket&&level!=null){
+        if(level==null||ticket==0)return;
+        if(ticket==activeTicket){
             ticketDeadline=level.getGameTime()+TICKET_LEASE_TICKS;
-            // Heartbeats refresh in memory. Avoid chunk saves every 10 ticks;
-            // the persisted lease is also refreshed at pickup/delivery.
+        }else if(extraOutputTickets.containsKey(ticket)){
+            ExtraOutput held=extraOutputTickets.get(ticket);
+            extraOutputTickets.put(ticket,new ExtraOutput(held.quantity(),
+                    level.getGameTime()+TICKET_LEASE_TICKS));
         }
     }
     public PtpBlockEntity(BlockPos pos,BlockState state){super(RackContent.PTP_ENTITY,pos,state);}
@@ -272,13 +291,13 @@ public final class PtpBlockEntity extends BlockEntity
      * invalidate a wrapped pallet's four-worker escrow. */
     public boolean changeModeFromComputer(){
         expireTicket();
-        if(builderReserved()||hauling()||activeTicket!=0||pendingOutputOrders()>0)return false;
+        if(builderReserved()||hauling()||outputInFlight()||pendingOutputOrders()>0)return false;
         setInput(!input);
         return true;
     }
     public boolean changeWrapFromComputer(){
         expireTicket();
-        if(builderReserved()||!hasWrap()||!hasPallet()||hauling()||activeTicket!=0)return false;
+        if(builderReserved()||!hasWrap()||!hasPallet()||hauling()||outputInFlight())return false;
         setSealed(!sealed);
         return true;
     }
@@ -314,43 +333,59 @@ public final class PtpBlockEntity extends BlockEntity
         outputOrders.addLast(new OutputOrder(itemId,quantity));
         setChanged();return true;
     }
-    /** At most one outbound job per output point, across all linked shelves. */
+    /** Reserve individual physical Golem loads without overbooking the FIFO
+     * head. At most four parallel leases per OUTPUT PTP, plus the
+     * warehouse-wide packer limit configured on the Computer.
+     */
     public int reserveOutput(String itemId,int quantity){
         expireTicket();
         OutputOrder next=outputOrders.peekFirst();
-        if(!readyForOutput()||activeTicket!=0||next==null||quantity<1
-                ||quantity>next.remaining()||!next.itemId().equals(itemId))return 0;
+        if(!readyForOutput()||next==null||quantity<1
+                ||quantity>next.remaining()-reservedTotal()
+                ||!next.itemId().equals(itemId)
+                ||extraOutputTickets.size()+(activeTicket==0?0:1)>=4)return 0;
         ticketSequence=ticketSequence==Integer.MAX_VALUE?1:ticketSequence+1;
         if(ticketSequence==0)ticketSequence=1;
-        activeTicket=ticketSequence;
-        reservedOutput=quantity;
-        ticketDeadline=level==null?0:level.getGameTime()+TICKET_LEASE_TICKS;
-        setChanged();
-        return activeTicket;
+        int ticket=ticketSequence;
+        long deadline=level==null?0:level.getGameTime()+TICKET_LEASE_TICKS;
+        if(activeTicket==0){
+            activeTicket=ticket;reservedOutput=quantity;ticketDeadline=deadline;
+        }else extraOutputTickets.put(ticket,new ExtraOutput(quantity,deadline));
+        setChanged();return ticket;
     }
     public boolean hasReservation(int ticket){
         expireTicket();
-        return ticket!=0&&ticket==activeTicket&&reservedOutput>0;
+        return ticket!=0&&(ticket==activeTicket&&reservedOutput>0
+                ||extraOutputTickets.containsKey(ticket));
     }
-    /** Commit only items that actually reached this output pallet. */
+    /** A commit consumes only the matching worker's physical reserved
+     * amount; it never subtracts another packer's in-flight quantity.
+     */
     public void outputDelivered(int ticket,int quantity){
         if(!hasReservation(ticket)||quantity<=0)return;
         OutputOrder order=outputOrders.peekFirst();
         if(order==null)return;
-        int done=Math.min(quantity,Math.min(reservedOutput,order.remaining()));
-        reservedOutput-=done;
+        int held=ticket==activeTicket?reservedOutput:
+                extraOutputTickets.get(ticket).quantity();
+        int done=Math.min(quantity,Math.min(held,order.remaining()));
+        if(done<=0)return;
+        int left=held-done;
+        if(ticket==activeTicket){
+            reservedOutput=left;
+            if(left==0){activeTicket=0;ticketDeadline=0;}
+            else if(level!=null)ticketDeadline=level.getGameTime()+TICKET_LEASE_TICKS;
+        }else if(left==0)extraOutputTickets.remove(ticket);
+        else extraOutputTickets.put(ticket,new ExtraOutput(left,
+                level==null?0:level.getGameTime()+TICKET_LEASE_TICKS));
         outputOrders.removeFirst();
         if(order.remaining()>done)
             outputOrders.addFirst(new OutputOrder(order.itemId(),order.remaining()-done));
-        if(reservedOutput==0){activeTicket=0;ticketDeadline=0;}
-        else if(level!=null)ticketDeadline=level.getGameTime()+TICKET_LEASE_TICKS;
         setChanged();
     }
-    /** A failed, recalled or killed worker must free the unfulfilled quantity. */
     public void releaseOutput(int ticket){
-        if(ticket!=0&&ticket==activeTicket){
+        if(ticket==activeTicket&&ticket!=0){
             activeTicket=0;reservedOutput=0;ticketDeadline=0;setChanged();
-        }
+        }else if(extraOutputTickets.remove(ticket)!=null)setChanged();
     }
     public ItemStack palletStack(){return pallet.copy();}
     public ItemStack displayItem(int slot){return slot>=0&&slot<SLOTS?contents.get(slot).copy():ItemStack.EMPTY;}
@@ -396,7 +431,7 @@ public final class PtpBlockEntity extends BlockEntity
     public boolean canRemoveEmptyPallet(){
         expireTicket();
         return !builderReserved()&&hasPallet()&&!sealed&&emptyCargo()&&!hauling()
-                &&activeTicket==0&&pendingOutputOrders()==0;
+                &&!outputInFlight()&&pendingOutputOrders()==0;
     }
     public ItemStack removePallet(){
         return canRemoveEmptyPallet()?dropPallet():ItemStack.EMPTY;
@@ -486,6 +521,15 @@ public final class PtpBlockEntity extends BlockEntity
         out.putInt("output_active_ticket",activeTicket);
         out.putInt("output_reserved",reservedOutput);
         out.putLong("output_ticket_deadline",ticketDeadline);
+        out.putInt("extra_output_ticket_count",extraOutputTickets.size());
+        int extraIndex=0;
+        for(var entry:extraOutputTickets.entrySet()){
+            out.putInt("extra_output_ticket_id_"+extraIndex,entry.getKey());
+            out.putInt("extra_output_ticket_qty_"+extraIndex,entry.getValue().quantity());
+            out.putLong("extra_output_ticket_deadline_"+extraIndex,
+                    entry.getValue().deadline());
+            extraIndex++;
+        }
         out.putInt("haul_sequence",haulSequence);
         out.putInt("haul_ticket",haulTicket);
         out.putInt("haul_source_mask",haulSourceMask);
@@ -531,6 +575,17 @@ public final class PtpBlockEntity extends BlockEntity
         if(outputOrders.isEmpty()||reservedOutput==0||activeTicket==0){
             activeTicket=0;reservedOutput=0;ticketDeadline=0;
         }else reservedOutput=Math.min(reservedOutput,outputOrders.peekFirst().remaining());
+        extraOutputTickets.clear();
+        int extraCount=Math.clamp(in.getIntOr("extra_output_ticket_count",0),0,3);
+        for(int i=0;i<extraCount;i++){
+            int id=in.getIntOr("extra_output_ticket_id_"+i,0);
+            int qty=in.getIntOr("extra_output_ticket_qty_"+i,0);
+            long deadline=in.getLongOr("extra_output_ticket_deadline_"+i,0);
+            if(id>0&&id!=activeTicket&&qty>0&&deadline>0
+                    &&!outputOrders.isEmpty()
+                    &&qty<=outputOrders.peekFirst().remaining())
+                extraOutputTickets.put(id,new ExtraOutput(qty,deadline));
+        }
         haulSequence=Math.max(0,in.getIntOr("haul_sequence",0));
         haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
         haulSourceMask=WarehouseTeamProgress.checkedMask(in.getIntOr("haul_source_mask",0));
