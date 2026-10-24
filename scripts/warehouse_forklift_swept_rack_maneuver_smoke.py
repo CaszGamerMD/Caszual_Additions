@@ -52,6 +52,18 @@ assert "Math.min(.12,remaining)" in truck
 assert "job=3;animation=0;" in truck
 assert "if(job==4){" in truck
 
+# Recalling a forklift halfway through an elevated transfer must not jump
+# directly to job=5 and immediately lower the mast inside a rack.
+recall=truck[truck.index("public String requestDriverDismissal(ServerLevel world)"):truck.index("public boolean dismissDriver(ServerLevel world)")]
+assert "boolean forksInSource=sourceRackStage>=1&&sourceRackStage<5;" in recall
+assert "boolean forksInDestination=destinationRackStage>=1&&destinationRackStage<5;" in recall
+assert "if(forksInSource||forksInDestination){" in recall
+assert 'status="RECALL QUEUED: RETRACTING FORKS BEFORE PARKING";' in recall
+assert recall.index("if(forksInSource||forksInDestination){")<recall.index("job=5;animation=0;")
+assert "dismissAfterParking=true;" in recall
+assert 'job=driver!=null&&!parking.equals(BlockPos.ZERO)?5:0;' in truck
+assert "if(dismissAfterParking){" in truck
+
 # Level reloads must not clear source escrow, approach direction or stages.
 for field in ("source_rack_stage","destination_rack_stage",
               "source_arc_cursor","destination_arc_cursor",
