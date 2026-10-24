@@ -35,6 +35,19 @@ assert "if(job!=0||!atParkingBay()||driver==null)return false;" in lift
 assert "public String emergencyDriverRelease(ServerLevel world)" in lift
 assert "public String recoverStuckCargo(Player player)" in lift
 assert 'status="WAITING: FORKLIFT PARKING BAY NOT SET"' in lift
+# A BlockPos parking marker denotes the forklift's FLOOR, not the
+# geometric center of a cube. Y+0.5 failed the 0.25 vertical tolerance
+# in ForkliftAislePath.clearSegment, silently immobilizing home routing.
+assert "return drive(world,new Vec3(goal.getX()+.5,goal.getY()," in lift
+assert "goal.getZ()+.5));" in lift
+assert "drive(world,Vec3.atCenterOf(goal))" not in lift
+path=(racks/"ForkliftAislePath.java").read_text()
+assert "if(Math.abs(from.y-to.y)>.25)return false;" in path
+floor_y=68
+assert abs((floor_y+.5)-floor_y)>.25
+assert abs(floor_y-floor_y)<=.25
+assert '!status.startsWith("WAITING:")' in lift
+assert '!status.startsWith("REPLANNING")' in lift
 assert "if(drive(world,parking)){" in lift
 assert "golem.finishForkliftDriving()" in lift
 assert "getVehicle()==lift" in golem

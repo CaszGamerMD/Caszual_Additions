@@ -149,16 +149,28 @@ public final class ForkliftRackManeuver {
             }
         }
         if(candidates.isEmpty())return null;
-        // Prefer a collision-checked straight withdrawal whenever there
-        // really is room. The previous distance-first comparison routinely
-        // chose a tight 90-degree arc over a perfectly clear straight exit.
-        // Curved exits are for genuinely narrow aisles, not the default.
+        // A swept exit may be geometrically clear yet separated from the
+        // forklift by another rack bank. The old planner picked that exit
+        // anyway, and drive() could not reach it: the driver never moved.
+        // Prefer a straight exit only among OUTSIDE positions that the
+        // chassis can actually navigate to from its current position.
         candidates.sort(java.util.Comparator
                 .comparingInt((Plan p)->Math.abs(p.turn()))
                 .thenComparingDouble(p->forklift.distanceToSqr(
                         p.outside().position().x,p.outside().position().y,
                         p.outside().position().z)));
-        return candidates.getFirst();
+        // Persisted maneuvers were already traversing their saved arc when
+        // the world unloaded. Do not reject them because the truck is now
+        // partially inside the transfer lane rather than at its old approach.
+        boolean resuming=preferredTurn!=0||preferredDepth>0||preferredShift>0;
+        if(resuming)return candidates.getFirst();
+        for(Plan candidate:candidates){
+            Vec3 outside=candidate.outside().position();
+            if(forklift.distanceToSqr(outside.x,outside.y,outside.z)<.04
+                    ||!ForkliftAislePath.route(world,forklift,outside).isEmpty())
+                return candidate;
+        }
+        return null;
     }
     public static float angleTo(float from,float to,float fraction){
         return from+Mth.wrapDegrees(to-from)*fraction;

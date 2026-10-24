@@ -504,7 +504,12 @@ public final class WarehouseForklift extends PathfinderMob {
     }
 
     private boolean drive(ServerLevel world,BlockPos goal){
-        return drive(world,Vec3.atCenterOf(goal));
+        // BlockPos is the forklift's standing FLOOR level. Vec3.atCenterOf
+        // adds +0.5 Y, but this vehicle routes only on a horizontal plane.
+        // That half-block error made the final segment fail smooth()'s
+        // height check and prevented every automatic return to parking.
+        return drive(world,new Vec3(goal.getX()+.5,goal.getY(),
+                goal.getZ()+.5));
     }
     /** Follow a routed series of aisle waypoints, never the direct bearing
      * to a blocked pallet. Replan if a path is obstructed by a newly placed
@@ -736,7 +741,24 @@ public final class WarehouseForklift extends PathfinderMob {
             boolean atSource){
         ForkliftRackManeuver.Plan plan=rackArc(world,rack,atSource);
         if(plan==null){
-            status="WAITING: NO SAFE STRAIGHT OR 90-DEGREE RACK APPROACH";
+            // A complete raised-fork withdrawal can fail validation even
+            // though the ordinary low-fork route to the rack is clear.
+            // The old implementation never let a freshly dispatched driver
+            // leave its parking bay in that case. Approach the verified
+            // chassis dock with forks DOWN, then retry the exit planner from
+            // the real working aisle. Do NOT raise or transfer until an
+            // actual collision-checked withdrawal has been found.
+            int stage=atSource?sourceRackStage:destinationRackStage;
+            if(stage==0){
+                Dock accessible=service(world,rack);
+                if(accessible!=null){
+                    if(!drive(world,accessible.position()))return false;
+                    if(!alignForTransfer(accessible)){
+                        status="ALIGNING LOW FORKS OUTSIDE RACK";return false;
+                    }
+                }
+            }
+            status="WAITING: NO SAFE RAISED-FORK EXIT; LOW FORKS ONLY";
             return false;
         }
         int stage=atSource?sourceRackStage:destinationRackStage;
@@ -874,7 +896,8 @@ public final class WarehouseForklift extends PathfinderMob {
                     dismissAfterParking=false;
                     dismissDriver(world);
                 }
-            }else if(!status.startsWith("WAITING: FORKLIFT PATH BLOCKED"))
+            }else if(!status.startsWith("WAITING:")
+                    &&!status.startsWith("REPLANNING"))
                 status="RETURNING TO PAINTED FORKLIFT PARKING BAY";
             return;
         }

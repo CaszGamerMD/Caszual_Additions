@@ -62,6 +62,26 @@ assert dock+3.8-front_reach > rack_front_edge
 # why the planner separately validates all chassis/fork poses and retains
 # the collision-checked curved fallback.
 
+# Do not dispatch a fresh forklift toward an exit on the other side
+# of inaccessible rack banks. The outward swept maneuver alone is not
+# sufficient: its exterior must also be reachable via chassis pathfinding.
+assert "for(Plan candidate:candidates){" in plan
+assert "ForkliftAislePath.route(world,forklift,outside)" in plan
+assert "if(resuming)return candidates.getFirst();" in plan
+assert "return null;" in plan
+
+# Even if a future raised-fork withdrawal is temporarily unavailable,
+# a freshly dispatched, empty forklift must be allowed to drive to a
+# physically verified dock with forks down. It must NOT lift a pallet
+# without finding a safe exit.
+assert "if(accessible!=null){" in truck
+assert "if(!drive(world,accessible.position()))return false;" in truck
+assert 'status="WAITING: NO SAFE RAISED-FORK EXIT; LOW FORKS ONLY";' in truck
+approach=truck[truck.index("private boolean enterRackSafely("):
+               truck.index("private boolean exitRackSafely(")]
+assert approach.index("if(plan==null){") < approach.index("int stage=atSource?sourceRackStage:destinationRackStage;",approach.index("return false;"))
+assert approach.index("status=\"WAITING: NO SAFE RAISED-FORK EXIT") < approach.index("stage=1;")
+
 # The route is traversed in reverse on entry and forwards on exit:
 # no snap rotation or raising while the tines are inside any rack.
 assert "private boolean enterRackSafely(ServerLevel world,RackBlockEntity rack," in truck

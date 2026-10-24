@@ -333,3 +333,32 @@ a turn, teleports, lowers forks inside racks, or discards cargo to recover.
 Test with rack pickup, rack-to-rack delivery and ground staging, especially
 in three-block aisles and in larger open-floor warehouse layouts. A genuinely
 blocked aisle should continue to produce a waiting message until cleared.
+
+## Fix: stationary assigned driver and failure to return to parking
+
+A painted forklift parking bay is a block-level floor marker. Its center
+cannot be used as a 3D block center: that adds 0.5 vertical blocks, which
+caused the safe horizontal path smoother to reject a normal return route.
+Automatic end-of-job returns now use the actual standing height, so the
+forklift can route back across flat warehouse floors.
+
+When choosing a rack maneuver, the planner checks both the physical sweep of
+the raised forks and whether the parked truck can **reach the exterior
+starting position**. Previously a geometrically clear but unreachable
+outside position could leave a newly assigned operator motionless.
+
+If no safe raised-fork maneuver has yet been found, the empty forklift may
+still drive to its reachable rack dock **with the forks lowered**. It
+rechecks the raised-load clearance from there and will not lift, install,
+drop or teleport a pallet until the sweep is safe. If its status reads
+`WAITING: NO SAFE RAISED-FORK EXIT; LOW FORKS ONLY`, the remaining issue is
+the loaded-pallet extraction clearance rather than motor or operator movement.
+
+An empty-hand right-click displays the original status when an automatic
+parking route is truly blocked instead of replacing it with a generic
+"returning" message. Drivers continue to remain seated between normal jobs
+unless dismissed with the controller/scanner, as before.
+
+**In-world checklist:** newly placed forklift + boarded driver + source rack;
+ground-pallet-to-rack; raised rack-to-rack transfer; completed-job auto-return
+to the same painted bay; right-click status when genuinely obstructed.
