@@ -514,7 +514,11 @@ public final class RackComputerScreen extends Screen {
         }
         int selected=Math.clamp(selectedBuilderOrder,0,count-1);
         JsonObject active=builderOrders.get(selected).getAsJsonObject();
-        int y=239;
+        int y=261;
+        String reason=active.has("reason")?
+                active.get("reason").getAsString():"QUEUED FOR PICKING";
+        g.text(font,Component.literal(compact("STATUS: "+reason,
+                Math.max(18,(width-55)/6))),28,y-22,0xffedca8c,false);
         g.text(font,Component.literal("CURRENT BATCH: "
                 +active.get("currentItem").getAsString()+" x"
                 +active.get("currentQuantity").getAsInt()),28,y,0xffe8ca82,false);
