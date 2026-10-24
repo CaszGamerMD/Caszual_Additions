@@ -478,8 +478,10 @@ public final class WarehouseForklift extends PathfinderMob {
      * to a blocked pallet. Replan if a path is obstructed by a newly placed
      * block or moving vehicle. Refuse to go through a wall if none exists. */
     private boolean drive(ServerLevel world,Vec3 goal){
-        getNavigation().stop();
-        getMoveControl().setWantedPosition(getX(),getY(),getZ(),0);
+        // The custom forklift motor is the sole horizontal driver. Never
+        // issue a dummy vanilla MoveControl instruction at our own current
+        // position: it can overwrite speed/heading in the following AI tick.
+        // Navigation is already stopped before super.tick() while on a job.
         double dx=goal.x-getX(),dz=goal.z-getZ();
         double distance=Math.hypot(dx,dz);
         double tolerance=job==5?.82:.16;
