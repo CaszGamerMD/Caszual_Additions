@@ -34,6 +34,7 @@ public final class PtpBlockEntity extends BlockEntity
     private int filterMode,filterScope;
     private String filterTarget="",filterSignature="";
     private boolean input=true,sealed;
+    private boolean returnBuilderPallet; // Persistent physical cleanup job.
     // Orders belong to the output endpoint, not a remote/global virtual hub.
     // A persisted reservation prevents multiple walking workers from
     // withdrawing more than the head order requests.
@@ -154,6 +155,7 @@ public final class PtpBlockEntity extends BlockEntity
                 ||!emptyCargo()||hauling())return false;
         builderRequest=null;builderOwner=null;
         builderTable=BlockPos.ZERO;builderComputer=BlockPos.ZERO;
+        input=true;returnBuilderPallet=hasPallet();
         setChanged();return true;
     }
     public boolean outputInFlight(){
@@ -360,6 +362,10 @@ public final class PtpBlockEntity extends BlockEntity
     public boolean sealed(){return sealed;}
     public void setSealed(boolean v){if(hasPallet()&&!hauling()){sealed=v;setChanged();}}
     public boolean hasPallet(){return !pallet.isEmpty();}
+    public boolean needsBuilderPalletReturn(){
+        return returnBuilderPallet&&!builderReserved()&&!preparingForBuilder()
+                &&hasPallet()&&emptyCargo()&&!outputInFlight()&&!hauling();
+    }
     public boolean readyForOutput(){return !input&&!sealed&&hasPallet();}
     /** Explicit workstation controls refuse to interrupt live deliveries or
      * invalidate a wrapped pallet's four-worker escrow. */
@@ -543,6 +549,7 @@ public final class PtpBlockEntity extends BlockEntity
         if(builderReserved()||!hasPallet()||hauling())return ItemStack.EMPTY;
         ItemStack result=PalletData.applyFilterSettings(pallet,this);
         pallet=ItemStack.EMPTY;filterUpgrade=ItemStack.EMPTY;
+        returnBuilderPallet=false;
         filterTarget="";filterSignature="";sealed=false;
         setChanged();return result;
     }
@@ -607,6 +614,7 @@ public final class PtpBlockEntity extends BlockEntity
         out.putInt("filter_mode",filterMode);
         out.putInt("filter_scope",filterScope);
         out.putBoolean("input",input);out.putBoolean("sealed",sealed);
+        out.putBoolean("return_builder_pallet",returnBuilderPallet);
         if(builderPreparing!=null)
             out.putString("builder_preparing",builderPreparing.toString());
         if(palletSetupWorker!=null){
@@ -661,6 +669,7 @@ public final class PtpBlockEntity extends BlockEntity
         filterScope=Math.clamp(in.getIntOr("filter_scope",0),0,3);
         input=in.getBooleanOr("input",true);
         sealed=in.getBooleanOr("sealed",false)&&hasPallet();
+        returnBuilderPallet=in.getBooleanOr("return_builder_pallet",false)&&hasPallet();
         builderPreparing=palletSetupWorker=null;palletSetupDeadline=0;
         try{
             builderPreparing=java.util.UUID.fromString(in.getStringOr("builder_preparing",""));
