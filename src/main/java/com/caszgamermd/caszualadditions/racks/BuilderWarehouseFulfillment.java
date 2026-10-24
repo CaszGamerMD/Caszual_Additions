@@ -164,6 +164,24 @@ public final class BuilderWarehouseFulfillment {
                 config.waitingBuilder(request),lines,network);
     }
 
+    /** A Shulker Station may be connected before the pallet is installed.
+     * Do not require readyForOutput() when choosing where to stage one.
+     */
+    private static boolean hasStationPort(ServerLevel level,
+            PtpBlockEntity ptp,WarehouseNetwork.Result network){
+        for(ShulkerTankEntity station:network.tanks()){
+            for(int y=0;y<=2;y++)
+                for(net.minecraft.core.Direction side:
+                        net.minecraft.core.Direction.Plane.HORIZONTAL){
+                    BlockPos port=station.getBlockPos().above(y).relative(side);
+                    if(!level.hasChunkAt(port))continue;
+                    if(level.getBlockEntity(port) instanceof PtpHopperPort
+                            &&PtpBlock.controller(level,port)==ptp)return true;
+                }
+        }
+        return false;
+    }
+
     private static Reply assignWaiting(ServerLevel level,BlockPos computer,
             WarehouseComputerBlockEntity config,
             WarehouseComputerBlockEntity.PendingBuilder pending,
@@ -171,26 +189,43 @@ public final class BuilderWarehouseFulfillment {
         if(pending==null)
             return new Reply("RESERVATION_MISSING",BlockPos.ZERO,Map.of(),0,0);
         BlockPos selected=config.orderOutput();
-        if(!network.shelves().isEmpty()&&!network.racks().isEmpty())
-            for(PtpBlockEntity ptp:network.points()){
-                if(!selected.equals(BlockPos.ZERO)
-                        &&!selected.equals(ptp.getBlockPos()))continue;
-                if(!ptp.readyForOutput()||!ptp.emptyCargo()
-                        ||ptp.pendingOutputOrders()!=0||ptp.builderReserved()
-                        ||ptp.outputInFlight()||ptp.hauling())continue;
-                var station=tank(level,computer,ptp);
-                if(station==null||station.activeCount()!=0
-                        ||station.finishedCount()!=0||station.bufferedItems()!=0)
-                    continue;
-                if(!ptp.beginBuilderOutput(pending.request(),pending.owner(),
-                        pending.table(),computer,lines))continue;
-                config.dequeueBuilder(pending.request(),pending.owner(),pending.table());
-                for(StorageGolemShelfEntity shelf:network.shelves())
-                    if(shelf.docked()>0&&StorageGolemDispatch
-                            .tryDispatchQueuedOutput(level,shelf))break;
-                return inspect(level,computer,pending.table(),pending.owner(),
-                        pending.request(),ptp.getBlockPos());
-            }
+        if(!network.shelves().isEmpty()&&!network.racks().isEmpty()){
+            // Pass one keeps an existing ticket pinned to the same PTP.
+            // Pass two chooses the first unused physical OUTPUT site.
+            for(int pass=0;pass<2;pass++)
+                for(PtpBlockEntity ptp:network.points()){
+                    if(!selected.equals(BlockPos.ZERO)
+                            &&!selected.equals(ptp.getBlockPos()))continue;
+                    if(pass==0&&!ptp.preparationMatches(pending.request()))continue;
+                    if(pass==1&&ptp.preparingForBuilder())continue;
+                    if(!ptp.emptyCargo()||ptp.pendingOutputOrders()!=0
+                            ||ptp.builderReserved()||ptp.outputInFlight()
+                            ||ptp.hauling()||ptp.sealed())continue;
+                    if(!hasStationPort(level,ptp,network))continue;
+                    if(!ptp.prepareBuilder(pending.request()))continue;
+                    if(!ptp.readyForOutput()){
+                        // The order stays on the COMPUTER while the real
+                        // pallet is carried from a loaded Pallet Dispenser.
+                        for(StorageGolemShelfEntity shelf:network.shelves())
+                            if(shelf.docked()>0&&StorageGolemDispatch
+                                    .tryDispatchBuilderPallet(level,shelf))break;
+                        return new Reply("QUEUED_AT_WAREHOUSE",BlockPos.ZERO,
+                                Map.of(),lines.size(),0);
+                    }
+                    var station=tank(level,computer,ptp);
+                    if(station==null||station.activeCount()!=0
+                            ||station.finishedCount()!=0||station.bufferedItems()!=0)
+                        continue;
+                    if(!ptp.beginBuilderOutput(pending.request(),pending.owner(),
+                            pending.table(),computer,lines))continue;
+                    config.dequeueBuilder(pending.request(),pending.owner(),pending.table());
+                    for(StorageGolemShelfEntity shelf:network.shelves())
+                        if(shelf.docked()>0&&StorageGolemDispatch
+                                .tryDispatchQueuedOutput(level,shelf))break;
+                    return inspect(level,computer,pending.table(),pending.owner(),
+                            pending.request(),ptp.getBlockPos());
+                }
+        }
         return new Reply("QUEUED_AT_WAREHOUSE",BlockPos.ZERO,Map.of(),
                 lines.size(),0);
     }
@@ -200,28 +235,24 @@ public final class BuilderWarehouseFulfillment {
         var network=WarehouseNetwork.fromComputer(level,computer);
         if(network.shelves().isEmpty())return "WAITING: CONNECT STORAGE GOLEM SHELVES";
         if(network.racks().isEmpty())return "WAITING: CONNECT STOCK RACKS";
-        BlockPos selected=level.getBlockEntity(computer)
-                instanceof WarehouseComputerBlockEntity cfg
-                    ?cfg.orderOutput():BlockPos.ZERO;
-        boolean output=false;
-        boolean ready=false;
+        boolean preparing=false,clearance=false,hasPort=false;
         for(PtpBlockEntity ptp:network.points()){
-            if(!selected.equals(BlockPos.ZERO)
-                    &&!selected.equals(ptp.getBlockPos()))continue;
-            if(ptp.input())continue;
-            output=true;
-            if(!ptp.readyForOutput()||ptp.builderReserved()
-                    ||ptp.outputInFlight()||ptp.hauling()
-                    ||ptp.pendingOutputOrders()!=0||!ptp.emptyCargo())continue;
-            ready=true;
-            var station=tank(level,computer,ptp);
-            if(station!=null&&station.activeCount()==0
-                    &&station.finishedCount()==0&&station.bufferedItems()==0)
-                return "WAITING: OUTPUT PALLET READY; ASSIGNING NEXT TICKET";
+            if(ptp.preparingForBuilder()){
+                preparing=true;
+                if(!ptp.hasPallet()){
+                    if(!ptp.palletInstallProblem().isEmpty())clearance=true;
+                    else if(network.magazines().stream().noneMatch(m->m.count()>0))
+                        return "PALLET DISPENSER EMPTY; ADD EMPTY PALLETS";
+                }
+            }
+            if(hasStationPort(level,ptp,network))hasPort=true;
         }
-        if(!output)return "WAITING: SET A CONNECTED PTP TO OUTPUT";
-        if(!ready)return "WAITING: OUTPUT PTP NEEDS PALLET OR IS BUSY";
-        return "WAITING: CONNECT SHULKER STATION TO CORNER HOPPER ADAPTER";
+        if(clearance)return "PTP 3-BLOCK OVERHEAD CLEARANCE BLOCKED";
+        if(preparing)return "STORAGE GOLEM PREPARING OUTPUT PALLET";
+        if(!hasPort)return "CONNECT SHULKER STATION TO CORNER HOPPER ADAPTER";
+        if(network.magazines().stream().noneMatch(m->m.count()>0))
+            return "SUPPLY PALLET DISPENSER WITH EMPTY PALLETS";
+        return "WAITING FOR AVAILABLE OUTPUT PTP OR GOLEM";
     }
 
     /** Human-readable state of the actual reserved packing lane, shown
