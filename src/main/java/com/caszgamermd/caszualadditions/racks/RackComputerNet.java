@@ -492,6 +492,10 @@ public final class RackComputerNet {
             root.addProperty("orderPackers",settings.orderPackers());
             root.addProperty("orderOutput",settings.orderOutput().toShortString());
         }
+        // Rescue any old-world locked PTP whose pallet vanished before
+        // rendering the queue. Never migrate if items or shulkers exist.
+        BuilderWarehouseFulfillment.recoverMissingPalletReservations(
+                level,computer);
         JsonArray builderOrders=new JsonArray();
         if(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity settings)
             for(var pending:settings.waitingBuilders()){
