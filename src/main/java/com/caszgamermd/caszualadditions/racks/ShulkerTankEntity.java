@@ -134,6 +134,14 @@ public final class ShulkerTankEntity extends BlockEntity implements Container, E
         PtpBlockEntity output=attachedOutput(level);
         if(output==null)return false;
         if(!working.get(lane).isEmpty()){
+            // Manual station UI must obey the same full/complete rule.
+            // Otherwise a click could ship a partial shulker during
+            // the middle of a still-active Builder or manual order.
+            ItemStack staged=working.get(lane);
+            boolean completed=output.pendingOutputOrders()==0
+                    &&!output.outputInFlight();
+            if(!completed&&StorageGolemPacking.unpack(staged).size()<27)
+                return false;
             if(!finished.get(lane).isEmpty())return false;
             finished.set(lane,working.get(lane));
             working.set(lane,ItemStack.EMPTY);
