@@ -244,27 +244,21 @@ public final class ShulkerTankEntity extends BlockEntity implements Container, E
         }
         return true;
     }
-    /** A reserved Builder PTP needs supplies as each picker returns.
-     * Seal a real partially filled shulker as soon as its physical delivery
-     * reaches the station; don't hold all prior supplies until a different,
-     * potentially unstocked material at the end of the order is fulfilled.
-     * Full boxes still use the existing atomic hopper-adapter transfer. */
+    /** Builder orders obey the same sealing rule as player orders:
+     * transfer only FULL shulkers, or finish partial ones once the ENTIRE
+     * submitted order is packed. Never flush a part-filled shulker
+     * between individual worker trips.
+     */
     public void flushBuilderBatch(ServerLevel level,PtpBlockEntity ptp){
         if(ptp==null||!ptp.builderReserved()||attachedOutput(level)!=ptp)return;
-        boolean changed=false;
-        for(int i=0;i<STATIONS;i++){
-            if(working.get(i).isEmpty()||!finished.get(i).isEmpty())continue;
-            finished.set(i,working.get(i));
-            working.set(i,ItemStack.EMPTY);
-            changed=true;
-        }
-        if(changed)setChanged();
-        flushFinished(level,ptp,true);
+        if(ptp.pendingOutputOrders()==0&&!ptp.outputInFlight())
+            finishOrder(level,ptp);
+        else flushFinished(level,ptp,true);
     }
     /** Full shulkers are ready immediately; partially filled shulkers
      * become ready when the whole submitted order queue finishes. */
     public void finishOrder(ServerLevel level,PtpBlockEntity ptp){
-        if(ptp==null||ptp.pendingOutputOrders()!=0)return;
+        if(ptp==null||ptp.pendingOutputOrders()!=0||ptp.outputInFlight())return;
         for(int i=0;i<STATIONS;i++){
             if(working.get(i).isEmpty()||!finished.get(i).isEmpty())continue;
             finished.set(i,working.get(i));
@@ -275,7 +269,7 @@ public final class ShulkerTankEntity extends BlockEntity implements Container, E
     }
     public void flushFinished(ServerLevel level){
         PtpBlockEntity output=attachedOutput(level);
-        if(output!=null&&output.pendingOutputOrders()==0)
+        if(output!=null&&output.pendingOutputOrders()==0&&!output.outputInFlight())
             finishOrder(level,output);
         flushFinished(level,output,true);
     }
