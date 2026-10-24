@@ -45,7 +45,7 @@ assert '"PARKED - DRIVER ON DUTY"' in fork
 assert "public boolean dismissDriver(ServerLevel world)" in fork
 assert "player.getItemInHand(hand).is(RackContent.FORKLIFT_CONTROLLER)" in fork
 assert "golem.finishForkliftDriving()" in fork
-assert "!forkliftDriver&&!forkliftEscort)" in golem
+assert "!forkliftEscort&&!builderPalletJob" in golem
 assert "WarehouseSortingReach.groundRack(level,rack)" in carrier
 assert "if(hasPackedCargo())" in fork
 assert "ItemStack packed=jack.copy();" in fork
