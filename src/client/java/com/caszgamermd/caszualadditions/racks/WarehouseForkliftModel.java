@@ -198,15 +198,17 @@ public final class WarehouseForkliftModel extends EntityModel<WarehouseForkliftR
         // duplicated faces at their connection without shortening the tips.
         // Heavy back plate, two real extended steel forks with 1px beveled
         // tips, supporting the complete visible 1.8x1.8 wrapped pallet.
-        // Forks end at -64px: the existing cargo mesh ends at -59.5px.
+        // Forks end at -60px (3.75 blocks); the visible wrapped cargo
+        // ends at -59.5px. Both now fit within the actual pickup bay and
+        // the server's 3.75-block fork-envelope collision check.
         root.addOrReplaceChild("carriage",CubeListBuilder.create()
                 .texOffs(70,0).addBox(-12,-15,-28,24,4,3)
                 .texOffs(70,18).addBox(-11,-12,-31,4,12,4)
                 .texOffs(70,18).addBox(7,-12,-31,4,12,4)
-                .texOffs(92,31).addBox(-10,-3,-61,4,3,30)
-                .texOffs(92,31).addBox(6,-3,-61,4,3,30)
-                .texOffs(70,0).addBox(-9,-2,-64,2,2,3)
-                .texOffs(70,0).addBox(7,-2,-64,2,2,3)
+                .texOffs(92,31).addBox(-10,-3,-57,4,3,26)
+                .texOffs(92,31).addBox(6,-3,-57,4,3,26)
+                .texOffs(70,0).addBox(-9,-2,-60,2,2,3)
+                .texOffs(70,0).addBox(7,-2,-60,2,2,3)
                 .texOffs(70,18).addBox(-11,-16,-30,22,2,2)
                 .texOffs(70,18).addBox(-10,-9,-29,20,2,2)
                 .texOffs(104,50).addBox(-12,-11,-29,2,3,2)
