@@ -39,7 +39,7 @@ assert "WarehouseRemoteTickets.keep(level,new BlockPos(" in home
 assert "if(receiving!=null&&receiving.addNamed(golemName))" in home
 assert "discard();" in home
 
-assert "Mode next=toggleMode(scanner);" in scanner
+assert "ScannerControlNet.open(user,scanner)" in scanner
 assert "StorageScannerItem.Mode.DIRECT" in golem
 assert "if(remotePickup||remoteCourier)" in golem
 assert "claimStalledRemote(server,user.getUUID(),linked)" in carrier
