@@ -29,6 +29,10 @@ assert "BlockEntityTicker<T> getTicker" in station_block
 assert "orderCargo=NonNullList.withSize(3,ItemStack.EMPTY)" in golem
 assert "continuePacking(" in golem
 assert "packerSlotFree(" in dispatch
+# Changing the selected PTP cannot steal dispatch from an already reserved
+# Builder shipment; the manual-order selection must remain unchanged.
+assert "if(output==null)output=outputPoint(level,group,terminal);" in dispatch
+assert "if(point.builderReserved()&&point.readyForOutput()" in dispatch
 assert "orderPackers()" in src(j/"WarehouseComputerBlockEntity.java")
 assert "out.store(\"order_slot_\"+i,ItemStack.CODEC" in golem
 assert "in.read(\"order_slot_\"+i" in golem
