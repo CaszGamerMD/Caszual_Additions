@@ -129,6 +129,7 @@ public final class RackContent {
                 new StorageScannerItem(new Item.Properties()
                         .stacksTo(1).setId(scannerKey)));
         StorageScannerItem.initialize();
+        ScannerControlNet.initialize();
         ResourceKey<Item> jackKey=ResourceKey.create(Registries.ITEM,
                 CaszualAdditions.id("pallet_jack"));
         PALLET_JACK=Registry.register(BuiltInRegistries.ITEM,jackKey,
