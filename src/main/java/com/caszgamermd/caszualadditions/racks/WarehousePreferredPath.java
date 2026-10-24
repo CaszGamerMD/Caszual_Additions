@@ -84,8 +84,15 @@ public final class WarehousePreferredPath {
             java.util.function.ToDoubleFunction<BlockPos> standingY){
         if(options==null||options.isEmpty())return null;
         var targets=new java.util.HashSet<BlockPos>();
+        // Avoid repeated per-block server shape lookups while exploring
+        // neighboring warehouse tiles. This cache lives ONLY for the
+        // current bounded route search; it is never stale after a block
+        // is placed or a door is changed.
+        Map<BlockPos,Boolean> validCache=new HashMap<>();
+        Map<BlockPos,Double> floorCache=new HashMap<>();
         for(BlockPos target:options)
-            if(walkable.test(target))targets.add(target);
+            if(validCache.computeIfAbsent(target,walkable::test))
+                targets.add(target);
         if(targets.isEmpty())return null;
         if(targets.contains(from))return from;
         PriorityQueue<Node> queue=new PriorityQueue<>(
@@ -108,9 +115,10 @@ public final class WarehousePreferredPath {
                     if(Math.abs(next.getX()-from.getX())>RADIUS
                             ||Math.abs(next.getZ()-from.getZ())>RADIUS
                             ||Math.abs(next.getY()-from.getY())>MAX_ELEVATION_FROM_START
-                            ||!walkable.test(next))continue;
-                    double rise=Math.abs(standingY.applyAsDouble(next)
-                            -standingY.applyAsDouble(here));
+                            ||!validCache.computeIfAbsent(next,walkable::test))continue;
+                    double rise=Math.abs(floorCache.computeIfAbsent(next,
+                            standingY::applyAsDouble)-floorCache.computeIfAbsent(
+                                    here,standingY::applyAsDouble));
                     if(!Double.isFinite(rise)||rise>1.001)continue;
                     int newCost=node.cost()+10+(rise>.501?15:0);
                     if(newCost>=costs.getOrDefault(next,Integer.MAX_VALUE))continue;
