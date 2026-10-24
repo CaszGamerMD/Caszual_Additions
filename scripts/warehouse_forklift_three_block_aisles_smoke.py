@@ -42,7 +42,8 @@ assert "world.removeBlock" in pallet
 # from a safe cardinal side along the aisle rather than driving directly
 # into the opposite rack.
 assert "if(pickup)this.groundFacing=rack.facing();" in truck
-assert "?groundService(world,staging,groundFacing):service(world,rack);" in truck
+assert "Dock landing=groundService(world,staging,groundFacing);" in truck
+assert "if(!enterRackSafely(world,rack,false))return;" in truck
 assert "for(Direction side:Direction.Plane.HORIZONTAL)" in truck
 assert "ForkliftAislePath.route(world,this,position)" in truck
 
