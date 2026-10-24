@@ -421,11 +421,9 @@ public final class PtpBlockEntity extends BlockEntity
             if(level.getBlockState(PtpBlock.cell(root,p)).is(RackContent.PTP_WRAP))return true;
         return false;
     }
-    /** An EMPTY pallet is only a low platform. Its taller cargo is
-     * loaded later; requiring three empty levels across a whole 3x3 area
-     * made an otherwise usable PTP impossible to initialize in warehouses
-     * with a two- or three-block ceiling. Diagnose the real offending cell
-     * instead of blaming all failures on nonexistent overhead blocks.
+    /** A pallet on a 3x3 PTP needs the full three-block cargo height.
+     * Validate every voxel BEFORE placing or reserving the pallet, and
+     * report the exact obstruction rather than blaming an existing order.
      */
     public String palletInstallProblem(){
         if(level==null)return "PTP world not loaded";
@@ -435,11 +433,9 @@ public final class PtpBlockEntity extends BlockEntity
         if(outputInFlight())return "Warehouse Golems still hold output reservations";
         if(pendingOutputOrders()>0)return "PTP has pending output orders";
         BlockPos root=worldPosition.offset(-1,0,-1);
-        // Only the FIRST layer above the 3x3 floor is necessary for an
-        // unloaded pallet and safe worker access. Do not demand cargo space
-        // that does not exist yet.
-        for(int z=0;z<3;z++)for(int x=0;x<3;x++){
-            BlockPos p=root.offset(x,1,z);
+        for(int height=1;height<=3;height++)
+            for(int z=0;z<3;z++)for(int x=0;x<3;x++){
+            BlockPos p=root.offset(x,height,z);
             if(level.isOutsideBuildHeight(p))
                 return "PTP too close to the world height limit at "+p.toShortString();
             if(!level.hasChunkAt(p))
@@ -449,7 +445,7 @@ public final class PtpBlockEntity extends BlockEntity
                 return "Block above PTP at "+p.toShortString()+": "
                         +net.minecraft.core.registries.BuiltInRegistries.BLOCK
                                 .getKey(obstruction.getBlock())
-                        +". Clear one block above the 3x3 platform";
+                        +". Clear all three blocks above the 3x3 platform";
         }
         return "";
     }
