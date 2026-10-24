@@ -19,10 +19,12 @@ assert "orderList.put(selectedItemId,total);" in screen
 assert 'message.startsWith("Order submitted:")' in screen
 assert "orderList.remove(selected);" in screen
 assert "private BlockPos orderApproach(" in golem
-assert "StorageGolemReturnPath.steps(feet,cell," in golem
-assert "orderAccessExpires=tickCount+60" in golem
+assert "WarehousePreferredPath.leg(feet,cell," in golem
+assert "WarehouseSortingReach.withinReach(service,rack)" in golem
+assert "route.getLast().equals(cell)" in golem
+assert "orderAccessExpires=tickCount+180" in golem
 assert "stage==0||stage==1||stage==3" in golem
-assert "routeIssue=\"WAITING FOR ORDER ACCESS\"" in golem
+assert "routeIssue=\"WAITING FOR REACHABLE ORDER ACCESS\"" in golem
 assert "WAITING FOR SHULKER SPACE" in golem
 assert "WAITING FOR STATION SPACE" in golem
 assert "WAITING FOR ORDER STOCK" in golem

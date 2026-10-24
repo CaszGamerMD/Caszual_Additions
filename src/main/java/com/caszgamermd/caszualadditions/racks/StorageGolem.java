@@ -1669,18 +1669,30 @@ public final class StorageGolem extends PathfinderMob {
             return orderAccessGoal;
         orderAccessTarget=place.immutable();
         orderAccessStage=stage;
-        orderAccessExpires=tickCount+60;
+        // Keep the selected rack-front/service aisle stable while the
+        // worker walks an actual long corridor. Choosing a different
+        // nearby service square every three seconds made workers oscillate.
+        orderAccessExpires=tickCount+180;
         BlockEntity machine=level.hasChunkAt(place)?level.getBlockEntity(place):null;
         java.util.LinkedHashSet<BlockPos> choices=new java.util.LinkedHashSet<>();
         if(machine instanceof RackBlockEntity rack){
             // The rack is opaque to Golems: approach ONLY from its FRONT,
             // never through a side/back frame or its upper cargo bays.
-            for(int depth=1;depth<=3;depth++)
+            for(int depth=1;depth<=2;depth++)
                 for(int col=0;col<2;col++){
                     BlockPos cell=RackBlock.cell(place,rack.facing(),col)
                             .relative(rack.facing(),depth);
-                    choices.add(new BlockPos(cell.getX(),blockPosition().getY(),
-                            cell.getZ()));
+                    // Three-block-deep aisle cells are walkable, but
+                    // OUTSIDE the Golem's legitimate two-block rack reach.
+                    // Also consider real raised stair/scaffold landings for
+                    // elevated racks, instead of forever selecting the same
+                    // unreachable ground-level service cell.
+                    for(int dy=-2;dy<=0;dy++){
+                        BlockPos service=new BlockPos(cell.getX(),
+                                place.getY()+dy,cell.getZ());
+                        if(WarehouseSortingReach.withinReach(service,rack))
+                            choices.add(service);
+                    }
                 }
         }else{
             for(int depth=1;depth<=2;depth++)
@@ -1696,21 +1708,44 @@ public final class StorageGolem extends PathfinderMob {
         for(BlockPos cell:choices){
             if(!openWalkway(level,cell)
                     ||occupied.contains(cell)&&!cell.equals(feet))continue;
-            List<BlockPos> route=StorageGolemReturnPath.steps(feet,cell,
-                    p->openWalkway(level,p)&&!occupied.contains(p));
-            if(route!=null&&route.size()<bestLength){
+            // The old same-Y breadth-first search rejected an otherwise
+            // clear warehouse route when it crossed one real stair/slab.
+            // Use the same weighted terrain-aware router that physically
+            // moves Storage Golems. Moving robots are excluded only from
+            // the FINAL service square, not permanently as static walls
+            // across a whole aisle.
+            List<BlockPos> route=cell.equals(feet)?List.of():
+                    WarehousePreferredPath.leg(feet,cell,
+                            p->openWalkway(level,p),BlockPos.ZERO,
+                            p->WarehouseTerrain.standingY(level,p));
+            if(route==null)continue;
+            boolean exact=route.isEmpty()||route.getLast().equals(cell);
+            // Long warehouse aisles use 36-block partial *walking* legs.
+            // The final service square is still checked for clearance, but
+            // a courier more than 36 blocks away cannot prove the entire
+            // route in one bounded path search. Accept only a partial leg
+            // that makes substantial forward progress; the actual pickup
+            // still requires reaching the verified service cell in person.
+            int startDist=Math.abs(feet.getX()-cell.getX())
+                    +Math.abs(feet.getZ()-cell.getZ());
+            int endDist=route.isEmpty()?startDist:
+                    Math.abs(route.getLast().getX()-cell.getX())
+                    +Math.abs(route.getLast().getZ()-cell.getZ());
+            boolean advances=startDist>WarehousePreferredPath.RADIUS
+                    &&!route.isEmpty()&&endDist<=startDist-8;
+            if((exact||advances)
+                    &&route.size()+endDist<bestLength){
                 best=cell;
-                bestLength=route.size();
+                bestLength=route.size()+endDist;
             }
         }
         if(best==null){
-            // Keep the task pending until an aisle opens; never silently
-            // choose a route through the solid rack as a fallback.
-            routeIssue="WAITING FOR ORDER ACCESS";
-            // Wait at the FIRST front/service position, never select an
-            // unverified rear rack face or accidentally complete a pickup
-            // from behind a solid frame.
-            return choices.isEmpty()?place:choices.iterator().next();
+            // No safe final approach: keep the real order and its
+            // reservation intact. Do not select the first unverified
+            // blocked service tile or pretend the stock was collected.
+            routeIssue="WAITING FOR REACHABLE ORDER ACCESS";
+            orderAccessGoal=BlockPos.ZERO;
+            return feet;
         }
         orderAccessGoal=best.immutable();
         routeIssue="";
@@ -2296,6 +2331,10 @@ public final class StorageGolem extends PathfinderMob {
         BlockPos target=stage==0||stage==3?source
                 :stage==1?destination:stage==4||stage==5?magazine:home;
         BlockPos walkway=approach(level,target);
+        if(stationOrder&&routeIssue.equals("WAITING FOR REACHABLE ORDER ACCESS")){
+            getNavigation().stop();
+            return;
+        }
         if(!level.hasChunkAt(target) || !level.hasChunkAt(walkway))return;
         if(!closeTo(walkway)){
             walkTo(level,walkway,1.10);
