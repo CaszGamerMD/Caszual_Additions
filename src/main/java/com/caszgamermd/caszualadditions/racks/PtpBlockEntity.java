@@ -92,10 +92,23 @@ public final class PtpBlockEntity extends BlockEntity
         if(!preparationMatches(request)||builderReserved()||outputInFlight()
                 ||hauling())return false;
         builderPreparing=null;
-        // An in-flight delivery worker must return its real pallet
-        // physically to the dispenser if no longer reserved here.
+        // A worker already carrying the pallet sees the canceled UUID and
+        // returns it physically to its source dispenser. A pallet already
+        // installed here is likewise recovered by the normal return crew.
         palletSetupWorker=null;palletSetupDeadline=0;
+        input=true;returnBuilderPallet=hasPallet();
         setChanged();return true;
+    }
+    /** Cancel only an unshipped warehouse order. Never delete real
+     * station cargo, packed boxes or a picker reservation to force unlock.
+     * Warehouse validates every attached station before calling this.
+     */
+    public boolean cancelUnshippedBuilder(java.util.UUID request,
+            java.util.UUID owner,BlockPos table,BlockPos computer){
+        if(!builderMatches(request,owner,table,computer)
+                ||!emptyCargo()||outputInFlight()||hauling())return false;
+        outputOrders.clear();
+        return releaseBuilderOutput(request,owner,table,computer);
     }
     public String builderOwnerName(){
         return builderOwner==null?"":builderOwner.toString().substring(0,8);
