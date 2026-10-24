@@ -100,6 +100,35 @@ public final class BuilderWarehouseFulfillment {
      * A ticket in this saved queue never locks a pallet or changes its mode.
      * Every retry uses the same UUID; assignment is atomic on the main thread.
      */
+    /** Migrate a broken old-world PTP lock back to the durable warehouse
+     * queue ONLY if its pallet is missing and no physical package, shulker
+     * contents or picker is active anywhere in this warehouse. Never
+     * destroy actual items to repair an unready Builder order.
+     */
+    public static int recoverMissingPalletReservations(ServerLevel level,
+            BlockPos computer){
+        if(!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity cfg))
+            return 0;
+        var network=WarehouseNetwork.fromComputer(level,computer);
+        for(var station:network.tanks())
+            if(station.activeCount()>0||station.finishedCount()>0
+                    ||station.bufferedItems()>0)return 0;
+        int migrated=0;
+        for(PtpBlockEntity ptp:network.points()){
+            if(!ptp.builderReserved()||ptp.hasPallet()||!ptp.emptyCargo()
+                    ||ptp.outputInFlight()||ptp.hauling())continue;
+            var ticket=ptp.builderRequestId();
+            var owner=ptp.builderOwnerId();
+            var table=ptp.builderTablePos();
+            Map<String,Integer> remaining=ptp.pendingOutputManifest();
+            if(ticket==null||owner==null||table.equals(BlockPos.ZERO)
+                    ||remaining.isEmpty())continue;
+            if(cfg.queueBuilder(ticket,owner,table,remaining)
+                    &&ptp.releaseUnpreparedBuilder())migrated++;
+        }
+        return migrated;
+    }
+
     public static Reply request(ServerLevel level,BlockPos computer,BlockPos table,
             UUID owner,UUID request,Map<String,Integer> manifest){
         if(owner==null||request==null||table==null||computer==null
@@ -120,6 +149,7 @@ public final class BuilderWarehouseFulfillment {
                 return new Reply("INVALID_MANIFEST",BlockPos.ZERO,Map.of(),0,0);
             lines.add(new PtpBlockEntity.OutputOrder(id.toString(),qty));
         }
+        recoverMissingPalletReservations(level,computer);
         var network=WarehouseNetwork.fromComputer(level,computer);
         // Idempotent live reservation, including old worlds where the PTP
         // already owns a job from before the computer queue was introduced.
@@ -245,12 +275,25 @@ public final class BuilderWarehouseFulfillment {
 
     public static Reply inspect(ServerLevel level,BlockPos computer,BlockPos table,
             UUID owner,UUID request,BlockPos ptpPos){
+        if(valid(level,computer))recoverMissingPalletReservations(level,computer);
         if(ptpPos==null||!level.hasChunkAt(ptpPos)||!valid(level,computer))
             return new Reply("WAREHOUSE_OFFLINE",ptpPos==null?BlockPos.ZERO:ptpPos,
                     Map.of(),0,0);
         if(!(level.getBlockEntity(ptpPos) instanceof PtpBlockEntity ptp)
-                ||!ptp.builderMatches(request,owner,table,computer))
+                ||!ptp.builderMatches(request,owner,table,computer)){
+            // If an old empty PTP was safely migrated, keep the same UUID
+            // and tell the Builder to clear its old PTP assignment and
+            // resume polling the computer queue instead of creating copies.
+            if(level.getBlockEntity(computer)
+                    instanceof WarehouseComputerBlockEntity cfg){
+                var pending=cfg.waitingBuilder(request);
+                if(pending!=null&&pending.owner().equals(owner)
+                        &&pending.table().equals(table))
+                    return new Reply("QUEUED_AT_WAREHOUSE",
+                            BlockPos.ZERO,Map.of(),pending.manifest().size(),0);
+            }
             return new Reply("RESERVATION_MISSING",ptpPos,Map.of(),0,0);
+        }
         int boxed=packed(ptp);
         var station=tank(level,computer,ptp);
         int pending=ptp.pendingOutputOrders();
