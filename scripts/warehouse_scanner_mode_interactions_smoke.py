@@ -12,14 +12,14 @@ crew=j("StoragePalletCrew.java")
 net=j("RackComputerNet.java")
 screen=(client/"RackComputerScreen.java").read_text()
 audit=j("WarehouseDiagnostics.java")
-assert "public enum Mode { REMOTE, DIRECT, FORKLIFT, RECALL }" in scanner
+assert "public enum Mode { DIRECT, REMOTE, FORKLIFT, RECALL, LINK, LOAD_UNLOAD, COMPUTER }" in scanner
 assert "Mode.values()[(mode(scanner).ordinal()+1)%Mode.values().length]" in scanner
 assert 'tag.putString("scanner_mode",next.name());' in scanner
 assert "if(next!=Mode.REMOTE)clearPickup(scanner);" in scanner
 assert 'if(mode(scanner)!=Mode.REMOTE)return "";' in scanner
 assert 'onComputerClick(server,user,scanner,clicked);' in scanner
 assert "if(player.isShiftKeyDown())" in scanner
-assert "Mode next=toggleMode(scanner);" in scanner
+assert "ScannerControlNet.open(user,scanner)" in scanner
 assert "REMOTE mode only requests a swap" in scanner
 assert "queuePickup(scanner,old.getBlockPos());" in scanner
 assert "dispatchPending(scanner,server,user,true)" in scanner
@@ -51,4 +51,4 @@ assert "case 3 -> {" in net and "WarehouseDiagnostics.audit(level,computer)" in 
 assert 'Component.literal("DIAGNOSTICS")' in screen
 assert "requestGolem(3)" in screen
 assert "Rack Computer Diagnostics" in audit
-print("PASS: computer linking, 4-mode air switching, Remote swap, Direct crew, Forklift crew/operator, Recall, warehouse diagnostics")
+print("PASS: computer linking, 7-mode settings screen, Remote swap, Direct crew, Forklift crew/operator, Recall, warehouse diagnostics")
