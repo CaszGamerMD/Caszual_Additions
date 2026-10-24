@@ -1736,18 +1736,20 @@ public final class StorageGolem extends PathfinderMob {
      * close wall. Keep the choice long enough for another worker to pass.
      */
     private BlockPos orderApproach(ServerLevel level,BlockPos place){
+        // Another moving Golem entering the destination aisle is NOT a
+        // wall. Keep the chosen service tile stable until it is physically
+        // blocked, or the current job/stage changes. The old occupancy
+        // test forced fresh 4,000-node searches as packers passed by.
         if(place.equals(orderAccessTarget)&&stage==orderAccessStage
                 &&tickCount<orderAccessExpires
-                &&openWalkway(level,orderAccessGoal)
-                &&(!occupiedByWorker(level,orderAccessGoal)
-                    ||blockPosition().equals(orderAccessGoal)))
+                &&openWalkway(level,orderAccessGoal))
             return orderAccessGoal;
         orderAccessTarget=place.immutable();
         orderAccessStage=stage;
         // Keep the selected rack-front/service aisle stable while the
         // worker walks an actual long corridor. Choosing a different
         // nearby service square every three seconds made workers oscillate.
-        orderAccessExpires=tickCount+180;
+        orderAccessExpires=tickCount+600;
         BlockEntity machine=level.hasChunkAt(place)?level.getBlockEntity(place):null;
         java.util.LinkedHashSet<BlockPos> choices=new java.util.LinkedHashSet<>();
         if(machine instanceof RackBlockEntity rack){
@@ -1777,16 +1779,17 @@ public final class StorageGolem extends PathfinderMob {
                             cell.getZ()));
                 }
         }
-        var occupied=occupiedAisle(level,place);
         BlockPos feet=blockPosition();
         // One weighted multi-goal search instead of 8-12 separate costly
         // path searches. Workers can temporarily pass one another, but a
         // stationary worker cannot be the final service position.
         java.util.List<BlockPos> options=new java.util.ArrayList<>();
+        // Only solid world geometry excludes a valid service tile. Other
+        // workers are transient and may finish a 3-stack delivery in the
+        // same aisle a few ticks later; filtering them caused zero valid
+        // approaches and permanent WAITING FOR REACHABLE ORDER ACCESS.
         for(BlockPos cell:choices)
-            if(openWalkway(level,cell)
-                    &&(!occupied.contains(cell)||cell.equals(feet)))
-                options.add(cell);
+            if(openWalkway(level,cell))options.add(cell);
         BlockPos best=WarehousePreferredPath.cheapestService(
                 feet,options,p->openWalkway(level,p),
                 p->WarehouseTerrain.standingY(level,p));
@@ -2004,7 +2007,12 @@ public final class StorageGolem extends PathfinderMob {
             remoteUnreachableAttempts=0;
         }
         if(flatWorkRoute.isEmpty()&&tickCount>=nextWorkPlan){
-            var occupied=occupiedAisle(level,target);
+            // Active order-packing Golems must not treat other moving Golems
+        // as impassable terrain: they repeatedly cross the same packing
+        // aisle and a dynamic occupancy snapshot would invalidate the
+        // whole checked route. Keep the static physical collision checks.
+            var occupied=stationOrder?java.util.Set.<BlockPos>of():
+                    occupiedAisle(level,target);
             java.util.function.Predicate<BlockPos> available=p->
                     StorageGolemReturnPath.walkable(level,p)
                     &&!occupied.contains(p)
@@ -2017,7 +2025,7 @@ public final class StorageGolem extends PathfinderMob {
                     available,tickCount<avoidWorkUntil
                             ?blockedWorkCell:BlockPos.ZERO,
                     p->WarehouseTerrain.standingY(level,p));
-            nextWorkPlan=tickCount+20;
+            nextWorkPlan=tickCount+(stationOrder?8:20);
             if(route!=null){
                 flatWorkRoute.addAll(route);
                 routeIssue="";
@@ -2033,7 +2041,7 @@ public final class StorageGolem extends PathfinderMob {
         if(distance+.02<lastWorkDistance){
             lastWorkDistance=distance;
             lastWorkProgress=tickCount;
-        }else if(tickCount-lastWorkProgress>70){
+        }else if(tickCount-lastWorkProgress>(stationOrder?45:70)){
             blockedWorkCell=next.immutable();
             avoidWorkUntil=tickCount+60;
             routeIssue="REROUTING";
