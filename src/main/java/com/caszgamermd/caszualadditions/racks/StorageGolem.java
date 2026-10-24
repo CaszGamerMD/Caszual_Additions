@@ -1703,42 +1703,18 @@ public final class StorageGolem extends PathfinderMob {
                 }
         }
         var occupied=occupiedAisle(level,place);
-        BlockPos feet=blockPosition(),best=null;
-        int bestLength=Integer.MAX_VALUE;
-        for(BlockPos cell:choices){
-            if(!openWalkway(level,cell)
-                    ||occupied.contains(cell)&&!cell.equals(feet))continue;
-            // The old same-Y breadth-first search rejected an otherwise
-            // clear warehouse route when it crossed one real stair/slab.
-            // Use the same weighted terrain-aware router that physically
-            // moves Storage Golems. Moving robots are excluded only from
-            // the FINAL service square, not permanently as static walls
-            // across a whole aisle.
-            List<BlockPos> route=cell.equals(feet)?List.of():
-                    WarehousePreferredPath.leg(feet,cell,
-                            p->openWalkway(level,p),BlockPos.ZERO,
-                            p->WarehouseTerrain.standingY(level,p));
-            if(route==null)continue;
-            boolean exact=route.isEmpty()||route.getLast().equals(cell);
-            // Long warehouse aisles use 36-block partial *walking* legs.
-            // The final service square is still checked for clearance, but
-            // a courier more than 36 blocks away cannot prove the entire
-            // route in one bounded path search. Accept only a partial leg
-            // that makes substantial forward progress; the actual pickup
-            // still requires reaching the verified service cell in person.
-            int startDist=Math.abs(feet.getX()-cell.getX())
-                    +Math.abs(feet.getZ()-cell.getZ());
-            int endDist=route.isEmpty()?startDist:
-                    Math.abs(route.getLast().getX()-cell.getX())
-                    +Math.abs(route.getLast().getZ()-cell.getZ());
-            boolean advances=startDist>WarehousePreferredPath.RADIUS
-                    &&!route.isEmpty()&&endDist<=startDist-8;
-            if((exact||advances)
-                    &&route.size()+endDist<bestLength){
-                best=cell;
-                bestLength=route.size()+endDist;
-            }
-        }
+        BlockPos feet=blockPosition();
+        // One weighted multi-goal search instead of 8-12 separate costly
+        // path searches. Workers can temporarily pass one another, but a
+        // stationary worker cannot be the final service position.
+        java.util.List<BlockPos> options=new java.util.ArrayList<>();
+        for(BlockPos cell:choices)
+            if(openWalkway(level,cell)
+                    &&(!occupied.contains(cell)||cell.equals(feet)))
+                options.add(cell);
+        BlockPos best=WarehousePreferredPath.cheapestService(
+                feet,options,p->openWalkway(level,p),
+                p->WarehouseTerrain.standingY(level,p));
         if(best==null){
             // No safe final approach: keep the real order and its
             // reservation intact. Do not select the first unverified
