@@ -441,7 +441,11 @@ public final class StorageScannerItem extends Item {
         String waitReason="";
         for(int i=0;i<pending.size();i++){
             BlockPos target=pending.get(i);
-            String result=RemotePalletDispatch.request(world,player,computer,target);
+            // OFF uses the existing independent four-worker no-replacement
+            // pickup mission. ON retains the original exchange and courier.
+            String result=remoteReplacement(scanner)
+                    ?RemotePalletDispatch.request(world,player,computer,target)
+                    :DroneBayNoReplacementDispatch.request(world,player.getUUID(),computer,target);
             if(dispatched(result)||result.startsWith("INVALID:")){
                 reports.add(result);
             }else{
