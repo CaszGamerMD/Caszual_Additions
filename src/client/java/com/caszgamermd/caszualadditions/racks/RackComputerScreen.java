@@ -537,8 +537,10 @@ public final class RackComputerScreen extends Screen {
     }
     private void drawOrderList(GuiGraphicsExtractor graphics){
         if(showBuilderOrders){drawBuilderOrders(graphics);return;}
-        graphics.text(font,Component.literal("ORDER BUILDER  •  "+orderList.size()
-                +" / 16 item types"),22,50,0xffb3f9c1,false);
+        graphics.text(font,Component.literal(compact("ORDER BUILDER  •  "
+                +orderList.size()+"/16 manual | BUILDER REQUESTS: "
+                +builderOrders.size(),Math.max(24,(width-48)/6))),
+                22,50,0xffb3f9c1,false);
         graphics.text(font,Component.literal(compact(orderStatus,
                 Math.max(20,(width-45)/6))),22,75,0xff9fedaf,false);
         graphics.text(font,Component.literal(
