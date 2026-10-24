@@ -1159,6 +1159,10 @@ public final class StorageGolem extends PathfinderMob {
             default->"RETURNING TO SHELF";
         };
     }
+    public boolean activeOrderPacking(){
+        return stationOrder&&outputJob&&stage!=2&&stage!=3;
+    }
+    public BlockPos packingOutput(){return orderPoint;}
     public String carriedDescription(){
         if(holdsPallet())return "WRAPPED PALLET";
         if(stationOrder&&!orderItems().isEmpty())
@@ -2714,9 +2718,15 @@ public final class StorageGolem extends PathfinderMob {
         packedJob=in.getBooleanOr("packed_job",false);
         stationOrder=in.getBooleanOr("station_order",false);
         orderPoint=in.read("order_ptp",BlockPos.CODEC).orElse(BlockPos.ZERO);
-        orderCargo=NonNullList.withSize(9,ItemStack.EMPTY);
-        for(int i=0;i<9;i++)orderCargo.set(i,in.read("order_slot_"+i,
+        // Safely finish any nine-slot cargo from older saves; newly
+        // assigned orders are always restricted to exactly three slots.
+        NonNullList<ItemStack> saved=NonNullList.withSize(9,ItemStack.EMPTY);
+        for(int i=0;i<9;i++)saved.set(i,in.read("order_slot_"+i,
                 ItemStack.CODEC).orElse(ItemStack.EMPTY));
+        int capacity=3;
+        for(int i=3;i<9;i++)if(!saved.get(i).isEmpty()){capacity=9;break;}
+        orderCargo=NonNullList.withSize(capacity,ItemStack.EMPTY);
+        for(int i=0;i<capacity;i++)orderCargo.set(i,saved.get(i));
         magazine=in.read("magazine",BlockPos.CODEC).orElse(BlockPos.ZERO);
         packedItemCount=Math.max(0,in.getIntOr("packed_item_count",0));
         emptyBox=in.read("empty_box",ItemStack.CODEC).orElse(ItemStack.EMPTY);
