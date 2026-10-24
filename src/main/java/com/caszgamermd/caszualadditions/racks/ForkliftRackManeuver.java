@@ -52,8 +52,8 @@ public final class ForkliftRackManeuver {
         // 4.12 blocks treated a separate back-to-back rack BEHIND this bay
         // as if the tines had to pass through it; every valid dock became
         // impossible even when the pallet and aisle were clear. Check the
-        // actual bay-contained 3.68-block fork/load sweep instead.
-        for(double forward=1.65;forward<=3.68;forward+=.145){
+        // actual bay-contained 3.75-block fork/load sweep instead.
+        for(double forward=1.65;forward<=3.75;forward+=.15){
             // Full 1.8-wide wrapped pallet, not just the fork metal.
             // Center + opposite side rails are sampled across its width.
             for(double across:new double[]{-.92,-.70,-.46,-.22,0,
