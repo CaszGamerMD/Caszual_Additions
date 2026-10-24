@@ -21,6 +21,11 @@ assert "RackBlock.controller(level,p)==rack" in plan
 assert "state.getBlock() instanceof RackBlock" in plan
 assert "state.getBlock() instanceof PalletBlock" in plan
 assert "state.getBlock() instanceof PalletCargoCollisionBlock" in plan
+assert "for(int dy=0;dy<=2;dy++)" in plan
+assert "new double[]{-.92,-.70,-.46,-.22,0," in plan
+assert "sourceReverseDepth=planned.reverseDepth();" in truck
+assert "destinationAisleShift=planned.aisleShift();" in truck
+assert "if(tickCount-last<20)return null;" in truck
 assert "public record Pose(Vec3 position,float yaw)" in plan
 assert "public record Plan(List<Pose> poses,int turn,double reverseDepth,double aisleShift)" in plan
 
@@ -54,6 +59,10 @@ for field in ("source_rack_stage","destination_rack_stage",
     assert 'out.putInt("'+field+'"' in truck
     assert 'in.getIntOr("'+field+'"' in truck
 assert "refreshDisplay();" in truck
+for field in ("source_reverse_depth","source_aisle_shift",
+              "destination_reverse_depth","destination_aisle_shift"):
+    assert 'out.putDouble("'+field+'"' in truck
+    assert 'in.getDoubleOr("'+field+'"' in truck
 
 # Kinematic invariants of a turn: yaw changes continuously (each
 # step much less than 90 deg) and the dock/outside positions differ.
