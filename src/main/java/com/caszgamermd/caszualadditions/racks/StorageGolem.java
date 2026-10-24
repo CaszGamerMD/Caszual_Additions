@@ -2449,9 +2449,20 @@ public final class StorageGolem extends PathfinderMob {
                 Container stock=loaded(level,source);
                 if(ptp==null||!ptp.hasReservation(outputTicket)
                         ||station==null||stock==null){
-                    // Missing/temporarily unloaded stock, a congested
-                    // station or a slow reservation must not erase a
-                    // player's submitted order after one tick.
+                    // Retain any real cargo and job if a loaded station is
+                    // temporarily unavailable. If an assigned source rack
+                    // was actually removed, no cargo has been withdrawn yet:
+                    // release its ticket for the next stocked order line.
+                    if(stock==null&&level.hasChunkAt(source)){
+                        BlockPos replacement=StorageGolemDispatch.alternateOrderStock(
+                                level,home,source,itemId);
+                        if(replacement!=null){
+                            source=replacement;
+                            orderAccessTarget=BlockPos.ZERO;
+                        }else{
+                            releaseOutput(level);stage=2;
+                        }
+                    }
                     routeIssue="WAITING FOR ORDER SOURCE / STATION";
                     return;
                 }
@@ -2468,8 +2479,23 @@ public final class StorageGolem extends PathfinderMob {
                     collected+=take;
                 }
                 if(preview.isEmpty()){
-                    routeIssue="WAITING FOR ORDER STOCK";
-                    return; // Reservation and task remain active.
+                    // Stock can disappear AFTER the Computer reserved it
+                    // when another order or player uses the rack. An empty
+                    // physical source must not keep renewing the sole
+                    // warehouse packer ticket forever.
+                    BlockPos alternate=StorageGolemDispatch.alternateOrderStock(
+                            level,home,source,itemId);
+                    if(alternate!=null){
+                        source=alternate;
+                        orderAccessTarget=BlockPos.ZERO;
+                        flatWorkRoute.clear();
+                        routeIssue="ORDER RACK EMPTY: MOVING TO NEXT STOCK";
+                        return;
+                    }
+                    routeIssue="ORDER OUT OF STOCK: RELEASING PICKER";
+                    releaseOutput(level);
+                    stage=2; // no cargo was withdrawn: no item loss.
+                    return;
                 }
                 if(!station.canAccept(preview,level,ptp)){
                     routeIssue="WAITING FOR SHULKER SPACE";
