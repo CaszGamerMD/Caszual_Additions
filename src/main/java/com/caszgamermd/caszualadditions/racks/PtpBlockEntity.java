@@ -48,6 +48,20 @@ public final class PtpBlockEntity extends BlockEntity
     public String builderOwnerName(){
         return builderOwner==null?"":builderOwner.toString().substring(0,8);
     }
+    public java.util.UUID builderOwnerId(){return builderOwner;}
+    /** Recover old-world PTPs that lost their pallet while a Builder order
+     * was reserved. Caller MUST first persist remaining demand at the
+     * Warehouse Computer and verify every Shulker Station is empty; no
+     * worker ticket or physical inventory may be in transit.
+     */
+    public boolean releaseUnpreparedBuilder(){
+        if(!builderReserved()||hasPallet()||!emptyCargo()
+                ||outputInFlight()||hauling())return false;
+        outputOrders.clear();
+        builderRequest=builderOwner=null;
+        builderTable=BlockPos.ZERO;builderComputer=BlockPos.ZERO;
+        setChanged();return true;
+    }
     public BlockPos builderTablePos(){return builderTable;}
     public java.util.UUID builderRequestId(){return builderRequest;}
     /** Current queue head and the next queued material type for the Orders UI. */
