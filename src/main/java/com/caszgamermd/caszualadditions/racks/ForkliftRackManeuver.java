@@ -104,11 +104,19 @@ public final class ForkliftRackManeuver {
                     // farther on clear floors rather than insisting on a
                     // cramped 90-degree turn alongside neighboring racks.
                     new double[]{1.75,2.2,2.7,3.2,3.8,4.5,5.5,6.5,8.0}:
-                    new double[]{.45,.7,1.0,1.25}){
-                if(preferredDepth>0&&Math.abs(back-preferredDepth)>.001)continue;
+                    // A raised 1.8-wide pallet sometimes needs to turn in
+                    // the aisle instead of backing toward the OPPOSITE rack.
+                    // Also try almost pure lateral reverse arcs; every pose
+                    // still undergoes the full swept collision test.
+                    new double[]{0,.2,.45,.7,1.0,1.25}){
+                // A curved arc with ZERO reverse depth is still an assigned
+                // persistent path. Its saved lateral shift must constrain
+                // this search after a chunk reload.
+                if((preferredDepth>0||preferredShift>0)
+                        &&Math.abs(back-preferredDepth)>.001)continue;
                 for(double lateral:turn==0?new double[]{0}:
-                        new double[]{1.9,2.2,2.6}){
-                    if(preferredDepth>0&&Math.abs(lateral-preferredShift)>.001)
+                        new double[]{1.5,1.9,2.2,2.6,3.2}){
+                    if(preferredShift>0&&Math.abs(lateral-preferredShift)>.001)
                         continue;
                     List<Pose> poses=new ArrayList<>();
                     boolean valid=true;
