@@ -30,6 +30,15 @@ public final class StorageGolemDispatch {
     static PtpBlockEntity outputPoint(ServerLevel level,
             List<StorageGolemShelfEntity> group,BlockPos computer){
         var points=WarehouseNetwork.fromComputer(level,computer).points();
+        if(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity settings
+                &&!settings.orderOutput().equals(BlockPos.ZERO)){
+            // A selected output is an explicit assignment; do not silently
+            // reroute the order to an unrelated PTP when it is busy.
+            for(PtpBlockEntity point:points)
+                if(point.getBlockPos().equals(settings.orderOutput()))
+                    return point.readyForOutput()?point:null;
+            return null;
+        }
         // Builder requests reserve an otherwise empty OUTPUT PTP. Service
         // only this pallet when it has queued work, not whichever PTP
         // happens to appear first in the warehouse scan.
@@ -55,6 +64,61 @@ public final class StorageGolemDispatch {
         if(group.isEmpty())return false;
         BlockPos terminal=computer(level,group);
         return terminal!=null&&dispatchOutput(level,shelf,group,terminal);
+    }
+    /** The computer owns the packer limit (one by default). Count only
+     * loaded real order-picking Golems linked to this warehouse network.
+     * The check occurs on dispatch, not every Golem/server tick.
+     */
+    private static boolean packerSlotFree(ServerLevel level,BlockPos computer){
+        if(!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity cfg))
+            return true;
+        var network=WarehouseNetwork.fromComputer(level,computer);
+        java.util.Set<BlockPos> outputs=new java.util.HashSet<>();
+        for(PtpBlockEntity point:network.points())
+            outputs.add(point.getBlockPos());
+        int running=level.getEntitiesOfClass(StorageGolem.class,
+                new net.minecraft.world.phys.AABB(computer).inflate(160,32,160),
+                worker->worker.activeOrderPacking()
+                        &&outputs.contains(worker.packingOutput())).size();
+        return running<cfg.orderPackers();
+    }
+    /** Reuse the same Golem immediately after delivering three physical
+     * stacks to a Shulker Station, with another checked FIFO reservation.
+     * No new Golem, item copy, instant rack withdrawal, or shelf round trip.
+     */
+    static boolean continuePacking(ServerLevel level,StorageGolem worker,
+            BlockPos home,PtpBlockEntity output,ShulkerTankEntity station){
+        if(output==null||station==null||output.nextOutputOrder()==null)return false;
+        PtpBlockEntity.OutputOrder order=output.nextOutputOrder();
+        for(RackBlockEntity rack:RackNetwork.fromComputer(level,
+                output.builderReserved()?output.builderComputerPos()
+                        :WarehouseConnections.computerForShelves(level,
+                                StorageGolemShelfEntity.linked(level,home)))){
+            if(!rack.hasPallet()||rack.isEmpty()
+                    ||!WarehouseSortingReach.accessible(level,rack))continue;
+            List<ItemStack> preview=new java.util.ArrayList<>(3);
+            int amount=0;
+            for(int i=0;i<rack.getContainerSize()&&preview.size()<3
+                    &&amount<order.remaining();i++){
+                ItemStack stack=rack.getItem(i);
+                if(stack.isEmpty()||!BuiltInRegistries.ITEM.getKey(stack.getItem())
+                        .toString().equals(order.itemId())
+                        ||!stack.getItem().canFitInsideContainerItems())continue;
+                int quantity=Math.min(stack.getCount(),
+                        Math.min(order.remaining()-amount,3*64-amount));
+                if(quantity<=0)break;
+                preview.add(stack.copyWithCount(quantity));amount+=quantity;
+            }
+            if(amount<=0||!station.canAccept(preview,level,output))continue;
+            int ticket=output.reserveOutput(order.itemId(),amount);
+            if(ticket==0)return false;
+            worker.assignOutput(home,rack.getBlockPos(),
+                    station.getBlockPos(),preview.getFirst(),ticket,amount);
+            worker.assignStationOrder(station.getBlockPos(),
+                    output.getBlockPos(),amount);
+            return true;
+        }
+        return false;
     }
     /** A Shulker Tank can now connect through any warehouse component,
      * including IGC floors and adjacent racks. */
@@ -88,7 +152,8 @@ public final class StorageGolemDispatch {
     private static boolean dispatchOutput(ServerLevel level,StorageGolemShelfEntity shelf,
             List<StorageGolemShelfEntity> group,BlockPos terminal){
         PtpBlockEntity output=outputPoint(level,group,terminal);
-        if(output==null||!output.readyForOutput())return false;
+        if(output==null||!output.readyForOutput()
+                ||!packerSlotFree(level,terminal))return false;
         PtpBlockEntity.OutputOrder order=output.nextOutputOrder();
         if(order==null)return false;
         ShulkerTankEntity station=null;
@@ -106,16 +171,16 @@ public final class StorageGolemDispatch {
         for(RackBlockEntity rack:RackNetwork.fromComputer(level,terminal)){
             if(!rack.hasPallet()||rack.isEmpty()
                     ||!WarehouseSortingReach.accessible(level,rack))continue;
-            List<ItemStack> preview=new java.util.ArrayList<>(9);
+            List<ItemStack> preview=new java.util.ArrayList<>(3);
             int amount=0;
-            for(int i=0;i<rack.getContainerSize()&&preview.size()<9
+            for(int i=0;i<rack.getContainerSize()&&preview.size()<3
                     &&amount<order.remaining();i++){
                 ItemStack stack=rack.getItem(i);
                 if(stack.isEmpty()||!BuiltInRegistries.ITEM.getKey(stack.getItem())
                         .toString().equals(order.itemId())
                         ||!stack.getItem().canFitInsideContainerItems())continue;
                 int quantity=Math.min(stack.getCount(),
-                        Math.min(order.remaining()-amount,9*64-amount));
+                        Math.min(order.remaining()-amount,3*64-amount));
                 if(quantity<=0)break;
                 preview.add(stack.copyWithCount(quantity));
                 amount+=quantity;
