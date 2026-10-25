@@ -33,7 +33,6 @@ public final class PalletJackRenderer extends EntityRenderer<
         blocks=context.getBlockModelResolver();
     }
     @Override public PalletJackRenderState createRenderState(){return new PalletJackRenderState();}
-    @Override public Identifier getTextureLocation(PalletJackRenderState state){return TEXTURE;}
     @Override public void extractRenderState(PalletJackVehicle vehicle,
             PalletJackRenderState state,float partialTick){
         super.extractRenderState(vehicle,state,partialTick);
@@ -42,7 +41,7 @@ public final class PalletJackRenderer extends EntityRenderer<
         state.loaded=!pallet.isEmpty();
         state.cargo=state.loaded?vehicle.displayedCargoCrates():0;
         blocks.update(state.metal,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
-        blocks.update(state.handle,Blocks.GRAY_CONCRETE.defaultBlockState(),DISPLAY);
+        blocks.update(state.handle,Blocks.POLISHED_BLACKSTONE.defaultBlockState(),DISPLAY);
         blocks.update(state.wheel,Blocks.POLISHED_BLACKSTONE.defaultBlockState(),DISPLAY);
         if(!state.loaded)return;
         Block material=Blocks.OAK_PLANKS;
