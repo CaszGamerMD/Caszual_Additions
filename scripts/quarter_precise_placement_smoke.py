@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Deterministic octant targeting regressions; live raycast QA remains needed."""
 from pathlib import Path
-from math import floor
 root=Path(__file__).resolve().parents[1]
 src=(root/"src/main/java/com/caszgamermd/caszualadditions/quarter/QuarterPlacement.java").read_text()
 assert "findEmptyQuarterAlongRay" not in src
 assert "directTargetIndex" not in src
 assert "player.isShiftKeyDown()" in src
-assert "BlockPos.containing(beyond.x, beyond.y, beyond.z)" in src
+assert "boolean outside = isOuterFace(hit, clicked, face);" in src
+assert "private static boolean isOuterFace(Vec3 hit, BlockPos clicked, Direction face)" in src
+assert "face.getAxisDirection() == Direction.AxisDirection.POSITIVE" in src
 assert "clicked.relative(face)" in src
 for axis in ("X","Y","Z"):
     assert "face.getStep"+axis+"() * TARGET_EPSILON" in src
@@ -25,8 +26,11 @@ faces={"EAST":(1,0,0),"WEST":(-1,0,0),"UP":(0,1,0),
 def target(clicked,hit,face,quarter=True,shift=False):
     direction=faces[face]
     beyond=tuple(hit[i]+eps*direction[i] for i in range(3))
+    axis=next(i for i,v in enumerate(direction) if v)
+    coord=hit[axis]-clicked[axis]
+    outside=coord>=1-eps if direction[axis]>0 else coord<=eps
     pos=(tuple(clicked[i]+direction[i] for i in range(3))
-         if shift or not quarter else tuple(floor(v) for v in beyond))
+         if shift or not quarter or outside else clicked)
     x,y,z=[min(.999999,max(0,beyond[i]-pos[i])) for i in range(3)]
     idx=(1 if x>=.5 else 0)+(2 if z>=.5 else 0)+(4 if y>=.5 else 0)
     return pos,idx
@@ -41,6 +45,10 @@ assert target((0,0,0),(.25,.5,.75),"UP")==((0,0,0),6)
 assert target((0,0,0),(1,.75,.75),"EAST")==((1,0,0),6)
 assert target((0,0,0),(0,.25,.75),"WEST")==((-1,0,0),3)
 assert target((0,0,0),(.75,1,.75),"UP")==((0,1,0),3)
+# On an exact edge of two faces, move ONLY along the face that was hit.
+assert target((0,0,0),(1,.75,1),"EAST")==((1,0,0),6)
+assert target((0,0,0),(1,1,.75),"UP")==((0,1,0),3)
+
 assert target((0,0,0),(.25,0,.75),"DOWN")==((0,-1,0),6)
 assert target((0,0,0),(.75,.25,1),"SOUTH")==((0,0,1),1)
 assert target((0,0,0),(.25,.75,0),"NORTH")==((0,0,-1),6)
