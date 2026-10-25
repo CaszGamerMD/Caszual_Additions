@@ -64,8 +64,9 @@ public final class StorageGolemReturnPath {
         // A genuine BOTTOM SLAB occupies the lower half of the feet
         // cell. It is a support surface, not a full-height obstacle.
         // Upper slabs still use normal below-floor support.
-        boolean slabFloor=WarehouseTerrain.bottomSlab(level,feet);
-        boolean clearBody=(slabFloor
+        boolean architecturalFloor=WarehouseTerrain.bottomSlab(level,feet)
+                ||WarehouseTerrain.stairFloor(level,feet);
+        boolean clearBody=(architecturalFloor
                 ||feetState.getCollisionShape(level,feet).isEmpty())
                 &&headState.getCollisionShape(level,feet.above()).isEmpty();
         if(!clearBody)return false;
@@ -75,7 +76,7 @@ public final class StorageGolemReturnPath {
         // Reject waterlogged body cells as well: Golems must stay dry.
         if(!level.getFluidState(feet).isEmpty()
                 ||!level.getFluidState(feet.above()).isEmpty())return false;
-        if(slabFloor)return true;
+        if(architecturalFloor)return true;
         // A bottom slab BELOW our feet has its standing height half a
         // block lower, which belongs to the slab's own BlockPos, not this
         // air cell. Excluding it prevents duplicate phantom waypoints.
