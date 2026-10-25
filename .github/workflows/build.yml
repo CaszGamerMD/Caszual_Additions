@@ -206,6 +206,8 @@ jobs:
         run: python3 scripts/warehouse_scanner_motion_stack_smoke.py
       - name: Verify Direct PTP rack-style handoffs and nonblocking pallet delivery
         run: python3 scripts/warehouse_ptp_rackstyle_direct_delivery_smoke.py
+      - name: Verify precise quarter-block placement and adjacent cells
+        run: python3 scripts/quarter_precise_placement_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()
