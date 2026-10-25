@@ -52,9 +52,10 @@ public final class QuarterPlacement {
         BlockState clickedState = level.getBlockState(clicked);
         if (isQuarterContainer(clickedState)) {
             Player player = context.getPlayer();
-            BlockPos destination = player != null && player.isShiftKeyDown()
-                    ? clicked.relative(face)
-                    : BlockPos.containing(beyond.x, beyond.y, beyond.z);
+            boolean outside = isOuterFace(hit, clicked, face);
+            BlockPos destination = outside
+                    || player != null && player.isShiftKeyDown()
+                    ? clicked.relative(face) : clicked;
             return placeInCell(context, destination, cornerIndex(beyond, destination),
                     source, new BlockPlaceContext(context));
         }
@@ -67,6 +68,20 @@ public final class QuarterPlacement {
         BlockPos destination = placement.getClickedPos();
         return placeInCell(context, destination, cornerIndex(beyond, destination),
                 source, placement);
+    }
+
+    /** Only the CLICKED face can choose a neighboring world block.
+     * A crosshair exactly on a second perpendicular edge must never
+     * accidentally jump diagonally to a different block. */
+    private static boolean isOuterFace(Vec3 hit, BlockPos clicked, Direction face) {
+        double coordinate = switch (face.getAxis()) {
+            case X -> hit.x - clicked.getX();
+            case Y -> hit.y - clicked.getY();
+            case Z -> hit.z - clicked.getZ();
+        };
+        return face.getAxisDirection() == Direction.AxisDirection.POSITIVE
+                ? coordinate >= 1.0 - TARGET_EPSILON
+                : coordinate <= TARGET_EPSILON;
     }
 
     private static InteractionResult placeInCell(UseOnContext context,
