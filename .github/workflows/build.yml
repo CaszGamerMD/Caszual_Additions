@@ -29,6 +29,8 @@ jobs:
         run: python3 scripts/head_db_api_smoke.py
       - name: Verify lossless Pallet Jack rack-to-rack pickup and unload
         run: python3 scripts/warehouse_pallet_jack_rack_transfer_smoke.py
+      - name: Verify walk-controlled Pallet Jack, flat-floor edge protection and lossless drops
+        run: python3 scripts/warehouse_pallet_jack_vehicle_smoke.py
       - name: Verify mail routing, atomic full-box rejection and personal PO Box data
         run: python3 scripts/mail_system_smoke.py
       - name: Check green INPUT receiving and red OUTPUT shipping aisles
