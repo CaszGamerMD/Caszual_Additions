@@ -128,8 +128,7 @@ public final class PalletJackItem extends Item {
         vehicle.setPos(player.getX(),deckY,player.getZ());
         vehicle.setYRot(player.getYRot());
         vehicle.installJack(item,deckY);
-        if(!vehicle.safeFloor(server,vehicle.getX(),vehicle.getZ(),player.getYRot())
-                ||!server.noCollision(vehicle)){
+        if(!vehicle.safeFloor(server,vehicle.getX(),vehicle.getZ(),player.getYRot())){
             player.sendSystemMessage(Component.literal(
                     "Pallet Jack requires a flat, fully supported floor with no edge, slab or stair."));
             return InteractionResult.SUCCESS;
