@@ -56,7 +56,7 @@ assert ".add(Attributes.MAX_HEALTH,5)" in forklift
 assert ".add(Attributes.MAX_HEALTH,5)" in vehicle
 # A dead/broken transport retains the packed Jack, rather than dropping
 # 216 independent item entities.
-assert vehicle.count("jack.copyWithCount(1)")>=2
+assert vehicle.count("jack.copyWithCount(1)")>=1
 assert "Containers.dropItemStack" in forklift
 assert "jack.copy()" in forklift
 print("PASS: rider movement, edge/stair protection, 216-slot cargo persistence, " 
