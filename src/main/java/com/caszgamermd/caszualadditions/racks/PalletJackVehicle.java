@@ -111,12 +111,15 @@ public final class PalletJackVehicle extends PathfinderMob {
         if(getFirstPassenger() instanceof Player controller){
             // Vanilla's ridden input is a walking input in mount-local X/Z.
             // Use player heading as forward; the jack follows walking input.
-            float heading=controller.getYRot();
+            // Refuse turns that would swing the 2x2 lifted pallet out
+            // over an edge, even when the jack is not translating.
             if(level().isClientSide()){
-                setYRot(heading);
                 setDeltaMovement(Vec3.ZERO);
                 return;
             }
+            float requested=controller.getYRot();
+            float heading=safeFloor(level(),getX(),getZ(),requested)
+                    ?requested:getYRot();
             setYRot(heading);
             yBodyRot=heading;
             double radians=Math.toRadians(heading);
@@ -146,9 +149,8 @@ public final class PalletJackVehicle extends PathfinderMob {
     }
     @Override protected float getRiddenSpeed(Player player){return (float)walkingSpeed();}
     @Override protected void tickRidden(Player player,Vec3 input){
-        super.tickRidden(player,input);
-        setYRot(player.getYRot());
-        yBodyRot=getYRot();
+        // No vanilla horse-style auto-rotation or jumping; travel() only
+        // turns the vehicle after validating support under its forks/cargo.
     }
     @Override public net.minecraft.world.entity.LivingEntity getControllingPassenger(){
         return getFirstPassenger() instanceof Player p?p:null;
