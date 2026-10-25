@@ -10,14 +10,14 @@ block=(folder/"RackBlock.java").read_text()
 # A rack's normal GUI MUST NOT intercept the jack in either hand.
 assert "||held.is(RackContent.PALLET_JACK)" in block
 assert "||held.is(RackContent.FORKLIFT_ITEM)" in block
-assert "RackBlockEntity rack=RackBlock.controller(server,clicked);" in jack
+assert "RackBlockEntity rack=RackBlock.controller(server,clicked);" in jack\nassert "PalletJackVehicle vehicle" in jack
 assert jack.index("RackBlockEntity rack=RackBlock.controller(server,clicked)") < jack.index("if(loaded(jack))\n            return unload(")
 assert "if(rack.installFromJack(jack))" in jack
 assert "if(rack.liftToJack(jack))" in jack
 assert "if(rack.hasPallet()||!rack.isEmpty())" in jack
 assert "!rack.hasPallet()||!rack.glassWrapped()" in jack
 assert "server.mayInteract(player,root)" in jack
-assert "player.mayUseItemAt(root,context.getClickedFace(),jack)" in jack
+assert "player.mayUseItemAt(root,face,jack)" in jack
 
 # Pickup: wrapped pallet, rack filters, and exact 216 cargo slots move
 # together; the jack takes ownership BEFORE the rack is cleared.
