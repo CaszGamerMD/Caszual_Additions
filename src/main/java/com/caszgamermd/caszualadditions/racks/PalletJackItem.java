@@ -59,6 +59,15 @@ public final class PalletJackItem extends Item {
      * they change their hotbar selection. An empty Jack never slows them.
      */
     public static void initialize(){
+        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register(
+            (player,world,hand,hit)->{
+                if(hand!=InteractionHand.MAIN_HAND
+                        ||!(player.getVehicle() instanceof PalletJackVehicle vehicle)
+                        ||player.isShiftKeyDown())return InteractionResult.PASS;
+                if(world instanceof ServerLevel server)
+                    operate(server,player,vehicle,hit.getBlockPos(),hit.getDirection());
+                return InteractionResult.SUCCESS;
+            });
         ServerTickEvents.END_SERVER_TICK.register(server->{
             if(server.getTickCount()%5!=0)return;
             for(var player:server.getPlayerList().getPlayers()){
@@ -87,24 +96,87 @@ public final class PalletJackItem extends Item {
     @Override public InteractionResult use(Level level,Player player,InteractionHand hand){
         if(!level.isClientSide()){
             player.sendSystemMessage(Component.literal(loaded(player.getItemInHand(hand))
-                    ?"Pallet Jack loaded. Right-click an empty rack or a clear 2x2 floor to unload."
-                    :"Pallet Jack empty. Right-click a wrapped pallet in a rack or on the ground."));
+                    ?"Deploy this Jack on flat ground; it keeps its stored pallet when mounted."
+                    :"Right-click the floor or a pallet to deploy a walk-controlled Pallet Jack."));
         }
         return InteractionResult.SUCCESS;
     }
 
+    /** One physical entity owns the item. When first deployed, consume the
+     * item into the vehicle; later clicks operate on that exact internal stack.
+     * This reuses the old transactional Rack/Pallet transfers unchanged. */
     @Override public InteractionResult useOn(UseOnContext context){
+        if(!(context.getLevel() instanceof ServerLevel server))return InteractionResult.SUCCESS;
         Player player=context.getPlayer();
         if(player==null)return InteractionResult.PASS;
-        Level level=context.getLevel();
-        ItemStack jack=context.getItemInHand();
-        BlockPos clicked=context.getClickedPos();
-        if(level.getBlockState(clicked).getBlock() instanceof PalletCargoCollisionBlock){
-            BlockPos owner=PalletCargoCollisionBlock.owningPallet(level,clicked);
+        if(player.getVehicle() instanceof PalletJackVehicle jackVehicle){
+            return operate(server,player,jackVehicle,context.getClickedPos(),context.getClickedFace());
+        }
+        return deploy(server,player,context.getItemInHand(),context.getClickedPos(),
+                context.getClickedFace());
+    }
+    private static InteractionResult deploy(ServerLevel server,Player player,
+            ItemStack item,BlockPos clicked,Direction face){
+        if(player.getVehicle()!=null){
+            player.sendSystemMessage(Component.literal("Leave your current vehicle before using the Pallet Jack."));
+            return InteractionResult.SUCCESS;
+        }
+        int deckY=net.minecraft.util.Mth.floor(player.getY());
+        PalletJackVehicle vehicle=RackContent.PALLET_JACK_VEHICLE_TYPE.create(
+                server,net.minecraft.world.entity.EntitySpawnReason.EVENT);
+        if(vehicle==null)return InteractionResult.FAIL;
+        vehicle.setPos(player.getX(),deckY,player.getZ());
+        vehicle.setYRot(player.getYRot());
+        vehicle.installJack(item,deckY);
+        if(!vehicle.safeFloor(server,vehicle.getX(),vehicle.getZ(),player.getYRot())
+                ||!server.noCollision(vehicle)){
+            player.sendSystemMessage(Component.literal(
+                    "Pallet Jack requires a flat, fully supported floor with no edge, slab or stair."));
+            return InteractionResult.SUCCESS;
+        }
+        if(!server.addFreshEntity(vehicle))return InteractionResult.FAIL;
+        if(!player.getAbilities().instabuild)item.shrink(1);
+        player.startRiding(vehicle);
+        player.sendSystemMessage(Component.literal(
+            "Pallet Jack deployed. Walk to move; right-click same-level pallets, racks or floor. Sneak to dismount."));
+        // A pallet directly under the first click can be loaded immediately.
+        if(!PalletJackItem.loaded(vehicle.storedJack())&&
+                StorageGroundPalletTransfer.wrappedController(server,clicked)!=null)
+            operate(server,player,vehicle,clicked,face);
+        return InteractionResult.SUCCESS;
+    }
+    public static InteractionResult operate(ServerLevel server,Player player,
+            PalletJackVehicle vehicle,BlockPos clicked,Direction face){
+        ItemStack jack=vehicle.storedJack();
+        if(server.getBlockState(clicked).getBlock()
+                instanceof PalletCargoCollisionBlock){
+            BlockPos owner=PalletCargoCollisionBlock.owningPallet(server,clicked);
             if(owner!=null)clicked=owner;
         }
-        if(!(level instanceof ServerLevel server))return InteractionResult.SUCCESS;
-
+        if(!server.hasChunkAt(clicked)
+                ||!server.mayInteract(player,clicked))return InteractionResult.FAIL;
+        RackBlockEntity destinationRack=RackBlock.controller(server,clicked);
+        if(destinationRack!=null){
+            if(destinationRack.getBlockPos().getY()!=vehicle.deckY()){
+                player.sendSystemMessage(Component.literal(
+                    "Pallet Jack: rack must be on the same Y level as the operator."));
+                return InteractionResult.SUCCESS;
+            }
+        }else{
+            boolean loading=!PalletJackItem.loaded(jack);
+            BlockPos where=loading?clicked:clicked.relative(face);
+            if(where.getY()!=vehicle.deckY()){
+                player.sendSystemMessage(Component.literal(
+                    "Pallet Jack: pallets cannot be lifted or placed above or below your floor."));
+                return InteractionResult.SUCCESS;
+            }
+        }
+        InteractionResult outcome=operatePayload(server,player,jack,clicked,face);
+        vehicle.updateDisplay();
+        return outcome;
+    }
+    private static InteractionResult operatePayload(ServerLevel server,Player player,
+            ItemStack jack,BlockPos clicked,Direction face){
         // Route rack interactions before ground placement. The RackBlock
         // explicitly passes Pallet Jack clicks through to this item, so
         // the normal inventory GUI cannot steal the interaction.
@@ -112,7 +184,7 @@ public final class PalletJackItem extends Item {
         if(rack!=null){
             BlockPos root=rack.getBlockPos();
             if(!server.mayInteract(player,root)
-                    ||!player.mayUseItemAt(root,context.getClickedFace(),jack))
+                    ||!player.mayUseItemAt(root,face,jack))
                 return InteractionResult.FAIL;
             if(loaded(jack)){
                 if(rack.hasPallet()||!rack.isEmpty()){
@@ -146,8 +218,8 @@ public final class PalletJackItem extends Item {
         }
 
         if(loaded(jack))
-            return unload(server,player,jack,clicked.relative(context.getClickedFace()),
-                    context.getClickedFace());
+            return unload(server,player,jack,clicked.relative(face),
+                    face);
         return lift(server,player,jack,clicked);
     }
 
