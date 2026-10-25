@@ -35,6 +35,7 @@ public final class RackContent {
     public static EntityType<StorageGolem> STORAGE_GOLEM_TYPE;
     public static EntityType<MovingPallet> MOVING_PALLET_TYPE;
     public static EntityType<WarehouseForklift> FORKLIFT_TYPE;
+    public static EntityType<PalletJackVehicle> PALLET_JACK_VEHICLE_TYPE;
     public static Item FORKLIFT_ITEM,FORKLIFT_CONTROLLER;
     public static Block RACK_COMPUTER;
     public static BlockEntityType<WarehouseComputerBlockEntity> COMPUTER_ENTITY;
@@ -135,6 +136,13 @@ public final class RackContent {
         PALLET_JACK=Registry.register(BuiltInRegistries.ITEM,jackKey,
                 new PalletJackItem(new Item.Properties().stacksTo(1).setId(jackKey)));
         PalletJackItem.initialize();
+        ResourceKey<EntityType<?>> jackVehicleKey=ResourceKey.create(
+                Registries.ENTITY_TYPE,CaszualAdditions.id("pallet_jack_vehicle"));
+        PALLET_JACK_VEHICLE_TYPE=Registry.register(BuiltInRegistries.ENTITY_TYPE,jackVehicleKey,
+                EntityType.Builder.<PalletJackVehicle>of(PalletJackVehicle::new,MobCategory.MISC)
+                        .sized(.76f,1.00f).build(jackVehicleKey));
+        FabricDefaultAttributeRegistry.register(PALLET_JACK_VEHICLE_TYPE,
+                PalletJackVehicle.attributes());
         ResourceKey<Item> portableWrapKey=ResourceKey.create(Registries.ITEM,
                 CaszualAdditions.id("portable_pallet_wrapper"));
         PORTABLE_WRAPPER=Registry.register(BuiltInRegistries.ITEM,portableWrapKey,
