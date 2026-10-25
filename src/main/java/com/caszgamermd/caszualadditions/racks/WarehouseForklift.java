@@ -116,7 +116,7 @@ public final class WarehouseForklift extends PathfinderMob {
     }
     public static AttributeSupplier.Builder attributes(){
         return PathfinderMob.createMobAttributes()
-                .add(Attributes.MAX_HEALTH,55)
+                .add(Attributes.MAX_HEALTH,5)
                 .add(Attributes.MOVEMENT_SPEED,DRIVE_SPEED)
                 .add(Attributes.FOLLOW_RANGE,48);
     }
