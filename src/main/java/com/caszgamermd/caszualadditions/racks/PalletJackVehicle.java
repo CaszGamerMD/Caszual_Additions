@@ -41,7 +41,7 @@ public final class PalletJackVehicle extends PathfinderMob {
     private ItemStack jack=ItemStack.EMPTY;
     private int floorY=Integer.MIN_VALUE;
     private boolean recovered;
-    private static final double WALK_SPEED=.14;
+    private double walkingSpeed(){return hasPallet()?.13:.20;}
 
     public PalletJackVehicle(EntityType<? extends PalletJackVehicle> type,Level level){
         super(type,level);
@@ -122,10 +122,11 @@ public final class PalletJackVehicle extends PathfinderMob {
             double radians=Math.toRadians(heading);
             double forward=Math.max(-1,Math.min(1,controller.zza));
             double strafe=Math.max(-1,Math.min(1,controller.xxa));
-            double dx=(-Math.sin(radians)*forward+Math.cos(radians)*strafe)*WALK_SPEED;
-            double dz=(Math.cos(radians)*forward+Math.sin(radians)*strafe)*WALK_SPEED;
+            double speed=walkingSpeed();
+            double dx=(-Math.sin(radians)*forward+Math.cos(radians)*strafe)*speed;
+            double dz=(Math.cos(radians)*forward+Math.sin(radians)*strafe)*speed;
             double length=Math.hypot(dx,dz);
-            if(length>WALK_SPEED){dx*=WALK_SPEED/length;dz*=WALK_SPEED/length;}
+            if(length>speed){dx*=speed/length;dz*=speed/length;}
             if(length>0.0001&&safeFloor(level(),getX()+dx,getZ()+dz,heading)){
                 double oldX=getX(),oldZ=getZ();
                 move(MoverType.SELF,new Vec3(dx,0,dz));
@@ -143,7 +144,7 @@ public final class PalletJackVehicle extends PathfinderMob {
     @Override protected Vec3 getRiddenInput(Player player,Vec3 input){
         return new Vec3(player.xxa,0,player.zza);
     }
-    @Override protected float getRiddenSpeed(Player player){return (float)WALK_SPEED;}
+    @Override protected float getRiddenSpeed(Player player){return (float)walkingSpeed();}
     @Override protected void tickRidden(Player player,Vec3 input){
         super.tickRidden(player,input);
         setYRot(player.getYRot());
