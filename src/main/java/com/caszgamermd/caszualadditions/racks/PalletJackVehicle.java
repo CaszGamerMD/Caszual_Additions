@@ -152,8 +152,6 @@ public final class PalletJackVehicle extends PathfinderMob {
     @Override public net.minecraft.world.entity.LivingEntity getControllingPassenger(){
         return getFirstPassenger() instanceof Player p?p:null;
     }
-    @Override public boolean canJump(){return false;}
-    @Override public boolean canSprint(){return false;}
     @Override public Vec3 getPassengerRidingPosition(Entity passenger){
         return position().add(0,.12,0);
     }
