@@ -12,7 +12,6 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 
@@ -21,153 +20,97 @@ public final class QuarterPlacement {
 
     private QuarterPlacement() {}
 
+    /**
+     * Face-accurate placement. The hit face, not the nearest corner to the
+     * player, determines which half-block cell receives the piece:
+     *
+     * - Clicking an INTERIOR face of an existing quarter adds the quarter
+     *   directly beyond the cursor inside that same block space.
+     * - Clicking an OUTER face creates/extends the neighboring block space.
+     * - Sneaking while clicking a quarter forces the neighboring block
+     *   space even when the clicked face is inside the partial block.
+     *
+     * Never search nearby containers before honoring the actual raycast hit,
+     * and never substitute the "nearest empty" corner when the selected
+     * position is occupied. Either the requested cell is free or placement
+     * is rejected. This also keeps placement deterministic in multiplayer.
+     */
     public static InteractionResult place(UseOnContext context, BlockState source) {
         Level level = context.getLevel();
-
-        // First, allow aiming through an EMPTY octant of an existing quarter
-        // container. Vanilla raycasts ignore that empty volume and normally hit
-        // the block behind it, which made diagonal/kitty-corner placement
-        // impossible.
-        QuarterTarget rayTarget = findEmptyQuarterAlongRay(context);
-        if (rayTarget != null) {
-            if (rayTarget.state().is(QuarterBlocks.QUARTER_BLOCK)) {
-                return addToGeneric(context, rayTarget.pos(), rayTarget.state(), rayTarget.index(), source);
-            }
-            if (rayTarget.state().getBlock() instanceof RgbQuarterBlock) {
-                return migrateLegacyAndAdd(context, rayTarget.pos(), rayTarget.state(), rayTarget.index(), source);
-            }
-        }
-
-        // If an occupied quarter itself was clicked, nudge the hit point through
-        // that face. If that exact adjacent octant is unavailable, choose the
-        // nearest empty octant to the cursor.
-        BlockPos clickedPos = context.getClickedPos();
-        BlockState clickedState = level.getBlockState(clickedPos);
-        if (isQuarterContainer(clickedState)) {
-            int index = directTargetIndex(context, clickedState);
-            if (index >= 0) {
-                if (clickedState.is(QuarterBlocks.QUARTER_BLOCK)) {
-                    return addToGeneric(context, clickedPos, clickedState, index, source);
-                }
-                return migrateLegacyAndAdd(context, clickedPos, clickedState, index, source);
-            }
-        }
-
-        // No existing quarter container was targeted, so place the first quarter
-        // normally in the block location selected by Minecraft.
-        BlockPlaceContext placeContext = new BlockPlaceContext(context);
-        if (!placeContext.canPlace()) return InteractionResult.FAIL;
-
-        BlockPos pos = placeContext.getClickedPos();
-        BlockState existing = level.getBlockState(pos);
-        int index = cornerIndex(context.getClickLocation(), pos);
-
-        BlockState placed = QuarterBlocks.QUARTER_BLOCK.defaultBlockState()
-                .setValue(GenericQuarterBlock.CORNERS[index], true);
-
-        if (!existing.canBeReplaced(placeContext)) return InteractionResult.FAIL;
-        if (!level.isUnobstructed(
-                placed,
-                pos,
-                CollisionContext.placementContext(context.getPlayer())
-        )) {
-            return InteractionResult.FAIL;
-        }
-
-        if (!level.setBlock(pos, placed, 11)) return InteractionResult.FAIL;
-
-        if (level.getBlockEntity(pos) instanceof GenericQuarterBlockEntity blockEntity) {
-            blockEntity.setMaterial(index, source);
-        }
-
-        finishPlacement(context, pos, placed);
-        return InteractionResult.SUCCESS;
-    }
-
-    private static QuarterTarget findEmptyQuarterAlongRay(UseOnContext context) {
-        Player player = context.getPlayer();
-        if (player == null) return null;
-
-        Vec3 from = player.getEyePosition();
-        Vec3 rawTo = context.getClickLocation();
-        Vec3 ray = rawTo.subtract(from);
-        if (ray.lengthSqr() < 1.0E-8) return null;
-
-        Vec3 direction = ray.normalize();
-        Vec3 to = rawTo.add(direction.scale(0.1));
-
         BlockPos clicked = context.getClickedPos();
-        QuarterTarget best = null;
-        double bestDistance = Double.MAX_VALUE;
-
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dy = -2; dy <= 2; dy++) {
-                for (int dz = -2; dz <= 2; dz++) {
-                    BlockPos pos = clicked.offset(dx, dy, dz);
-                    BlockState state = context.getLevel().getBlockState(pos);
-                    if (!isQuarterContainer(state)) continue;
-
-                    AABB fullBlock = new AABB(
-                            pos.getX(), pos.getY(), pos.getZ(),
-                            pos.getX() + 1.0, pos.getY() + 1.0, pos.getZ() + 1.0
-                    );
-                    var intersection = fullBlock.clip(from, to);
-                    if (intersection.isEmpty()) continue;
-
-                    Vec3 justInside = intersection.get().add(direction.scale(TARGET_EPSILON));
-                    int index = cornerIndex(justInside, pos);
-                    if (isOccupied(state, index)) continue;
-
-                    double distance = intersection.get().distanceToSqr(from);
-                    if (distance < bestDistance) {
-                        bestDistance = distance;
-                        best = new QuarterTarget(pos, state, index);
-                    }
-                }
-            }
-        }
-
-        return best;
-    }
-
-    private static int directTargetIndex(UseOnContext context, BlockState state) {
-        BlockPos pos = context.getClickedPos();
         Direction face = context.getClickedFace();
         Vec3 hit = context.getClickLocation();
 
-        Vec3 nudged = hit.add(
+        // Step just beyond the SURFACE at the crosshair. An internal 0.5
+        // face stays within the 1x1x1 container; an external 0/1 face
+        // crosses into the next world block along the clicked face.
+        Vec3 beyond = hit.add(
                 face.getStepX() * TARGET_EPSILON,
                 face.getStepY() * TARGET_EPSILON,
                 face.getStepZ() * TARGET_EPSILON
         );
-
-        int preferred = cornerIndex(nudged, pos);
-        if (!isOccupied(state, preferred)) return preferred;
-
-        // Fallback: nearest empty octant center to the cursor. This keeps adding
-        // pieces intuitive when the exact face-adjacent octant is already used.
-        Vec3 local = local(hit, pos);
-        int best = -1;
-        double bestDistance = Double.MAX_VALUE;
-
-        for (int i = 0; i < 8; i++) {
-            if (isOccupied(state, i)) continue;
-
-            double cx = (i & 1) != 0 ? 0.75 : 0.25;
-            double cz = (i & 2) != 0 ? 0.75 : 0.25;
-            double cy = i >= 4 ? 0.75 : 0.25;
-            double dx = local.x - cx;
-            double dy = local.y - cy;
-            double dz = local.z - cz;
-            double distance = dx * dx + dy * dy + dz * dz;
-
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                best = i;
-            }
+        BlockState clickedState = level.getBlockState(clicked);
+        if (isQuarterContainer(clickedState)) {
+            Player player = context.getPlayer();
+            boolean outside = isOuterFace(hit, clicked, face);
+            BlockPos destination = outside
+                    || player != null && player.isShiftKeyDown()
+                    ? clicked.relative(face) : clicked;
+            return placeInCell(context, destination, cornerIndex(beyond, destination),
+                    source, new BlockPlaceContext(context));
         }
 
-        return best;
+        // Honor Minecraft's ordinary replaceable-block behavior (grass,
+        // water, etc.) when the actual hit is not a quarter container.
+        // A neighboring existing partial container can still receive the
+        // exact selected octant, but cannot steal a click elsewhere.
+        BlockPlaceContext placement = new BlockPlaceContext(context);
+        BlockPos destination = placement.getClickedPos();
+        return placeInCell(context, destination, cornerIndex(beyond, destination),
+                source, placement);
+    }
+
+    /** Only the CLICKED face can choose a neighboring world block.
+     * A crosshair exactly on a second perpendicular edge must never
+     * accidentally jump diagonally to a different block. */
+    private static boolean isOuterFace(Vec3 hit, BlockPos clicked, Direction face) {
+        double coordinate = switch (face.getAxis()) {
+            case X -> hit.x - clicked.getX();
+            case Y -> hit.y - clicked.getY();
+            case Z -> hit.z - clicked.getZ();
+        };
+        return face.getAxisDirection() == Direction.AxisDirection.POSITIVE
+                ? coordinate >= 1.0 - TARGET_EPSILON
+                : coordinate <= TARGET_EPSILON;
+    }
+
+    private static InteractionResult placeInCell(UseOnContext context,
+            BlockPos pos, int index, BlockState source, BlockPlaceContext placement) {
+        Level level = context.getLevel();
+        BlockState existing = level.getBlockState(pos);
+        if (existing.is(QuarterBlocks.QUARTER_BLOCK)) {
+            return addToGeneric(context, pos, existing, index, source);
+        }
+        if (existing.getBlock() instanceof RgbQuarterBlock) {
+            return migrateLegacyAndAdd(context, pos, existing, index, source);
+        }
+
+        // Never overwrite an occupied solid block just because the requested
+        // quarter is adjacent to a different, partly filled container.
+        if (!existing.canBeReplaced(placement)) return InteractionResult.FAIL;
+
+        BlockState placed = QuarterBlocks.QUARTER_BLOCK.defaultBlockState()
+                .setValue(GenericQuarterBlock.CORNERS[index], true);
+        if (!level.isUnobstructed(placed, pos,
+                CollisionContext.placementContext(context.getPlayer()))) {
+            return InteractionResult.FAIL;
+        }
+        if (!level.setBlock(pos, placed, 11)) return InteractionResult.FAIL;
+        if (level.getBlockEntity(pos) instanceof GenericQuarterBlockEntity blockEntity) {
+            blockEntity.setMaterial(index, source);
+        }
+        finishPlacement(context, pos, placed);
+        return InteractionResult.SUCCESS;
     }
 
     private static InteractionResult addToGeneric(
@@ -265,5 +208,4 @@ public final class QuarterPlacement {
         context.getItemInHand().consume(1, player);
     }
 
-    private record QuarterTarget(BlockPos pos, BlockState state, int index) {}
 }

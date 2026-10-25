@@ -68,3 +68,16 @@ RGB wallpaper supports walls, floors, and ceilings. Vertical slabs and stairs ar
 See [Recipes](Recipes.md) for the rest of the crafting JSON reference.
 
 [Generic quarter block source](https://github.com/CaszGamerMD/Caszual_Additions/tree/main/src/main/java/com/caszgamermd/caszualadditions/quarter) · [Colored end rod source](https://github.com/CaszGamerMD/Caszual_Additions/tree/main/src/main/java/com/caszgamermd/caszualadditions/rods)
+
+
+## Precise quarter-block placement
+
+Quarter placement follows the **face and exact location under the crosshair**, not whichever corner is nearest to the player. The eight quarter positions remain north-west/east/south-west/east, each with an upper or lower half.
+
+- **Click the interior face of an existing quarter:** put another piece directly beyond that face, within the same block cell (only if that quarter is empty).
+- **Click the outer face of a partially filled quarter:** place in the neighboring full block cell, instead of unexpectedly adding to the original cell.
+- **Click an ordinary block:** place in the adjacent cell using the cursor's upper/lower and left/right position on the surface.
+- **Sneak + right-click any existing quarter:** force placement into the next **whole block space** in the direction of the clicked face, even if it is an internal half-face.
+- **Occupied target:** placement fails rather than silently selecting another empty corner. Aim again at the intended surface.
+
+The older nearby-quarter ray scan and the automatic \"nearest empty corner\" fallback have been removed. This applies to textured quarter blocks, RGB quarter pieces, and existing legacy RGB quarter blocks (which still migrate to the shared container when adding pieces). Existing placed quarter materials are preserved.
