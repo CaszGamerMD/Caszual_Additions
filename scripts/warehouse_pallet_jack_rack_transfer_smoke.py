@@ -10,7 +10,8 @@ block=(folder/"RackBlock.java").read_text()
 # A rack's normal GUI MUST NOT intercept the jack in either hand.
 assert "||held.is(RackContent.PALLET_JACK)" in block
 assert "||held.is(RackContent.FORKLIFT_ITEM)" in block
-assert "RackBlockEntity rack=RackBlock.controller(server,clicked);" in jack\nassert "PalletJackVehicle vehicle" in jack
+assert "RackBlockEntity rack=RackBlock.controller(server,clicked);" in jack
+assert "PalletJackVehicle vehicle" in jack
 assert jack.index("RackBlockEntity rack=RackBlock.controller(server,clicked)") < jack.index("if(loaded(jack))\n            return unload(")
 assert "if(rack.installFromJack(jack))" in jack
 assert "if(rack.liftToJack(jack))" in jack
