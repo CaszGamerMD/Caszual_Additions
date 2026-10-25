@@ -1,0 +1,36 @@
+name: Pallet Jack Test JAR
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/main/java/com/caszgamermd/caszualadditions/racks/PalletJack*'
+      - 'src/client/java/com/caszgamermd/caszualadditions/racks/PalletJack*'
+      - '.github/workflows/pallet-jack-test-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  jar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.7.0'
+      - name: Compile and package Fabric mod
+        run: gradle build --stacktrace
+      - name: Upload playable Pallet Jack test JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: Caszual-Additions-Pallet-Jack-Test
+          path: |
+            build/libs/*.jar
+            !build/libs/*-sources.jar
+          if-no-files-found: error
