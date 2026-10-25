@@ -65,6 +65,8 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         EntityRenderers.register(RackContent.MOVING_PALLET_TYPE,MovingPalletRenderer::new);
         ModelLayerRegistry.registerModelLayer(WarehouseForkliftRenderer.LAYER,WarehouseForkliftModel::layer);
         EntityRenderers.register(RackContent.FORKLIFT_TYPE,WarehouseForkliftRenderer::new);
+        EntityRenderers.register(RackContent.PALLET_JACK_VEHICLE_TYPE,
+                com.caszgamermd.caszualadditions.racks.PalletJackRenderer::new);
 
         BlockEntityRenderers.register(
                 QuarterBlocks.QUARTER_BLOCK_ENTITY,
