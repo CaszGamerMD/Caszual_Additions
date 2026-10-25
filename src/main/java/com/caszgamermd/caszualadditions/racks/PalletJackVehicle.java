@@ -120,8 +120,8 @@ public final class PalletJackVehicle extends PathfinderMob {
             setYRot(heading);
             yBodyRot=heading;
             double radians=Math.toRadians(heading);
-            double forward=Math.max(-1,Math.min(1,input.z));
-            double strafe=Math.max(-1,Math.min(1,input.x));
+            double forward=Math.max(-1,Math.min(1,controller.zza));
+            double strafe=Math.max(-1,Math.min(1,controller.xxa));
             double dx=(-Math.sin(radians)*forward+Math.cos(radians)*strafe)*WALK_SPEED;
             double dz=(Math.cos(radians)*forward+Math.sin(radians)*strafe)*WALK_SPEED;
             double length=Math.hypot(dx,dz);
