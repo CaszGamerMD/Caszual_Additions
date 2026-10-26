@@ -23,7 +23,8 @@ assert "stage=ptp.pendingOutputOrders()>0||ptp.outputInFlight()?6:2;" in worker
 assert "if(stage==6){" in worker
 assert "packingStandbyFor(BlockPos output)" in worker
 assert "w->w.packingStandbyFor(point.getBlockPos())" in dispatch
-assert "if(!closeTo(walkway)&&!nearPackingRack(level,walkway))" in worker
+assert "if(!closeToPalletFace(level,target,walkway)" in worker
+assert "&& !nearPackingRack(level,walkway))" not in worker or "nearPackingRack(level,walkway)" in worker
 shelf=(root/"StorageGolemShelfEntity.java").read_text()
 assert "launched<4&&shelf.docked()>0" in shelf
 assert "ptp.outputDelivered(outputTicket,count);" in worker
