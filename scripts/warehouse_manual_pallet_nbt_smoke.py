@@ -12,7 +12,9 @@ pallet=(base/"pallet/PalletBlockEntity.java").read_text()
 jack=(base/"racks/PalletJackVehicle.java").read_text()
 install=rack[rack.index("public void install(ItemStack item)"):
              rack.index("public boolean liftToCarrier(")]
-assert "if (hasPallet()||item.isEmpty()||!isEmpty()) return;" in install
+assert "if (hasPallet()||item.isEmpty()||!isEmpty()) return false;" in install
+assert "public boolean install(ItemStack item)" in install
+assert "return true;" in install
 assert "NonNullList.withSize(CAPACITY,ItemStack.EMPTY)" in install
 assert "item.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY)" in install
 assert ".copyInto(carried);" in install
@@ -32,6 +34,8 @@ assert "return dropPallet();" in extract
 assert "player.isShiftKeyDown()" in block
 assert "player.getInventory().placeItemBackInInventory(extracted);" in block
 assert "rack.takePallet()" in block
+assert "if(!rack.install(held.copyWithCount(1)))" in block
+assert block.index("if(!rack.install(held.copyWithCount(1)))") < block.index("held.shrink(1)")
 assert "rack.isEmpty()" in block
 assert "server.getLastClientMoveIntent()" in jack
 assert "if(level().isClientSide()&&hasClientMovement)" in jack
