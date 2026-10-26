@@ -8,7 +8,7 @@
 2. Build a **3×3 Pallet Transfer Point (PTP)**, set it to **OUTPUT**, and install an **unsealed pallet**. An output order needs a pallet where completed shulker boxes can be stored.
 3. Replace one corner of the assembled PTP with a **PTP Hopper Adapter**.
 4. Place the **Shulker Station** immediately beside that corner adapter. Its 2-block-high station should touch the adapter at the lower block level. Network attachment alone does not count: the station must touch the adapter.
-5. Right-click the station with empty shulker boxes to stock its 64-box magazine. The old Shulker Tank block and saved inventories are reused as the Shulker Station.
+5. Right-click either the top or bottom half with empty shulker boxes to stock the **same** 64-box magazine; an empty-hand click on either half opens the **same station UI**. The entire two-block-high structure is one machine, with exactly one inventory owner in its lower block and one item drop when dismantled. Its three active and three completed packing lanes are part of this same station, not inventories belonging to separate halves. The old Shulker Tank block ID and saved inventories are reused; older saves with an unexpected upper-half inventory are merged safely into the lower controller (overflow is dropped intact).
 
 ## Submit a multi-item order
 
