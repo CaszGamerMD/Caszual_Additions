@@ -130,11 +130,19 @@ public final class StorageGolemDispatch {
         if(!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity cfg))
             return true;
         int running=0;
+        java.util.Set<java.util.UUID> waiting=new java.util.HashSet<>();
         for(PtpBlockEntity point:WarehouseNetwork.fromComputer(level,computer).points()){
             running+=point.activeOutputReservations();
             if(running>=cfg.orderPackers())return false;
+            // A picker which just finished its three physical stacks can
+            // be waiting at the Shulker Station for the next material line.
+            // It must not be replaced by a fifth/sixth dispatched worker.
+            for(StorageGolem golem:level.getEntitiesOfClass(StorageGolem.class,
+                    new net.minecraft.world.phys.AABB(point.getBlockPos()).inflate(160),
+                    w->w.packingStandbyFor(point.getBlockPos())))
+                waiting.add(golem.getUUID());
         }
-        return true;
+        return running+waiting.size()<cfg.orderPackers();
     }
     /** Do not let a temporarily out-of-stock FIFO head stall all other
      * stocked Builder materials. Scan the REAL connected racks; a picker
