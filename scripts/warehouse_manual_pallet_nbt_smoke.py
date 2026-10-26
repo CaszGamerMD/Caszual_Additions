@@ -10,7 +10,7 @@ rack=(base/"racks/RackBlockEntity.java").read_text()
 block=(base/"racks/RackBlock.java").read_text()
 pallet=(base/"pallet/PalletBlockEntity.java").read_text()
 jack=(base/"racks/PalletJackVehicle.java").read_text()
-install=rack[rack.index("public void install(ItemStack item)"):
+install=rack[rack.index("public boolean install(ItemStack item)"):
              rack.index("public boolean liftToCarrier(")]
 assert "if (hasPallet()||item.isEmpty()||!isEmpty()) return false;" in install
 assert "public boolean install(ItemStack item)" in install
