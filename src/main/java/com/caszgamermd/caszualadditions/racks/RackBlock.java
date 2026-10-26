@@ -243,11 +243,24 @@ public final class RackBlock extends Block implements EntityBlock {
             RackBlockEntity rack = controller(level, pos);
             if (rack != null) {
                 if (player.isShiftKeyDown()) {
-                    if (rack.hasPallet() && rack.isEmpty()) {
-                        player.getInventory().placeItemBackInInventory(rack.takePallet());
-                    } else {
+                    // Manual extraction: no scanner, jack, forklift or Golem
+                    // is required. Only the actual EMPTY stored pallet can
+                    // leave; if a pickup crew owns it, don't steal its cargo.
+                    if(!rack.hasPallet()){
                         server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                                "Empty this rack's pallet before removing it."));
+                                "This rack has no pallet."));
+                    }else if(!rack.isEmpty()){
+                        server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                                "Unload the pallet's inventory before taking it out by hand."));
+                    }else{
+                        ItemStack extracted=rack.takePallet();
+                        if(!extracted.isEmpty()){
+                            player.getInventory().placeItemBackInInventory(extracted);
+                            server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                                    "Empty pallet removed by hand. Original material, NBT, "
+                                    +"name, color and filter retained."));
+                        }else server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                                "Pallet currently reserved by a Golem or other carrier."));
                     }
                 } else if (rack.hasPallet()) server.openMenu(rack);
                 else server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
