@@ -23,6 +23,13 @@ assert "input.z" in vehicle and "input.x" in vehicle
 # Don't discard the actual 26.2 ridden input by reading idle passenger
 # xxa/zza fields. This regression caught a jack that could never move.
 assert "return new Vec3(input.x,0,input.z);" in vehicle
+assert "server.getLastClientMoveIntent()" in vehicle
+assert "if(level().isClientSide()&&hasClientMovement)" in vehicle
+client_controls=(R/"src/client/java/com/caszgamermd/caszualadditions/racks/PalletJackClientMovement.java").read_text()
+client_initializer=(R/"src/client/java/com/caszgamermd/caszualadditions/CaszualAdditionsClient.java").read_text()
+assert "ClientTickEvents.START_CLIENT_TICK.register" in client_controls
+assert "jack.setClientMovement(new Vec3(x,0,z));" in client_controls
+assert "PalletJackClientMovement.initialize();" in client_initializer
 assert "new Vec3(player.xxa,0,player.zza)" not in vehicle
 assert "public void travel(Vec3 input)" in vehicle
 assert "floorY" in vehicle
