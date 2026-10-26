@@ -1233,6 +1233,12 @@ public final class StorageGolem extends PathfinderMob {
     public boolean activeOrderPacking(){
         return stationOrder&&outputJob&&stage!=2&&stage!=3;
     }
+    /** A live picker waiting at the packing station is still part of the
+     * configured crew; count it before allocating any new shelf worker.
+     */
+    public boolean packingStandbyFor(BlockPos output){
+        return stationOrder&&outputJob&&stage==6&&orderPoint.equals(output);
+    }
     public BlockPos packingOutput(){return orderPoint;}
     public String carriedDescription(){
         if(holdsPallet())return "WRAPPED PALLET";
@@ -2060,6 +2066,25 @@ public final class StorageGolem extends PathfinderMob {
     }
     private final ArrayDeque<BlockPos> flatWorkRoute=new ArrayDeque<>();
 
+    /** A picker can interact with the rack from a neighboring FRONT aisle
+     * cell even when another Golem occupies its preferred service square.
+     * We still require an actual supported, collision-free standing tile
+     * and the existing 2-block rack reach; no through-wall collection.
+     */
+    private boolean nearPackingRack(ServerLevel world,BlockPos service){
+        if(!stationOrder||stage!=0
+                ||!(world.getBlockEntity(source) instanceof RackBlockEntity rack))
+            return false;
+        BlockPos feet=blockPosition();
+        if(!StorageGolemReturnPath.walkable(world,feet)
+                ||!WarehouseSortingReach.withinReach(feet,rack)
+                ||distanceToSqr(service.getX()+.5,service.getY(),
+                        service.getZ()+.5)>4.0)return false;
+        BlockPos rackFace=RackBlock.cell(source,rack.facing(),0);
+        int front=(feet.getX()-rackFace.getX())*rack.facing().getStepX()
+                +(feet.getZ()-rackFace.getZ())*rack.facing().getStepZ();
+        return front>=1;
+    }
     private boolean closeTo(BlockPos p){
         // An order must actually reach the selected service square.
         // The old 1.87-block radius could treat a rack wall as arrival.
@@ -2372,6 +2397,28 @@ public final class StorageGolem extends PathfinderMob {
         // stuttering and making route recovery appear frozen.
         // Return-home jobs MUST use the flat same-Y grid router, never the
         // generic approach() navigation that can select a jump over a block.
+        if(stage==6){
+            // The worker remains in the warehouse, outside the Shulker
+            // Station, until the whole order completes or is cancelled.
+            // Never walk back to a shelf between 3-slot retrieval cycles.
+            PtpBlockEntity output=outputPoint(level);
+            ShulkerTankEntity station=level.hasChunkAt(destination)
+                    &&level.getBlockEntity(destination) instanceof ShulkerTankEntity t
+                            ?t:null;
+            if(output==null||station==null
+                    ||output.pendingOutputOrders()==0&&!output.outputInFlight()){
+                stage=2;routeIssue="ORDER PACKED: RETURNING HOME";
+                return;
+            }
+            if(tickCount%10==0&&StorageGolemDispatch.continuePacking(
+                    level,this,home,output,station)){
+                routeIssue="PICKING NEXT ORDER MATERIAL";
+                return;
+            }
+            getNavigation().stop();
+            routeIssue="WAITING AT STATION FOR NEXT ORDER PICKUP";
+            return;
+        }
         if(stage==2){
             releaseOutput(level);
             if(stationOrder&&!orderItems().isEmpty())dropOrderCargo(level);
@@ -2397,7 +2444,7 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         if(!level.hasChunkAt(target) || !level.hasChunkAt(walkway))return;
-        if(!closeTo(walkway)){
+        if(!closeTo(walkway)&&!nearPackingRack(level,walkway)){
             walkTo(level,walkway,1.10);
             return;
         }
@@ -2611,7 +2658,11 @@ public final class StorageGolem extends PathfinderMob {
                             level,this,home,ptp,station)){
                         waitTicks=0;return;
                     }
-                    stage=2;waitTicks=0;return;
+                    // A fully reserved material line is not proof that the
+                    // entire multi-material manifest has been packed.
+                    // This picker stays at the station instead of redocking.
+                    stage=ptp.pendingOutputOrders()>0||ptp.outputInFlight()?6:2;
+                    waitTicks=0;return;
                 }
                 // A busy 3-shulker station is NOT a rejected order.
                 // Retain all nine cargo slots until there is room instead
