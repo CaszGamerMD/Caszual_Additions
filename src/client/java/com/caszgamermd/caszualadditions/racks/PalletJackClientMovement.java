@@ -16,7 +16,7 @@ public final class PalletJackClientMovement {
                     ||!(client.player.getVehicle() instanceof PalletJackVehicle jack))
                 return;
             double x=0,z=0;
-            if(client.screen==null){
+            if(client.gui.screen()==null){
                 x=(client.options.keyRight.isDown()?1:0)
                         -(client.options.keyLeft.isDown()?1:0);
                 z=(client.options.keyUp.isDown()?1:0)
