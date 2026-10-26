@@ -61,7 +61,9 @@ builder=src(j/"BuilderWarehouseFulfillment.java")
 shelf=src(j/"StorageGolemShelfEntity.java")
 ui=src(c/"RackComputerScreen.java")
 assert "tryDispatchQueuedOutput(level,shelf)" in shelf
-assert "if(shelf.sortingEnabled)StorageGolemDispatch.tryDispatch(level,shelf);" in shelf
+assert "if(shelf.sortingEnabled&&shelf.docked()>0)" in shelf
+assert "StorageGolemDispatch.tryDispatch(level,shelf);" in shelf
+assert "launched<4&&shelf.docked()>0" in shelf
 assert "public static boolean tryDispatchQueuedOutput(" in dispatch
 assert "tryDispatchQueuedOutput(level,shelf))break;" in builder
 assert 'order.addProperty("reason",BuilderWarehouseFulfillment.workStatus(' in net
