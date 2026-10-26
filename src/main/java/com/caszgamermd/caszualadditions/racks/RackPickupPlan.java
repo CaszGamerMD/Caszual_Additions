@@ -30,12 +30,13 @@ public final class RackPickupPlan {
     public int height(){return root.getY()-floorY;}
     public Direction facing(){return facing;}
 
-    /** Both pairs occupy a two-by-two formation inside the THREE clear
-     * aisle cells between opposite racks. Do not reserve depth four: that is
-     * the opposing rack, not an aisle tile. */
+    /** The two actual rack pullers stand in the FIRST aisle row: their
+     * center is 0.5 block beyond the open rack face. Two support workers
+     * stage in the NEXT row so four solid entities never overlap the
+     * same 2-wide frontage. All four stay clear of opposite racks. */
     public BlockPos goal(int worker, boolean pulled){
         int column=worker%2;
-        int depth=worker<2 ? 2 : 3;
+        int depth=worker<2 ? 1 : 2;
         return withY(RackBlock.cell(root,facing,column)
                 .relative(facing,depth),floorY);
     }
