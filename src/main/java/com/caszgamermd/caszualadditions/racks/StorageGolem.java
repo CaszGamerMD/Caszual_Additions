@@ -1502,7 +1502,7 @@ public final class StorageGolem extends PathfinderMob {
                 // All four stand on the computed floor, even for tall racks.
                 BlockPos near=approach(level,source);
                 if(!level.hasChunkAt(near))return;
-                if(!closeTo(near)){
+                if(!closeToPalletFace(level,source,near)){
                     walkTo(level,near,1.20);
                     return;
                 }
@@ -1517,14 +1517,14 @@ public final class StorageGolem extends PathfinderMob {
                     StorageGolem second=crew.stream().filter(w->w.haulIndex==1)
                             .findFirst().orElse(null);
                     boolean twoReady=second!=null
-                            &&second.closeTo(second.approach(level,source));
+                            &&second.closeToPalletFace(level,source,second.approach(level,source));
                     if(twoReady && rack.startPull(owner,rackFloorY)
                             &&rack.pullProgress()>=RackPickupPlan.PULL_TICKS){
                         boolean ready=crew.size()==4;
                         int mask=0;
                         for(StorageGolem member:crew){
                             mask=WarehouseTeamProgress.arrive(mask,member.haulIndex);
-                            if(!member.closeTo(member.approach(level,source)))
+                            if(!member.closeToPalletFace(level,source,member.approach(level,source)))
                                 ready=false;
                         }
                         if(ready&&WarehouseTeamProgress.complete(mask)
@@ -1546,7 +1546,7 @@ public final class StorageGolem extends PathfinderMob {
                 }
                 BlockPos near=approach(level,source);
                 if(!level.hasChunkAt(near))return;
-                if(!closeTo(near)){
+                if(!closeToPalletFace(level,source,near)){
                     walkTo(level,near,1.20);
                     return;
                 }
@@ -1562,7 +1562,7 @@ public final class StorageGolem extends PathfinderMob {
                     for(StorageGolem member:crew){
                         mask=WarehouseTeamProgress.arrive(mask,member.haulIndex);
                         BlockPos dock=member.approach(level,source);
-                        if(!member.closeTo(dock))ready=false;
+                        if(!member.closeToPalletFace(level,source,dock))ready=false;
                     }
                     if(ready&&WarehouseTeamProgress.complete(mask)
                             &&StorageGroundPalletTransfer.lift(level,source,this)){
@@ -1579,7 +1579,7 @@ public final class StorageGolem extends PathfinderMob {
             point.renewHaul(haulTicket);
             BlockPos near=approach(level,source);
             if(!level.hasChunkAt(near))return;
-            if(!closeTo(near)){
+            if(!closeToPalletFace(level,source,near)){
                 walkTo(level,near,1.20);
                 return;
             }
@@ -1758,6 +1758,7 @@ public final class StorageGolem extends PathfinderMob {
         orderAccessExpires=tickCount+600;
         BlockEntity machine=level.hasChunkAt(place)?level.getBlockEntity(place):null;
         java.util.LinkedHashSet<BlockPos> choices=new java.util.LinkedHashSet<>();
+        java.util.LinkedHashSet<BlockPos> adjacent=new java.util.LinkedHashSet<>();
         if(machine instanceof RackBlockEntity rack){
             // The rack is opaque to Golems: approach ONLY from its FRONT,
             // never through a side/back frame or its upper cargo bays.
@@ -1773,8 +1774,14 @@ public final class StorageGolem extends PathfinderMob {
                     for(int dy=-2;dy<=0;dy++){
                         BlockPos service=new BlockPos(cell.getX(),
                                 place.getY()+dy,cell.getZ());
-                        if(WarehouseSortingReach.withinReach(service,rack))
+                        if(WarehouseSortingReach.withinReach(service,rack)){
                             choices.add(service);
+                            // A pallet/rack is serviced from the FIRST aisle
+                            // row: the Golem's center is only half a block
+                            // outside its face. The second row is a genuine
+                            // fallback when front access is obstructed.
+                            if(depth==1)adjacent.add(service);
+                        }
                     }
                 }
         }else{
@@ -1796,9 +1803,15 @@ public final class StorageGolem extends PathfinderMob {
         // approaches and permanent WAITING FOR REACHABLE ORDER ACCESS.
         for(BlockPos cell:choices)
             if(openWalkway(level,cell))options.add(cell);
-        BlockPos best=WarehousePreferredPath.cheapestService(
-                feet,options,p->openWalkway(level,p),
+        java.util.List<BlockPos> nearest=options.stream()
+                .filter(adjacent::contains).toList();
+        BlockPos best=nearest.isEmpty()?null:WarehousePreferredPath.cheapestService(
+                feet,nearest,p->openWalkway(level,p),
                 p->WarehouseTerrain.standingY(level,p));
+        if(best==null)
+            best=WarehousePreferredPath.cheapestService(
+                    feet,options,p->openWalkway(level,p),
+                    p->WarehouseTerrain.standingY(level,p));
         if(best==null){
             // No safe final approach: keep the real order and its
             // reservation intact. Do not select the first unverified
@@ -2083,13 +2096,31 @@ public final class StorageGolem extends PathfinderMob {
         BlockPos rackFace=RackBlock.cell(source,rack.facing(),0);
         int front=(feet.getX()-rackFace.getX())*rack.facing().getStepX()
                 +(feet.getZ()-rackFace.getZ())*rack.facing().getStepZ();
-        return front>=1;
+        // If another worker occupies the preferred cell, its neighboring
+        // FRONT cell is also valid. Second-row workers must keep walking:
+        // they're still 1.5+ blocks from the pallet/rack face.
+        return front==1;
     }
     private boolean closeTo(BlockPos p){
-        // An order must actually reach the selected service square.
-        // The old 1.87-block radius could treat a rack wall as arrival.
+        // Non-rack machinery retains its existing wider work zone; a
+        // pallet/rack needs its own precise physically adjacent dock.
         return distanceToSqr(p.getX()+.5,p.getY()+.5,p.getZ()+.5)
                 <(stationOrder?.94:3.5);
+    }
+    /** The center of the first aisle tile is 0.5 block beyond the rack or
+     * pallet face. Do not interpret the old 1.87-block service radius as
+     * arrival: it allowed a picker to take stock from the second aisle row
+     * or launch a pallet pickup before reaching the actual cargo.
+     * Check actual foot height so bottom slabs and elevated rack landings
+     * can also dock without stopping a whole block too early. */
+    private boolean closeToPalletFace(ServerLevel level,BlockPos target,BlockPos service){
+        boolean rack=level.getBlockEntity(target) instanceof RackBlockEntity;
+        boolean pallet=level.getBlockState(target).getBlock() instanceof PalletBlock;
+        if(!rack&&!pallet)return closeTo(service);
+        double dx=getX()-(service.getX()+.5);
+        double dz=getZ()-(service.getZ()+.5);
+        double dy=getY()-WarehouseTerrain.standingY(level,service);
+        return dx*dx+dz*dz<=.16&&Math.abs(dy)<.85;
     }
     /**
      * Dock at the same floor the Golem is actually walking on. Shelves
@@ -2444,7 +2475,8 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         if(!level.hasChunkAt(target) || !level.hasChunkAt(walkway))return;
-        if(!closeTo(walkway)&&!nearPackingRack(level,walkway)){
+        if(!closeToPalletFace(level,target,walkway)
+                &&!nearPackingRack(level,walkway)){
             walkTo(level,walkway,1.10);
             return;
         }
