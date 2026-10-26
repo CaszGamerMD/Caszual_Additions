@@ -36,6 +36,53 @@ public final class ShulkerTankEntity extends BlockEntity implements Container, E
     private int bufferedItems;
     public ShulkerTankEntity(BlockPos pos,BlockState state){super(RackContent.SHULKER_TANK_ENTITY,pos,state);}
 
+    /** One two-block machine has exactly one persisted inventory owner:
+     * the LOWER controller. Earlier malformed saves could retain a block
+     * entity in the top half or two adjacent LOWER controllers. During
+     * normalization, transfer real cargo into the canonical controller,
+     * returning any capacity overflow as intact item stacks for world drops.
+     * No inventory data is silently overwritten or voided. */
+    public List<ItemStack> absorbLegacyTop(ShulkerTankEntity top){
+        List<ItemStack> overflow=new ArrayList<>();
+        if(top==this)return overflow;
+        for(int i=0;i<CAPACITY;i++){
+            ItemStack stack=top.boxes.get(i);
+            if(stack.isEmpty())continue;
+            int free=-1;
+            for(int slot=0;slot<CAPACITY;slot++)
+                if(boxes.get(slot).isEmpty()){free=slot;break;}
+            if(free>=0)boxes.set(free,stack.copy());
+            else overflow.add(stack.copy());
+            top.boxes.set(i,ItemStack.EMPTY);
+        }
+        for(int i=0;i<STATIONS;i++){
+            ItemStack workingBox=top.working.get(i);
+            if(!workingBox.isEmpty()){
+                int free=-1;
+                for(int slot=0;slot<STATIONS;slot++)
+                    if(working.get(slot).isEmpty()){free=slot;break;}
+                if(free>=0)working.set(free,workingBox.copy());
+                else overflow.add(workingBox.copy());
+                top.working.set(i,ItemStack.EMPTY);
+            }
+            ItemStack readyBox=top.finished.get(i);
+            if(!readyBox.isEmpty()){
+                int free=-1;
+                for(int slot=0;slot<STATIONS;slot++)
+                    if(finished.get(slot).isEmpty()){free=slot;break;}
+                if(free>=0)finished.set(free,readyBox.copy());
+                else overflow.add(readyBox.copy());
+                top.finished.set(i,ItemStack.EMPTY);
+            }
+        }
+        bufferedItems=0;
+        for(ItemStack stack:working)bufferedItems+=StorageGolemPacking.itemCount(stack);
+        for(ItemStack stack:finished)bufferedItems+=StorageGolemPacking.itemCount(stack);
+        top.bufferedItems=0;
+        top.setChanged();
+        setChanged();
+        return overflow;
+    }
     @Override public Component getDisplayName(){
         return Component.literal("Shulker Station");
     }
