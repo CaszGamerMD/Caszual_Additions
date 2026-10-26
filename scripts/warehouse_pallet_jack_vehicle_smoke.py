@@ -19,7 +19,8 @@ assert "player.startRiding(this)" in vehicle
 assert "player.getVehicle() instanceof PalletJackVehicle" in jack
 assert "UseBlockCallback.EVENT.register" in jack
 assert "if(player.isShiftKeyDown())return InteractionResult.PASS;" in vehicle
-assert "controller.zza" in vehicle and "controller.xxa" in vehicle
+assert "input.z" in vehicle and "input.x" in vehicle
+assert "new Vec3(player.xxa,0,player.zza)" in vehicle
 assert "public void travel(Vec3 input)" in vehicle
 assert "floorY" in vehicle
 assert "getY()-floorY" in vehicle
