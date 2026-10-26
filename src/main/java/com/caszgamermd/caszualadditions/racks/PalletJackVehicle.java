@@ -41,6 +41,16 @@ public final class PalletJackVehicle extends PathfinderMob {
     private ItemStack jack=ItemStack.EMPTY;
     private int floorY=Integer.MIN_VALUE;
     private boolean recovered;
+    // The controlling client's keyboard is sampled explicitly by our
+    // client initializer. Vanilla's passenger xxa/zza can be zero even
+    // while movement keys are held, so use this raw, normalized input.
+    // No client-only Minecraft classes are referenced from common code.
+    private transient Vec3 clientMovement=Vec3.ZERO;
+    private transient boolean hasClientMovement;
+    public void setClientMovement(Vec3 input){
+        clientMovement=new Vec3(input.x,0,input.z);
+        hasClientMovement=true;
+    }
     private double walkingSpeed(){return hasPallet()?.13:.20;}
 
     public PalletJackVehicle(EntityType<? extends PalletJackVehicle> type,Level level){
@@ -146,13 +156,19 @@ public final class PalletJackVehicle extends PathfinderMob {
         setDeltaMovement(Vec3.ZERO);
     }
     @Override protected Vec3 getRiddenInput(Player player,Vec3 input){
-        // In Fabric/Minecraft 26.2 the riding movement hook ALREADY
-        // receives the controller's directional input. The driver's xxa
-        // and zza are usually ZERO after mount (especially server-side).
-        // Reading those fields discarded W/A/S/D completely, leaving the
-        // pallet jack stationary even with a live passenger.
-        // Never turn an authentic zero input into continuous movement.
-        return new Vec3(input.x,0,input.z);
+        // Client: movement keys are captured before the entity tick,
+        // including W/A/S/D and remapped controls. Avoid the idle xxa/zza
+        // fields that made the pallet jack appear permanently stationary.
+        if(level().isClientSide()&&hasClientMovement)
+            return clientMovement;
+        // Server: the rider input delivered by vanilla remains the first
+        // choice. The server also receives raw key state independently of
+        // the rider's (usually zero) movement fields.
+        if(input.x*input.x+input.z*input.z>1.0e-6)
+            return new Vec3(input.x,0,input.z);
+        if(player instanceof ServerPlayer server)
+            return server.getLastClientMoveIntent();
+        return Vec3.ZERO;
     }
     @Override protected float getRiddenSpeed(Player player){return (float)walkingSpeed();}
     @Override protected void tickRidden(Player player,Vec3 input){
