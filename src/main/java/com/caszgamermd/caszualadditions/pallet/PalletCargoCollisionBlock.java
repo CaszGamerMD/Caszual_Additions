@@ -38,6 +38,19 @@ public final class PalletCargoCollisionBlock extends Block {
     @Override protected MapCodec<? extends Block> codec() { return codec; }
     @Override protected RenderShape getRenderShape(BlockState state) { return RenderShape.INVISIBLE; }
 
+    /** The visible stacked boxes are proxy hitboxes belonging to the
+     * underlying pallet, never independent items. Include the inventory only
+     * for Creative Ctrl+Pick Block, mirroring all four deck parts. */
+    @Override protected net.minecraft.world.item.ItemStack getCloneItemStack(
+            net.minecraft.world.level.LevelReader level,BlockPos pos,
+            BlockState state,boolean includeData){
+        BlockPos root=owner(level,pos);
+        if(root!=null&&level.getBlockEntity(root) instanceof PalletBlockEntity pallet
+                &&pallet.isRoot())
+            return includeData?pallet.createCreativeCopyStack():pallet.createDropStack();
+        return net.minecraft.world.item.ItemStack.EMPTY;
+    }
+
     // Match selection to the *visible* cargo cuboids, not a full cube
     // that would obscure gaps between boxes or an adjacent pallet.
     @Override protected VoxelShape getShape(BlockState state, BlockGetter level,
