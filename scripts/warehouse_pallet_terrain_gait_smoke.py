@@ -26,7 +26,9 @@ assert "TERRAIN_KEYS[index]" in rig
 assert "CORNER" not in ground or "FOOT_OFFSET=.875" in ground
 assert "ground=walkableSurface" in ground
 assert "getCollisionShape(level,cell)" in ground
-assert "shape.max(Direction.Axis.Y)" in ground
+assert "shape.toAabbs()" in ground
+assert "localX>=box.minX" in ground
+assert "state.platformPitch=-slope[0]" in render
 assert "Integer.bitCount(mask)==3" in ground
 assert "offsets[i]=waiting" in ground
 assert "Integer.bitCount(mask)<3" in ground
@@ -37,8 +39,8 @@ assert "state.bodyRot=180.0f" not in render
 assert "180.0f-state.bodyRot" in render
 assert "state.footHeight[i]=entity.cornerTerrainHeight(i)" in render
 assert "MovingPalletTerrain.tilt(state.footHeight,state.groundedMask)" in render
-assert "Axis.XP.rotation(state.platformPitch)" in render
-assert "Axis.ZP.rotation(-state.platformRoll)" in render
+assert "Axis.XP.rotation(state.platformPitch*levelOff)" in render
+assert "Axis.ZP.rotation(-state.platformRoll*levelOff)" in render
 assert "state.groundedMask&(1<<i)" in model
 assert "float footGait=supported?amount:0f" in model
 assert "corner[i].y=Mth.clamp(-elevation*16f,-14f,21f)" in model
@@ -48,3 +50,4 @@ assert "updateCarrySurfaceSpeed(server);" in rig
 assert "if(isDelivering()){tickDelivery(server);return;}" in rig
 assert "waitingForPlayer" in rig
 print("PASS: unified forward gait, bounded roll/pitch, four ground probes, idle unsupported foot; cargo/follow path intact")
+

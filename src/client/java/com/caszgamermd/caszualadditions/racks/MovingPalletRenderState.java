@@ -10,6 +10,7 @@ public final class MovingPalletRenderState extends LivingEntityRenderState {
     public final float[] footHeight=new float[4];
     public int groundedMask=15;
     public float platformPitch,platformRoll;
+    public float groundUnloadProgress;
     public boolean visible;
     public float liftProgress;
     public float releaseProgress;
@@ -19,3 +20,4 @@ public final class MovingPalletRenderState extends LivingEntityRenderState {
     public final BlockModelRenderState crate=new BlockModelRenderState();
     public final BlockModelRenderState glass=new BlockModelRenderState();
 }
+

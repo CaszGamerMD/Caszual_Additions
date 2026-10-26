@@ -52,6 +52,7 @@ public final class MovingPallet extends PathfinderMob {
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
     // Only the pallet/artwork translates into the rack during the reverse
     // extraction animation. All four robot corner models stay rigid.
+    private static final EntityDataAccessor<Boolean> GROUND_UNLOAD_ACTIVE=SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> RACK_INSERT_ACTIVE=
             SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Float> RACK_INSERT_X=
@@ -163,6 +164,7 @@ public final class MovingPallet extends PathfinderMob {
         builder.define(CREW_SIZE,4);
         builder.define(LIFT_TICKS,0);
         builder.define(RELEASE_TICKS,0);
+        builder.define(GROUND_UNLOAD_ACTIVE,false);
         builder.define(RACK_INSERT_ACTIVE,false);
         builder.define(RACK_INSERT_X,0.0f);
         builder.define(RACK_INSERT_Y,0.0f);
@@ -176,6 +178,7 @@ public final class MovingPallet extends PathfinderMob {
     public int displayedCrewSize(){return entityData.get(CREW_SIZE);}
     public float liftProgress(){return entityData.get(LIFT_TICKS)/12.0f;}
     public float releaseProgress(){return entityData.get(RELEASE_TICKS)/20.0f;}
+    public boolean groundUnloading(){return entityData.get(GROUND_UNLOAD_ACTIVE);}
     public boolean rackInserting(){return entityData.get(RACK_INSERT_ACTIVE);}
     public float rackInsertProgress(){
         return rackInserting()
@@ -378,7 +381,7 @@ public final class MovingPallet extends PathfinderMob {
         outboundStaging=false;
         releaseTicks=0;
         entityData.set(RELEASE_TICKS,0);
-        entityData.set(RACK_INSERT_ACTIVE,false);
+        entityData.set(RACK_INSERT_ACTIVE,false);entityData.set(GROUND_UNLOAD_ACTIVE,false);
         deliveryFailure="RETURNING PALLET TO WAREHOUSE";
         getNavigation().stop();
         return "Return assigned: INPUT PTP first, vacant PTP second, then free rack.";
@@ -405,7 +408,7 @@ public final class MovingPallet extends PathfinderMob {
         bestReturnDistance=Double.POSITIVE_INFINITY;
         returnStallTicks=0;
         entityData.set(RELEASE_TICKS,0);
-        entityData.set(RACK_INSERT_ACTIVE,false);
+        entityData.set(RACK_INSERT_ACTIVE,false);entityData.set(GROUND_UNLOAD_ACTIVE,false);
         deliveryFailure="RETURNING PALLET TO OUTPUT SHIPPING AISLE";
         getNavigation().stop();
         return "OUTPUT shipping assigned: Golems will place this pallet in an "
@@ -651,7 +654,7 @@ public final class MovingPallet extends PathfinderMob {
         remoteFloorRoute.clear();
         rackFrontRoute.clear();
         nextRackFrontPlan=0;
-        entityData.set(RACK_INSERT_ACTIVE,false);
+        entityData.set(RACK_INSERT_ACTIVE,false);entityData.set(GROUND_UNLOAD_ACTIVE,false);
         releaseTicks=0;
         deliveryFailure="";
         deliveryStallTicks=0;
@@ -676,7 +679,7 @@ public final class MovingPallet extends PathfinderMob {
         deliveryMode=7;
         remoteFloorRoute.clear();
         nextRemotePlan=0;
-        entityData.set(RACK_INSERT_ACTIVE,false);
+        entityData.set(RACK_INSERT_ACTIVE,false);entityData.set(GROUND_UNLOAD_ACTIVE,false);
         releaseTicks=0;entityData.set(RELEASE_TICKS,0);
         deliveryFailure="TRAVELLING TO PTP UNLOADING AISLE";
         return "Golems delivering pallet to PTP "+center.toShortString()
@@ -802,6 +805,7 @@ public final class MovingPallet extends PathfinderMob {
         }
         getNavigation().stop();
         deliveryFailure="PLACING PALLET AT "+(deliveryMode==7?"PTP":"GROUND");
+        if(deliveryMode!=7)prepareGroundUnload(target,deliveryFacing);
         if(releaseTicks<20){
             entityData.set(RELEASE_TICKS,++releaseTicks);
             return;
@@ -829,7 +833,7 @@ public final class MovingPallet extends PathfinderMob {
         deliveryMode=0;
         deliveryService=BlockPos.ZERO;
         if(!deliveryFailure.startsWith("PALLET STAGED"))deliveryFailure="";
-        entityData.set(RACK_INSERT_ACTIVE,false);
+        entityData.set(RACK_INSERT_ACTIVE,false);entityData.set(GROUND_UNLOAD_ACTIVE,false);
         restoreWorkers(level);
     }
     /** Transfers the same pallet and exact 216 stacks to a vacant PTP as
@@ -872,7 +876,7 @@ public final class MovingPallet extends PathfinderMob {
     private void abortDelivery(String problem){
         deliveryFailure=problem;
         deliveryMode=0;
-        entityData.set(RACK_INSERT_ACTIVE,false);
+        entityData.set(RACK_INSERT_ACTIVE,false);entityData.set(GROUND_UNLOAD_ACTIVE,false);
         deliveryStallTicks=0;
         lastDeliveryDistance=Double.POSITIVE_INFINITY;
         releaseTicks=0;
@@ -1358,6 +1362,8 @@ public final class MovingPallet extends PathfinderMob {
                 }
             }
         }else if(rack!=null){
+            prepareRackUnload(rack);
+            if(releaseTicks<RackPickupPlan.PULL_TICKS){entityData.set(RELEASE_TICKS,++releaseTicks);return;}
             done=deliverToRack(rack);
         }
         if(!done){
@@ -1486,6 +1492,7 @@ public final class MovingPallet extends PathfinderMob {
             entityData.set(RACK_INSERT_Y,(float)(
                     rack.getBlockPos().getY()+.06-(getY()+1.48)));
         }
+        if(deliveryMode!=1)prepareGroundUnload(target,deliveryFacing);
         int releaseDuration=deliveryMode==1?RackPickupPlan.PULL_TICKS:20;
         if(releaseTicks<releaseDuration){
             entityData.set(RELEASE_TICKS,++releaseTicks);
@@ -1501,13 +1508,31 @@ public final class MovingPallet extends PathfinderMob {
         }
         deliveryMode=0;
         deliveryFailure="";
-        entityData.set(RACK_INSERT_ACTIVE,false);
+        entityData.set(RACK_INSERT_ACTIVE,false);entityData.set(GROUND_UNLOAD_ACTIVE,false);
         // Try separation immediately at the successful placement point.
         // If the aisle is crowded, keep the escrowed four-worker identity
         // and retry next ticks instead of spawning inside solid blocks.
         restoreWorkers(level);
     }
 
+    private void prepareGroundUnload(BlockPos target,Direction facing){
+        if(!(pallet.getItem() instanceof BlockItem item)||!(item.getBlock() instanceof PalletBlock block))return;
+        var state=block.defaultBlockState().setValue(PalletBlock.FACING,facing).setValue(PalletBlock.LEGACY,false);
+        int minX=target.getX(),minZ=target.getZ();
+        for(int i=1;i<4;i++){var cell=PalletBlock.partPos(target,i,state);minX=Math.min(minX,cell.getX());minZ=Math.min(minZ,cell.getZ());}
+        entityData.set(RACK_INSERT_X,(float)(minX+1-getX()));
+        entityData.set(RACK_INSERT_Z,(float)(minZ+1-getZ()));
+        entityData.set(RACK_INSERT_Y,(float)(target.getY()-(getY()+1.48)));
+        entityData.set(GROUND_UNLOAD_ACTIVE,true);
+    }
+    private void prepareRackUnload(RackBlockEntity rack){
+        BlockPos root=rack.getBlockPos();int minX=root.getX(),minZ=root.getZ();
+        for(int i=1;i<4;i++){var cell=RackBlock.cell(root,rack.facing(),i);minX=Math.min(minX,cell.getX());minZ=Math.min(minZ,cell.getZ());}
+        entityData.set(RACK_INSERT_X,(float)(minX+1-getX()));
+        entityData.set(RACK_INSERT_Z,(float)(minZ+1-getZ()));
+        entityData.set(RACK_INSERT_Y,(float)(root.getY()+.06-(getY()+1.48)));
+        entityData.set(RACK_INSERT_ACTIVE,true);
+    }
     public boolean deliverToRack(RackBlockEntity rack){
         if(!(level() instanceof ServerLevel server)
                 ||!WarehouseSortingReach.groundRack(server,rack))return false;
@@ -1930,3 +1955,4 @@ public final class MovingPallet extends PathfinderMob {
         syncDisplay();
     }
 }
+

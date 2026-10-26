@@ -46,13 +46,14 @@ public final class MovingPalletRenderer extends MobRenderer<
         for(int i=0;i<4;i++)
             state.footHeight[i]=entity.cornerTerrainHeight(i);
         float[] slope=MovingPalletTerrain.tilt(state.footHeight,state.groundedMask);
-        state.platformPitch=slope[0];
+        state.platformPitch=-slope[0];
         state.platformRoll=slope[1];
         ItemStack stack=entity.displayPallet();
         state.visible=entity.handsActuallyCarryingPallet()&&!stack.isEmpty();
         state.crewSize=entity.displayedCrewSize();
         state.liftProgress=state.visible?entity.liftProgress():0f;
         state.releaseProgress=entity.releaseProgress();
+        state.groundUnloadProgress=entity.groundUnloading()?entity.releaseProgress():0f;
         state.rackInsertProgress=entity.rackInsertProgress();
         state.rackInsertX=entity.rackInsertX();
         state.rackInsertY=entity.rackInsertY();
@@ -87,7 +88,7 @@ public final class MovingPalletRenderer extends MobRenderer<
         // Vanilla LivingEntityRenderer applies (180 - bodyRot) to the four
         // Golems. Mirror that exact rotation for the separate pallet deck,
         // so feet/arms/cargo all turn together during movement.
-        pose.mulPose(Axis.YP.rotationDegrees(180.0f-state.bodyRot));
+
         // Inverse of the rack extraction renderer:
         // 0..22 ticks lift pallet to shelf level, then 22..40 slide it
         // inward. Robots stay rigidly at their four corner offsets until
@@ -95,16 +96,25 @@ public final class MovingPalletRenderer extends MobRenderer<
         float stage=state.rackInsertProgress;
         float lift=Math.min(1f,stage*40f/22f);
         float slide=Math.max(0f,Math.min(1f,(stage*40f-22f)/18f));
+        if(state.groundUnloadProgress>0){
+            float t=state.groundUnloadProgress;
+            slide=Math.min(1f,t/.6f);slide=slide*slide*(3-2*slide);
+            lift=Math.max(0f,(t-.6f)/.4f);lift=lift*lift*(3-2*lift);
+        }
+        // Target offsets are WORLD deltas; rotate the artwork only after translating.
         pose.translate(state.rackInsertX*slide,
                 state.rackInsertY*lift,state.rackInsertZ*slide);
+        pose.mulPose(Axis.YP.rotationDegrees(180.0f-state.bodyRot));
+        float levelOff=1-Math.max(state.rackInsertProgress,state.groundUnloadProgress);
+
         // Origin = geometric middle of the unit. All four Golems have
         // identical corner offsets relative to this one pallet platform.
         pose.translate(-.9f,.50f+.98f*state.liftProgress,-.9f);
         // Pivot at the center of the carrying surface, not at a world block
         // corner. All pallet boards, cargo and glass tilt as ONE rigid load.
         pose.translate(.9f,.16f,.9f);
-        pose.mulPose(Axis.XP.rotation(state.platformPitch));
-        pose.mulPose(Axis.ZP.rotation(-state.platformRoll));
+        pose.mulPose(Axis.XP.rotation(state.platformPitch*levelOff));
+        pose.mulPose(Axis.ZP.rotation(-state.platformRoll*levelOff));
         pose.translate(-.9f,-.16f,-.9f);
         for(float z:new float[]{.08f,1.48f})
             piece(state.deck,state,pose,collector,.02f,0,z,1.76f,.10f,.24f);
@@ -143,3 +153,4 @@ public final class MovingPalletRenderer extends MobRenderer<
         return TEXTURE;
     }
 }
+

@@ -38,6 +38,7 @@ public final class PalletJackVehicle extends PathfinderMob {
             SynchedEntityData.defineId(PalletJackVehicle.class,EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Integer> DISPLAY_CRATES =
             SynchedEntityData.defineId(PalletJackVehicle.class,EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> FLOOR_Y=SynchedEntityData.defineId(PalletJackVehicle.class,EntityDataSerializers.INT);
     private ItemStack jack=ItemStack.EMPTY;
     private int floorY=Integer.MIN_VALUE;
     private boolean recovered;
@@ -67,15 +68,16 @@ public final class PalletJackVehicle extends PathfinderMob {
         super.defineSynchedData(b);
         b.define(DISPLAY_DECK,ItemStack.EMPTY);
         b.define(DISPLAY_CRATES,0);
+        b.define(FLOOR_Y,Integer.MIN_VALUE);
     }
     public ItemStack displayPallet(){return entityData.get(DISPLAY_DECK);}
     public int displayedCargoCrates(){return entityData.get(DISPLAY_CRATES);}
-    public boolean hasPallet(){return PalletJackItem.loaded(jack);}
+    public boolean hasPallet(){return level().isClientSide()?!displayPallet().isEmpty():PalletJackItem.loaded(jack);}
     public int deckY(){return floorY;}
     public ItemStack storedJack(){return jack;}
     public void installJack(ItemStack stack,int y){
         jack=stack.copyWithCount(1);
-        floorY=y;
+        floorY=y;entityData.set(FLOOR_Y,y);
         setNoGravity(true);
         updateDisplay();
     }
@@ -118,6 +120,7 @@ public final class PalletJackVehicle extends PathfinderMob {
         return true;
     }
     @Override public void travel(Vec3 input){
+        if(level().isClientSide())floorY=entityData.get(FLOOR_Y);
         if(getFirstPassenger() instanceof Player controller){
             // Vanilla's ridden input is a walking input in mount-local X/Z.
             // Use player heading as forward; the jack follows walking input.
@@ -182,6 +185,7 @@ public final class PalletJackVehicle extends PathfinderMob {
         return position().add(0,.12,0);
     }
     @Override public void tick(){
+        if(level().isClientSide())floorY=entityData.get(FLOOR_Y);
         super.tick();
         setNoGravity(true);
         if(!level().isClientSide()&&floorY!=Integer.MIN_VALUE){
@@ -228,8 +232,10 @@ public final class PalletJackVehicle extends PathfinderMob {
     @Override protected void readAdditionalSaveData(ValueInput in){
         super.readAdditionalSaveData(in);
         floorY=in.getIntOr("jack_floor_y",blockPosition().getY());
+        entityData.set(FLOOR_Y,floorY);
         jack=in.read("jack_contents",ItemStack.CODEC).orElse(new ItemStack(RackContent.PALLET_JACK));
         updateDisplay();
         setNoGravity(true);
     }
 }
+

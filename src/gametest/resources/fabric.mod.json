@@ -10,7 +10,8 @@
   },
   "entrypoints": {
     "fabric-gametest": [
-      "com.caszgamermd.caszualadditions.pallet.PalletAutomationGameTest"
+      "com.caszgamermd.caszualadditions.pallet.PalletAutomationGameTest",
+      "com.caszgamermd.caszualadditions.racks.PalletMotionGameTest"
     ]
   }
 }

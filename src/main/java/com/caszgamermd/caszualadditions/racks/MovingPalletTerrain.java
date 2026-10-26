@@ -33,7 +33,12 @@ public final class MovingPalletTerrain {
             BlockState state=level.getBlockState(cell);
             VoxelShape shape=state.getCollisionShape(level,cell);
             if(shape.isEmpty())continue;
-            double top=y+shape.max(Direction.Axis.Y);
+            double top=Double.NEGATIVE_INFINITY;
+            double localX=x-bx,localZ=z-bz;
+            for(var box:shape.toAabbs())
+                if(localX>=box.minX&&localX<=box.maxX
+                        &&localZ>=box.minZ&&localZ<=box.maxZ)
+                    top=Math.max(top,y+box.maxY);
             if(top>baseY+.85||top<baseY-1.35)continue;
             return top;
         }
@@ -68,10 +73,11 @@ public final class MovingPalletTerrain {
         if(Integer.bitCount(mask)<3)return new float[]{0f,0f};
         float dx=((height[1]+height[3])-(height[0]+height[2]))*.5f;
         float dz=((height[2]+height[3])-(height[0]+height[1]))*.5f;
-        // Max 12 degrees: no severe bending or rotating cargo into racks.
+        // Max 30 degrees: no severe bending or rotating cargo into racks.
         return new float[]{
-                (float)Math.clamp(Math.atan2(dz,1.75),-.20944,.20944),
-                (float)Math.clamp(Math.atan2(dx,1.75),-.20944,.20944)
+                (float)Math.clamp(Math.atan2(dz,1.75),-.52360,.52360),
+                (float)Math.clamp(Math.atan2(dx,1.75),-.52360,.52360)
         };
     }
 }
+
