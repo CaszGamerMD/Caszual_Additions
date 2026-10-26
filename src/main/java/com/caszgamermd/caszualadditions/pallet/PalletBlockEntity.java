@@ -179,6 +179,19 @@ public final class PalletBlockEntity extends BlockEntity implements Container, E
         return packed;
     }
 
+    /** Creative Ctrl+Pick Block takes a SNAPSHOT, never an extraction.
+     * The pallet type, 4 wood planks / plastic tint, wrap, and full filter
+     * policy are already encoded in createDropStack(). The standard
+     * CONTAINER component preserves all 216 ORIGINAL slot positions, even
+     * empty holes, and initialize() restores those indices on placement.
+     * Normal Pick Block deliberately continues to return an empty pallet.
+     */
+    public ItemStack createCreativeCopyStack() {
+        PalletBlockEntity source=controller();
+        if(!source.isRoot())return source.createDropStack();
+        return packedCarrierDrop(source.createDropStack(),source.items);
+    }
+
     public ItemStack createDropStack() {
         ItemStack stack = new ItemStack(getBlockState().getBlock().asItem());
         if (getBlockState().getBlock() instanceof PalletBlock pallet) {
