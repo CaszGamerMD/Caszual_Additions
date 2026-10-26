@@ -17,6 +17,8 @@ public final class StorageGolemRenderState extends LivingEntityRenderState {
     // actual inventory slots remain synced independently server-side;
     // rendering never substitutes a fake tray or cardboard proxy.
     public final ItemStackRenderState[] heldStack={new ItemStackRenderState(),new ItemStackRenderState(),new ItemStackRenderState()};
+    // The FIXED item display transform halves placed-block models.
+    public final boolean[] heldIsBlock=new boolean[3];
     public final BlockModelRenderState palletDeck=new BlockModelRenderState();
     public final BlockModelRenderState[] courierBoards={new BlockModelRenderState(),new BlockModelRenderState(),new BlockModelRenderState(),new BlockModelRenderState()};
     public final BlockModelRenderState palletSupport=new BlockModelRenderState();
