@@ -33,6 +33,7 @@ assert "player.isShiftKeyDown()" in block
 assert "player.getInventory().placeItemBackInInventory(extracted);" in block
 assert "rack.takePallet()" in block
 assert "rack.isEmpty()" in block
-assert "return new Vec3(input.x,0,input.z);" in jack
+assert "server.getLastClientMoveIntent()" in jack
+assert "if(level().isClientSide()&&hasClientMovement)" in jack
 assert "new Vec3(player.xxa,0,player.zza)" not in jack
 print("PASS: pallet NBT/216 slots imported, no duplicate nested cargo, manual empty extraction, rider input")
