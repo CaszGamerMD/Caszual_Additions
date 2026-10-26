@@ -113,18 +113,19 @@ public final class PalletJackVehicle extends PathfinderMob {
             // Use player heading as forward; the jack follows walking input.
             // Refuse turns that would swing the 2x2 lifted pallet out
             // over an edge, even when the jack is not translating.
-            if(level().isClientSide()){
-                setDeltaMovement(Vec3.ZERO);
-                return;
-            }
+            // Ridden vehicles must move on the CONTROLLING CLIENT too.
+            // Otherwise the local player sends stationary vehicle position
+            // packets and the server cannot recover movement from the rider's
+            // (often zero) xxa/zza fields. Both sides simulate the same floor
+            // and collision constraints; server remains authoritative.
             float requested=controller.getYRot();
             float heading=safeFloor(level(),getX(),getZ(),requested)
                     ?requested:getYRot();
             setYRot(heading);
             yBodyRot=heading;
             double radians=Math.toRadians(heading);
-            double forward=Math.max(-1,Math.min(1,controller.zza));
-            double strafe=Math.max(-1,Math.min(1,controller.xxa));
+            double forward=Math.max(-1,Math.min(1,input.z));
+            double strafe=Math.max(-1,Math.min(1,input.x));
             double speed=walkingSpeed();
             double dx=(-Math.sin(radians)*forward+Math.cos(radians)*strafe)*speed;
             double dz=(Math.cos(radians)*forward+Math.sin(radians)*strafe)*speed;
@@ -145,6 +146,9 @@ public final class PalletJackVehicle extends PathfinderMob {
         setDeltaMovement(Vec3.ZERO);
     }
     @Override protected Vec3 getRiddenInput(Player player,Vec3 input){
+        // Vanilla already supplies player-relative forward/strafe intent.
+        // Use the same input on local client and server; the local client
+        // sends the actual ridden vehicle position to the server.
         return new Vec3(player.xxa,0,player.zza);
     }
     @Override protected float getRiddenSpeed(Player player){return (float)walkingSpeed();}
