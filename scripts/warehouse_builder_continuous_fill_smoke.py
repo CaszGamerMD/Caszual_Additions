@@ -19,6 +19,13 @@ assert "return output.nextStockedBuilderOrder(present);" in dispatch
 assert "PtpBlockEntity.OutputOrder order=nextStockedBuilderOrder(" in dispatch
 assert "output.reserveOutput(order.itemId(),amount)" in dispatch
 assert "StorageGolemDispatch.continuePacking(" in worker
+assert "stage=ptp.pendingOutputOrders()>0||ptp.outputInFlight()?6:2;" in worker
+assert "if(stage==6){" in worker
+assert "packingStandbyFor(BlockPos output)" in worker
+assert "w->w.packingStandbyFor(point.getBlockPos())" in dispatch
+assert "if(!closeTo(walkway)&&!nearPackingRack(level,walkway))" in worker
+shelf=(root/"StorageGolemShelfEntity.java").read_text()
+assert "launched<4&&shelf.docked()>0" in shelf
 assert "ptp.outputDelivered(outputTicket,count);" in worker
 assert "if(ptp.pendingOutputOrders()==0&&!ptp.outputInFlight())" in station
 assert "finishOrder(level,ptp);" in station
