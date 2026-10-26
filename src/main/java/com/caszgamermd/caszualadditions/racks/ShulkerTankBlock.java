@@ -55,8 +55,8 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
                 &&level.getBlockState(pos.below()).getBlock() instanceof ShulkerTankBlock
                 &&level.getBlockState(pos.below()).getValue(HALF)==DoubleBlockHalf.LOWER){
             base=pos.below();
-            if(level instanceof ServerLevel server)
-                server.setBlock(pos,state.setValue(HALF,DoubleBlockHalf.UPPER),3);
+            // Do not rewrite a legacy upper block before its old BE has
+            // been transferred, or its second saved inventory could vanish.
         }
         if(!(level.getBlockEntity(base) instanceof ShulkerTankEntity station))
             return null;
@@ -74,6 +74,11 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
             if(upper.getValue(HALF)!=DoubleBlockHalf.UPPER)
                 server.setBlock(top,upper.setValue(HALF,DoubleBlockHalf.UPPER),3);
         }
+        if(level instanceof ServerLevel server&&!base.equals(pos)
+                &&server.getBlockState(pos).getBlock() instanceof ShulkerTankBlock
+                &&server.getBlockState(pos).getValue(HALF)!=DoubleBlockHalf.UPPER)
+            server.setBlock(pos,server.getBlockState(pos)
+                    .setValue(HALF,DoubleBlockHalf.UPPER),3);
         return station;
     }
     @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
