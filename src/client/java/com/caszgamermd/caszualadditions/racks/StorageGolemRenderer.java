@@ -77,6 +77,7 @@ public final class StorageGolemRenderer
             if(item.isEmpty())continue;
             items.updateForLiving(state.heldStack[visible],item,
                     ItemDisplayContext.FIXED,golem);
+            state.heldIsBlock[visible]=item.getItem() instanceof BlockItem;
             visible++;
         }
         for(int i=visible;i<3;i++)state.heldStack[i].clear();
@@ -211,18 +212,20 @@ public final class StorageGolemRenderer
                 pose.pushPose();
                 getParentModel().translateToCargoHand(pose);
                 float size=sizes[i];
-                // Translate UP in the golem's (unrotated) coordinate frame.
-                // Previously translating after rotating -90 degrees about X
-                // made the next block shift forward by the whole level height
-                // instead of sitting directly on the block below.
-                pose.translate(0,height+size*.5f,.035f);
+                // Vanilla FIXED transforms shrink block items to half scale.
+                // Restore their intended 75/60/50% full-block silhouette
+                // and advance by the VISIBLE height, not the item transform
+                // height. Three cartons now touch without floating gaps.
+                float renderedHeight=state.heldIsBlock[i]?size:size*.5f;
+                pose.translate(0,height+renderedHeight*.5f,.035f);
                 pose.mulPose(Axis.XP.rotationDegrees(-90f));
                 pose.mulPose(Axis.YP.rotationDegrees(180f));
-                pose.scale(size,size,size);
+                float modelScale=state.heldIsBlock[i]?size*2f:size;
+                pose.scale(modelScale,modelScale,modelScale);
                 state.heldStack[i].submit(pose,collector,light,
                         OverlayTexture.NO_OVERLAY,state.outlineColor);
                 pose.popPose();
-                height+=size;
+                height+=renderedHeight;
             }
         }
     }
