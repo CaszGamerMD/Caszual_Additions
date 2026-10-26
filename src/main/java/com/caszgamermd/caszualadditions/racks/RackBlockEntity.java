@@ -114,19 +114,27 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         }
     }
     public void install(ItemStack item) {
-        if (hasPallet()) return;
-        // The RackBlock checks the safety corridor BEFORE consuming an
-        // item, and entry here remains safe for Golem-driven installs.
+        if (hasPallet()||item.isEmpty()||!isEmpty()) return;
+        // Creative Ctrl+Pick Block stores the ORIGINAL 216 slot positions
+        // in the pallet ItemStack's CONTAINER component. Placing that item
+        // in a rack must import its cargo exactly like placing it on ground.
+        // Without this, the rack UI appears empty while the deck hides its
+        // own copy of the inventory (and an eventual rack break can dupe it).
         if(level instanceof net.minecraft.server.level.ServerLevel world
                 &&(!WarehouseRackAccess.clearOfStairs(world,this)
                     ||!WarehouseRackAccess.prepare(world,this)))return;
+        NonNullList<ItemStack> carried=NonNullList.withSize(CAPACITY,ItemStack.EMPTY);
+        item.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY)
+                .copyInto(carried);
         resetPull();
-        pallet = item.copyWithCount(1);
-        filterItem=com.caszgamermd.caszualadditions.pallet.PalletData.filter(item);
-        filterMode=com.caszgamermd.caszualadditions.pallet.PalletData.filterMode(item);
-        filterScope=com.caszgamermd.caszualadditions.pallet.PalletData.filterScope(item);
-        filterSignature=com.caszgamermd.caszualadditions.pallet.PalletData.filterSignature(item);
-        filterUpgrade=com.caszgamermd.caszualadditions.pallet.PalletData.filterInstalled(item)
+        items=carried;
+        pallet=item.copyWithCount(1);
+        pallet.remove(DataComponents.CONTAINER); // ONLY the rack now owns cargo
+        filterItem=PalletData.filter(item);
+        filterMode=PalletData.filterMode(item);
+        filterScope=PalletData.filterScope(item);
+        filterSignature=PalletData.filterSignature(item);
+        filterUpgrade=PalletData.filterInstalled(item)
                 ?new ItemStack(RackContent.PALLET_FILTER):ItemStack.EMPTY;
         setChanged();
         if(level instanceof net.minecraft.server.level.ServerLevel world)
