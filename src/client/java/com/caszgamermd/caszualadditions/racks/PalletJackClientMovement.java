@@ -17,8 +17,8 @@ public final class PalletJackClientMovement {
                 return;
             double x=0,z=0;
             if(client.gui.screen()==null){
-                x=(client.options.keyRight.isDown()?1:0)
-                        -(client.options.keyLeft.isDown()?1:0);
+                x=(client.options.keyLeft.isDown()?1:0)
+                        -(client.options.keyRight.isDown()?1:0);
                 z=(client.options.keyUp.isDown()?1:0)
                         -(client.options.keyDown.isDown()?1:0);
             }
@@ -28,3 +28,4 @@ public final class PalletJackClientMovement {
         });
     }
 }
+
