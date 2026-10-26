@@ -182,9 +182,16 @@ public final class RackBlock extends Block implements EntityBlock {
                             "Pallet access obstructed by occupied Rack Stairs or Scaffolding."));
                     return InteractionResult.SUCCESS;
                 }
-                rack.install(held.copyWithCount(1));
+                if(!rack.install(held.copyWithCount(1))){
+                    server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                            "Rack could not install this pallet. Item and saved inventory retained."));
+                    return InteractionResult.SUCCESS;
+                }
+                // Only consume once the rack actually owns the entire deck
+                // and all 216 saved NBT cargo slots.
                 if (!player.getAbilities().instabuild) held.shrink(1);
-                server.sendSystemMessage(net.minecraft.network.chat.Component.literal("Pallet installed."));
+                server.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                        "Pallet installed with its saved data and inventory."));
                 return InteractionResult.SUCCESS;
             }
             if (held.is(RackContent.RACK_TAG) || held.is(RackContent.AISLE_TAG)) {
