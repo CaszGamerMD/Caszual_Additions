@@ -42,6 +42,7 @@ public final class PalletContent {
     public static Block CARDBOARD_RENDER_PROXY;
     public static Block PALLET_CARGO_COLLISION;
     public static BlockEntityType<PalletBlockEntity> PALLET_BLOCK_ENTITY;
+    public static BlockEntityType<PalletInventoryPort> PALLET_INVENTORY_PORT;
     public static MenuType<PalletMenu> PALLET_MENU;
     public static RecipeSerializer<WoodenPalletRecipe> WOODEN_RECIPE;
     public static RecipeSerializer<PlasticPalletRecipe> PLASTIC_RECIPE;
@@ -102,6 +103,13 @@ public final class PalletContent {
                         OXIDIZED_COPPER_PALLET
                 ).build()
         );
+
+        PALLET_INVENTORY_PORT = Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE,
+                CaszualAdditions.id("pallet_inventory_port"),
+                FabricBlockEntityTypeBuilder.create(PalletInventoryPort::new,
+                        WOODEN_PALLET, PLASTIC_PALLET, IRON_PALLET, COPPER_PALLET,
+                        EXPOSED_COPPER_PALLET, WEATHERED_COPPER_PALLET,
+                        OXIDIZED_COPPER_PALLET).build());
 
         PALLET_MENU = Registry.register(
                 BuiltInRegistries.MENU,
@@ -214,3 +222,4 @@ public final class PalletContent {
         );
     }
 }
+

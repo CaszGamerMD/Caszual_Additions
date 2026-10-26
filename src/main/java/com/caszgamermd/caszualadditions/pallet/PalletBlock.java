@@ -156,20 +156,13 @@ public final class PalletBlock extends Block implements EntityBlock {
         };
     }
 
-    /** Pick the preferred orientation first, then the three rotations. */
+    /** Fixed player-relative footprint; blocked placements never silently rotate. */
     @Override
     public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
         BlockPos home = context.getClickedPos();
-        Direction preferred = context.getHorizontalDirection();
-        for (int turn = 0; turn < 4; turn++) {
-            Direction candidate = preferred;
-            for (int i = 0; i < turn; i++) candidate = candidate.getClockWise();
-            BlockState proposed = defaultBlockState().setValue(PART, 0)
-                    .setValue(FACING, candidate).setValue(LEGACY, false);
-            if (fitsAt(context.getLevel(), home, proposed)) return proposed;
-        }
-        // Do not place even a partial pallet when no 2x2 footprint is open.
-        return null;
+        BlockState proposed = defaultBlockState().setValue(PART, 0)
+                .setValue(FACING, context.getHorizontalDirection()).setValue(LEGACY, false);
+        return fitsAt(context.getLevel(), home, proposed) ? proposed : null;
     }
 
     private static boolean fitsAt(Level level, BlockPos home, BlockState proposed) {
@@ -206,7 +199,7 @@ public final class PalletBlock extends Block implements EntityBlock {
             level.setBlock(target, state.setValue(PART, part), 3);
         }
         // A 2x2 pallet is ONE inventory/controller. The other three cells
-        // reserve the world footprint but never hold independent block entities.
+        // expose forwarding inventory ports, without storing independent cargo.
         if (level.getBlockEntity(pos) instanceof PalletBlockEntity be) {
             be.initialize(pos, 0, stack);
         }
@@ -214,10 +207,11 @@ public final class PalletBlock extends Block implements EntityBlock {
 
     @Override
     public @Nullable BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return state.getValue(PART) == 0 ? new PalletBlockEntity(pos, state) : null;
+        return state.getValue(PART) == 0 ? new PalletBlockEntity(pos, state)
+                : new PalletInventoryPort(pos, state);
     }
 
-    private static @Nullable PalletBlockEntity rootEntity(Level level, BlockPos pos, BlockState state) {
+    public static @Nullable PalletBlockEntity rootEntity(Level level, BlockPos pos, BlockState state) {
         BlockPos root = rootPos(pos, state);
         if(!level.hasChunkAt(root))return null;
         BlockState home=level.getBlockState(root);
@@ -333,3 +327,4 @@ public final class PalletBlock extends Block implements EntityBlock {
         }
     }
 }
+

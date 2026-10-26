@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "caszual_additions_gametest",
+  "version": "1.0.0",
+  "name": "Pallet automation GameTests",
+  "environment": "*",
+  "depends": {
+    "caszual_additions": "*",
+    "fabric-api": "*"
+  },
+  "entrypoints": {
+    "fabric-gametest": [
+      "com.caszgamermd.caszualadditions.pallet.PalletAutomationGameTest"
+    ]
+  }
+}

@@ -218,6 +218,17 @@ jobs:
         run: python3 scripts/quarter_precise_placement_smoke.py
       - name: Verify Ctrl+Pick pallet NBT survives rack insertion and empty-hand retrieval
         run: python3 scripts/warehouse_manual_pallet_nbt_smoke.py
+      - name: Verify 2x2 placement and shared pallet automation in Minecraft
+        run: gradle --no-daemon runGameTest
+      - name: Preserve pallet GameTest reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pallet-automation-gametest
+          path: |
+            build/gametest/
+            build/reports/
+          if-no-files-found: ignore
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()
@@ -239,3 +250,4 @@ jobs:
           files: |
             build/libs/*.jar
             !build/libs/*-sources.jar
+

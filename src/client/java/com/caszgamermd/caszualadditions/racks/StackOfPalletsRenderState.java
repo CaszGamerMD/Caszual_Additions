@@ -6,6 +6,7 @@ import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 /** Every one of the 12 real pallet items gets FOUR independent material
  * boards (not one repeated, generic oak-plank texture). */
 public final class StackOfPalletsRenderState extends BlockEntityRenderState {
+    public int offsetX,offsetZ;
     public final BlockModelRenderState[][] boards=new BlockModelRenderState[12][4];
     public final boolean[] occupied=new boolean[12];
     public final boolean[] wrapped=new boolean[12];
@@ -17,3 +18,4 @@ public final class StackOfPalletsRenderState extends BlockEntityRenderState {
                 boards[slot][board]=new BlockModelRenderState();
     }
 }
+

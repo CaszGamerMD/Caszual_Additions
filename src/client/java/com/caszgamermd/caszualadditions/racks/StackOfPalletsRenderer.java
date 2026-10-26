@@ -42,6 +42,9 @@ public final class StackOfPalletsRenderer implements
         BlockEntityRenderer.super.extractRenderState(magazine,state,partial,camera,cracks);
         blocks.update(state.glass,Blocks.GLASS.defaultBlockState(),DISPLAY);
         blocks.update(state.floorGrill,Blocks.IRON_BLOCK.defaultBlockState(),DISPLAY);
+        var minimum=StackOfPalletsBlock.minimum(magazine.getBlockPos(),magazine.getBlockState());
+        state.offsetX=minimum.getX()-magazine.getBlockPos().getX();
+        state.offsetZ=minimum.getZ()-magazine.getBlockPos().getZ();
         int displaySlot=0;
         for(int slot=0;slot<12;slot++){
             ItemStack palletItem=magazine.getItem(slot);
@@ -96,6 +99,7 @@ public final class StackOfPalletsRenderer implements
         // A thin 2x2 steel floor grate remains visible EVEN when the
         // dispenser holds zero pallets. It is a physical 1px base, and
         // the lattice is raised only ~.01 blocks above the dark frame.
+        poses.pushPose();poses.translate(state.offsetX,0,state.offsetZ);
         var grille=state.floorGrill;
         for(float x:new float[]{.015f,1.93f})
             cube(grille,state,poses,collector,x,.008f,.015f,.055f,.052f,1.97f);
@@ -142,7 +146,9 @@ public final class StackOfPalletsRenderer implements
             }
             poses.popPose();
         }
+        poses.popPose();
     }
     @Override public boolean shouldRenderOffScreen(){return true;}
     @Override public int getViewDistance(){return 96;}
 }
+

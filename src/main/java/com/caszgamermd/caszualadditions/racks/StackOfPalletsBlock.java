@@ -71,24 +71,37 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
         return true;
     }
 
+    // EAST preserves the +X/+Z footprint of saved dispensers without this property.
+    public static final net.minecraft.world.level.block.state.properties.EnumProperty<net.minecraft.core.Direction> FACING=net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING;
     private final MapCodec<StackOfPalletsBlock> codec=MapCodec.unit(this);
 
     public StackOfPalletsBlock(BlockBehaviour.Properties properties){
         super(properties);
         registerDefaultState(stateDefinition.any()
-                .setValue(PART,0).setValue(LAYER,0).setValue(HEIGHT,0));
+                .setValue(PART,0).setValue(LAYER,0).setValue(HEIGHT,0).setValue(FACING,net.minecraft.core.Direction.EAST));
     }
     @Override protected MapCodec<? extends Block> codec(){return codec;}
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> b){
-        b.add(PART,LAYER,HEIGHT);
+        b.add(PART,LAYER,HEIGHT,FACING);
     }
     public static BlockPos cell(BlockPos origin,int part,int layer){
         return origin.offset(part%2,layer,part/2);
     }
+    public static BlockPos cell(BlockPos origin,int part,int layer,BlockState state){
+        var facing=state.getValue(FACING);
+        int sx=(facing==net.minecraft.core.Direction.NORTH||facing==net.minecraft.core.Direction.EAST)?1:-1;
+        int sz=(facing==net.minecraft.core.Direction.SOUTH||facing==net.minecraft.core.Direction.EAST)?1:-1;
+        return origin.offset(sx*(part%2),layer,sz*(part/2));
+    }
+    public static BlockPos minimum(BlockPos root,BlockState state){
+        BlockPos far=cell(root,3,0,state);
+        return new BlockPos(Math.min(root.getX(),far.getX()),root.getY(),Math.min(root.getZ(),far.getZ()));
+    }
     public static BlockPos root(BlockPos cell,BlockState state){
         int part=state.getValue(PART);
         int layer=state.getValue(LAYER);
-        return cell.offset(-(part%2),-layer,-part/2);
+        BlockPos offset=cell(BlockPos.ZERO,part,layer,state);
+        return cell.offset(-offset.getX(),-offset.getY(),-offset.getZ());
     }
     public static @Nullable StackOfPalletsBlockEntity controller(BlockGetter world,BlockPos cell){
         BlockState state=world.getBlockState(cell);
@@ -97,11 +110,11 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
         if(world.getBlockState(base).getBlock()!=state.getBlock())return null;
         return world.getBlockEntity(base) instanceof StackOfPalletsBlockEntity be?be:null;
     }
-    private static boolean fits(Level level,BlockPos base){
+    private static boolean fits(Level level,BlockPos base,BlockState state){
         // Reserve collision/interaction cells up to the twelfth deck. This
         // keeps a tall stack solid even if a worker walks beside its top.
         for(int layer=0;layer<4;layer++)for(int part=0;part<4;part++){
-            BlockPos pos=cell(base,part,layer);
+            BlockPos pos=cell(base,part,layer,state);
             if(level.isOutsideBuildHeight(pos)
                     ||!level.getWorldBorder().isWithinBounds(pos)
                     ||!level.hasChunkAt(pos)
@@ -111,8 +124,8 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
         return true;
     }
     @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context){
-        return fits(context.getLevel(),context.getClickedPos())
-                ?defaultBlockState():null;
+        BlockState state=defaultBlockState().setValue(FACING,context.getHorizontalDirection());
+        return fits(context.getLevel(),context.getClickedPos(),state)?state:null;
     }
     @Override public boolean shouldChangedStateKeepBlockEntity(BlockState oldState){
         return oldState.getBlock() instanceof StackOfPalletsBlock;
@@ -143,7 +156,7 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
         if(level.isClientSide())return;
         for(int layer=0;layer<4;layer++)for(int part=0;part<4;part++){
             if(layer==0&&part==0)continue;
-            level.setBlock(cell(pos,part,layer),
+            level.setBlock(cell(pos,part,layer,state),
                     state.setValue(PART,part).setValue(LAYER,layer),3);
         }
         if(level.getBlockEntity(pos) instanceof StackOfPalletsBlockEntity be)
@@ -158,7 +171,7 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
                 ||state.getValue(PART)!=0||state.getValue(LAYER)!=0)return;
         for(int layer=0;layer<4;layer++)for(int part=0;part<4;part++){
             if(layer==0&&part==0)continue;
-            BlockPos pos=cell(root,part,layer);
+            BlockPos pos=cell(root,part,layer,state);
             if(!world.hasChunkAt(pos))continue;
             BlockState found=world.getBlockState(pos);
             if(found.is(state.getBlock())){
@@ -216,7 +229,7 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
                 Block.popResource(level,origin,magazine.asItem());
             // All 16 cells represent ONE item; never drop a second copy.
             for(int layer=0;layer<4;layer++)for(int part=0;part<4;part++){
-                BlockPos other=cell(origin,part,layer);
+                BlockPos other=cell(origin,part,layer,state);
                 if(other.equals(pos)||!level.hasChunkAt(other))continue;
                 BlockState found=level.getBlockState(other);
                 if(found.is(this)&&found.getValue(PART)==part
@@ -235,7 +248,7 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
     }
     @Override protected VoxelShape getShape(BlockState state,BlockGetter world,
             BlockPos pos,CollisionContext context){
-        BlockPos origin=root(pos,state);
+        BlockPos origin=minimum(root(pos,state),state);
         int layer=state.getValue(LAYER);
         int remaining=heightAt(world,pos)-layer*16;
         if(remaining<=0)return layer==0
@@ -270,3 +283,4 @@ public final class StackOfPalletsBlock extends Block implements EntityBlock {
         return Block.box(0,0,0,16,Math.min(16,remaining),16);
     }
 }
+

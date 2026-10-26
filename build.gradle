@@ -13,6 +13,15 @@ loom {
     }
 }
 
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = "caszual_additions_gametest"
+        enableGameTests = true
+        enableClientGameTests = false
+        eula = true
+    }
+}
 version = project.mod_version
 group = project.maven_group
 
@@ -66,3 +75,4 @@ tasks.named('test', Test) {
         exceptionFormat 'full'
     }
 }
+
