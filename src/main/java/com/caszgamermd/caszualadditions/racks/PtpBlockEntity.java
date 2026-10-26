@@ -183,17 +183,31 @@ public final class PtpBlockEntity extends BlockEntity
     }
 
     private int activeTicket,ticketSequence,reservedOutput;
+    private String activeOutputItemId="";
     // Legacy slot zero remains compatible with previously saved single
     // Golem tickets. Additional real packers have their OWN reservations,
     // persisted per PTP, so two workers never reserve the same stock.
-    private record ExtraOutput(int quantity,long deadline){}
+    private record ExtraOutput(String itemId,int quantity,long deadline){}
     private final java.util.Map<Integer,ExtraOutput> extraOutputTickets=
             new java.util.LinkedHashMap<>();
-    private int reservedTotal(){
-        int count=reservedOutput;
-        for(ExtraOutput extra:extraOutputTickets.values())
-            count+=extra.quantity();
-        return count;
+    /** Reserve by manifest material, not the FIFO head. A short line
+     * assigned to one worker must not serialize unrelated material picks. */
+    private int unreserved(String itemId){
+        int remaining=0;
+        for(OutputOrder line:outputOrders)
+            if(line.itemId().equals(itemId))remaining+=line.remaining();
+        if(itemId.equals(activeOutputItemId))remaining-=reservedOutput;
+        for(ExtraOutput ticket:extraOutputTickets.values())
+            if(itemId.equals(ticket.itemId()))remaining-=ticket.quantity();
+        return Math.max(0,remaining);
+    }
+    private OutputOrder nextAvailableOrder(java.util.Set<String> stock){
+        expireTicket();
+        for(OutputOrder order:outputOrders)
+            if(unreserved(order.itemId())>0
+                    &&(stock==null||stock.contains(order.itemId())))
+                return new OutputOrder(order.itemId(),unreserved(order.itemId()));
+        return null;
     }
     // Leases survive reload. A missing worker cannot permanently block FIFO.
     private long ticketDeadline;
@@ -353,7 +367,8 @@ public final class PtpBlockEntity extends BlockEntity
         if(level==null)return;
         boolean changed=false;
         if(activeTicket!=0&&level.getGameTime()>ticketDeadline){
-            activeTicket=0;reservedOutput=0;ticketDeadline=0;changed=true;
+            activeTicket=0;activeOutputItemId="";
+            reservedOutput=0;ticketDeadline=0;changed=true;
         }
         if(extraOutputTickets.entrySet().removeIf(e->
                 level.getGameTime()>e.getValue().deadline()))changed=true;
@@ -365,8 +380,8 @@ public final class PtpBlockEntity extends BlockEntity
             ticketDeadline=level.getGameTime()+TICKET_LEASE_TICKS;
         }else if(extraOutputTickets.containsKey(ticket)){
             ExtraOutput held=extraOutputTickets.get(ticket);
-            extraOutputTickets.put(ticket,new ExtraOutput(held.quantity(),
-                    level.getGameTime()+TICKET_LEASE_TICKS));
+            extraOutputTickets.put(ticket,new ExtraOutput(held.itemId(),
+                    held.quantity(),level.getGameTime()+TICKET_LEASE_TICKS));
         }
     }
     public PtpBlockEntity(BlockPos pos,BlockState state){super(RackContent.PTP_ENTITY,pos,state);}
@@ -411,27 +426,13 @@ public final class PtpBlockEntity extends BlockEntity
         for(OutputOrder order:outputOrders)count+=order.remaining();
         return count;
     }
-    public OutputOrder nextOutputOrder(){return outputOrders.peekFirst();}
+    public OutputOrder nextOutputOrder(){return nextAvailableOrder(null);}
     /** Rotate an unreserved Builder manifest to the first item still in
      * real warehouse stock. Preserve ALL lines and quantities, especially
      * those temporarily out of stock; never reshuffle a live picker ticket.
      */
     public OutputOrder nextStockedBuilderOrder(java.util.Set<String> stockedIds){
-        if(!builderReserved()||outputInFlight()||outputOrders.size()<2)
-            return outputOrders.peekFirst();
-        OutputOrder head=outputOrders.peekFirst();
-        if(head==null||stockedIds.contains(head.itemId()))return head;
-        int size=outputOrders.size();
-        for(int i=0;i<size;i++){
-            OutputOrder candidate=outputOrders.peekFirst();
-            if(candidate!=null&&stockedIds.contains(candidate.itemId())){
-                setChanged();
-                return candidate;
-            }
-            outputOrders.addLast(outputOrders.removeFirst());
-        }
-        // The queue is unchanged after one complete rotation.
-        return null;
+        return nextAvailableOrder(stockedIds);
     }
     /** Read-only outstanding manifest for an assigned Builder request. */
     public java.util.Map<String,Integer> pendingOutputManifest(){
@@ -464,18 +465,17 @@ public final class PtpBlockEntity extends BlockEntity
      */
     public int reserveOutput(String itemId,int quantity){
         expireTicket();
-        OutputOrder next=outputOrders.peekFirst();
-        if(!readyForOutput()||next==null||quantity<1
-                ||quantity>next.remaining()-reservedTotal()
-                ||!next.itemId().equals(itemId)
+        if(!readyForOutput()||itemId==null||itemId.isBlank()
+                ||quantity<1||quantity>unreserved(itemId)
                 ||extraOutputTickets.size()+(activeTicket==0?0:1)>=4)return 0;
         ticketSequence=ticketSequence==Integer.MAX_VALUE?1:ticketSequence+1;
         if(ticketSequence==0)ticketSequence=1;
         int ticket=ticketSequence;
         long deadline=level==null?0:level.getGameTime()+TICKET_LEASE_TICKS;
         if(activeTicket==0){
-            activeTicket=ticket;reservedOutput=quantity;ticketDeadline=deadline;
-        }else extraOutputTickets.put(ticket,new ExtraOutput(quantity,deadline));
+            activeTicket=ticket;activeOutputItemId=itemId;
+            reservedOutput=quantity;ticketDeadline=deadline;
+        }else extraOutputTickets.put(ticket,new ExtraOutput(itemId,quantity,deadline));
         setChanged();return ticket;
     }
     public boolean hasReservation(int ticket){
@@ -488,28 +488,40 @@ public final class PtpBlockEntity extends BlockEntity
      */
     public void outputDelivered(int ticket,int quantity){
         if(!hasReservation(ticket)||quantity<=0)return;
-        OutputOrder order=outputOrders.peekFirst();
-        if(order==null)return;
+        String itemId=ticket==activeTicket?activeOutputItemId:
+                extraOutputTickets.get(ticket).itemId();
         int held=ticket==activeTicket?reservedOutput:
                 extraOutputTickets.get(ticket).quantity();
-        int done=Math.min(quantity,Math.min(held,order.remaining()));
+        int done=Math.min(quantity,held);
         if(done<=0)return;
         int left=held-done;
         if(ticket==activeTicket){
             reservedOutput=left;
-            if(left==0){activeTicket=0;ticketDeadline=0;}
+            if(left==0){activeTicket=0;activeOutputItemId="";ticketDeadline=0;}
             else if(level!=null)ticketDeadline=level.getGameTime()+TICKET_LEASE_TICKS;
         }else if(left==0)extraOutputTickets.remove(ticket);
-        else extraOutputTickets.put(ticket,new ExtraOutput(left,
+        else extraOutputTickets.put(ticket,new ExtraOutput(itemId,left,
                 level==null?0:level.getGameTime()+TICKET_LEASE_TICKS));
-        outputOrders.removeFirst();
-        if(order.remaining()>done)
-            outputOrders.addFirst(new OutputOrder(order.itemId(),order.remaining()-done));
+        // Only consume this worker's reserved material. Preserve the
+        // relative queue order and every other picker reservation.
+        java.util.ArrayDeque<OutputOrder> updated=new java.util.ArrayDeque<>();
+        int toConsume=done;
+        for(OutputOrder order:outputOrders){
+            if(toConsume>0&&order.itemId().equals(itemId)){
+                int used=Math.min(toConsume,order.remaining());
+                toConsume-=used;
+                if(order.remaining()>used)
+                    updated.addLast(new OutputOrder(itemId,order.remaining()-used));
+            }else updated.addLast(order);
+        }
+        outputOrders.clear();
+        outputOrders.addAll(updated);
         setChanged();
     }
     public void releaseOutput(int ticket){
         if(ticket==activeTicket&&ticket!=0){
-            activeTicket=0;reservedOutput=0;ticketDeadline=0;setChanged();
+            activeTicket=0;activeOutputItemId="";
+            reservedOutput=0;ticketDeadline=0;setChanged();
         }else if(extraOutputTickets.remove(ticket)!=null)setChanged();
     }
     public ItemStack palletStack(){return pallet.copy();}
@@ -670,6 +682,7 @@ public final class PtpBlockEntity extends BlockEntity
         }
         out.putInt("output_ticket_sequence",ticketSequence);
         out.putInt("output_active_ticket",activeTicket);
+        out.putString("output_active_item_id",activeOutputItemId);
         out.putInt("output_reserved",reservedOutput);
         out.putLong("output_ticket_deadline",ticketDeadline);
         out.putInt("extra_output_ticket_count",extraOutputTickets.size());
@@ -677,6 +690,7 @@ public final class PtpBlockEntity extends BlockEntity
         for(var entry:extraOutputTickets.entrySet()){
             out.putInt("extra_output_ticket_id_"+extraIndex,entry.getKey());
             out.putInt("extra_output_ticket_qty_"+extraIndex,entry.getValue().quantity());
+            out.putString("extra_output_ticket_item_"+extraIndex,entry.getValue().itemId());
             out.putLong("extra_output_ticket_deadline_"+extraIndex,
                     entry.getValue().deadline());
             extraIndex++;
@@ -732,20 +746,29 @@ public final class PtpBlockEntity extends BlockEntity
         ticketSequence=Math.max(0,in.getIntOr("output_ticket_sequence",0));
         activeTicket=Math.max(0,in.getIntOr("output_active_ticket",0));
         reservedOutput=Math.max(0,in.getIntOr("output_reserved",0));
+        activeOutputItemId=in.getStringOr("output_active_item_id",
+                outputOrders.isEmpty()?"":outputOrders.peekFirst().itemId());
         ticketDeadline=in.getLongOr("output_ticket_deadline",0);
         if(outputOrders.isEmpty()||reservedOutput==0||activeTicket==0){
-            activeTicket=0;reservedOutput=0;ticketDeadline=0;
-        }else reservedOutput=Math.min(reservedOutput,outputOrders.peekFirst().remaining());
+            activeTicket=0;activeOutputItemId="";reservedOutput=0;ticketDeadline=0;
+        }else {
+            int remaining=0;
+            for(OutputOrder order:outputOrders)
+                if(order.itemId().equals(activeOutputItemId))remaining+=order.remaining();
+            reservedOutput=Math.min(reservedOutput,remaining);
+            if(reservedOutput==0){activeTicket=0;activeOutputItemId="";ticketDeadline=0;}
+        }
         extraOutputTickets.clear();
         int extraCount=Math.clamp(in.getIntOr("extra_output_ticket_count",0),0,3);
         for(int i=0;i<extraCount;i++){
             int id=in.getIntOr("extra_output_ticket_id_"+i,0);
             int qty=in.getIntOr("extra_output_ticket_qty_"+i,0);
             long deadline=in.getLongOr("extra_output_ticket_deadline_"+i,0);
+            String itemId=in.getStringOr("extra_output_ticket_item_"+i,
+                    outputOrders.isEmpty()?"":outputOrders.peekFirst().itemId());
             if(id>0&&id!=activeTicket&&qty>0&&deadline>0
-                    &&!outputOrders.isEmpty()
-                    &&qty<=outputOrders.peekFirst().remaining())
-                extraOutputTickets.put(id,new ExtraOutput(qty,deadline));
+                    &&unreserved(itemId)>=qty)
+                extraOutputTickets.put(id,new ExtraOutput(itemId,qty,deadline));
         }
         haulSequence=Math.max(0,in.getIntOr("haul_sequence",0));
         haulTicket=Math.max(0,in.getIntOr("haul_ticket",0));
