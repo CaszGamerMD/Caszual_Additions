@@ -1367,6 +1367,8 @@ public final class MovingPallet extends PathfinderMob {
             done=deliverToRack(rack);
         }
         if(!done){
+            releaseTicks=0;entityData.set(RELEASE_TICKS,0);
+            entityData.set(RACK_INSERT_ACTIVE,false);entityData.set(GROUND_UNLOAD_ACTIVE,false);
             if(rack!=null){
                 skippedReturnRack=rack.getBlockPos().immutable();
                 skipReturnRackUntil=tickCount+400;
@@ -1924,7 +1926,7 @@ public final class MovingPallet extends PathfinderMob {
             pendingForkliftUuid=uuid.isBlank()?null:UUID.fromString(uuid);
         }catch(IllegalArgumentException e){pendingForkliftUuid=null;}
         deliveryMode=Math.clamp(in.getIntOr("delivery_mode",0),0,7);
-        releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,20);
+        releaseTicks=Math.clamp(in.getIntOr("release_ticks",0),0,RackPickupPlan.PULL_TICKS);
         deliveryPosition=in.read("delivery_position",BlockPos.CODEC).orElse(BlockPos.ZERO);
         deliveryService=in.read("delivery_service",BlockPos.CODEC).orElse(BlockPos.ZERO);
         remoteWarehouse=in.read("remote_warehouse",BlockPos.CODEC).orElse(BlockPos.ZERO);
