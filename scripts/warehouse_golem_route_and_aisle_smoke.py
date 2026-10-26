@@ -9,7 +9,7 @@ m=(j/"MovingPallet.java").read_text()
 assert "public static final int AISLE_DEPTH=3" in r
 assert "return find(level,rack,MAX_DROP,AISLE_DEPTH);" in r
 assert "for(int depth=1;depth<=accessDepth&&clear;depth++)" in r
-assert "int depth=worker<2 ? 2 : 3;" in r
+assert "int depth=worker<2 ? 1 : 2;" in r
 assert "accessibleRows(int clearDepth)" in r
 assert "depth<=4" not in r
 assert "StorageGolemReturnPath.stepsHome(" in g
