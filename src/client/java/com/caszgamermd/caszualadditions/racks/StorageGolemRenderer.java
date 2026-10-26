@@ -210,10 +210,14 @@ public final class StorageGolemRenderer
                 if(state.heldStack[i].isEmpty())continue;
                 pose.pushPose();
                 getParentModel().translateToCargoHand(pose);
+                float size=sizes[i];
+                // Translate UP in the golem's (unrotated) coordinate frame.
+                // Previously translating after rotating -90 degrees about X
+                // made the next block shift forward by the whole level height
+                // instead of sitting directly on the block below.
+                pose.translate(0,height+size*.5f,.035f);
                 pose.mulPose(Axis.XP.rotationDegrees(-90f));
                 pose.mulPose(Axis.YP.rotationDegrees(180f));
-                float size=sizes[i];
-                pose.translate(0,height+size*.5f,.035f);
                 pose.scale(size,size,size);
                 state.heldStack[i].submit(pose,collector,light,
                         OverlayTexture.NO_OVERLAY,state.outlineColor);
