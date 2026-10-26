@@ -124,7 +124,7 @@ public final class StorageGolemShelfEntity extends BlockEntity {
         return ClientboundBlockEntityDataPacket.create(this);
     }
     public static void tick(ServerLevel level,StorageGolemShelfEntity shelf){
-        if(level.getGameTime()%40!=0)return;
+        if(level.getGameTime()%20!=0)return;
         // The warehouse computer owns Builder order state. Queue allocation
         // cannot depend on a Builder/player visiting the computer or on
         // automatic INPUT sorting being enabled.
@@ -136,7 +136,14 @@ public final class StorageGolemShelfEntity extends BlockEntity {
         // SORT: OFF only stops automatic INPUT sorting. An explicit Builder
         // order still summons available pickers and never requires a player
         // to toggle the warehouse back to automatic sorting.
-        if(shelf.sortingEnabled)StorageGolemDispatch.tryDispatch(level,shelf);
-        else StorageGolemDispatch.tryDispatchQueuedOutput(level,shelf);
+        // A single 2-second tick previously launched only ONE packer
+        // even when four order slots and shelf Golems were free. Fill the
+        // configured crew in this dispatch cycle; persisted per-PTP
+        // reservations prevent duplicate claims and overdispatch.
+        for(int launched=0;launched<4&&shelf.docked()>0;launched++)
+            if(!StorageGolemDispatch.tryDispatchQueuedOutput(level,shelf))break;
+        // Automatic inbound sorting is independent of explicit orders.
+        if(shelf.sortingEnabled&&shelf.docked()>0)
+            StorageGolemDispatch.tryDispatch(level,shelf);
     }
 }
