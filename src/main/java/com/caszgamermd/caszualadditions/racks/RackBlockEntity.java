@@ -113,8 +113,8 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
             setChanged();
         }
     }
-    public void install(ItemStack item) {
-        if (hasPallet()||item.isEmpty()||!isEmpty()) return;
+    public boolean install(ItemStack item) {
+        if (hasPallet()||item.isEmpty()||!isEmpty()) return false;
         // Creative Ctrl+Pick Block stores the ORIGINAL 216 slot positions
         // in the pallet ItemStack's CONTAINER component. Placing that item
         // in a rack must import its cargo exactly like placing it on ground.
@@ -122,7 +122,7 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         // own copy of the inventory (and an eventual rack break can dupe it).
         if(level instanceof net.minecraft.server.level.ServerLevel world
                 &&(!WarehouseRackAccess.clearOfStairs(world,this)
-                    ||!WarehouseRackAccess.prepare(world,this)))return;
+                    ||!WarehouseRackAccess.prepare(world,this)))return false;
         NonNullList<ItemStack> carried=NonNullList.withSize(CAPACITY,ItemStack.EMPTY);
         item.getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY)
                 .copyInto(carried);
@@ -139,6 +139,7 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         setChanged();
         if(level instanceof net.minecraft.server.level.ServerLevel world)
             WarehouseRackAccess.release(world,this);
+        return true;
     }
     /**
      * Transfer the entire installed pallet, its filter and all 216 slots to
