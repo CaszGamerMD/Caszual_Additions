@@ -23,7 +23,9 @@ assert 'Block.popResource(server,base,overflow)' in block
 assert block.index('station.absorbLegacyTop(extra)') < block.index('server.removeBlockEntity(top)')
 assert block.index('station.absorbLegacyTop(extra)') < block.index('.setValue(HALF,DoubleBlockHalf.UPPER),3)')
 assert 'level.removeBlock(other,false)' in block
-assert 'Block.popResource(level,root,new ItemStack(this))' in block
+assert 'Block.popResource(level,bottom,new ItemStack(this))' in block
+assert 'ShulkerTankEntity tank=controller(level,pos);' in block
+assert 'BlockPos other=pos.equals(bottom)?bottom.above():bottom;' in block
 assert 'public List<ItemStack> absorbLegacyTop(ShulkerTankEntity top)' in station
 assert 'top.boxes.set(i,ItemStack.EMPTY);' in station
 assert 'top.working.set(i,ItemStack.EMPTY);' in station
