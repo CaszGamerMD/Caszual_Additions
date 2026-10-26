@@ -7,8 +7,12 @@ dispatch=(root/"StorageGolemDispatch.java").read_text()
 station=(root/"ShulkerTankEntity.java").read_text()
 worker=(root/"StorageGolem.java").read_text()
 assert "public OutputOrder nextStockedBuilderOrder(" in ptp
-assert "if(!builderReserved()||outputInFlight()||outputOrders.size()<2)" in ptp
-assert "outputOrders.addLast(outputOrders.removeFirst());" in ptp
+# One reserved short line must not serialize unrelated materials.
+assert "return nextAvailableOrder(stockedIds);" in ptp
+assert "private int unreserved(String itemId)" in ptp
+assert "quantity>unreserved(itemId)" in ptp
+assert "if(toConsume>0&&order.itemId().equals(itemId))" in ptp
+assert "extra_output_ticket_item_" in ptp
 assert "private static PtpBlockEntity.OutputOrder nextStockedBuilderOrder(" in dispatch
 assert "needed.containsKey(id)" in dispatch
 assert "return output.nextStockedBuilderOrder(present);" in dispatch
@@ -20,4 +24,4 @@ assert "if(ptp.pendingOutputOrders()==0&&!ptp.outputInFlight())" in station
 assert "finishOrder(level,ptp);" in station
 assert "if(old.size()==27)" in station
 assert "flushFinished(level,ptp,true);" in station
-print("PASS: packer can rotate unstocked FIFO head without shipment loss, fill boxes, release only full/finished")
+print("PASS: multiple stocked manifest lines reserve and pack independently, preserve stock and release only full/finished")
