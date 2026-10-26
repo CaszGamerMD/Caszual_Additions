@@ -146,10 +146,13 @@ public final class PalletJackVehicle extends PathfinderMob {
         setDeltaMovement(Vec3.ZERO);
     }
     @Override protected Vec3 getRiddenInput(Player player,Vec3 input){
-        // Vanilla already supplies player-relative forward/strafe intent.
-        // Use the same input on local client and server; the local client
-        // sends the actual ridden vehicle position to the server.
-        return new Vec3(player.xxa,0,player.zza);
+        // In Fabric/Minecraft 26.2 the riding movement hook ALREADY
+        // receives the controller's directional input. The driver's xxa
+        // and zza are usually ZERO after mount (especially server-side).
+        // Reading those fields discarded W/A/S/D completely, leaving the
+        // pallet jack stationary even with a live passenger.
+        // Never turn an authentic zero input into continuous movement.
+        return new Vec3(input.x,0,input.z);
     }
     @Override protected float getRiddenSpeed(Player player){return (float)walkingSpeed();}
     @Override protected void tickRidden(Player player,Vec3 input){
