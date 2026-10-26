@@ -20,7 +20,10 @@ assert "player.getVehicle() instanceof PalletJackVehicle" in jack
 assert "UseBlockCallback.EVENT.register" in jack
 assert "if(player.isShiftKeyDown())return InteractionResult.PASS;" in vehicle
 assert "input.z" in vehicle and "input.x" in vehicle
-assert "new Vec3(player.xxa,0,player.zza)" in vehicle
+# Don't discard the actual 26.2 ridden input by reading idle passenger
+# xxa/zza fields. This regression caught a jack that could never move.
+assert "return new Vec3(input.x,0,input.z);" in vehicle
+assert "new Vec3(player.xxa,0,player.zza)" not in vehicle
 assert "public void travel(Vec3 input)" in vehicle
 assert "floorY" in vehicle
 assert "getY()-floorY" in vehicle
