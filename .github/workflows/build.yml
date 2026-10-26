@@ -214,6 +214,8 @@ jobs:
         run: python3 scripts/warehouse_ptp_rackstyle_direct_delivery_smoke.py
       - name: Verify precise quarter-block placement and adjacent cells
         run: python3 scripts/quarter_precise_placement_smoke.py
+      - name: Verify Ctrl+Pick pallet NBT survives rack insertion and empty-hand retrieval
+        run: python3 scripts/warehouse_manual_pallet_nbt_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()
