@@ -144,15 +144,18 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
     }
     @Override public BlockState playerWillDestroy(Level level,BlockPos pos,BlockState state,Player player) {
         if(!level.isClientSide()){
-            BlockPos root=root(pos,state);
-            ShulkerTankEntity tank=level.getBlockEntity(root) instanceof ShulkerTankEntity t?t:null;
+            // Normalize/migrate a legacy duplicate upper BE BEFORE removing
+            // either half. Otherwise breaking a malformed old upper half
+            // could discard the lower station's real saved 64+3+3 inventory.
+            ShulkerTankEntity tank=controller(level,pos);
+            BlockPos bottom=tank!=null?tank.getBlockPos():root(pos,state);
             if(tank!=null&&!player.getAbilities().instabuild){
-                Containers.dropContents(level,root,tank);
+                Containers.dropContents(level,bottom,tank);
                 for(ItemStack box:tank.takePackedOnBreak())
-                    Block.popResource(level,root,box);
-                Block.popResource(level,root,new ItemStack(this));
+                    Block.popResource(level,bottom,box);
+                Block.popResource(level,bottom,new ItemStack(this));
             }
-            BlockPos other=state.getValue(HALF)==DoubleBlockHalf.UPPER?pos.below():pos.above();
+            BlockPos other=pos.equals(bottom)?bottom.above():bottom;
             if(level.getBlockState(other).is(this))level.removeBlock(other,false);
         }
         return super.playerWillDestroy(level,pos,state,player);
