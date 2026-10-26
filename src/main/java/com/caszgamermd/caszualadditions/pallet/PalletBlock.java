@@ -312,8 +312,10 @@ public final class PalletBlock extends Block implements EntityBlock {
     @Override
     protected ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData) {
         BlockPos root = rootPos(pos, state);
-        if (level.getBlockEntity(root) instanceof PalletBlockEntity be) {
-            return be.createDropStack();
+        if (level.getBlockEntity(root) instanceof PalletBlockEntity be && be.isRoot()) {
+            // Vanilla passes includeData=true for Creative Ctrl+Pick Block.
+            // A regular middle-click must NOT unexpectedly clone inventory.
+            return includeData ? be.createCreativeCopyStack() : be.createDropStack();
         }
         return new ItemStack(this);
     }
