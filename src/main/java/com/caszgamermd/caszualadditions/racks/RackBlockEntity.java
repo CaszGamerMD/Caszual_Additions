@@ -251,8 +251,16 @@ public final class RackBlockEntity extends BlockEntity implements Container, Ext
         }
     }
 
+    /** Manual empty-hand removal never steals an in-flight pickup or
+     * extracts a pallet whose inventory has even one occupied slot.
+     * Break/drop paths remain separate so breaking a rack recovers stock.
+     */
     public ItemStack takePallet() {
-        if (!isEmpty()) return ItemStack.EMPTY;
+        if(!hasPallet()||!isEmpty())return ItemStack.EMPTY;
+        if(level!=null&&!pullOwner.isBlank()){
+            if(level.getGameTime()-pullLastTick<=200)return ItemStack.EMPTY;
+            resetPull(); // abandoned crew lease expired
+        }
         return dropPallet();
     }
     /** Explicit break path: inventory is separately dropped by the rack. */
