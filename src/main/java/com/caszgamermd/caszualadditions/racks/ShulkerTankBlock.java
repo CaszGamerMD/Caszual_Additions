@@ -44,10 +44,37 @@ public final class ShulkerTankBlock extends Block implements EntityBlock {
     public static BlockPos root(BlockPos pos,BlockState state) {
         return state.getValue(HALF)==DoubleBlockHalf.UPPER?pos.below():pos;
     }
+    /** Both faces of the tall station resolve to ONE lower inventory.
+     * Repair older top-half block entities without duplicating or deleting
+     * their cargo, including saves containing two LOWER halves stacked. */
     public static @Nullable ShulkerTankEntity controller(Level level,BlockPos pos) {
         BlockState state=level.getBlockState(pos);
         if(!(state.getBlock() instanceof ShulkerTankBlock))return null;
-        return level.getBlockEntity(root(pos,state)) instanceof ShulkerTankEntity tank?tank:null;
+        BlockPos base=root(pos,state);
+        if(state.getValue(HALF)==DoubleBlockHalf.LOWER
+                &&level.getBlockState(pos.below()).getBlock() instanceof ShulkerTankBlock
+                &&level.getBlockState(pos.below()).getValue(HALF)==DoubleBlockHalf.LOWER){
+            base=pos.below();
+            if(level instanceof ServerLevel server)
+                server.setBlock(pos,state.setValue(HALF,DoubleBlockHalf.UPPER),3);
+        }
+        if(!(level.getBlockEntity(base) instanceof ShulkerTankEntity station))
+            return null;
+        // A top BE is never a valid second container. Move any real saved
+        // contents into the lower BE and safely drop overflow (not overwrite).
+        BlockPos top=base.above();
+        if(level instanceof ServerLevel server
+                &&server.getBlockState(top).getBlock() instanceof ShulkerTankBlock
+                &&server.getBlockEntity(top) instanceof ShulkerTankEntity extra
+                &&extra!=station){
+            for(ItemStack overflow:station.absorbLegacyTop(extra))
+                Block.popResource(server,base,overflow);
+            server.removeBlockEntity(top);
+            BlockState upper=server.getBlockState(top);
+            if(upper.getValue(HALF)!=DoubleBlockHalf.UPPER)
+                server.setBlock(top,upper.setValue(HALF,DoubleBlockHalf.UPPER),3);
+        }
+        return station;
     }
     @Override public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
         BlockPos upper=context.getClickedPos().above();
