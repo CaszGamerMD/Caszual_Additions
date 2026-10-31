@@ -22,6 +22,8 @@ jobs:
           gradle-version: '9.7.0'
       - name: Verify Enchantment Printer consumption, library, model and UI
         run: python3 scripts/enchantment_printer_smoke.py
+      - name: Verify portable Enchantment Printer library and no inventory duplication
+        run: python3 scripts/enchantment_printer_portable_smoke.py
       - name: Validate worker stair and slab navigation geometry
         run: python3 scripts/warehouse_stair_slab_navigation_smoke.py
       - name: Check warehouse picker stall recovery
