@@ -95,6 +95,13 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         MenuScreens.register(RackContent.PALLET_STACK_MENU, StackOfPalletsScreen::new);
         MenuScreens.register(FunBarrelContent.MENU, FunBarrelScreen::new);
         MenuScreens.register(CraftVendingContent.MENU, CraftVendingScreen::new);
+        MenuScreens.register(EnchantmentPrinterContent.MENU, EnchantmentPrinterScreen::new);
+        ClientPlayNetworking.registerGlobalReceiver(EnchantmentPrinterStatePayload.TYPE,(payload,context)->{
+            context.client().execute(()->{
+                if(context.client().gui.screen() instanceof EnchantmentPrinterScreen screen)
+                    screen.updateState(payload.state());
+            });
+        });
         MenuScreens.register(MailContent.MAILBOX_MENU, MailScreen::new);
         MenuScreens.register(MailContent.PO_BOX_MENU, MailScreen::new);
     }
