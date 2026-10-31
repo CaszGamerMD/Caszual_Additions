@@ -155,9 +155,13 @@ public final class EnchantmentPrinterBlockEntity extends BlockEntity
                 return result("Target does not support "+enchant.value().description().getString()+".");
             int current=EnchantmentHelper.getEnchantmentsForCrafting(target).getLevel(enchant);
             if(current>=p.level())return result("Target already has "+key+" at this level or higher.");
-            if(!EnchantmentHelper.isEnchantmentCompatible(existing,enchant))
+            // Upgrading an existing enchant is valid; its own holder must
+            // not be treated as an incompatible different enchantment.
+            List<Holder<Enchantment>> others=new ArrayList<>(existing);
+            others.remove(enchant);
+            if(!EnchantmentHelper.isEnchantmentCompatible(others,enchant))
                 return result("Incompatible enchantment: "+enchant.value().description().getString()+".");
-            existing.add(enchant);
+            if(!existing.contains(enchant))existing.add(enchant);
             changes.add(Map.entry(enchant,p.level()));
             names.add(key);
             xp+=xpCost(p.level());lapis+=lapisCost(p.level());emerald+=emeraldCost(p.level());
