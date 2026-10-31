@@ -2,6 +2,18 @@
 
 Caszual Additions is a Fabric 26.2 quality-of-life mod and the hub for the **Caszual** family of mods.
 
+## Enchantment Printer (v0.1.16)
+
+The **Enchantment Printer** is a stand-alone Caszual Additions workstation, not a Mining Rig machine. Craft it from an Enchanting Table, Anvil, Redstone, Iron Ingots, Lapis and Emeralds, then right-click it to open the printer's catalog interface.
+
+**Four slots:** FEED (an enchanted book or enchanted equipment to learn/refill enchantments), TARGET (one compatible item to enchant), LAPIS and EMERALDS. Click **LEARN / REFILL** to consume one donor item; every enchantment on that item is learned or refreshed at the highest supplied level, independently of the other stored enchantments. Consuming a donor is a deliberate action; merely putting it into the slot does not destroy it.
+
+Choose one or more learned enchantments from the paginated, searchable-in-future list, then click **PRINT SELECTED**. The printer validates every selected enchantment for target support, level and mutual compatibility, plus all resources **before** committing any change; incompatible batches cannot waste ingredients. A successful batch applies them all to the single target item. The machine remembers its selected set for easy repeat prints on replacement items.
+
+**Balance:** Each enchantment consumes `3 + 2 × level` player XP **levels**, `level` lapis (min 1) and `ceil(level/2)` emeralds (min 1). Costs add for simultaneous enchantments, and the screen shows the total. XP is charged to the operating player; lapis and emeralds come from the printer's ingredient slots. Enchantments print at their learned level, but they gradually strain the stored imprint: the chance to **run out after a successful print** starts at 4%, increases by 7 percentage points per successful use and tops out at 85%. Each imprint tests independently. Running out disables that enchantment for **2 minutes** (2,400 ticks); simply waiting restores it, or feeding an enchanted item/book carrying that enchantment immediately refills and resets its strain. The printer does not destroy an already enchanted target when it runs out after printing.
+
+The GUI displays the library, selected preset, each enchantment's current run-out percentage or cooldown, and total XP/lapis/emerald cost. The database, selected preset, levels, strain and blocked time survive world reloads. **Breaking the block currently returns its contents but not its learned library; relocate cautiously.** The printer does not duplicate incompatible enchantments or bypass normal supported-item rules.
+
 ## Documentation / Wiki
 
 **[Read the Caszual Additions Wiki](docs/wiki/Home.md)** — feature guides, crafting recipes, pallet storage, cosmetics, XP utilities, RGB building blocks, and the player-head vending machine.
