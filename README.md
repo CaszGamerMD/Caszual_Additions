@@ -2,7 +2,7 @@
 
 Caszual Additions is a Fabric 26.2 quality-of-life mod and the hub for the **Caszual** family of mods.
 
-## Enchantment Printer (v0.1.16)
+## Enchantment Printer (v0.1.17)
 
 The **Enchantment Printer** is a stand-alone Caszual Additions workstation, not a Mining Rig machine. Craft it from an Enchanting Table, Anvil, Redstone, Iron Ingots, Lapis and Emeralds, then right-click it to open the printer's catalog interface.
 
@@ -12,7 +12,7 @@ Choose one or more learned enchantments from the paginated, searchable-in-future
 
 **Balance:** Each enchantment consumes `3 + 2 × level` player XP **levels**, `level` lapis (min 1) and `ceil(level/2)` emeralds (min 1). Costs add for simultaneous enchantments, and the screen shows the total. XP is charged to the operating player; lapis and emeralds come from the printer's ingredient slots. Enchantments print at their learned level, but they gradually strain the stored imprint: the chance to **run out after a successful print** starts at 4%, increases by 7 percentage points per successful use and tops out at 85%. Each imprint tests independently. Running out disables that enchantment for **2 minutes** (2,400 ticks); simply waiting restores it, or feeding an enchanted item/book carrying that enchantment immediately refills and resets its strain. The printer does not destroy an already enchanted target when it runs out after printing.
 
-The GUI displays the library, selected preset, each enchantment's current run-out percentage or cooldown, and total XP/lapis/emerald cost. The database, selected preset, levels, strain and blocked time survive world reloads. **Breaking the block currently returns its contents but not its learned library; relocate cautiously.** The printer does not duplicate incompatible enchantments or bypass normal supported-item rules.
+The GUI displays the library, selected preset, each enchantment's current run-out percentage or cooldown, and total XP/lapis/emerald cost. The database, selected preset, levels, strain and blocked time survive world reloads. **Breaking the block returns its four inventory slots separately and embeds the learned enchantment library, saved preset, levels and strain in the dropped Enchantment Printer item. Replacing that item restores the library without refilling or duplicating the supply slots. Active cooldowns are frozen while the printer is carried, then resume when placed.** The printer does not duplicate incompatible enchantments or bypass normal supported-item rules.
 
 ## Documentation / Wiki
 
