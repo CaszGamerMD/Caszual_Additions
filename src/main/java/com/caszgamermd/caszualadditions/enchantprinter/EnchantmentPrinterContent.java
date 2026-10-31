@@ -2,6 +2,7 @@ package com.caszgamermd.caszualadditions.enchantprinter;
 
 import com.caszgamermd.caszualadditions.CaszualAdditions;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
