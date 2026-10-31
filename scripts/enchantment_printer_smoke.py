@@ -16,7 +16,7 @@ assert "EnchantmentPrinterScreen::new" in mod_client
 assert "registerGlobalReceiver(EnchantmentPrinterStatePayload.TYPE" in mod_client
 assert 'EnchantmentPrinterStatePayload.TYPE,EnchantmentPrinterStatePayload.CODEC' in content
 for x in ["getEnchantmentsForCrafting(donor)","EnchantmentHelper.canStoreEnchantments(target)",
-          "EnchantmentHelper.isEnchantmentCompatible(existing,enchant)",
+          "EnchantmentHelper.isEnchantmentCompatible(others,enchant)",
           "updateEnchantments(output,mutable->","experienceLevel<xp",
           "player.giveExperienceLevels(-xp)","getItem(LAPIS).shrink(lapis)",
           "getItem(EMERALD).shrink(emerald)","donor.shrink(1)",
