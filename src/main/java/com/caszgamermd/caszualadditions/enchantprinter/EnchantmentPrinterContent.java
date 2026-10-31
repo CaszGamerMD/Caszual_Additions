@@ -25,6 +25,8 @@ public final class EnchantmentPrinterContent {
     public static MenuType<EnchantmentPrinterMenu> MENU;
     private EnchantmentPrinterContent(){}
     public static void initialize(){
+        PayloadTypeRegistry.clientboundPlay().register(
+            EnchantmentPrinterStatePayload.TYPE,EnchantmentPrinterStatePayload.CODEC);
         Identifier id=CaszualAdditions.id("enchantment_printer");
         ResourceKey<Block> blockKey=ResourceKey.create(Registries.BLOCK,id);
         BLOCK=Registry.register(BuiltInRegistries.BLOCK,blockKey,
