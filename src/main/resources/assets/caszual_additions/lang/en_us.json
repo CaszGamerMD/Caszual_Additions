@@ -154,5 +154,6 @@
   "block.caszual_additions.mailbox": "Blue Mailbox",
   "block.caszual_additions.po_box": "PO Box",
   "item.caszual_additions.mailbox": "Blue Mailbox",
-  "item.caszual_additions.po_box": "PO Box"
+  "item.caszual_additions.po_box": "PO Box",
+  "block.caszual_additions.enchantment_printer": "Enchantment Printer"
 }
