@@ -12,6 +12,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -202,6 +204,73 @@ public final class EnchantmentPrinterBlockEntity extends BlockEntity
         }
         if(changed)setChanged();
     }
+    /**
+     * Only the learned enchantment library travels inside the dropped block
+     * item. FEED/TARGET/LAPIS/EMERALD are dropped separately by the normal
+     * machine inventory break handler, avoiding duplicated item contents.
+     *
+     * A frozen remaining cooldown is stored rather than an absolute tick;
+     * this also works when the block is moved to another dimension or kept
+     * in a chest before placement. The last selected print preset travels
+     * with the library for immediate repeat jobs.
+     */
+    public void saveLibraryToItem(ItemStack printerItem,long currentTick){
+        CustomData existing=printerItem.get(DataComponents.CUSTOM_DATA);
+        CompoundTag tag=existing==null?new CompoundTag():existing.copyTag();
+        tag.putInt("CaszualPrinterCarryVersion",1);
+        tag.putInt("CaszualPrinterCarryCount",Math.min(library.size(),MAX_LIBRARY));
+        int i=0;
+        for(var e:library.entrySet()){
+            if(i>=MAX_LIBRARY)break;
+            Pattern p=e.getValue();
+            tag.putString("CaszualPrinterCarryId"+i,e.getKey());
+            tag.putInt("CaszualPrinterCarryLevel"+i,p.level());
+            tag.putInt("CaszualPrinterCarryStrain"+i,p.strain());
+            tag.putLong("CaszualPrinterCarryRemaining"+i,
+                Math.max(0,p.blockedUntil()-currentTick));
+            i++;
+        }
+        tag.putInt("CaszualPrinterCarryPresetCount",Math.min(selected.size(),MAX_LIBRARY));
+        i=0;
+        for(String key:selected){
+            if(i>=MAX_LIBRARY)break;
+            tag.putString("CaszualPrinterCarryPreset"+i++,key);
+        }
+        printerItem.set(DataComponents.CUSTOM_DATA,CustomData.of(tag));
+    }
+
+    /** Called exactly once on placement; the item cannot inject inventory. */
+    public void restoreLibraryFromItem(ItemStack printerItem,long currentTick){
+        CustomData data=printerItem.get(DataComponents.CUSTOM_DATA);
+        if(data==null)return;
+        CompoundTag tag=data.copyTag();
+        if(tag.getIntOr("CaszualPrinterCarryVersion",0)!=1)return;
+        int count=Math.clamp(tag.getIntOr("CaszualPrinterCarryCount",0),0,MAX_LIBRARY);
+        Map<String,Pattern> restored=new LinkedHashMap<>();
+        for(int i=0;i<count;i++){
+            String id=tag.getStringOr("CaszualPrinterCarryId"+i,"");
+            if(id.isBlank()||id.length()>128)continue;
+            int level=Math.clamp(tag.getIntOr("CaszualPrinterCarryLevel"+i,1),1,255);
+            int strain=Math.clamp(tag.getIntOr("CaszualPrinterCarryStrain"+i,0),0,64);
+            long remaining=Math.clamp(tag.getLongOr("CaszualPrinterCarryRemaining"+i,0),
+                0,JAM_TICKS);
+            restored.put(id,new Pattern(level,strain,
+                remaining==0?0:currentTick+remaining));
+        }
+        library.clear();
+        library.putAll(restored);
+        selected.clear();
+        int selectedCount=Math.clamp(tag.getIntOr("CaszualPrinterCarryPresetCount",0),
+            0,MAX_LIBRARY);
+        for(int i=0;i<selectedCount;i++){
+            String id=tag.getStringOr("CaszualPrinterCarryPreset"+i,"");
+            if(library.containsKey(id))selected.add(id);
+        }
+        message="Restored "+library.size()+" learned enchantment(s) and "
+            +selected.size()+" preset selection(s).";
+        setChanged();
+    }
+
     @Override public int getContainerSize(){return SLOTS;}
     @Override public boolean isEmpty(){return items.stream().allMatch(ItemStack::isEmpty);}
     @Override public ItemStack getItem(int slot){return slot>=0&&slot<SLOTS?items.get(slot):ItemStack.EMPTY;}
