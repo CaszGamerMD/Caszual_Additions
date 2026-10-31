@@ -1,0 +1,33 @@
+name: Enchantment Printer Fabric Build
+
+on:
+  push:
+    branches: [ 'feature/enchantment-printer-20261031' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-printer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.7.0'
+      - name: Enchantment Printer safety and resource checks
+        run: python3 scripts/enchantment_printer_smoke.py
+      - name: Compile and package the mod
+        run: gradle build -x test --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: caszual-additions-enchantment-printer
+          path: |
+            build/libs/*.jar
+            !build/libs/*-sources.jar
