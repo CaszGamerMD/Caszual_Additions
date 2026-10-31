@@ -112,9 +112,9 @@ public final class EnchantmentPrinterBlockEntity extends BlockEntity
             if(!id.isBlank())learned.merge(id,entry.getIntValue(),Math::max);
         }
         if(learned.isEmpty())return result("No registered enchantments on donor.");
-        for(String key:learned.keySet())
-            if(!library.containsKey(key)&&library.size()>=MAX_LIBRARY)
-                return result("Printer library full (128 enchantments).");
+        long newPatterns=learned.keySet().stream().filter(key->!library.containsKey(key)).count();
+        if(library.size()+newPatterns>MAX_LIBRARY)
+            return result("Printer library full (128 enchantments).");
         long now=world.getGameTime();
         for(var entry:learned.entrySet()){
             Pattern old=library.get(entry.getKey());
@@ -131,7 +131,6 @@ public final class EnchantmentPrinterBlockEntity extends BlockEntity
         if(!selected.add(key))selected.remove(key);
         setChanged();
     }
-    public void selectLast(){/* selected is saved permanently, including between jobs */ }
     public void clearSelection(){selected.clear();setChanged();}
     private Component result(String value){message=value;setChanged();return Component.literal(value);}
 
