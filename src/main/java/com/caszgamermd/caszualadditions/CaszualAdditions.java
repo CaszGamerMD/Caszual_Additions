@@ -46,6 +46,7 @@ public final class CaszualAdditions implements ModInitializer {
         HeadVendingContent.initialize();
         FunBarrelContent.initialize();
         CraftVendingContent.initialize();
+        EnchantmentPrinterContent.initialize();
         MailContent.initialize();
 
         CaszualItemGroups.register();
