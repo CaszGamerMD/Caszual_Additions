@@ -1,6 +1,7 @@
 package com.caszgamermd.caszualadditions;
 
 import com.caszgamermd.caszualadditions.autovending.CraftVendingContent;
+import com.caszgamermd.caszualadditions.enchantprinter.EnchantmentPrinterContent;
 import com.caszgamermd.caszualadditions.mail.MailContent;
 import com.caszgamermd.caszualadditions.antiwarden.AntiWardenContent;
 import com.caszgamermd.caszualadditions.rods.ColorfulRods;
