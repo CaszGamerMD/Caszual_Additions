@@ -1,6 +1,10 @@
 package com.caszgamermd.caszualadditions;
 
 import com.caszgamermd.caszualadditions.autovending.CraftVendingContent;
+import com.caszgamermd.caszualadditions.enchantprinter.EnchantmentPrinterContent;
+import com.caszgamermd.caszualadditions.enchantprinter.EnchantmentPrinterStatePayload;
+import com.caszgamermd.caszualadditions.enchantprinter.EnchantmentPrinterScreen;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import com.caszgamermd.caszualadditions.mail.MailContent;
 import com.caszgamermd.caszualadditions.mail.MailScreen;
 import com.caszgamermd.caszualadditions.autovending.CraftVendingScreen;
