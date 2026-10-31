@@ -1,9 +1,13 @@
 package com.caszgamermd.caszualadditions.enchantprinter;
 
 import com.mojang.serialization.MapCodec;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -50,6 +54,33 @@ public final class EnchantmentPrinterBlock extends HorizontalDirectionalBlock im
     @Override protected InteractionResult useWithoutItem(BlockState state,Level level,BlockPos pos,
             Player player,BlockHitResult hit){
         return open(level,pos,player);
+    }
+    /**
+     * Vanilla loot machinery creates the ONE machine item. We attach only the
+     * library/preset to that existing drop; the four stocked slots continue
+     * to drop normally via playerWillDestroy, with no duplication.
+     *
+     * This also preserves the library for normal loot-producing destruction,
+     * including non-player break paths that invoke the block's loot table.
+     */
+    @Override protected List<ItemStack> getDrops(BlockState state,LootParams.Builder builder){
+        List<ItemStack> drops=super.getDrops(state,builder);
+        BlockEntity blockEntity=builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        if(blockEntity instanceof EnchantmentPrinterBlockEntity printer){
+            long now=printer.getLevel()==null?0:printer.getLevel().getGameTime();
+            for(ItemStack item:drops)
+                if(item.is(EnchantmentPrinterContent.ITEM))
+                    printer.saveLibraryToItem(item,now);
+        }
+        return drops;
+    }
+    /** Restore the saved library when this item is actually placed. */
+    @Override public void setPlacedBy(Level world,BlockPos pos,BlockState state,
+            @Nullable LivingEntity placer,ItemStack stack){
+        super.setPlacedBy(world,pos,state,placer,stack);
+        if(!world.isClientSide()
+                && world.getBlockEntity(pos) instanceof EnchantmentPrinterBlockEntity printer)
+            printer.restoreLibraryFromItem(stack,world.getGameTime());
     }
     @Override public BlockState playerWillDestroy(Level level,BlockPos pos,BlockState state,Player player){
         if(!level.isClientSide()&&!player.getAbilities().instabuild
