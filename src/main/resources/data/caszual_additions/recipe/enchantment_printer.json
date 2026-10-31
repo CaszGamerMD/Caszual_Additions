@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "pattern": [
+    "EAE",
+    "LCL",
+    "IRI"
+  ],
+  "key": {
+    "E": "minecraft:emerald",
+    "A": "minecraft:anvil",
+    "L": "minecraft:lapis_lazuli",
+    "C": "minecraft:enchanting_table",
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone"
+  },
+  "result": {
+    "id": "caszual_additions:enchantment_printer",
+    "count": 1
+  }
+}
