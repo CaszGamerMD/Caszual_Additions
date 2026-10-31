@@ -2,7 +2,7 @@ name: Enchantment Printer Fabric Build
 
 on:
   push:
-    branches: [ 'feature/enchantment-printer-20261031' ]
+    branches: [ 'feature/enchantment-printer-20261031', 'feature/enchantment-printer-portable-library-20261031' ]
   pull_request:
   workflow_dispatch:
 
@@ -23,6 +23,8 @@ jobs:
           gradle-version: '9.7.0'
       - name: Enchantment Printer safety and resource checks
         run: python3 scripts/enchantment_printer_smoke.py
+      - name: Check portable learned enchantment library
+        run: python3 scripts/enchantment_printer_portable_smoke.py
       - name: Compile and package the mod
         run: gradle build -x test --stacktrace
       - uses: actions/upload-artifact@v4
