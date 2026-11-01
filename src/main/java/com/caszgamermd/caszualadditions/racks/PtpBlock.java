@@ -202,12 +202,12 @@ public final class PtpBlock extends Block implements EntityBlock {
         if(ptp==null)return InteractionResult.PASS;
         if(!level.isClientSide()){
             if(player.isShiftKeyDown()){
-                // Empty-hand sneak-click ALWAYS changes direction, even with
-                // a pallet installed. To reclaim an empty pallet, sneak-click
-                // while holding another Pallet item, or use the workstation.
-                // Never disrupt an outstanding Builder shipment or active
-                // order reservation.
-                if(ptp.changeModeFromComputer())
+                // Empty-hand sneak-click reclaims an unwrapped, empty pallet.
+                // If a pallet is installed but busy, explain the blocker
+                // instead of destroying cargo or silently switching modes.
+                if(ptp.hasPallet()){
+                    retrieveEmptyPallet(ptp,player);
+                }else if(ptp.changeModeFromComputer())
                     player.sendSystemMessage(Component.literal(
                             "Transfer Point: "+(ptp.input()?"INPUT":"OUTPUT")));
                 else player.sendSystemMessage(Component.literal(

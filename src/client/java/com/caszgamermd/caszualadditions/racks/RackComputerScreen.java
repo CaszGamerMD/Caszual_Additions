@@ -30,7 +30,10 @@ public final class RackComputerScreen extends Screen {
     private static final int BUILDER_ORDER_TOP=128;
     private static final int BUILDER_ORDER_ROW_HEIGHT=25;
     private static final int BUILDER_ORDER_VISIBLE=5;
-    private int selectedBuilderOrder;
+    private int selectedBuilderOrder,builderScroll;
+    private String confirmBuilderCancel="";
+    private Button cancelBuilderButton,submitOrderButton,clearOrderButton,
+            removeLastOrderButton;
     private final java.util.List<AbstractWidget> rackWidgets=new java.util.ArrayList<>();
     private final java.util.List<AbstractWidget> workerWidgets=new java.util.ArrayList<>();
     private final java.util.List<AbstractWidget> debugWidgets=new java.util.ArrayList<>();
@@ -88,11 +91,21 @@ public final class RackComputerScreen extends Screen {
         orderWidgets.add(widget);
         return addRenderableWidget(widget);
     }
+    private void updateOrderControls(){
+        boolean manual=page==2&&!showBuilderOrders;
+        if(submitOrderButton!=null)submitOrderButton.visible=manual;
+        if(clearOrderButton!=null)clearOrderButton.visible=manual;
+        if(removeLastOrderButton!=null)removeLastOrderButton.visible=manual;
+        if(cancelBuilderButton!=null)cancelBuilderButton.visible=page==2&&showBuilderOrders;
+        if(builderRequestsButton!=null)builderRequestsButton.setMessage(Component.literal(
+                showBuilderOrders?"MANUAL LIST":"BUILDER ("+builderOrders.size()+")"));
+    }
     private void showPage(int target){
         page=target;
         for(AbstractWidget widget:rackWidgets)widget.visible=page==0;
         for(AbstractWidget widget:workerWidgets)widget.visible=page==1;
         for(AbstractWidget widget:orderWidgets)widget.visible=page==2;
+        updateOrderControls();
         for(AbstractWidget widget:debugWidgets)widget.visible=page==3;
         if(warehouseNameBox!=null)warehouseNameBox.visible=page==3;
         if(warehouseRenameButton!=null)warehouseRenameButton.visible=page==3;
@@ -225,21 +238,31 @@ public final class RackComputerScreen extends Screen {
                 b->sendPacking(2)).bounds(239,91,151,20).build());
         addOrders(Button.builder(Component.literal("AUTO PTP"),
                 b->sendPacking(3)).bounds(396,91,103,20).build());
-        addOrders(Button.builder(Component.literal("SUBMIT ORDER LIST"),
+        submitOrderButton=addOrders(Button.builder(Component.literal("SUBMIT ORDER LIST"),
                 b->submitOrderList()).bounds(22,height-69,Math.max(122,width/3),23).build());
-        addOrders(Button.builder(Component.literal("CLEAR LIST"),
+        clearOrderButton=addOrders(Button.builder(Component.literal("CLEAR LIST"),
                 b->{orderList.clear();saveDraft();orderStatus="Order list cleared.";})
                 .bounds(27+Math.max(122,width/3),height-69,104,23).build());
         builderRequestsButton=addOrders(Button.builder(Component.literal("BUILDER REQUESTS"),
-                b->{showBuilderOrders=!showBuilderOrders;orderScroll=0;})
+                b->{showBuilderOrders=!showBuilderOrders;
+                    confirmBuilderCancel="";
+                    if(cancelBuilderButton!=null)cancelBuilderButton.setMessage(
+                            Component.literal("CANCEL SELECTED"));
+                    updateOrderControls();})
                 .bounds(Math.max(140,width-275),height-41,125,21).build());
-        addOrders(Button.builder(Component.literal("REMOVE LAST"),
+        removeLastOrderButton=addOrders(Button.builder(Component.literal("REMOVE LAST"),
                 b->removeLastOrder()).bounds(22,height-41,108,21).build());
+        cancelBuilderButton=addOrders(Button.builder(Component.literal("CANCEL SELECTED"),
+                b->cancelSelectedBuilderOrder()).bounds(22,height-41,144,21).build());
         addOrders(Button.builder(Component.literal("▲"),
-                b->orderScroll=Math.max(0,orderScroll-1))
+                b->{if(showBuilderOrders)
+                        builderScroll=Math.max(0,builderScroll-1);
+                    else orderScroll=Math.max(0,orderScroll-1);})
                 .bounds(width-81,height-41,25,21).build());
         addOrders(Button.builder(Component.literal("▼"),
-                b->orderScroll=Math.min(Math.max(0,orderList.size()-1),orderScroll+1))
+                b->{if(showBuilderOrders)
+                        builderScroll=Math.min(Math.max(0,builderOrders.size()-BUILDER_ORDER_VISIBLE),builderScroll+1);
+                    else orderScroll=Math.min(Math.max(0,orderList.size()-1),orderScroll+1);})
                 .bounds(width-51,height-41,25,21).build());
         debugChatButton=addDebug(Button.builder(Component.literal("CHAT LOG: OFF"),
                 b->setDebug(!debugChat,debugStatuses))
@@ -354,6 +377,28 @@ public final class RackComputerScreen extends Screen {
         saveDraft();
         orderStatus="Removed "+last;
     }
+    private void cancelSelectedBuilderOrder(){
+        if(builderOrders.isEmpty()){
+            orderStatus="No Builder order to cancel.";return;
+        }
+        int selected=Math.clamp(selectedBuilderOrder,0,builderOrders.size()-1);
+        JsonObject order=builderOrders.get(selected).getAsJsonObject();
+        if(!order.has("request")){
+            orderStatus="Refreshing Builder orders. Try again.";sendQuery();return;
+        }
+        String request=order.get("request").getAsString();
+        if(!request.equals(confirmBuilderCancel)){
+            confirmBuilderCancel=request;
+            cancelBuilderButton.setMessage(Component.literal("CONFIRM CANCEL"));
+            orderStatus="Click CONFIRM CANCEL to remove Builder order "+(selected+1)
+                    +". Packed/in-flight cargo is protected.";
+            return;
+        }
+        confirmBuilderCancel="";
+        cancelBuilderButton.setMessage(Component.literal("CANCEL SELECTED"));
+        ClientPlayNetworking.send(new RackComputerNet.CancelBuilderOrder(computer,request));
+        orderStatus="Cancellation requested; awaiting warehouse confirmation...";
+    }
     private void submitOrderList(){
         if(orderList.isEmpty()){orderStatus="Add at least one item.";return;}
         StringBuilder rows=new StringBuilder();
@@ -388,6 +433,23 @@ public final class RackComputerScreen extends Screen {
                     ?obj.getAsJsonArray("builderOrders"):new JsonArray();
             if(priorBuilderCount==0&&builderOrders.size()>0)
                 showBuilderOrders=true; // Show the newly received request now.
+            selectedBuilderOrder=Math.clamp(selectedBuilderOrder,0,
+                    Math.max(0,builderOrders.size()-1));
+            builderScroll=Math.clamp(builderScroll,0,
+                    Math.max(0,builderOrders.size()-BUILDER_ORDER_VISIBLE));
+            if(!confirmBuilderCancel.isEmpty()){
+                boolean stillPresent=false;
+                for(var entry:builderOrders)
+                    if(entry.getAsJsonObject().has("request")
+                            &&confirmBuilderCancel.equals(entry.getAsJsonObject()
+                                    .get("request").getAsString())){stillPresent=true;break;}
+                if(!stillPresent){
+                    confirmBuilderCancel="";
+                    if(cancelBuilderButton!=null)cancelBuilderButton.setMessage(
+                            Component.literal("CANCEL SELECTED"));
+                }
+            }
+            updateOrderControls();
             if(orderPageButton!=null)
                 orderPageButton.setMessage(Component.literal(builderOrders.size()>0
                         ?"ORDERS ("+builderOrders.size()+")":"ORDER LIST"));
@@ -552,9 +614,10 @@ public final class RackComputerScreen extends Screen {
                     27,BUILDER_ORDER_TOP+6,0xffb7c3b9,false);
             return;
         }
-        for(int i=0;i<count&&i<BUILDER_ORDER_VISIBLE;i++){
+        for(int row=0;row<BUILDER_ORDER_VISIBLE&&builderScroll+row<count;row++){
+            int i=builderScroll+row;
             JsonObject request=builderOrders.get(i).getAsJsonObject();
-            int y=BUILDER_ORDER_TOP+i*BUILDER_ORDER_ROW_HEIGHT;
+            int y=BUILDER_ORDER_TOP+row*BUILDER_ORDER_ROW_HEIGHT;
             g.fill(25,y,width-25,y+22,
                     i==selectedBuilderOrder?0xff437a54:0xff294236);
             g.text(font,Component.literal(compact("Builder "+(i+1)
@@ -581,12 +644,14 @@ public final class RackComputerScreen extends Screen {
         g.text(font,Component.literal("ALL REMAINING MATERIALS"),28,y+38,
                 0xffadeabf,false);
         JsonArray items=active.getAsJsonArray("items");
-        for(int i=0;i<items.size()&&i<Math.max(0,(height-y-100)/16);i++){
+        for(int i=0;i<items.size()&&i<Math.max(0,(height-y-150)/16);i++){
             JsonObject item=items.get(i).getAsJsonObject();
             g.text(font,Component.literal(compact(item.get("id").getAsString(),34)
                     +" x"+item.get("remaining").getAsInt()),
                     32,y+54+i*16,0xffc9dfd1,false);
         }
+        g.text(font,Component.literal(compact(orderStatus,Math.max(20,(width-55)/6))),
+                28,height-90,0xfff2d68b,false);
     }
     private void drawOrderList(GuiGraphicsExtractor graphics){
         if(showBuilderOrders){drawBuilderOrders(graphics);return;}
@@ -700,7 +765,11 @@ public final class RackComputerScreen extends Screen {
                         &&my<BUILDER_ORDER_TOP+visible*BUILDER_ORDER_ROW_HEIGHT){
                     int index=(my-BUILDER_ORDER_TOP)/BUILDER_ORDER_ROW_HEIGHT;
                     if(index>=0&&index<visible){
-                        selectedBuilderOrder=index;return true;
+                        selectedBuilderOrder=builderScroll+index;
+                        confirmBuilderCancel="";
+                        if(cancelBuilderButton!=null)cancelBuilderButton.setMessage(
+                                Component.literal("CANCEL SELECTED"));
+                        return true;
                     }
                 }
                 return super.mouseClicked(event,doubleClick);

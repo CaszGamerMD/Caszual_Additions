@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +78,17 @@ public final class RackComputerNet {
                 StreamCodec.composite(BlockPos.STREAM_CODEC,OrderListRequest::computer,
                         ByteBufCodecs.stringUtf8(4096),OrderListRequest::lines,
                         OrderListRequest::new);
+        @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
+    }
+    /** Cancel a Builder ticket visible on this warehouse's Orders screen. */
+    public record CancelBuilderOrder(BlockPos computer,String requestId)
+            implements CustomPacketPayload {
+        public static final Type<CancelBuilderOrder> TYPE=new Type<>(
+                CaszualAdditions.id("rack_builder_order_cancel"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,CancelBuilderOrder> CODEC=
+                StreamCodec.composite(BlockPos.STREAM_CODEC,CancelBuilderOrder::computer,
+                        ByteBufCodecs.stringUtf8(36),CancelBuilderOrder::requestId,
+                        CancelBuilderOrder::new);
         @Override public Type<? extends CustomPacketPayload> type(){return TYPE;}
     }
     public record OrderReply(String message) implements CustomPacketPayload {
@@ -166,6 +178,7 @@ public final class RackComputerNet {
         PayloadTypeRegistry.clientboundPlay().register(Snapshot.TYPE,Snapshot.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(OrderRequest.TYPE,OrderRequest.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(OrderListRequest.TYPE,OrderListRequest.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(CancelBuilderOrder.TYPE,CancelBuilderOrder.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(OrderReply.TYPE,OrderReply.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GolemControl.TYPE,GolemControl.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(PtpControl.TYPE,PtpControl.CODEC);
@@ -182,6 +195,8 @@ public final class RackComputerNet {
                 context.server().execute(()->acceptOrder(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(OrderListRequest.TYPE,(payload,context)->
                 context.server().execute(()->acceptOrderList(context.player(),payload)));
+        ServerPlayNetworking.registerGlobalReceiver(CancelBuilderOrder.TYPE,(payload,context)->
+                context.server().execute(()->cancelBuilderOrder(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(GolemControl.TYPE,(payload,context)->
                 context.server().execute(()->setGolemSorting(context.player(),payload)));
         ServerPlayNetworking.registerGlobalReceiver(PtpControl.TYPE,(payload,context)->
@@ -242,6 +257,58 @@ public final class RackComputerNet {
                     :"Cannot wrap/unwrap: check pallet, Wrap Unit and active work.");
         // Refresh the Rack Computer immediately so its MODE and packing
         // assignment buttons don't keep showing stale INPUT/OUTPUT state.
+        answer(player,new Query(computer,"",BlockPos.ZERO));
+    }
+
+    private static void cancelBuilderOrder(ServerPlayer player,CancelBuilderOrder data){
+        ServerLevel level=player.level();
+        BlockPos computer=data.computer();
+        if(!level.hasChunkAt(computer)
+                ||!level.getBlockState(computer).is(RackContent.RACK_COMPUTER)
+                ||player.distanceToSqr(computer.getX()+.5,computer.getY()+.5,
+                        computer.getZ()+.5)>100)return;
+        UUID request;
+        try{request=UUID.fromString(data.requestId());}
+        catch(IllegalArgumentException exception){
+            reply(player,"Invalid Builder order ID.");return;
+        }
+        if(!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity settings))return;
+        UUID owner=null;
+        BlockPos table=null;
+        BlockPos ptpPos=BlockPos.ZERO;
+        var pending=settings.waitingBuilder(request);
+        if(pending!=null){
+            owner=pending.owner();
+            table=pending.table();
+        }else{
+            // Resolve owner/table from the authoritative connected PTP.
+            // A client-supplied UUID alone cannot cancel any other warehouse.
+            for(PtpBlockEntity point:WarehouseNetwork.fromComputer(level,computer).points()){
+                if(request.equals(point.builderRequestId())){
+                    owner=point.builderOwnerId();
+                    table=point.builderTablePos();
+                    ptpPos=point.getBlockPos();
+                    break;
+                }
+            }
+        }
+        if(owner==null||table==null){
+            reply(player,"Builder order no longer exists at this warehouse.");
+            answer(player,new Query(computer,"",BlockPos.ZERO));return;
+        }
+        String result=BuilderWarehouseFulfillment.cancelDetailed(
+                level,computer,table,owner,request,ptpPos);
+        String message=switch(result){
+            case "CANCELLED" -> "Builder order cancelled. Stop the Builder Planner too if it is still active.";
+            case "SHULKER_PACKING_IN_PROGRESS" -> "Cannot cancel: Shulker Station still has packed or in-progress cargo.";
+            case "PACKED_CARGO_PRESENT" -> "Cannot cancel: pallet contains real cargo. Unload it first.";
+            case "PICKER_IN_FLIGHT", "PALLET_TRANSFER_ACTIVE" -> "Cannot cancel: a Golem is still carrying or reserving materials.";
+            case "PALLET_MOVING" -> "Cannot cancel: pallet is being hauled.";
+            case "STATION_UNAVAILABLE" -> "Cannot cancel: Shulker Station unavailable; reconnect it to verify cargo.";
+            case "RESERVATION_BUSY" -> "Cannot cancel: warehouse reservation is still busy.";
+            default -> "Builder order not cancelled: "+result;
+        };
+        reply(player,message);
         answer(player,new Query(computer,"",BlockPos.ZERO));
     }
 
@@ -500,6 +567,7 @@ public final class RackComputerNet {
         if(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity settings)
             for(var pending:settings.waitingBuilders()){
                 JsonObject order=new JsonObject();
+                order.addProperty("request",pending.request().toString());
                 order.addProperty("ptp","UNASSIGNED");
                 order.addProperty("owner",pending.owner().toString().substring(0,8));
                 order.addProperty("table",pending.table().toShortString());
@@ -523,6 +591,7 @@ public final class RackComputerNet {
         for(PtpBlockEntity point:WarehouseNetwork.fromComputer(level,computer).points()){
             if(!point.builderReserved())continue;
             JsonObject order=new JsonObject();
+            order.addProperty("request",point.builderRequestId().toString());
             order.addProperty("ptp",point.getBlockPos().toShortString());
             order.addProperty("owner",point.builderOwnerName());
             order.addProperty("table",point.builderTablePos().toShortString());
