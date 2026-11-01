@@ -71,7 +71,7 @@ assert vehicle.count("jack.copyWithCount(1)")>=1
 assert "Containers.dropItemStack" in forklift
 assert "jack.copy()" in forklift
 
-// Standing operator + trailing load is both rendered and collision-tested.
+# Standing operator + trailing load is both rendered and collision-tested.
 assert "public static final double OPERATOR_LEAD=.93D;" in vehicle
 assert "position().add(-Math.sin(angle)*OPERATOR_LEAD,0," in vehicle
 assert "Math.cos(angle)*OPERATOR_LEAD" in vehicle
