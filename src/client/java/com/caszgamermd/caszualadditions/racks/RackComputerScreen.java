@@ -25,6 +25,11 @@ public final class RackComputerScreen extends Screen {
     private boolean showBuilderOrders; // auto-switch on first new Builder request
     private String warehouseName="Warehouse";
     private JsonArray builderOrders=new JsonArray();
+    // Keep Builder request rows below the packing controls (Y=91..111).
+    // Rendering and hit testing share these values so they cannot drift apart.
+    private static final int BUILDER_ORDER_TOP=128;
+    private static final int BUILDER_ORDER_ROW_HEIGHT=25;
+    private static final int BUILDER_ORDER_VISIBLE=5;
     private int selectedBuilderOrder;
     private final java.util.List<AbstractWidget> rackWidgets=new java.util.ArrayList<>();
     private final java.util.List<AbstractWidget> workerWidgets=new java.util.ArrayList<>();
@@ -544,12 +549,12 @@ public final class RackComputerScreen extends Screen {
                 22,75,0xffa4d5b7,false);
         if(count==0){
             g.text(font,Component.literal("No active Builder Golem requests."),
-                    27,110,0xffb7c3b9,false);
+                    27,BUILDER_ORDER_TOP+6,0xffb7c3b9,false);
             return;
         }
-        for(int i=0;i<count&&i<5;i++){
+        for(int i=0;i<count&&i<BUILDER_ORDER_VISIBLE;i++){
             JsonObject request=builderOrders.get(i).getAsJsonObject();
-            int y=103+i*25;
+            int y=BUILDER_ORDER_TOP+i*BUILDER_ORDER_ROW_HEIGHT;
             g.fill(25,y,width-25,y+22,
                     i==selectedBuilderOrder?0xff437a54:0xff294236);
             g.text(font,Component.literal(compact("Builder "+(i+1)
@@ -559,7 +564,10 @@ public final class RackComputerScreen extends Screen {
         }
         int selected=Math.clamp(selectedBuilderOrder,0,count-1);
         JsonObject active=builderOrders.get(selected).getAsJsonObject();
-        int y=261;
+        // The details must clear the last visible request even when five
+        // Builder orders are waiting.
+        int y=Math.max(261,BUILDER_ORDER_TOP
+                +Math.min(count,BUILDER_ORDER_VISIBLE)*BUILDER_ORDER_ROW_HEIGHT+29);
         String reason=active.has("reason")?
                 active.get("reason").getAsString():"QUEUED FOR PICKING";
         g.text(font,Component.literal(compact("STATUS: "+reason,
@@ -687,9 +695,11 @@ public final class RackComputerScreen extends Screen {
         if(page==2){
             int mx=(int)event.x(),my=(int)event.y();
             if(showBuilderOrders){
-                if(mx>=25&&mx<width-25&&my>=103&&my<228){
-                    int index=(my-103)/25;
-                    if(index>=0&&index<builderOrders.size()){
+                int visible=Math.min(builderOrders.size(),BUILDER_ORDER_VISIBLE);
+                if(mx>=25&&mx<width-25&&my>=BUILDER_ORDER_TOP
+                        &&my<BUILDER_ORDER_TOP+visible*BUILDER_ORDER_ROW_HEIGHT){
+                    int index=(my-BUILDER_ORDER_TOP)/BUILDER_ORDER_ROW_HEIGHT;
+                    if(index>=0&&index<visible){
                         selectedBuilderOrder=index;return true;
                     }
                 }
