@@ -235,6 +235,7 @@ public final class BuilderWarehouseFulfillment {
      * only once per 40 server ticks and only through the connected network.
      */
     public static void progressWaiting(ServerLevel level,BlockPos computer){
+        progressCancelled(level,computer);
         if(!valid(level,computer)
                 ||!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity cfg)
                 ||cfg.waitingBuilders().isEmpty())return;
@@ -379,10 +380,10 @@ public final class BuilderWarehouseFulfillment {
         }
         return ItemStack.EMPTY;
     }
-    /** Cancel warehouse-owned Builder orders without deleting real cargo.
-     * Pending PTP preparation is canceled immediately. An already assigned
-     * order can be canceled only if no physical items or pickers have left
-     * storage; otherwise its UUID remains alive for safe recovery.
+    /** A cancelled Builder request stops ALL future picking immediately.
+     * Existing reserved workers are instructed to return withdrawn
+     * materials to their real source rack. Packed boxes remain physical
+     * at the output until a player recovers them; no items are deleted.
      */
     public static boolean cancel(ServerLevel level,BlockPos computer,BlockPos table,
             UUID owner,UUID request,BlockPos ptpPos){
@@ -401,17 +402,44 @@ public final class BuilderWarehouseFulfillment {
         }
         for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,computer).points()){
             if(!ptp.builderMatches(request,owner,table,computer))continue;
-            var station=tank(level,computer,ptp);
-            // Never throw away packed shulkers, partial station contents,
-            // or items owned by a Storage Golem in flight.
-            if(station==null||station.activeCount()>0||station.finishedCount()>0
-                    ||station.bufferedItems()>0)return false;
-            return ptp.cancelUnshippedBuilder(request,owner,table,computer);
+            // This is an override: do not require missing stock, active
+            // pickers or unfinished packing to finish first.
+            if(!ptp.cancelBuilderFulfillment(request,owner,table,computer))
+                return false;
+            finishCancelled(level,computer,ptp);
+            return true;
         }
         // Idempotent: the ticket is no longer owned by this warehouse.
         return false;
     }
 
+    /** Move partially filled, already paid-for shulkers into the real PTP
+     * and release the old ticket after all picker reservations have ended.
+     * This is NOT fulfillment: no additional stock is requested.
+     */
+    private static void finishCancelled(ServerLevel level,BlockPos computer,
+            PtpBlockEntity ptp){
+        if(!ptp.builderCancellationRequested())return;
+        var station=tank(level,computer,ptp);
+        if(station!=null&&ptp.pendingOutputOrders()==0
+                &&!ptp.outputInFlight())
+            station.finishOrder(level,ptp);
+        if(station!=null&&(station.activeCount()>0
+                ||station.finishedCount()>0||station.bufferedItems()>0))
+            return; // Retain real cargo until safely flushed.
+        if(ptp.outputInFlight())return; // Await picker return/lease expiry.
+        ptp.finalizeCancelledBuilder(ptp.builderRequestId(),
+                ptp.builderOwnerId(),ptp.builderTablePos(),computer);
+    }
+    /** Called by the warehouse's regular shelf ticks. The cleanup does
+     * not depend on a Builder worker, its active job, or an online owner.
+     */
+    public static void progressCancelled(ServerLevel level,BlockPos computer){
+        if(!valid(level,computer))return;
+        for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,computer).points())
+            if(ptp.builderCancellationRequested())
+                finishCancelled(level,computer,ptp);
+    }
     /** Can release only after all worker deliveries and boxed inventory clear. */
     public static boolean release(ServerLevel level,BlockPos computer,BlockPos table,
             UUID owner,UUID request,BlockPos ptpPos){

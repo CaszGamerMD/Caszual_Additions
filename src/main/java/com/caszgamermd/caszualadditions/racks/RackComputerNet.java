@@ -526,10 +526,15 @@ public final class RackComputerNet {
             order.addProperty("ptp",point.getBlockPos().toShortString());
             order.addProperty("owner",point.builderOwnerName());
             order.addProperty("table",point.builderTablePos().toShortString());
-            order.addProperty("status",point.pendingOutputOrders()>0
-                    ?"PENDING FULFILLMENT":"PACKING / AWAITING PICKUP");
-            order.addProperty("reason",BuilderWarehouseFulfillment.workStatus(
-                    level,computer,point));
+            order.addProperty("status",point.builderCancellationRequested()
+                    ?"CANCELLED - RECOVERING PHYSICAL CARGO"
+                    :point.pendingOutputOrders()>0
+                        ?"PENDING FULFILLMENT":"PACKING / AWAITING PICKUP");
+            order.addProperty("reason",point.builderCancellationRequested()
+                    ?"No more picking. Workers return their cargo; "
+                        +"packed shulkers remain at this PTP."
+                    :BuilderWarehouseFulfillment.workStatus(
+                            level,computer,point));
             JsonArray demand=new JsonArray();
             for(var entry:point.pendingOutputManifest().entrySet()){
                 JsonObject row=new JsonObject();

@@ -44,6 +44,43 @@ public final class PtpBlockEntity extends BlockEntity
     // Reserved, single-consumer Builder output lane. UUID and destination are
     // stored at the actual pallet controller, not in a global temporary map.
     private java.util.UUID builderRequest, builderOwner;
+    // Cancellation is a priority command, not a request to finish
+    // picking the original manifest. The flag survives chunk reloads
+    // until every real picker has returned its cargo.
+    private boolean builderCancelRequested;
+    public boolean builderCancellationRequested(){return builderCancelRequested;}
+    /** Stop ALL future material reservations immediately. Do not
+     * invalidate in-flight worker leases: the workers use this flag to
+     * return actual withdrawn stock to their source racks.
+     */
+    public boolean cancelBuilderFulfillment(java.util.UUID request,
+            java.util.UUID owner,BlockPos table,BlockPos computer){
+        if(!builderMatches(request,owner,table,computer))return false;
+        builderCancelRequested=true;
+        outputOrders.clear();
+        setChanged();
+        return true;
+    }
+    /** The manifest is already canceled. Once picker cargo is safely
+     * returned and the Shulker Station flushed, unlock the OUTPUT lane.
+     * Packed items remain in its physical pallet for manual recovery.
+     */
+    public boolean finalizeCancelledBuilder(java.util.UUID request,
+            java.util.UUID owner,BlockPos table,BlockPos computer){
+        if(!builderCancelRequested
+                ||!builderMatches(request,owner,table,computer)
+                ||outputInFlight()||hauling())return false;
+        outputOrders.clear();
+        builderRequest=builderOwner=null;
+        builderTable=builderComputer=BlockPos.ZERO;
+        builderCancelRequested=false;
+        // Leave real packed cargo in its pallet. A now-empty pallet can
+        // return to the dispenser through the existing return crew.
+        input=false;
+        returnBuilderPallet=hasPallet();
+        setChanged();
+        return true;
+    }
     // Setup reservation is DIFFERENT from a live Builder shipment: it
     // still allows the real pallet to be installed by a Storage Golem.
     private java.util.UUID builderPreparing,palletSetupWorker;
@@ -155,6 +192,7 @@ public final class PtpBlockEntity extends BlockEntity
                 ||line.remaining()<1||line.remaining()>4096)return false;
         builderPreparing=null;palletSetupWorker=null;palletSetupDeadline=0;
         builderRequest=request;builderOwner=owner;
+        builderCancelRequested=false;
         builderTable=table.immutable();builderComputer=computer.immutable();
         outputOrders.addAll(lines);
         setChanged();return true;
@@ -167,6 +205,7 @@ public final class PtpBlockEntity extends BlockEntity
                 ||!outputOrders.isEmpty()||outputInFlight()
                 ||!emptyCargo()||hauling())return false;
         builderRequest=null;builderOwner=null;
+        builderCancelRequested=false;
         builderTable=BlockPos.ZERO;builderComputer=BlockPos.ZERO;
         input=true;returnBuilderPallet=hasPallet();
         setChanged();return true;
@@ -465,7 +504,7 @@ public final class PtpBlockEntity extends BlockEntity
      */
     public int reserveOutput(String itemId,int quantity){
         expireTicket();
-        if(!readyForOutput()||itemId==null||itemId.isBlank()
+        if(builderCancelRequested||!readyForOutput()||itemId==null||itemId.isBlank()
                 ||quantity<1||quantity>unreserved(itemId)
                 ||extraOutputTickets.size()+(activeTicket==0?0:1)>=4)return 0;
         ticketSequence=ticketSequence==Integer.MAX_VALUE?1:ticketSequence+1;
@@ -668,6 +707,7 @@ public final class PtpBlockEntity extends BlockEntity
             out.putLong("pallet_setup_deadline",palletSetupDeadline);
         }
         if(builderRequest!=null){
+            out.putBoolean("builder_cancel_requested",builderCancelRequested);
             out.putString("builder_request",builderRequest.toString());
             out.putString("builder_owner",builderOwner.toString());
             out.store("builder_table",BlockPos.CODEC,builderTable);
@@ -733,6 +773,8 @@ public final class PtpBlockEntity extends BlockEntity
             builderOwner=java.util.UUID.fromString(in.getStringOr("builder_owner",""));
         }catch(IllegalArgumentException ignored){}
         if(builderRequest==null||builderOwner==null)builderRequest=builderOwner=null;
+        builderCancelRequested=builderRequest!=null
+                &&in.getBooleanOr("builder_cancel_requested",false);
         builderTable=in.read("builder_table",BlockPos.CODEC).orElse(BlockPos.ZERO);
         builderComputer=in.read("builder_computer",BlockPos.CODEC).orElse(BlockPos.ZERO);
         outputOrders.clear();
@@ -749,13 +791,14 @@ public final class PtpBlockEntity extends BlockEntity
         activeOutputItemId=in.getStringOr("output_active_item_id",
                 outputOrders.isEmpty()?"":outputOrders.peekFirst().itemId());
         ticketDeadline=in.getLongOr("output_ticket_deadline",0);
-        if(outputOrders.isEmpty()||reservedOutput==0||activeTicket==0){
+        if((outputOrders.isEmpty()&&!builderCancelRequested)
+                ||reservedOutput==0||activeTicket==0){
             activeTicket=0;activeOutputItemId="";reservedOutput=0;ticketDeadline=0;
         }else {
             int remaining=0;
             for(OutputOrder order:outputOrders)
                 if(order.itemId().equals(activeOutputItemId))remaining+=order.remaining();
-            reservedOutput=Math.min(reservedOutput,remaining);
+            if(!builderCancelRequested)reservedOutput=Math.min(reservedOutput,remaining);
             if(reservedOutput==0){activeTicket=0;activeOutputItemId="";ticketDeadline=0;}
         }
         extraOutputTickets.clear();
@@ -767,7 +810,7 @@ public final class PtpBlockEntity extends BlockEntity
             String itemId=in.getStringOr("extra_output_ticket_item_"+i,
                     outputOrders.isEmpty()?"":outputOrders.peekFirst().itemId());
             if(id>0&&id!=activeTicket&&qty>0&&deadline>0
-                    &&unreserved(itemId)>=qty)
+                    &&(builderCancelRequested||unreserved(itemId)>=qty))
                 extraOutputTickets.put(id,new ExtraOutput(itemId,qty,deadline));
         }
         haulSequence=Math.max(0,in.getIntOr("haul_sequence",0));
