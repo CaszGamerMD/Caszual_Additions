@@ -80,10 +80,10 @@ assert "new double[]{-.86,-.40,.40,.86}" in vehicle
 assert "if(cargo||f>=OPERATOR_LEAD){" in vehicle
 assert 'pose.mulPose(Axis.YP.rotationDegrees(-state.heading));' in renderer
 assert 'pose.mulPose(Axis.YP.rotationDegrees(180-state.heading));' not in renderer
-avatar=(client/"utils/mixin/AvatarCosmeticsMixin.java").read_text()
-pose=(client/"utils/mixin/PlayerPlushieCuddleMixin.java").read_text()
-state=(client/"utils/mixin/PalletJackAvatarStateMixin.java").read_text()
-contract=(client/"racks/PalletJackAvatarPose.java").read_text()
+avatar=(R/"src/client/java/com/caszgamermd/caszualadditions/utils/mixin/AvatarCosmeticsMixin.java").read_text()
+pose=(R/"src/client/java/com/caszgamermd/caszualadditions/utils/mixin/PlayerPlushieCuddleMixin.java").read_text()
+state=(R/"src/client/java/com/caszgamermd/caszualadditions/utils/mixin/PalletJackAvatarStateMixin.java").read_text()
+contract=(client/"PalletJackAvatarPose.java").read_text()
 mixins=(R/"src/main/resources/caszual_additions.client.mixins.json").read_text()
 assert "state.isPassenger=false;" in avatar
 assert "state.isCrouching=false;" in avatar
