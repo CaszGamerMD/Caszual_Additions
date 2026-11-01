@@ -77,3 +77,19 @@ cargo selection/collision spaces, and a ceiling can reduce the visible tiers.
 Breaking the pallet drops the pallet item and the stored contents in Survival. Its wooden material combination and plastic tint are retained in the pallet item. A pallet needs a clear **2×2** area for placement.
 
 [Source: pallet classes](https://github.com/CaszGamerMD/Caszual_Additions/tree/main/src/main/java/com/caszgamermd/caszualadditions/pallet)
+
+
+## Walk-behind pallet jack
+
+The pallet jack is operated like a **pulling tool**, not a vehicle seat.
+Deploy it on a flat floor and the player stands **ahead of its upright
+handle**, holding the bar while moving. The loaded wrapped pallet trails
+behind the player so your third-person view of the path is clear.
+
+- W/A/S/D move and steer the jack; the pallet follows behind your character.
+- When loaded, the full 2×2 trailing pallet and the standing player's feet
+  need flat, supported same-Y ground. Low ceilings, gaps, and walls block movement.
+- Both hands reach back toward the pulling bar while the legs animate a
+  walking stride. Sneak dismounts as before.
+- Right-click a same-level pallet, rack, or clear floor to load/unload.
+  The real wrapped pallet and its 216 inventory slots remain owned by the jack.

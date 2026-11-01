@@ -70,5 +70,32 @@ assert ".add(Attributes.MAX_HEALTH,5)" in vehicle
 assert vehicle.count("jack.copyWithCount(1)")>=1
 assert "Containers.dropItemStack" in forklift
 assert "jack.copy()" in forklift
+
+// Standing operator + trailing load is both rendered and collision-tested.
+assert "public static final double OPERATOR_LEAD=.93D;" in vehicle
+assert "position().add(-Math.sin(angle)*OPERATOR_LEAD,0," in vehicle
+assert "Math.cos(angle)*OPERATOR_LEAD" in vehicle
+assert "new double[]{-2.12,-1.34,-.57,.25,OPERATOR_LEAD}" in vehicle
+assert "new double[]{-.86,-.40,.40,.86}" in vehicle
+assert "if(cargo||f>=OPERATOR_LEAD){" in vehicle
+assert 'pose.mulPose(Axis.YP.rotationDegrees(-state.heading));' in renderer
+assert 'pose.mulPose(Axis.YP.rotationDegrees(180-state.heading));' not in renderer
+avatar=(client/"utils/mixin/AvatarCosmeticsMixin.java").read_text()
+pose=(client/"utils/mixin/PlayerPlushieCuddleMixin.java").read_text()
+state=(client/"utils/mixin/PalletJackAvatarStateMixin.java").read_text()
+contract=(client/"racks/PalletJackAvatarPose.java").read_text()
+mixins=(R/"src/main/resources/caszual_additions.client.mixins.json").read_text()
+assert "state.isPassenger=false;" in avatar
+assert "state.isCrouching=false;" in avatar
+assert "player.getVehicle() instanceof PalletJackVehicle" in avatar
+assert "caszual_additions$setPullingJack" in avatar
+assert "caszual_additions$isPullingJack()" in pose
+assert "model.rightArm.xRot=1.06F;" in pose
+assert "model.leftArm.xRot=1.06F;" in pose
+assert "model.rightLeg.xRot=stride;" in pose
+assert "model.leftLeg.xRot=-stride;" in pose
+assert "caszual_additions$jackWalking" in state
+assert "interface PalletJackAvatarPose" in contract
+assert '"PalletJackAvatarStateMixin"' in mixins
 print("PASS: rider movement, edge/stair protection, 216-slot cargo persistence, " 
       "5-hit jack/forklift recovery, rendered transport pallet")

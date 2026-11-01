@@ -52,6 +52,10 @@ public final class PalletJackVehicle extends PathfinderMob {
         clientMovement=new Vec3(input.x,0,input.z);
         hasClientMovement=true;
     }
+    /** Player stands ahead of the handle while the pallet trails behind.
+     * The renderer's handle top is 1.24 blocks high, 0.33 blocks ahead
+     * of the jack center. This gives the operator room to grip it. */
+    public static final double OPERATOR_LEAD=.93D;
     private double walkingSpeed(){return hasPallet()?.13:.20;}
 
     public PalletJackVehicle(EntityType<? extends PalletJackVehicle> type,Level level){
@@ -103,19 +107,38 @@ public final class PalletJackVehicle extends PathfinderMob {
         if(floorY==Integer.MIN_VALUE)return false;
         double rad=Math.toRadians(yaw);
         double frontX=-Math.sin(rad),frontZ=Math.cos(rad);
-        double[] forward=hasPallet()?new double[]{-.35,.35,1.3,2.15}:new double[]{-.25,.25};
-        for(double f:forward)for(double side:new double[]{-.40,.40}){
-            double px=x+frontX*f+frontZ*side;
-            double pz=z+frontZ*f-frontX*side;
-            BlockPos foot=BlockPos.containing(px,floorY+.1,pz);
-            if(!level.hasChunkAt(foot))return false;
-            BlockState support=level.getBlockState(foot.below());
-            // Full-height, sturdy support excludes stairs, slabs and holes.
-            if(!support.isCollisionShapeFullBlock(level,foot.below())
-                    ||!support.isFaceSturdy(level,foot.below(),Direction.UP)
-                    ||!level.getFluidState(foot).isEmpty())return false;
-            BlockState inside=level.getBlockState(foot);
-            if(!inside.getCollisionShape(level,foot).isEmpty())return false;
+        // Loaded deck extends BACKWARDS from the wheels. Check all four
+        // corners of its full 1.8-block width, plus the handle and the
+        // standing player's feet/head AHEAD of the jack. No walking
+        // through a 1-block gap, stair, drop or wall at the new seat.
+        double[] longitudinal=hasPallet()
+                ?new double[]{-2.12,-1.34,-.57,.25,OPERATOR_LEAD}
+                :new double[]{-.30,.25,OPERATOR_LEAD};
+        for(double f:longitudinal){
+            boolean cargo=hasPallet()&&f<-.40;
+            double[] sides=cargo?new double[]{-.86,-.40,.40,.86}
+                    :new double[]{-.34,.34};
+            for(double side:sides){
+                double px=x+frontX*f+frontZ*side;
+                double pz=z+frontZ*f-frontX*side;
+                BlockPos foot=BlockPos.containing(px,floorY+.1,pz);
+                if(!level.hasChunkAt(foot))return false;
+                BlockState support=level.getBlockState(foot.below());
+                if(!support.isCollisionShapeFullBlock(level,foot.below())
+                        ||!support.isFaceSturdy(level,foot.below(),Direction.UP)
+                        ||!level.getFluidState(foot).isEmpty())return false;
+                BlockState inside=level.getBlockState(foot);
+                if(!inside.getCollisionShape(level,foot).isEmpty())return false;
+                // The operator stands normally at the handle; a low
+                // ceiling or wall at head height must block motion.
+                // Likewise the raised pallet needs overhead clearance.
+                if(cargo||f>=OPERATOR_LEAD){
+                    BlockPos above=foot.above();
+                    if(!level.hasChunkAt(above)
+                            ||!level.getBlockState(above).getCollisionShape(
+                                    level,above).isEmpty())return false;
+                }
+            }
         }
         return true;
     }
@@ -123,7 +146,8 @@ public final class PalletJackVehicle extends PathfinderMob {
         if(level().isClientSide())floorY=entityData.get(FLOOR_Y);
         if(getFirstPassenger() instanceof Player controller){
             // Vanilla's ridden input is a walking input in mount-local X/Z.
-            // Use player heading as forward; the jack follows walking input.
+            // The player leads, holding the handle. A trailing jack and
+            // its pallet follow the same validated walking direction.
             // Refuse turns that would swing the 2x2 lifted pallet out
             // over an edge, even when the jack is not translating.
             // Ridden vehicles must move on the CONTROLLING CLIENT too.
@@ -182,7 +206,12 @@ public final class PalletJackVehicle extends PathfinderMob {
         return getFirstPassenger() instanceof Player p?p:null;
     }
     @Override public Vec3 getPassengerRidingPosition(Entity passenger){
-        return position().add(0,.12,0);
+        // Preserve standing eye/foot height; riding is used only for
+        // synchronized keyboard controls and dismount, not as a seat.
+        // Positive vehicle heading is the direction the player walks.
+        double angle=Math.toRadians(getYRot());
+        return position().add(-Math.sin(angle)*OPERATOR_LEAD,0,
+                Math.cos(angle)*OPERATOR_LEAD);
     }
     @Override public void tick(){
         if(level().isClientSide())floorY=entityData.get(FLOOR_Y);
@@ -202,7 +231,7 @@ public final class PalletJackVehicle extends PathfinderMob {
             }
             player.startRiding(this);
             player.sendSystemMessage(Component.literal(
-                "Walk to steer the Pallet Jack. Right-click a same-level pallet, rack or floor. Sneak to leave."));
+                "Stand at the handle and walk to PULL the pallet behind you. Right-click same-level pallets, racks or floor. Sneak to leave."));
         }
         return InteractionResult.SUCCESS;
     }

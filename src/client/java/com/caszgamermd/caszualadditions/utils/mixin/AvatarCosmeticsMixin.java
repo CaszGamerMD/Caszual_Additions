@@ -1,5 +1,7 @@
 package com.caszgamermd.caszualadditions.utils.mixin;
 
+import com.caszgamermd.caszualadditions.racks.PalletJackAvatarPose;
+import com.caszgamermd.caszualadditions.racks.PalletJackVehicle;
 import com.caszgamermd.caszualadditions.utils.cosmetics.AppearanceRules;
 import com.caszgamermd.caszualadditions.utils.cosmetics.CosmeticPreviewState;
 import com.caszgamermd.caszualadditions.utils.cosmetics.Cosmetics;
@@ -33,6 +35,21 @@ public abstract class AvatarCosmeticsMixin {
             CallbackInfo ci
     ) {
         if (!(entity instanceof Player player)) return;
+
+        boolean pulling=player.getVehicle() instanceof PalletJackVehicle;
+        float walking=0f;
+        if(pulling){
+            PalletJackVehicle jack=(PalletJackVehicle)player.getVehicle();
+            // Account for real vehicle motion, not zeroed rider xxa/zza.
+            double dx=jack.getX()-jack.xo,dz=jack.getZ()-jack.zo;
+            walking=(float)Math.min(.62,Math.hypot(dx,dz)*3.0);
+            // Vanilla's riding animation bends both knees into a chair.
+            // The jack is a WALK-BEHIND tool, never a seat.
+            state.isPassenger=false;
+            state.isCrouching=false;
+        }
+        ((PalletJackAvatarPose)state).caszual_additions$setPullingJack(
+                pulling,walking);
 
         boolean preview = CosmeticPreviewState.active(player);
 

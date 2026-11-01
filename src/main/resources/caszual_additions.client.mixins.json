@@ -17,6 +17,7 @@
     "ScreenWidgetAccessor",
     "SpecialModelRenderersAccessor",
     "PlayerPlushieCuddleMixin",
+    "PalletJackAvatarStateMixin",
     "QuarterCreativeBreakClientMixin"
   ],
   "injectors": {

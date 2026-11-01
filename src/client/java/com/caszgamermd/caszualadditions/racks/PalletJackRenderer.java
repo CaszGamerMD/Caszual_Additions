@@ -83,7 +83,10 @@ public final class PalletJackRenderer extends EntityRenderer<
             SubmitNodeCollector collector,CameraRenderState camera){
         super.submit(state,pose,collector,camera);
         pose.pushPose();
-        pose.mulPose(Axis.YP.rotationDegrees(180-state.heading));
+        // Local -Z points BACKWARD relative to the walking player.
+        // The loaded 2x2 pallet trails the operator rather than covering
+        // their camera and blocking the path ahead.
+        pose.mulPose(Axis.YP.rotationDegrees(-state.heading));
         // Two forward fork tines, cross beam, four black wheels.
         for(float x:new float[]{-.55f,.40f}){
             piece(state.metal,state,pose,collector,x,.13f,-2.05f,.16f,.10f,2.22f);
@@ -91,12 +94,13 @@ public final class PalletJackRenderer extends EntityRenderer<
             piece(state.wheel,state,pose,collector,x-.07f,.02f,.09f,.31f,.22f,.29f);
         }
         piece(state.metal,state,pose,collector,-.70f,.20f,-.36f,1.40f,.24f,.36f);
-        // U-shaped push handle enclosing the player's rearward walking stance.
+        // Pulling handle: bar is between the trailing pallet and the
+        // standing player at +0.93 blocks forward of vehicle center.
         for(float x:new float[]{-.66f,.58f})
             piece(state.handle,state,pose,collector,x,.30f,.33f,.09f,1.00f,.11f);
         piece(state.handle,state,pose,collector,-.66f,1.24f,.33f,1.33f,.10f,.12f);
         if(state.loaded){
-            // Pallet on the FRONT of the jack, not behind or inside the rider.
+            // Pallet trails BEHIND the standing operator, on the fork tines.
             pose.pushPose();
             pose.translate(-.86f,.30f,-2.26f);
             for(int i=0;i<4;i++)
