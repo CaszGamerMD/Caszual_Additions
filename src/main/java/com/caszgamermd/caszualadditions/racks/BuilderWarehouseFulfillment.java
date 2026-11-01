@@ -386,30 +386,48 @@ public final class BuilderWarehouseFulfillment {
      */
     public static boolean cancel(ServerLevel level,BlockPos computer,BlockPos table,
             UUID owner,UUID request,BlockPos ptpPos){
-        if(!valid(level,computer)||request==null||owner==null||table==null)
-            return false;
-        if(!(level.getBlockEntity(computer) instanceof WarehouseComputerBlockEntity cfg))
-            return false;
+        return "CANCELLED".equals(cancelDetailed(level,computer,table,owner,request,ptpPos));
+    }
+
+    /** Report why a warehouse ticket cannot be cancelled without deleting
+     * real packed inventory, picker reservations, or pallet cargo.
+     * The status and the actual cancellation are determined in one call.
+     */
+    public static String cancelDetailed(ServerLevel level,BlockPos computer,BlockPos table,
+            UUID owner,UUID request,BlockPos ptpPos){
+        if(computer==null||table==null||owner==null||request==null)
+            return "INVALID_REQUEST";
+        if(!level.hasChunkAt(computer))return "WAREHOUSE_UNLOADED";
+        if(!valid(level,computer)
+                ||!(level.getBlockEntity(computer)
+                        instanceof WarehouseComputerBlockEntity cfg))
+            return "WAREHOUSE_OFFLINE";
         var pending=cfg.waitingBuilder(request);
         if(pending!=null){
             if(!pending.owner().equals(owner)||!pending.table().equals(table))
-                return false;
+                return "ORDER_MISMATCH";
             for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,computer).points())
                 if(ptp.preparationMatches(request)
-                        &&!ptp.cancelBuilderPreparation(request))return false;
-            return cfg.dequeueBuilder(request,owner,table);
+                        &&!ptp.cancelBuilderPreparation(request))
+                    return "PALLET_TRANSFER_ACTIVE";
+            return cfg.dequeueBuilder(request,owner,table)
+                    ?"CANCELLED":"ORDER_CHANGED";
         }
         for(PtpBlockEntity ptp:WarehouseNetwork.fromComputer(level,computer).points()){
             if(!ptp.builderMatches(request,owner,table,computer))continue;
             var station=tank(level,computer,ptp);
-            // Never throw away packed shulkers, partial station contents,
-            // or items owned by a Storage Golem in flight.
-            if(station==null||station.activeCount()>0||station.finishedCount()>0
-                    ||station.bufferedItems()>0)return false;
-            return ptp.cancelUnshippedBuilder(request,owner,table,computer);
+            // Never discard physical cargo just to clear the ticket.
+            if(station==null)return "STATION_UNAVAILABLE";
+            if(station.activeCount()>0||station.finishedCount()>0
+                    ||station.bufferedItems()>0)
+                return "SHULKER_PACKING_IN_PROGRESS";
+            if(!ptp.emptyCargo())return "PACKED_CARGO_PRESENT";
+            if(ptp.outputInFlight())return "PICKER_IN_FLIGHT";
+            if(ptp.hauling())return "PALLET_MOVING";
+            return ptp.cancelUnshippedBuilder(request,owner,table,computer)
+                    ?"CANCELLED":"RESERVATION_BUSY";
         }
-        // Idempotent: the ticket is no longer owned by this warehouse.
-        return false;
+        return "ORDER_NOT_FOUND";
     }
 
     /** Can release only after all worker deliveries and boxed inventory clear. */
