@@ -2403,6 +2403,27 @@ public final class StorageGolem extends PathfinderMob {
         if(nodePush){tickNodePush(level);return;}
         if(remoteCourier){tickRemoteCourier(level);return;}
         if(rackStairMover){tickRackStairs(level);return;}
+        // A cancelled Builder order takes priority over EVERY picker
+        // stage. Once items leave a rack, return those actual items
+        // before releasing the reservation; never invent a refund.
+        if(stationOrder&&outputJob){
+            PtpBlockEntity cancelled=outputPoint(level);
+            if(cancelled!=null&&cancelled.builderCancellationRequested()
+                    &&stage!=2&&stage!=3&&stage!=5){
+                if(!orderItems().isEmpty()){
+                    stage=3;
+                    routeIssue="CANCELLED: RETURNING PICKED STOCK";
+                }else if(!emptyBox.isEmpty()){
+                    stage=5;
+                    routeIssue="CANCELLED: RETURNING EMPTY SHULKER";
+                }else{
+                    stage=2;
+                    routeIssue="CANCELLED: STOPPING ORDER";
+                }
+                getNavigation().stop();
+                flatWorkRoute.clear();
+            }
+        }
         if(stage==0&&level.getBlockEntity(source) instanceof RackBlockEntity elevated
                 &&source.getY()>=home.getY()+3){
             if(!rackStairRequestChecked){
@@ -2428,27 +2449,6 @@ public final class StorageGolem extends PathfinderMob {
         // stuttering and making route recovery appear frozen.
         // Return-home jobs MUST use the flat same-Y grid router, never the
         // generic approach() navigation that can select a jump over a block.
-        // A cancelled Builder order takes priority over EVERY picker
-        // stage. Once items leave a rack, return those actual items
-        // before releasing the reservation; never invent a refund.
-        if(stationOrder&&outputJob){
-            PtpBlockEntity cancelled=outputPoint(level);
-            if(cancelled!=null&&cancelled.builderCancellationRequested()
-                    &&stage!=2&&stage!=3&&stage!=5){
-                if(!orderItems().isEmpty()){
-                    stage=3;
-                    routeIssue="CANCELLED: RETURNING PICKED STOCK";
-                }else if(!emptyBox.isEmpty()){
-                    stage=5;
-                    routeIssue="CANCELLED: RETURNING EMPTY SHULKER";
-                }else{
-                    stage=2;
-                    routeIssue="CANCELLED: STOPPING ORDER";
-                }
-                getNavigation().stop();
-                flatWorkRoute.clear();
-            }
-        }
         if(stage==6){
             // The worker remains in the warehouse, outside the Shulker
             // Station, until the whole order completes or is cancelled.
