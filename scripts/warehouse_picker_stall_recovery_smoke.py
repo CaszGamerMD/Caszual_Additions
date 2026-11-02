@@ -13,7 +13,9 @@ assert "releaseOutput(level);\n                    stage=2;" in golem
 assert "ORDER RACK EMPTY: MOVING TO NEXT STOCK" in golem
 assert "source=alternate;" in golem
 assert "&&openWalkway(level,orderAccessGoal))" in golem
-assert "if(openWalkway(level,cell))options.add(cell);" in golem
+assert "if(openWalkway(level,cell)" in golem
+assert "||!cell.equals(blockedWorkCell)" in golem
+assert "||!occupiedByWorker(level,cell)" in golem
 assert "var occupied=stationOrder&&tickCount>=avoidWorkUntil" in golem
 assert "occupiedAisle(level,target)" in golem
 assert "if(yieldForTraffic(level,next,false))return;" in golem
