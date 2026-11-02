@@ -1802,7 +1802,14 @@ public final class StorageGolem extends PathfinderMob {
         // same aisle a few ticks later; filtering them caused zero valid
         // approaches and permanent WAITING FOR REACHABLE ORDER ACCESS.
         for(BlockPos cell:choices)
-            if(openWalkway(level,cell))options.add(cell);
+            if(openWalkway(level,cell)
+                    &&(tickCount>=avoidWorkUntil
+                        ||!cell.equals(blockedWorkCell))
+                    // Only treat occupied service tiles as temporary
+                    // exclusions AFTER waiting for traffic to clear.
+                    &&(tickCount>=avoidWorkUntil
+                        ||!occupiedByWorker(level,cell)))
+                options.add(cell);
         java.util.List<BlockPos> nearest=options.stream()
                 .filter(adjacent::contains).toList();
         BlockPos best=nearest.isEmpty()?null:WarehousePreferredPath.cheapestService(
@@ -1914,6 +1921,11 @@ public final class StorageGolem extends PathfinderMob {
     private int lastWorkProgress, nextWorkPlan;
     private BlockPos blockedWorkCell=BlockPos.ZERO;
     private int avoidWorkUntil;
+    // Short-lived pedestrian right-of-way. A Golem yields to actual moving
+    // traffic before trying a different validated aisle; no teleporting,
+    // job cancellation or cargo release is used to break congestion.
+    private BlockPos trafficWaitingCell=BlockPos.ZERO;
+    private int trafficWaitingSince;
     private double lastWorkDistance=Double.POSITIVE_INFINITY;
     private int nextTerrainJumpTick;
 
@@ -1955,6 +1967,69 @@ public final class StorageGolem extends PathfinderMob {
         }
         positions.remove(blockPosition());
         return positions;
+    }
+    /** Detect only the next physical waypoint, not every other worker in
+     * the warehouse. Cached routes stay stable while traffic passes.
+     * Moving pallet crews span a full 2x2 area; entity collision alone
+     * does not necessarily keep a small pathfinding worker clear of them. */
+    private String trafficAt(ServerLevel level,BlockPos next){
+        var area=new net.minecraft.world.phys.AABB(next).inflate(.12,.15,.12);
+        if(!level.getEntitiesOfClass(StorageGolem.class,area,
+                worker->worker!=this&&!worker.isRemoved()).isEmpty())
+            return "ANOTHER WAREHOUSE GOLEM";
+        if(!level.getEntitiesOfClass(MovingPallet.class,
+                area.inflate(.32,.18,.32),carrier->!carrier.isRemoved()).isEmpty())
+            return "MOVING PALLET CREW";
+        if(!level.getEntitiesOfClass(PalletJackVehicle.class,area,
+                jack->!jack.isRemoved()).isEmpty())
+            return "PALLET JACK";
+        if(!level.getEntitiesOfClass(WarehouseForklift.class,area,
+                truck->!truck.isRemoved()).isEmpty())
+            return "WAREHOUSE FORKLIFT";
+        return "";
+    }
+    /** Yield first; if the other worker is still there after 24 ticks,
+     * forbid its aisle tile temporarily and ask the real path planner for
+     * a different corridor. Only this Golem's planned route is discarded.
+     * Keep the ticket, real cargo and task destination unchanged. */
+    private boolean yieldForTraffic(ServerLevel level,BlockPos next,boolean homeRoute){
+        String blocker=trafficAt(level,next);
+        if(blocker.isEmpty()){
+            trafficWaitingCell=BlockPos.ZERO;
+            return false;
+        }
+        if(!next.equals(trafficWaitingCell)){
+            trafficWaitingCell=next.immutable();
+            trafficWaitingSince=tickCount;
+        }
+        getNavigation().stop();
+        getMoveControl().setWantedPosition(getX(),getY(),getZ(),0);
+        if(tickCount-trafficWaitingSince<24){
+            routeIssue="YIELDING TO "+blocker;
+            return true;
+        }
+        if(homeRoute){
+            blockedHomeCell=next.immutable();
+            avoidHomeUntil=tickCount+100;
+            flatHomeRoute.clear();
+            nextHomeReplanTick=0;
+            lastHomeWaypointDistance=Double.POSITIVE_INFINITY;
+            lastHomeProgressTick=tickCount;
+        }else{
+            blockedWorkCell=next.immutable();
+            avoidWorkUntil=tickCount+100;
+            flatWorkRoute.clear();
+            nextWorkPlan=0;
+            lastWorkDistance=Double.POSITIVE_INFINITY;
+            lastWorkProgress=tickCount;
+            // If another picker occupies the chosen rack-front service
+            // tile, select a different safe front tile on the next tick.
+            if(stationOrder&&next.equals(orderAccessGoal))
+                orderAccessExpires=0;
+        }
+        trafficWaitingCell=BlockPos.ZERO;
+        routeIssue="REROUTING AROUND "+blocker;
+        return true;
     }
     private double routeDistanceSq(ServerLevel level,BlockPos position){
         double dx=position.getX()+.5-getX(),dz=position.getZ()+.5-getZ();
@@ -2030,8 +2105,11 @@ public final class StorageGolem extends PathfinderMob {
         // as impassable terrain: they repeatedly cross the same packing
         // aisle and a dynamic occupancy snapshot would invalidate the
         // whole checked route. Keep the static physical collision checks.
-            var occupied=stationOrder?java.util.Set.<BlockPos>of():
-                    occupiedAisle(level,target);
+            // Normal packing traffic may pass through an aisle. Only
+            // after a measured traffic stall do pickers treat moving
+            // workers as temporarily blocked on the next route search.
+            var occupied=stationOrder&&tickCount>=avoidWorkUntil
+                    ?java.util.Set.<BlockPos>of():occupiedAisle(level,target);
             java.util.function.Predicate<BlockPos> available=p->
                     StorageGolemReturnPath.walkable(level,p)
                     &&!occupied.contains(p)
@@ -2056,6 +2134,16 @@ public final class StorageGolem extends PathfinderMob {
         }
         if(flatWorkRoute.isEmpty())return;
         BlockPos next=flatWorkRoute.peekFirst();
+        if(!StorageGolemReturnPath.walkable(level,next)){
+            blockedWorkCell=next.immutable();
+            avoidWorkUntil=tickCount+100;
+            flatWorkRoute.clear();
+            nextWorkPlan=0;
+            getNavigation().stop();
+            routeIssue="REROUTING AROUND NEW PALLET / BLOCKED AISLE";
+            return;
+        }
+        if(yieldForTraffic(level,next,false))return;
         double distance=routeDistanceSq(level,next);
         if(distance+.02<lastWorkDistance){
             lastWorkDistance=distance;
@@ -2291,6 +2379,7 @@ public final class StorageGolem extends PathfinderMob {
             return;
         }
         BlockPos next=flatHomeRoute.peekFirst();
+        if(yieldForTraffic(level,next,true))return;
         double distance=distanceToSqr(next.getX()+.5,next.getY(),next.getZ()+.5);
         if(distance+.12<lastHomeWaypointDistance){
             lastHomeWaypointDistance=distance;
