@@ -1926,6 +1926,8 @@ public final class StorageGolem extends PathfinderMob {
     // job cancellation or cargo release is used to break congestion.
     private BlockPos trafficWaitingCell=BlockPos.ZERO;
     private int trafficWaitingSince;
+    private BlockPos trafficPullout=BlockPos.ZERO;
+    private int trafficPulloutExpires;
     private double lastWorkDistance=Double.POSITIVE_INFINITY;
     private int nextTerrainJumpTick;
 
@@ -1993,6 +1995,21 @@ public final class StorageGolem extends PathfinderMob {
      * a different corridor. Only this Golem's planned route is discarded.
      * Keep the ticket, real cargo and task destination unchanged. */
     private boolean yieldForTraffic(ServerLevel level,BlockPos next,boolean homeRoute){
+        // A temporary side-step gives an oncoming worker a whole aisle
+        // square to pass. Keep it for only one brief maneuver: don't replace
+        // the job route with a permanent target or wander off indefinitely.
+        if(!trafficPullout.equals(BlockPos.ZERO)){
+            if(tickCount>=trafficPulloutExpires
+                    ||routeDistanceSq(level,trafficPullout)<.30
+                    ||!StorageGolemReturnPath.walkable(level,trafficPullout)
+                    ||!trafficAt(level,trafficPullout).isEmpty()){
+                trafficPullout=BlockPos.ZERO;
+            }else{
+                routeIssue="PULLING ASIDE FOR WAREHOUSE TRAFFIC";
+                followTerrainStep(trafficPullout,.82);
+                return true;
+            }
+        }
         String blocker=trafficAt(level,next);
         if(blocker.isEmpty()){
             trafficWaitingCell=BlockPos.ZERO;
@@ -2028,6 +2045,30 @@ public final class StorageGolem extends PathfinderMob {
                 orderAccessExpires=0;
         }
         trafficWaitingCell=BlockPos.ZERO;
+        // Two golems approaching head-on in a 3-wide aisle cannot pass
+        // by both standing still. Try a short physically supported move
+        // to the RIGHT (or left), avoiding the contested next waypoint.
+        // If neither side is open the regular detour planner takes over.
+        BlockPos here=blockPosition();
+        int dx=next.getX()-here.getX(),dz=next.getZ()-here.getZ();
+        if(dx!=0||dz!=0){
+            Direction forward=Math.abs(dx)>=Math.abs(dz)
+                    ?dx>=0?Direction.EAST:Direction.WEST
+                    :dz>=0?Direction.SOUTH:Direction.NORTH;
+            for(Direction side:new Direction[]{
+                    forward.getClockWise(),forward.getCounterClockWise()}){
+                BlockPos pullout=here.relative(side);
+                if(StorageGolemReturnPath.walkable(level,pullout)
+                        &&trafficAt(level,pullout).isEmpty()
+                        &&WarehouseTerrain.safeRise(level,here,pullout)){
+                    trafficPullout=pullout.immutable();
+                    trafficPulloutExpires=tickCount+35;
+                    routeIssue="PULLING ASIDE FOR "+blocker;
+                    followTerrainStep(pullout,.82);
+                    return true;
+                }
+            }
+        }
         routeIssue="REROUTING AROUND "+blocker;
         return true;
     }
