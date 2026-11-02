@@ -1275,7 +1275,8 @@ public final class StorageGolem extends PathfinderMob {
             label=waitingForPlayer?"PALLET "+(haulIndex+1)+"/4 | WAITING FOR PLAYER"
                     :"PALLET "+(haulIndex+1)+"/4 | WITH PLAYER";
         }else if(playerHaul&&stage==0){
-            label="RALLY "+(haulIndex+1)+"/4 | COLLECT";
+            label="RALLY "+(haulIndex+1)+"/4 | COLLECT"
+                    +(routeIssue.isBlank()?"":" | "+routeIssue);
         }else if(playerHaul&&stage==4){
             label="CREW "+(haulIndex+1)+"/4 | IDLE";
         }else if(stage==2){
@@ -2126,6 +2127,11 @@ public final class StorageGolem extends PathfinderMob {
     }
     private void walkTo(ServerLevel level,BlockPos target,double speed){
         BlockPos feet=blockPosition();
+        // A pallet/rack lift requires the worker's CENTER to be within
+        // 0.4 blocks of its specific pickup cell. Ordinary aisle routing
+        // completes a waypoint at sqrt(0.50)=0.71 blocks, which stranded
+        // a four-Golem crew visibly beside a pallet but never lift-ready.
+        boolean precisePickup=playerHaul&&stage==0&&(groundPickup||rackPickup);
         if(!target.equals(workGoal)){
             workGoal=target.immutable();
             flatWorkRoute.clear();
@@ -2134,18 +2140,35 @@ public final class StorageGolem extends PathfinderMob {
             lastWorkProgress=tickCount;
             routeIssue="";
         }
-        while(!flatWorkRoute.isEmpty()
-                &&routeDistanceSq(level,flatWorkRoute.peekFirst())<.50){
+        // The FINAL pallet pickup waypoint cannot be discarded at the
+        // ordinary coarse tolerance; keep steering until the actual
+        // 0.4-block handoff threshold can be met.
+        while(!flatWorkRoute.isEmpty()){
+            BlockPos waypoint=flatWorkRoute.peekFirst();
+            double tolerance=precisePickup&&flatWorkRoute.size()==1
+                    &&waypoint.equals(target)?.13:.50;
+            if(routeDistanceSq(level,waypoint)>=tolerance)break;
             flatWorkRoute.removeFirst();
             lastWorkDistance=Double.POSITIVE_INFINITY;
             lastWorkProgress=tickCount;
             remoteUnreachableAttempts=0;
         }
+        // Once in the correct world block, the grid pathfinder returns an
+        // empty route because there is no NEXT cell. Complete the short
+        // physical walk to its center directly; do not repeatedly search
+        // a new path and wait at the edge of the handoff range.
+        if(precisePickup&&feet.equals(target)
+                &&routeDistanceSq(level,target)>=.13
+                &&StorageGolemReturnPath.walkable(level,target)){
+            if(yieldForTraffic(level,target,false))return;
+            routeIssue="ALIGNING AT PALLET PICKUP";
+            steerOnFloor(target,speed);
+            return;
+        }
         if(flatWorkRoute.isEmpty()&&tickCount>=nextWorkPlan){
-            // Active order-packing Golems must not treat other moving Golems
-        // as impassable terrain: they repeatedly cross the same packing
-        // aisle and a dynamic occupancy snapshot would invalidate the
-        // whole checked route. Keep the static physical collision checks.
+            // Ordinary packers tolerate crossing moving-worker traffic.
+            // After an actual traffic stall, temporarily avoid occupied
+            // cells so a congested picker can find a different route.
             // Normal packing traffic may pass through an aisle. Only
             // after a measured traffic stall do pickers treat moving
             // workers as temporarily blocked on the next route search.
