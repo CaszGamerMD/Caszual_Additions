@@ -478,6 +478,9 @@ public final class StorageGolem extends PathfinderMob {
     public boolean atRemotePickupGoal(ServerLevel level,BlockPos goal){
         return !remotePathPaused&&routeDistanceSq(level,goal)<1.30;
     }
+    void reportRemotePickupStatus(String message){
+        routeIssue=message;
+    }
     public UUID remotePickupOwner(){
         try{return UUID.fromString(haulOwner);}
         catch(IllegalArgumentException ex){return null;}
@@ -1195,8 +1198,10 @@ public final class StorageGolem extends PathfinderMob {
     public BlockPos workTarget(){return destination;}
     public String assignedOwner(){return playerHaul?haulOwner:"";}
     public String currentWork(){
-        if(remotePickup)return "WALKING EMPTY HANDED TO WRAPPED REMOTE PALLET";
-        if(remoteCourier)return remoteCourierPhase==0?"PUSHING UNWRAPPED EMPTY PALLET":"JOINING LOADED THREE-GOLEM TEAM";
+        if(remotePickup)return "WALKING EMPTY HANDED TO WRAPPED REMOTE PALLET"
+                +(routeIssue.isBlank()?"":" | "+routeIssue);
+        if(remoteCourier)return (remoteCourierPhase==0?"PUSHING UNWRAPPED EMPTY PALLET":"JOINING LOADED THREE-GOLEM TEAM")
+                +(routeIssue.isBlank()?"":" | "+routeIssue);
         if(builderPalletJob)return stage==0?"PICKING PALLET FROM DISPENSER":
                 stage==1?"DELIVERING PALLET TO BUILDER OUTPUT PTP":
                 stage==3?"RETURNING CANCELLED PALLET TO DISPENSER":
@@ -1339,7 +1344,13 @@ public final class StorageGolem extends PathfinderMob {
      * active sorting and order runners. Live cargo remains on its worker
      * until normal shelf-return recovery, never teleports to inventory. */
     public boolean recallToShelf(ServerLevel level){
-        if(remoteCourier||stage==2||holdsPallet())return false;
+        // Recall must override a paused/incomplete remote pickup. Otherwise
+        // tickRemotePickup() runs first forever and keeps restoring its goal,
+        // while courier workers were previously explicitly non-recallable.
+        if(remotePickup||remoteCourier)
+            return RemotePalletPickupCrew.abortBeforeLift(level,
+                    remotePickup?remotePickupMission:remoteCarrierId);
+        if(stage==2||holdsPallet())return false;
         if(playerHaul)cancelPendingPickup(level);
         if(haulJob&&!playerHaul)cancelHaul(level);
         if(outputJob)releaseOutput(level);
@@ -1350,6 +1361,47 @@ public final class StorageGolem extends PathfinderMob {
         nextHomeReplanTick=0;
         return true;
     }
+    /** Only the mission coordinator calls this after checking that the
+     * shared carrier has NOT lifted its pallet. Preserve all four original
+     * shelf identities, never fabricate a worker token or cargo stack. */
+    void finishAbortedRemotePickup(ServerLevel level){
+        if(!remotePickup&&!remoteCourier)return;
+        if(remoteCourier&&!remoteFresh.isEmpty()){
+            // This is the single real replacement pallet. Put it on the
+            // ground once rather than silently voiding it during recall.
+            Containers.dropItemStack(level,getX(),getY(),getZ(),
+                    remoteFresh.copy());
+            remoteFresh=ItemStack.EMPTY;
+            syncRemoteFreshVisual();
+        }
+        remotePickup=false;
+        remoteCourier=false;
+        remotePickupMission=null;
+        remotePickupCourier=null;
+        remoteCarrierId=null;
+        remotePathPaused=false;
+        remotePauseReason="";
+        remoteUnreachableAttempts=0;
+        remoteCourierPhase=0;
+        stage=2;
+        // The courier's outbound phase clears playerHaul. Restore the
+        // physical return-home corridor tickets for every crew member.
+        playerHaul=true;
+        haulJob=true;
+        routeIssue="REMOTE PICKUP CANCELLED; RETURNING TO SHELF";
+        getNavigation().stop();
+        flatWorkRoute.clear();
+        flatHomeRoute.clear();
+        nextHomeReplanTick=0;
+        workGoal=BlockPos.ZERO;
+        resetCourierRoute();
+        setChangedRemoteRecall();
+    }
+    private void setChangedRemoteRecall(){
+        syncPalletAction();
+        if(!isCustomNameVisible())setCustomNameVisible(true);
+    }
+
     public boolean loadPallet(ItemStack stack,NonNullList<ItemStack> stock){
         if(!playerHaul||haulIndex!=0||!carryingPallet.isEmpty()
                 ||stack.isEmpty()||stock.size()!=216)return false;
@@ -1986,7 +2038,15 @@ public final class StorageGolem extends PathfinderMob {
     private String trafficAt(ServerLevel level,BlockPos next){
         var area=new net.minecraft.world.phys.AABB(next).inflate(.12,.15,.12);
         if(!level.getEntitiesOfClass(StorageGolem.class,area,
-                worker->worker!=this&&!worker.isRemoved()).isEmpty())
+                worker->worker!=this&&!worker.isRemoved()
+                    // Remote crew mates have independent, reserved slots.
+                    // Counting them as a foreign obstacle contradicts
+                    // occupiedAisle(), causing perpetual mutual yielding.
+                    &&!(remotePickup&&remotePickupMission!=null
+                        &&((worker.remotePickup
+                                &&remotePickupMission.equals(worker.remotePickupMission))
+                            ||(worker.remoteCourier
+                                &&remotePickupMission.equals(worker.remoteCarrierId))))).isEmpty())
             return "ANOTHER WAREHOUSE GOLEM";
         if(!level.getEntitiesOfClass(MovingPallet.class,
                 area.inflate(.32,.18,.32),carrier->!carrier.isRemoved()).isEmpty())
@@ -2550,8 +2610,7 @@ public final class StorageGolem extends PathfinderMob {
         if(!(level() instanceof ServerLevel level))return;
         // An assigned forklift operator ignores ordinary warehouse recall:
         // only the controller's explicit dismiss command sends it home.
-        if(!remoteCourier&&!remotePickup&&!nodePush&&!forkliftDriver
-                &&!forkliftEscort&&!builderPalletJob)
+        if(!nodePush&&!forkliftDriver&&!forkliftEscort&&!builderPalletJob)
             checkPendingRecall(level);
         // Status strings from task transitions should not leak into
         // player-visible nameplates for 10 ticks when debug is disabled.
