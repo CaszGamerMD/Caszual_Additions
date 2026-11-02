@@ -23,11 +23,11 @@ assert "remotePickupMission.equals(other.remotePickupMission)" in worker
 assert "if(remotePickup&&other.remoteCourier" in worker
 assert "remotePickupMission.equals(other.remoteCarrierId)" in worker
 assert "remotePickupRally,remotePickupTarget,haulIndex" in worker
-assert "individualGoal(BlockPos rally,BlockPos target," in squad
-assert "rally.offset(0,0,lane)" in squad
-assert "rally.offset(lane,0,0)" in squad
-assert "individualGoal(aisle,leader.remotePickupTarget(),index)" in squad
-assert "StorageGolemReturnPath.steps(from,center," in squad
+assert "individualGoal(ServerLevel level,BlockPos rally," in squad
+assert "rally.relative(outward,depth)" in squad
+assert ".relative(across,width)" in squad
+assert "individualGoal(level,aisle,leader.remotePickupTarget(),index)" in squad
+assert "WarehousePreferredPath.leg(from,anchor," in squad
 assert "worker.beginRemotePickup(" in dispatch
 assert "level.addFreshEntity(worker)" in dispatch
 assert "level.addFreshEntity(carrier)" not in dispatch
