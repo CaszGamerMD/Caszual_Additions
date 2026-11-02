@@ -476,7 +476,7 @@ public final class StorageGolem extends PathfinderMob {
     /** Physically reached the assigned dry rally tile (ice is solid floor).
      * A paused worker never counts as a successfully assembled lift slot. */
     public boolean atRemotePickupGoal(ServerLevel level,BlockPos goal){
-        return !remotePathPaused&&routeDistanceSq(level,goal)<1.30;
+        return !remotePathPaused&&routeDistanceSq(level,goal)<.16;
     }
     void reportRemotePickupStatus(String message){
         routeIssue=message;
@@ -521,7 +521,7 @@ public final class StorageGolem extends PathfinderMob {
             routeIssue="WAITING FOR CLEAR THREE-GOLEM SERVICE AISLE";
             getNavigation().stop();return;
         }
-        if(routeDistanceSq(level,goal)>1.30){
+        if(routeDistanceSq(level,goal)>.13){
             walkTo(level,goal,1.05);
             // Preserve real route diagnostics (blocked chunks, no path)
             // instead of hiding every failure under a "walking" label.
@@ -2199,7 +2199,8 @@ public final class StorageGolem extends PathfinderMob {
         // 0.4 blocks of its specific pickup cell. Ordinary aisle routing
         // completes a waypoint at sqrt(0.50)=0.71 blocks, which stranded
         // a four-Golem crew visibly beside a pallet but never lift-ready.
-        boolean precisePickup=playerHaul&&stage==0&&(groundPickup||rackPickup);
+        boolean precisePickup=playerHaul&&stage==0
+                &&(groundPickup||rackPickup||remotePickup);
         if(!target.equals(workGoal)){
             workGoal=target.immutable();
             flatWorkRoute.clear();
