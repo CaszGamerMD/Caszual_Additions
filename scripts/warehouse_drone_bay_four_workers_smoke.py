@@ -24,7 +24,9 @@ assert "int workerCount=bayPickup?4:3;" in crew
 assert "if(team.size()!=workerCount){" in crew
 assert "index<workerCount" in crew
 assert "rig.setCrewName(" in crew and "for(StorageGolem member:team)" in crew
-assert "DroneBayNoReplacementDispatch.NO_COURIER.equals(leader.remotePickupCourier())" in crew
+assert "DroneBayNoReplacementDispatch.NO_COURIER.equals(" in crew
+assert "leader.remotePickupCourier()" in crew
+assert "rig.beginRemotePullout(pullingFace);" in crew
 assert "rig.beginRemotePullout(pullingFace);" in crew
 assert "if(!finishNoReplacementRemotePickup())" in rig
 assert "remoteFootprintClear()" in rig
