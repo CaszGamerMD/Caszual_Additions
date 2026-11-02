@@ -107,6 +107,9 @@ public final class MovingPallet extends PathfinderMob {
     private boolean remoteReplacementPlaced,remoteOldLegacy;
     private Direction remoteOldFacing=Direction.NORTH;
     private BlockPos remoteAisle=BlockPos.ZERO,remoteMoveAside=BlockPos.ZERO;
+    // Real-world pulling direction selected by the crew at the pallet.
+    // Null for old saves, which retain the original safe reroute logic.
+    private Direction remotePullSide;
     private static final EntityDataAccessor<Integer> CREW_SIZE=SynchedEntityData.defineId(MovingPallet.class,EntityDataSerializers.INT);
     private Direction deliveryFacing=Direction.NORTH;
     private String deliveryFailure="";
@@ -264,6 +267,56 @@ public final class MovingPallet extends PathfinderMob {
         deliveryFailure="THREE GOLEMS LIFTED TARGET; MOVING ASIDE";
         return true;
     }
+    /** The warehouse crew has attached to the ACTUAL pallet footprint.
+     * It pulls the whole load out along the selected open face before
+     * changing to return/empty-pallet-exchange mode. */
+    public void beginRemotePullout(Direction outward){
+        if(deliveryMode!=5||outward==null)return;
+        remotePullSide=outward;
+        remoteMoveAside=BlockPos.ZERO;
+        remoteFloorRoute.clear();
+        nextRemotePlan=0;
+        deliveryFailure="PULLING WRAPPED PALLET INTO OPEN AISLE";
+    }
+    /** Check the complete moving 2x2 pallet rather than demanding a
+     * 3x3 square around its center. Four dry supporting corners and all
+     * three cargo-height layers must remain free of blocks and fluids.
+     * This permits a tight 2-wide aisle but never moves through walls. */
+    private boolean canPullLoaded(ServerLevel level,Vec3 candidate){
+        for(double dx:new double[]{-.89,.89})
+            for(double dz:new double[]{-.89,.89}){
+                double x=candidate.x+dx,z=candidate.z+dz;
+                BlockPos feet=BlockPos.containing(x,candidate.y+.12,z);
+                if(!StorageGolemReturnPath.walkable(level,feet))return false;
+                for(int dy=1;dy<=2;dy++){
+                    BlockPos overhead=feet.above(dy);
+                    if(!level.hasChunkAt(overhead)
+                            ||!level.getFluidState(overhead).isEmpty()
+                            ||!level.getBlockState(overhead)
+                                .getCollisionShape(level,overhead).isEmpty())
+                        return false;
+                }
+            }
+        return true;
+    }
+    /** Slow visible pull (not a jump/teleport). Refuse a move if the
+     * next swept section is obstructed; the older route planner can then
+     * search another verified full-width corridor. */
+    private boolean pullLoadedOneStep(ServerLevel level){
+        if(remotePullSide==null)return false;
+        Vec3 delta=new Vec3(remotePullSide.getStepX()*.105,0,
+                remotePullSide.getStepZ()*.105);
+        Vec3 next=position().add(delta);
+        if(!canPullLoaded(level,next)
+                ||!level.noCollision(this,getBoundingBox().move(delta)))
+            return false;
+        double oldX=getX(),oldZ=getZ();
+        getNavigation().stop();
+        move(MoverType.SELF,delta);
+        return (getX()-oldX)*(getX()-oldX)
+                +(getZ()-oldZ)*(getZ()-oldZ)>.002;
+    }
+
     /** The recovered pallet cannot occupy its former 2x2 ground cells.
      * Compare REAL footprint geometry, not a guessed root+1 midpoint:
      * EAST/WEST/NORTH/SOUTH orientations have different signed cells.
@@ -1190,9 +1243,28 @@ public final class MovingPallet extends PathfinderMob {
         if(remoteFootprintClear()){
             getNavigation().stop();
             remoteFloorRoute.clear();
+            remotePullSide=null;
+            if(DroneBayNoReplacementDispatch.NO_COURIER.equals(remoteCourierId)){
+                // A four-person pickup with NO replacement pallet now
+                // begins its warehouse return only after the original
+                // load is actually clear of the 2x2 starting footprint.
+                if(!finishNoReplacementRemotePickup())
+                    deliveryFailure="WAITING: FOUR-WORKER PULL HANDOFF";
+                return;
+            }
             deliveryMode=6;
             deliveryFailure="OLD PALLET CLEAR; COURIER MAY PLACE REPLACEMENT";
             return;
+        }
+        if(remotePullSide!=null){
+            if(pullLoadedOneStep(level)){
+                deliveryFailure="PULLING WRAPPED PALLET INTO OPEN AISLE";
+                return;
+            }
+            // Never tunnel through a crate. A sideways or alternate
+            // verified route can still be attempted without losing cargo.
+            remotePullSide=null;
+            deliveryFailure="STRAIGHT EXTRACTION BLOCKED; FINDING SAFE DETOUR";
         }
         if(remoteMoveAside.equals(BlockPos.ZERO)
                 ||!safePlatformFloor(level,remoteMoveAside)){
@@ -1753,7 +1825,8 @@ public final class MovingPallet extends PathfinderMob {
                     :deliveryMode==3?"4 GOLEMS | RETURNING TO WAREHOUSE"
                     :deliveryMode==1?"4 GOLEMS | DELIVERING TO RACK"
                     :"4 GOLEMS | PLACING PALLET")
-                :deliveryMode==5?"3 GOLEMS | MOVING ASIDE"
+                :deliveryMode==5?(DroneBayNoReplacementDispatch.NO_COURIER.equals(remoteCourierId)
+                    ?"4 GOLEMS | PULLING PALLET OUT":"3 GOLEMS | PULLING PALLET OUT")
                 :deliveryMode==6?"3 GOLEMS | COURIER HANDOFF"
                 :liftTicks<12?"4 GOLEMS | LIFTING"
                 :waitingForPlayer?"4 GOLEMS | WAITING FOR PLAYER"
@@ -1897,6 +1970,7 @@ public final class MovingPallet extends PathfinderMob {
         if(remoteCourierId!=null)out.putString("remote_courier_uuid",remoteCourierId.toString());
         out.store("remote_aisle",BlockPos.CODEC,remoteAisle);
         out.store("remote_move_aside",BlockPos.CODEC,remoteMoveAside);
+        if(remotePullSide!=null)out.putString("remote_pull_side",remotePullSide.getName());
         for(int i=0;i<4;i++){
             out.store("shelf_"+i,BlockPos.CODEC,shelves[i]);
             out.putString("crew_name_"+i,crewNames[i]);
@@ -1939,6 +2013,9 @@ public final class MovingPallet extends PathfinderMob {
         remoteOldLegacy=in.getBooleanOr("remote_old_legacy",false);
         remoteAisle=in.read("remote_aisle",BlockPos.CODEC).orElse(BlockPos.ZERO);
         remoteMoveAside=in.read("remote_move_aside",BlockPos.CODEC).orElse(BlockPos.ZERO);
+        try{remotePullSide=Direction.valueOf(in.getStringOr("remote_pull_side","")
+                .toUpperCase(java.util.Locale.ROOT));}
+        catch(IllegalArgumentException ex){remotePullSide=null;}
         try{remoteOldFacing=Direction.valueOf(in.getStringOr("remote_old_facing","north")
                 .toUpperCase(java.util.Locale.ROOT));}
         catch(IllegalArgumentException ex){remoteOldFacing=Direction.NORTH;}
