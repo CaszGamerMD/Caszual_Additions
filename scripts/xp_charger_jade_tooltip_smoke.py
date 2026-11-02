@@ -48,5 +48,5 @@ assert 'in.read("item",ItemStack.CODEC)' in charger
 assert 'PREFIX+"slots"' in source
 assert 'PREFIX+"slotName"' in source
 assert 'PREFIX+"slotDamage"' in source
-assert "Slot "+''+"(i+1)" in client
+assert 'String name=data.getStringOr(PREFIX+"slotName"+i,"Item");' in client
 print("PASS: Jade/WAILA block tooltip synced from server with repair durability, percent, tank XP, empty/waiting/complete states")
