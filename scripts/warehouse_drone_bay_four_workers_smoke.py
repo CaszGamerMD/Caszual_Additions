@@ -18,13 +18,16 @@ assert "empty pallet" not in bay.lower()
 assert "sourceMagazine" not in bay and "withdraw" not in bay
 assert "beginRemoteCourier(" not in bay
 # Fourth worker must walk to a distinct, safe rally cell: normal trio unchanged.
-assert "if(workerIndex==3)" in crew
+assert "int width=workerIndex%2;" in crew
+assert "int depth=workerIndex/2;" in crew
 assert "int workerCount=bayPickup?4:3;" in crew
-assert "if(team.size()!=workerCount)return;" in crew
+assert "if(team.size()!=workerCount){" in crew
 assert "index<workerCount" in crew
 assert "rig.setCrewName(" in crew and "for(StorageGolem member:team)" in crew
 assert "DroneBayNoReplacementDispatch.NO_COURIER.equals(leader.remotePickupCourier())" in crew
-assert "rig.finishNoReplacementRemotePickup()" in crew
+assert "rig.beginRemotePullout(face(level,aisle,leader.remotePickupTarget()));" in crew
+assert "if(!finishNoReplacementRemotePickup())" in rig
+assert "remoteFootprintClear()" in rig
 assert "for(StorageGolem worker:team)worker.discard();" in crew
 # Once loaded, the four-worker carrier returns directly without a courier.
 assert 'entityData.set(CREW_SIZE,4);\n        deliveryFailure="FOUR GOLEMS RETURNING' in rig
