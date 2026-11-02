@@ -21,7 +21,8 @@ assert "Math.abs(dy)<.85" in g
 # Regression: a worker .65 blocks from its assigned service-cell center
 # was previously marked route-complete at sqrt(.50)=.707, even though
 # it cannot lift until its center is within sqrt(.16)=.4.
-assert "boolean precisePickup=playerHaul&&stage==0&&(groundPickup||rackPickup);" in g
+assert "boolean precisePickup=playerHaul&&stage==0" in g
+assert "&&(groundPickup||rackPickup||remotePickup);" in g
 assert "double tolerance=precisePickup&&flatWorkRoute.size()==1" in g
 assert "&&waypoint.equals(target)?.13:.50;" in g
 assert "if(routeDistanceSq(level,waypoint)>=tolerance)break;" in g
