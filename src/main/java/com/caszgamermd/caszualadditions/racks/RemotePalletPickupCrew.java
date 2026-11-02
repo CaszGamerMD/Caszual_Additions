@@ -221,6 +221,10 @@ public final class RemotePalletPickupCrew {
                 member.remotePickupIndex(),member.golemName());
         if(!bayPickup&&level.getEntity(leader.remotePickupCourier()) instanceof StorageGolem courier)
             rig.setCrewName(3,courier.golemName());
+        Direction pullingFace=face(level,aisle,leader.remotePickupTarget());
+        // The source pallet blocks disappear during the atomic handoff,
+        // so resolve its actual oriented pickup face BEFORE removing them.
+        // The loaded platform must then slide outward in this direction.
         // The loaded rig must start where the real pallet actually sits,
         // then PULL the load through a checked aisle. Spawning it at the
         // 4-6-block staging waypoint effectively teleported the pallet
@@ -246,7 +250,7 @@ public final class RemotePalletPickupCrew {
         // The rig now owns the one original pallet and 216 real slots.
         // It physically pulls into the 2-wide aisle BEFORE any exchange
         // placement or no-replacement warehouse return begins.
-        rig.beginRemotePullout(face(level,aisle,leader.remotePickupTarget()));
+        rig.beginRemotePullout(pullingFace);
         for(StorageGolem worker:team)worker.discard();
     }
 
