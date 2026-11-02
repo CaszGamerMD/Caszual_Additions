@@ -29,3 +29,28 @@ The ORDER LIST screen shows how many stations are connected, how many empty shul
 Golems approach rack and station workstations from a standable aisle tile, not by routing through a rack's open metal frame. Home/work routes try alternate level paths around temporarily occupied aisle waypoints.
 
 This is an initial warehouse-order implementation. Verify a small order and full/partial shulker handoff in-game before routing valuable inventory through an unattended station.
+
+
+### Warehouse traffic and deadlock recovery
+
+Storage Golems keep their jobs and carried stock when a route is temporarily
+blocked. Before entering the next planned aisle square, a worker checks for
+another Storage Golem, a moving pallet crew, a pallet jack or a forklift:
+
+- It **yields for 24 ticks** instead of pushing against an occupied square.
+- If the obstruction persists, it temporarily excludes that aisle square
+  for **100 ticks** and replans a collision-checked route around it.
+- When an adjacent side square has genuine supported footing and is clear,
+  the Golem may **pull aside briefly** to allow opposing workers through.
+- A newly placed pallet or rack block invalidates the old waypoint
+  immediately rather than trapping the picker in a repeated walk command.
+- An order picker can reselect a different reachable **front-of-rack**
+  service square when another picker occupies its preferred one.
+- Returning workers use the same right-of-way system on their way back to
+  Storage Golem Shelves.
+
+None of these traffic maneuvers teleports items, treats pallets as stairs,
+or discards a reserved warehouse order. A truly sealed one-block corridor
+still needs a real passing space or obstruction removal. Enable **Golem
+Statuses** on the warehouse computer to see `YIELDING`,
+`PULLING ASIDE`, or `REROUTING` when diagnosing a blockage.
