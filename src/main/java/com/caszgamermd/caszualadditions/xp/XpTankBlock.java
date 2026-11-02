@@ -3,6 +3,12 @@ package com.caszgamermd.caszualadditions.xp;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import java.util.List;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import org.jspecify.annotations.Nullable;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -109,6 +115,31 @@ public final class XpTankBlock extends Block implements EntityBlock {
 
     private static boolean connects(BlockGetter level, BlockPos pos) {
         return level.getBlockState(pos).getBlock() instanceof XpTankBlock;
+    }
+
+    /** Preserve the XP in the dropped tank item, not in free XP orbs.
+     * Vanilla loot conditions still decide whether a block item drops. */
+    @Override protected List<ItemStack> getDrops(BlockState state,LootParams.Builder builder){
+        List<ItemStack> drops=super.getDrops(state,builder);
+        BlockEntity source=builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        if(source instanceof XpTankBlockEntity tank)
+            for(ItemStack stack:drops)
+                if(stack.is(XpBlocks.XP_TANK))tank.saveToItem(stack);
+        return drops;
+    }
+    /** The single carried tank owns exactly the XP it contained when mined. */
+    @Override public void setPlacedBy(Level level,BlockPos pos,BlockState state,
+            @Nullable LivingEntity placer,ItemStack stack){
+        super.setPlacedBy(level,pos,state,placer,stack);
+        if(!level.isClientSide()&&level.getBlockEntity(pos) instanceof XpTankBlockEntity tank){
+            tank.setStored(XpTankBlockEntity.itemXp(stack));
+            level.scheduleTick(pos,this,1);
+        }
+    }
+    @Override protected ItemStack getCloneItemStack(LevelReader level,BlockPos pos,
+            BlockState state,boolean includeData){
+        return level.getBlockEntity(pos) instanceof XpTankBlockEntity tank
+                ?tank.asItem():new ItemStack(XpBlocks.XP_TANK);
     }
 
     @Override
