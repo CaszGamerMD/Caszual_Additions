@@ -65,5 +65,7 @@ assert "corner[i].visible=i<state.crewSize;" in model
 assert "state.crewSize=entity.displayedCrewSize()" in rigview
 assert "state.pushingEmptyPallet" in golemview
 assert "if(remoteCourier){tickRemoteCourier(level);return;}" in courier
-assert "if(remoteCourier||stage==2||holdsPallet())return false;" in courier
+assert "if(remotePickup||remoteCourier)" in courier
+assert "return RemotePalletPickupCrew.abortBeforeLift(level," in courier
+assert "if(stage==2||holdsPallet())return false;" in courier
 print("PASS: three-Golem remote lift, upright one-Golem courier, saved phases, physical placement, regroup and one cargo owner")
