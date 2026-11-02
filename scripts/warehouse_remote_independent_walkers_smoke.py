@@ -32,8 +32,9 @@ assert 'remotePickup=in.getBooleanOr("remote_pickup_worker",false)' in worker
 assert "if(remotePickup){tickRemotePickup(level);return;}" in worker
 assert "walkTo(level,goal,1.05)" in worker
 assert "leader.remotePickupIndex()!=0" in rally
-assert "threeWideAisle(level,aisle)" in rally
+assert "compactAisle(level,aisle,leader.remotePickupTarget())" in rally
 assert "worker.atRemotePickupGoal(level,goal)" in rally
+assert "rig.beginRemotePullout(face(level,aisle,leader.remotePickupTarget()));" in rally
 assert "StorageGroundPalletTransfer.wrappedController" in rally
 # Shared rig first exists AT the wrapped target; only then 216 slots move.
 assert "rig.setUUID(id);" in rally
