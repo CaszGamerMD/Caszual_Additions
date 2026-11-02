@@ -328,6 +328,8 @@ public final class StorageGolem extends PathfinderMob {
         return true;
     }
     public boolean remoteCourierActive(){return remoteCourier;}
+    /** The persisted mission UUID shared by the courier and pulling crew. */
+    public UUID remoteCarrierId(){return remoteCarrierId;}
     /** Real carrying stage, not a lingering client-visible name.
      * Stage 4 is idle/awaiting orders and MUST have arms at the sides. */
     public boolean carryingPalletPose(){
@@ -516,7 +518,7 @@ public final class StorageGolem extends PathfinderMob {
             routeIssue="WAITING FOR WRAPPED TARGET PALLET";return;
         }
         BlockPos goal=RemotePalletPickupCrew.individualGoal(
-                remotePickupRally,remotePickupTarget,haulIndex);
+                level,remotePickupRally,remotePickupTarget,haulIndex);
         if(!StorageGolemReturnPath.walkable(level,goal)){
             routeIssue="WAITING FOR CLEAR THREE-GOLEM SERVICE AISLE";
             getNavigation().stop();return;
