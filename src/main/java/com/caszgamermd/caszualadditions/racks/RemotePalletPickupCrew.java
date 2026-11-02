@@ -106,6 +106,28 @@ public final class RemotePalletPickupCrew {
         return rally.offset(lane,0,0);
     }
 
+    /** Cancel an entire pre-lift remote mission atomically. Recalling just
+     * one member must never leave three workers waiting for a missing team
+     * member, or let the still-active courier lose the one replacement
+     * pallet item. A loaded rig already owns all four identities, so it
+     * must use the MovingPallet's cargo-safe return flow instead. */
+    public static boolean abortBeforeLift(ServerLevel level,UUID mission){
+        if(mission==null)return false;
+        if(level.getEntity(mission) instanceof MovingPallet rig&&rig.loaded())
+            return false;
+        List<StorageGolem> members=new ArrayList<>();
+        for(var entity:level.getAllEntities()){
+            if(!(entity instanceof StorageGolem worker))continue;
+            if(worker.remotePickupActive()&&mission.equals(worker.remotePickupMission())
+                    ||worker.remoteCourierActive()&&mission.equals(worker.remoteCarrierId()))
+                members.add(worker);
+        }
+        if(members.isEmpty())return false;
+        for(StorageGolem worker:members)
+            worker.finishAbortedRemotePickup(level);
+        return true;
+    }
+
     /** Called by worker zero after THREE exchange workers or FOUR bay workers
      * have reached their fixed external service cells. Nothing is merged
      * while any member is still travelling or cannot be found/reloaded. */
@@ -134,40 +156,70 @@ public final class RemotePalletPickupCrew {
                     ||!id.equals(worker.remotePickupMission()))continue;
             team.add(worker);
         }
-        if(team.size()!=workerCount)return;
+        if(team.size()!=workerCount){
+            leader.reportRemotePickupStatus("PICKUP TEAM: "+team.size()+"/"+
+                    workerCount+" LOADED; WAITING FOR MISSING WORKERS");
+            return;
+        }
         BlockPos aisle=leader.remotePickupRally();
-        if(!threeWideAisle(level,aisle))return;
+        if(!threeWideAisle(level,aisle)){
+            leader.reportRemotePickupStatus("PICKUP BLOCKED: RALLY AISLE CHANGED");
+            return;
+        }
+        int readyCount=0;
+        String waiting="";
         for(int index=0;index<workerCount;index++){
             final int slot=index;
             StorageGolem worker=team.stream()
                     .filter(w->w.remotePickupIndex()==slot).findFirst().orElse(null);
-            if(worker==null)return;
+            if(worker==null){
+                leader.reportRemotePickupStatus("PICKUP BLOCKED: MISSING WORKER "+index);
+                return;
+            }
             BlockPos goal=individualGoal(aisle,leader.remotePickupTarget(),index);
-            if(!worker.atRemotePickupGoal(level,goal))return;
+            if(worker.atRemotePickupGoal(level,goal))readyCount++;
+            else waiting=worker.golemName()+" -> "+goal.toShortString();
+        }
+        if(readyCount!=workerCount){
+            leader.reportRemotePickupStatus("PICKUP TEAM "+readyCount+"/"+workerCount+
+                    " READY; WAITING "+waiting);
+            return;
         }
         if(StorageGroundPalletTransfer.wrappedController(level,
-                leader.remotePickupTarget())==null)return;
+                leader.remotePickupTarget())==null){
+            leader.reportRemotePickupStatus("PICKUP BLOCKED: WRAPPED TARGET MISSING");
+            return;
+        }
 
         MovingPallet rig=RackContent.MOVING_PALLET_TYPE.create(level,
                 EntitySpawnReason.EVENT);
-        if(rig==null)return;
+        if(rig==null){
+            leader.reportRemotePickupStatus("PICKUP BLOCKED: CANNOT CREATE CARRIER");
+            return;
+        }
         rig.setUUID(id);
         if(!rig.prepareRecoveredRemote(leader.remotePickupOwner(),
                 leader.remotePickupHomes(),leader.remotePickupCourier(),
-                leader.remotePickupTarget(),leader.remotePickupWarehouse()))
+                leader.remotePickupTarget(),leader.remotePickupWarehouse())){
+            leader.reportRemotePickupStatus("PICKUP BLOCKED: CARRIER SETUP REJECTED");
             return;
+        }
         for(StorageGolem member:team)rig.setCrewName(
                 member.remotePickupIndex(),member.golemName());
         if(!bayPickup&&level.getEntity(leader.remotePickupCourier()) instanceof StorageGolem courier)
             rig.setCrewName(3,courier.golemName());
         rig.setPos(aisle.getX()+.5,aisle.getY(),aisle.getZ()+.5);
-        if(!level.addFreshEntity(rig))return;
+        if(!level.addFreshEntity(rig)){
+            leader.reportRemotePickupStatus("PICKUP BLOCKED: CARRIER SPAWN REJECTED");
+            return;
+        }
         // Existing transaction copies 216 slots into the ONE rig then
         // removes the ground pallet. On failure it never destroys source;
         // return to the same independent workers and retry later.
         if(!StorageGroundPalletTransfer.liftForRemoteExchange(level,
                 leader.remotePickupTarget(),rig)){
             rig.discard();
+            leader.reportRemotePickupStatus("PICKUP BLOCKED: PALLET HANDOFF REJECTED");
             return;
         }
         if(DroneBayNoReplacementDispatch.NO_COURIER.equals(leader.remotePickupCourier())
