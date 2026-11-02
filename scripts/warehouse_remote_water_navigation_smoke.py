@@ -27,7 +27,7 @@ assert 'remotePathPaused=in.getBooleanOr("remote_path_paused",false)' in worker
 assert "public boolean resumeRemotePath()" in worker
 assert "player.getItemInHand(hand).is(RackContent.STORAGE_SCANNER_ITEM)" in worker
 assert "if(remotePathPaused){" in worker
-assert "return !remotePathPaused&&routeDistanceSq(level,goal)<1.30;" in worker
+assert "return !remotePathPaused&&routeDistanceSq(level,goal)<.16;" in worker
 assert "if(remotePickup){tickRemotePickup(level);return;}" in worker
 assert "if(remoteCourier){tickRemoteCourier(level);return;}" in worker
 assert "worker.atRemotePickupGoal(level,goal)" in team
