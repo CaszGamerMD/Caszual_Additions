@@ -1558,17 +1558,25 @@ public final class StorageGolem extends PathfinderMob {
                             other->other.playerHaul&&other.groundPickup
                                     &&other.stage==0&&other.source.equals(source)
                                     &&other.haulOwner.equals(haulOwner));
-                    boolean ready=crew.size()==4;
-                    int mask=0;
+                    int mask=0,arrived=0;
                     for(StorageGolem member:crew){
                         mask=WarehouseTeamProgress.arrive(mask,member.haulIndex);
                         BlockPos dock=member.approach(level,source);
-                        if(!member.closeToPalletFace(level,source,dock))ready=false;
+                        if(member.closeToPalletFace(level,source,dock))arrived++;
                     }
-                    if(ready&&WarehouseTeamProgress.complete(mask)
-                            &&StorageGroundPalletTransfer.lift(level,source,this)){
+                    boolean ready=crew.size()==4&&arrived==4
+                            &&WarehouseTeamProgress.complete(mask);
+                    if(!ready){
+                        // The leader sees a real team-readiness count instead
+                        // of silently retrying pickup forever while one
+                        // worker waits just outside the .4-block radius.
+                        routeIssue="WAITING FOR TEAM: "+arrived+"/4 AT PICKUP";
+                    }else if(StorageGroundPalletTransfer.lift(level,source,this)){
+                        routeIssue="";
                         if(!StoragePalletCrew.formMovingPallet(level,crew,ownerId))
                             for(StorageGolem worker:crew)worker.startFollowing();
+                    }else{
+                        routeIssue="PALLET HANDOFF RETRY: CHECK WRAP / CARGO";
                     }
                 }
                 return;
