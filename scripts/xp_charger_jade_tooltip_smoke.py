@@ -34,12 +34,19 @@ assert "tanks.size()*XpTankBlockEntity.CAPACITY" in source
 assert "XpRepair.hasMending(item)" in source
 assert "Math.round(100f*remaining/max)" in client
 assert 'int needed=(damage+1)/2' in client
-assert "Math.min(4,(s.getDamageValue()+1)/2)" in repair
+assert "Math.min(4,(stack.getDamageValue()+1)/2)" in repair
+assert "for(int i=0;i<charger.getContainerSize();i++)" in repair
 assert "charger.setChanged()" in repair
 for name in ["empty","item","durability","complete","no_mending","no_tank",
              "no_xp","repairing","xp_needed","xp"]:
     key=f"jade.caszual_additions.xp_charger.{name}"
     assert key in lang
     assert key in client
-assert "ItemStack item=ItemStack.EMPTY" in charger
+assert "public static final int SLOTS=3;" in charger
+assert "NonNullList.withSize(SLOTS,ItemStack.EMPTY)" in charger
+assert 'in.read("item",ItemStack.CODEC)' in charger
+assert 'PREFIX+"slots"' in source
+assert 'PREFIX+"slotName"' in source
+assert 'PREFIX+"slotDamage"' in source
+assert "Slot "+''+"(i+1)" in client
 print("PASS: Jade/WAILA block tooltip synced from server with repair durability, percent, tank XP, empty/waiting/complete states")

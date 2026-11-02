@@ -25,6 +25,31 @@ public final class XpChargerJadeTooltip implements IBlockComponentProvider {
             CompoundTag data=accessor.getServerData();
             if(!data.getBooleanOr(PREFIX+"present",false))return;
 
+            int slots=data.getIntOr(PREFIX+"slots",1);
+            int used=data.getIntOr(PREFIX+"occupied",0);
+            if(slots>1){
+                tooltip.add(Component.literal("XP Charger: "+used+"/3 item docks")
+                        .withStyle(ChatFormatting.AQUA));
+                for(int i=0;i<3;i++){
+                    if(!data.getBooleanOr(PREFIX+"slot"+i,false)){
+                        tooltip.add(Component.literal("Slot "+(i+1)+": Empty")
+                                .withStyle(ChatFormatting.GRAY));
+                        continue;
+                    }
+                    String name=data.getStringOr(PREFIX+"slotName"+i,"Item");
+                    int max=data.getIntOr(PREFIX+"slotMax"+i,0);
+                    int damage=data.getIntOr(PREFIX+"slotDamage"+i,0);
+                    int remain=Math.max(0,max-damage);
+                    tooltip.add(Component.literal("Slot "+(i+1)+": "+name+
+                            " — "+remain+"/"+max+" durability")
+                            .withStyle(damage==0?ChatFormatting.GREEN:ChatFormatting.GRAY));
+                }
+                tooltip.add(Component.translatable("jade.caszual_additions.xp_charger.xp",
+                        data.getIntOr(PREFIX+"stored",0),
+                        data.getIntOr(PREFIX+"capacity",0)).withStyle(ChatFormatting.AQUA));
+                return;
+            }
+
             int stored=data.getIntOr(PREFIX+"stored",0);
             int capacity=data.getIntOr(PREFIX+"capacity",0);
             if(!data.getBooleanOr(PREFIX+"item",false)){

@@ -7,12 +7,12 @@ Caszual Additions has four connected XP devices plus one independent, portable *
 | Device | Purpose |
 | --- | --- |
 | **XP Tank** | Stores experience in a linked network; each tank entity has a raw XP-point capacity of **30,970**, corresponding to the XP needed for level 100 from level 0 |
-| **XP Charger** | Accepts a damaged Mending item and uses nearby network XP for repairs |
+| **XP Charger** | Holds and repairs up to **three** damaged Mending items at once using connected tank XP |
 | **XP Drain** | A floor-level device that takes XP from players above it and feeds the network |
 | **XP Shower** | Delivers available stored XP to a player underneath; right-click to start or stop |
 | **XP Collector** | Place it on the ground; vacuums nearby dropped XP orbs (6-block radius) and stores up to 30,970 points. Right-click with an empty hand to transfer its XP to yourself; sneak-right-click to read its fill. When broken, the collector keeps its stored XP for re-placement. |
 
-Tanks have visible proportional fill states and connect with neighboring XP components.
+Tanks have visible proportional fill states and connect with neighboring XP components. **Breaking an XP Tank preserves that tank's own stored XP in the dropped tank item.** Replacing it restores that exact amount (up to 30,970 points). Other connected tanks keep their own storage; an individual tank drop does not duplicate XP from the linked network.
 
 ## Recipes
 
@@ -70,7 +70,7 @@ G = glass, B = experience bottle, I = iron ingot. Place the collector on a solid
 
 ## Charger operation
 
-Use a damaged Mending item on an empty charger to place it inside. Use the charger again to retrieve the item. An on-screen status shows the item and connected XP network levels.
+Right-click with a damaged Mending item to occupy one of the three charger docks. All three repair independently from the same connected XP network. Empty-hand right-click retrieves a finished item first (or an unfinished one if none are ready); **sneak-right-click with an empty hand retrieves all three**. Hopper insertion can fill empty repair slots and extraction can take finished tools. The action bar and Jade show the occupied slots and tank XP.
 
 ## Shower operation
 

@@ -49,6 +49,19 @@ public final class XpChargerJadePlugin implements IWailaPlugin {
             if(!(accessor.getBlockEntity() instanceof XpChargerBlockEntity charger)
                     ||!(accessor.getLevel() instanceof ServerLevel level))return;
 
+            // Keep legacy first-item keys for older Jade clients; the
+            // numbered keys expose all three independent repair docks.
+            data.putInt(PREFIX+"slots",charger.getContainerSize());
+            data.putInt(PREFIX+"occupied",charger.occupied());
+            for(int slot=0;slot<charger.getContainerSize();slot++){
+                ItemStack in=charger.getItem(slot);
+                data.putBoolean(PREFIX+"slot"+slot,!in.isEmpty());
+                if(in.isEmpty())continue;
+                data.putString(PREFIX+"slotName"+slot,in.getHoverName().getString());
+                data.putInt(PREFIX+"slotMax"+slot,in.getMaxDamage());
+                data.putInt(PREFIX+"slotDamage"+slot,in.getDamageValue());
+                data.putBoolean(PREFIX+"slotMending"+slot,XpRepair.hasMending(in));
+            }
             ItemStack item=charger.item();
             data.putBoolean(PREFIX+"present",true);
             data.putBoolean(PREFIX+"item",!item.isEmpty());
