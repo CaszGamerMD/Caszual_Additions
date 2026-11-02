@@ -98,8 +98,10 @@ public final class RemotePalletPickupCrew {
         Direction outward=face(level,rally,target);
         int width=workerIndex%2;
         int depth=workerIndex/2;
+        Direction across=(outward==Direction.NORTH||outward==Direction.EAST)
+                ?outward.getClockWise():outward.getCounterClockWise();
         return rally.relative(outward,depth)
-                .relative(outward.getClockWise(),width);
+                .relative(across,width);
     }
     public static boolean compactAisle(ServerLevel level,BlockPos rally,
             BlockPos target){
@@ -220,13 +222,10 @@ public final class RemotePalletPickupCrew {
             leader.reportRemotePickupStatus("PICKUP BLOCKED: PALLET HANDOFF REJECTED");
             return;
         }
-        if(DroneBayNoReplacementDispatch.NO_COURIER.equals(leader.remotePickupCourier())
-                &&!rig.finishNoReplacementRemotePickup()){
-            // The original ground pallet belongs to this rig already.
-            // On an unexpected transition failure retain its inventory
-            // and route home rather than destroying or cloning it.
-            rig.returnToWarehouse(level,leader.remotePickupWarehouse());
-        }
+        // The rig now owns the one original pallet and 216 real slots.
+        // It physically pulls into the 2-wide aisle BEFORE any exchange
+        // placement or no-replacement warehouse return begins.
+        rig.beginRemotePullout(face(level,aisle,leader.remotePickupTarget()));
         for(StorageGolem worker:team)worker.discard();
     }
 
