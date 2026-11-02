@@ -120,6 +120,27 @@ public final class RemotePalletPickupCrew {
         return true;
     }
 
+    /** Recall an entire pre-lift mission, not one worker at a time.
+     * A materialized carrier already owns its cargo/worker identities and
+     * is deliberately not canceled by this empty-handed recovery path. */
+    public static boolean abortBeforeLift(ServerLevel level,UUID mission){
+        if(mission==null)return false;
+        if(level.getEntity(mission) instanceof MovingPallet)return false;
+        List<StorageGolem> members=new ArrayList<>();
+        for(var entity:level.getAllEntities()){
+            if(!(entity instanceof StorageGolem worker))continue;
+            if((worker.remotePickupActive()
+                    &&mission.equals(worker.remotePickupMission()))
+                    ||(worker.remoteCourierActive()
+                    &&mission.equals(worker.remoteCarrierId())))
+                members.add(worker);
+        }
+        if(members.isEmpty())return false;
+        for(StorageGolem member:members)
+            member.finishAbortedRemotePickup(level);
+        return true;
+    }
+
     /** Called by worker zero after THREE exchange workers or FOUR bay workers
      * have reached their fixed external service cells. Nothing is merged
      * while any member is still travelling or cannot be found/reloaded. */
