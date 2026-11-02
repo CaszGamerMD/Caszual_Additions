@@ -18,6 +18,22 @@ assert "double dx=getX()-(service.getX()+.5);" in g
 assert "double dz=getZ()-(service.getZ()+.5);" in g
 assert "dx*dx+dz*dz<=.16" in g
 assert "Math.abs(dy)<.85" in g
+# Regression: a worker .65 blocks from its assigned service-cell center
+# was previously marked route-complete at sqrt(.50)=.707, even though
+# it cannot lift until its center is within sqrt(.16)=.4.
+assert "boolean precisePickup=playerHaul&&stage==0&&(groundPickup||rackPickup);" in g
+assert "double tolerance=precisePickup&&flatWorkRoute.size()==1" in g
+assert "&&waypoint.equals(target)?.13:.50;" in g
+assert "if(routeDistanceSq(level,waypoint)>=tolerance)break;" in g
+assert "if(precisePickup&&feet.equals(target)" in g
+assert "&&routeDistanceSq(level,target)>=.13" in g
+assert 'routeIssue="ALIGNING AT PALLET PICKUP";' in g
+assert "steerOnFloor(target,speed);" in g
+assert "if(yieldForTraffic(level,target,false))return;" in g
+assert 'routeIssue="WAITING FOR TEAM: "+arrived+"/4 AT PICKUP";' in g
+assert 'routeIssue="PALLET HANDOFF RETRY: CHECK WRAP / CARGO";' in g
+assert .13 < .16 < .65**2 < .50
+
 assert "WarehouseTerrain.standingY(level,service)" in g
 assert g.count("if(!closeToPalletFace(level,source,near)){")==3
 assert "second.closeToPalletFace(level,source,second.approach(level,source))" in g
