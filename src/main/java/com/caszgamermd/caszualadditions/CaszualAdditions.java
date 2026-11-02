@@ -14,6 +14,7 @@ import com.caszgamermd.caszualadditions.quarter.QuarterBlocks;
 import com.caszgamermd.caszualadditions.unbreakable.UnbreakableContent;
 import com.caszgamermd.caszualadditions.xp.XpBlockEntities;
 import com.caszgamermd.caszualadditions.xp.XpBlocks;
+import com.caszgamermd.caszualadditions.enchantprinter.EnchantmentPrinterContent;
 import com.caszgamermd.caszualadditions.utils.CaszUtils;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
@@ -37,6 +38,7 @@ public final class CaszualAdditions implements ModInitializer {
         XpBlocks.initialize();
 
         XpBlockEntities.initialize();
+        EnchantmentPrinterContent.initialize();
         UnbreakableContent.initialize();
         PlayerPlushies.initialize();
         PalletContent.initialize();

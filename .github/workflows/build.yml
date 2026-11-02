@@ -231,6 +231,10 @@ jobs:
             build/gametest/
             build/reports/
           if-no-files-found: ignore
+      - name: Check Enchantment Printer UI and portable library
+        run: |
+          python3 scripts/enchantment_printer_smoke.py
+          python3 scripts/enchantment_printer_portable_smoke.py
       - run: gradle build --stacktrace
       - name: Upload mod JAR
         if: success()

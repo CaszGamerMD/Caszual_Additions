@@ -1,6 +1,10 @@
 package com.caszgamermd.caszualadditions;
 
 import com.caszgamermd.caszualadditions.autovending.CraftVendingContent;
+import com.caszgamermd.caszualadditions.enchantprinter.EnchantmentPrinterContent;
+import com.caszgamermd.caszualadditions.enchantprinter.EnchantmentPrinterScreen;
+import com.caszgamermd.caszualadditions.enchantprinter.EnchantmentPrinterStatePayload;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import com.caszgamermd.caszualadditions.mail.MailContent;
 import com.caszgamermd.caszualadditions.mail.MailScreen;
 import com.caszgamermd.caszualadditions.autovending.CraftVendingScreen;
@@ -90,6 +94,13 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         MenuScreens.register(RackContent.SHULKER_STATION_MENU, ShulkerStationScreen::new);
         MenuScreens.register(RackContent.PALLET_STACK_MENU, StackOfPalletsScreen::new);
         MenuScreens.register(FunBarrelContent.MENU, FunBarrelScreen::new);
+        MenuScreens.register(EnchantmentPrinterContent.MENU, EnchantmentPrinterScreen::new);
+        ClientPlayNetworking.registerGlobalReceiver(EnchantmentPrinterStatePayload.TYPE,(payload,context)->{
+            context.client().execute(()->{
+                if(context.client().gui.screen() instanceof EnchantmentPrinterScreen screen)
+                    screen.updateState(payload.state());
+            });
+        });
         MenuScreens.register(CraftVendingContent.MENU, CraftVendingScreen::new);
         MenuScreens.register(MailContent.MAILBOX_MENU, MailScreen::new);
         MenuScreens.register(MailContent.PO_BOX_MENU, MailScreen::new);
