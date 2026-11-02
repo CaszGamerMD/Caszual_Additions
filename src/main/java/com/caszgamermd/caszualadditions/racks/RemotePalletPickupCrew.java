@@ -22,109 +22,99 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class RemotePalletPickupCrew {
     private RemotePalletPickupCrew(){}
 
-    /** Find a genuine 3x3, SAME-Y loading aisle outside the old 2x2
-     * footprint. One individually walking worker stands in each column. */
+    /**
+     * Choose the closest genuinely reachable pallet FACE for a compact
+     * two-column pulling team. The first pair attaches in the row beside
+     * the pallet; the second pair waits one row farther out. This works in
+     * a 2-wide aisle, even when a 3x3 rally box will not fit behind the load.
+     * A separate clear pallet-width withdrawal is checked again by the
+     * loaded MovingPallet before it physically moves out of the corner.
+     */
     public static BlockPos rally(ServerLevel level,BlockPos target,
             BlockPos from){
         if(!level.hasChunkAt(target))return BlockPos.ZERO;
         BlockState state=level.getBlockState(target);
         if(!(state.getBlock() instanceof PalletBlock))return BlockPos.ZERO;
-        int minX=Integer.MAX_VALUE,maxX=Integer.MIN_VALUE;
-        int minZ=Integer.MAX_VALUE,maxZ=Integer.MIN_VALUE;
-        for(int part=0;part<4;part++){
-            BlockPos tile=PalletBlock.partPos(target,part,state);
-            minX=Math.min(minX,tile.getX());maxX=Math.max(maxX,tile.getX());
-            minZ=Math.min(minZ,tile.getZ());maxZ=Math.max(maxZ,tile.getZ());
-        }
+        BlockPos[] bounds=bounds(target,state);
+        int minX=bounds[0].getX(),maxX=bounds[1].getX();
+        int minZ=bounds[0].getZ(),maxZ=bounds[1].getZ();
         BlockPos best=BlockPos.ZERO;
         double score=Double.POSITIVE_INFINITY;
-        for(int gap=2;gap<=6;gap++){
+        for(int gap=1;gap<=5;gap++){
             BlockPos[] candidates={
                     new BlockPos(minX,target.getY(),minZ-gap),
                     new BlockPos(maxX+gap,target.getY(),minZ),
                     new BlockPos(minX,target.getY(),maxZ+gap),
                     new BlockPos(minX-gap,target.getY(),minZ)
             };
-            for(BlockPos center:candidates){
-                if(!threeWideAisle(level,center))continue;
-                // All three independent destinations must stay inside
-                // the checked aisle on the correct side of the pallet.
-                boolean good=true;
-                for(int index=0;index<3;index++)
-                    if(!StorageGolemReturnPath.walkable(level,
-                            individualGoal(center,target,index))){
-                        good=false;break;
-                    }
-                if(!good)continue;
-                // Straight distance may select a staging area on the
-                // wrong side of a solid rack. Prefer a REAL walking route
-                // whenever the warehouse/source is in loaded range.
-                double distance=center.distSqr(from);
-                if(from.getY()==center.getY()
-                        &&Math.abs(from.getX()-center.getX())<=36
-                        &&Math.abs(from.getZ()-center.getZ())<=36){
-                    var route=StorageGolemReturnPath.steps(from,center,
-                            pos->StorageGolemReturnPath.walkable(level,pos));
-                    if(route==null)continue;
-                    distance=route.size()*route.size();
-                }
-                if(distance<score){score=distance;best=center;}
+            for(BlockPos anchor:candidates){
+                if(!compactAisle(level,anchor,target))continue;
+                // Requiring all four destinations to be physically
+                // supported avoids the previously common "3 of 4 arrived"
+                // deadlock. Once one square of this contiguous 2x2 is
+                // reachable the remainder are connected without crossing
+                // the pallet.
+                var path=WarehousePreferredPath.leg(from,anchor,
+                        p->StorageGolemReturnPath.walkable(level,p),
+                        BlockPos.ZERO,
+                        p->WarehouseTerrain.standingY(level,p));
+                if(path==null)continue;
+                double cost=path.size()+gap*.3;
+                if(cost<score){score=cost;best=anchor;}
             }
         }
         return best;
     }
+    private static BlockPos[] bounds(BlockPos target,BlockState state){
+        int minX=Integer.MAX_VALUE,minZ=Integer.MAX_VALUE;
+        int maxX=Integer.MIN_VALUE,maxZ=Integer.MIN_VALUE;
+        for(int part=0;part<4;part++){
+            BlockPos tile=PalletBlock.partPos(target,part,state);
+            minX=Math.min(minX,tile.getX());maxX=Math.max(maxX,tile.getX());
+            minZ=Math.min(minZ,tile.getZ());maxZ=Math.max(maxZ,tile.getZ());
+        }
+        return new BlockPos[]{
+                new BlockPos(minX,target.getY(),minZ),
+                new BlockPos(maxX,target.getY(),maxZ)};
+    }
+    /** Resolve side against the real, possibly rotated 2x2 footprint,
+     * not the controller corner. Otherwise a western or southern pallet
+     * can be mistaken for a different face. */
+    private static Direction face(ServerLevel level,BlockPos rally,BlockPos target){
+        BlockState state=level.getBlockState(target);
+        if(!(state.getBlock() instanceof PalletBlock))return Direction.NORTH;
+        BlockPos[] corners=bounds(target,state);
+        int minX=corners[0].getX(),maxX=corners[1].getX();
+        int minZ=corners[0].getZ(),maxZ=corners[1].getZ();
+        if(rally.getX()<minX)return Direction.WEST;
+        if(rally.getX()>maxX)return Direction.EAST;
+        if(rally.getZ()<minZ)return Direction.NORTH;
+        return Direction.SOUTH;
+    }
+    /** Four independent, non-overlapping 2x2 positions; 3 pickup
+     * workers use slots 0-2 and bay/no-replacement uses all four. */
+    public static BlockPos individualGoal(ServerLevel level,BlockPos rally,
+            BlockPos target,int workerIndex){
+        Direction outward=face(level,rally,target);
+        int width=workerIndex%2;
+        int depth=workerIndex/2;
+        return rally.relative(outward,depth)
+                .relative(outward.getClockWise(),width);
+    }
+    public static boolean compactAisle(ServerLevel level,BlockPos rally,
+            BlockPos target){
+        if(rally.equals(BlockPos.ZERO))return false;
+        for(int worker=0;worker<4;worker++)
+            if(!StorageGolemReturnPath.walkable(level,
+                    individualGoal(level,rally,target,worker)))return false;
+        return true;
+    }
+    /** Compatibility helper retained for existing 3x3 diagnostics. */
     public static boolean threeWideAisle(ServerLevel level,BlockPos center){
         if(center.equals(BlockPos.ZERO))return false;
         for(int x=-1;x<=1;x++)for(int z=-1;z<=1;z++)
             if(!StorageGolemReturnPath.walkable(level,center.offset(x,0,z)))
                 return false;
-        return true;
-    }
-
-    public static BlockPos individualGoal(BlockPos rally,BlockPos target,
-            int workerIndex){
-        // Parking Bay pickups have FOUR real golems with no replacement
-        // courier. The fourth takes the aisle cell directly BEHIND the
-        // center worker so it doesn't overlap any of the three positions
-        // used by normal REMOTE exchange. The full 3x3 safe aisle covers
-        // all four positions without allowing a golem inside the pallet.
-        if(workerIndex==3){
-            int dx=rally.getX()-target.getX(),dz=rally.getZ()-target.getZ();
-            if(Math.abs(dx)>Math.abs(dz))
-                return rally.offset(Integer.signum(dx),0,0);
-            return rally.offset(0,0,Integer.signum(dz));
-        }
-        // Each worker gets a distinct, FIXED floor tile across the outer
-        // pallet aisle, perpendicular to the target-facing direction.
-        // The old unconditional X offset placed east/west teams in a
-        // single-file line, sometimes pushing the nearest worker into
-        // the wrapped 2x2 pallet or another worker's route.
-        int lane=workerIndex-1;
-        if(Math.abs(rally.getX()-target.getX())
-                >Math.abs(rally.getZ()-target.getZ()))
-            return rally.offset(0,0,lane);
-        return rally.offset(lane,0,0);
-    }
-
-    /** Cancel an entire pre-lift remote mission atomically. Recalling just
-     * one member must never leave three workers waiting for a missing team
-     * member, or let the still-active courier lose the one replacement
-     * pallet item. A loaded rig already owns all four identities, so it
-     * must use the MovingPallet's cargo-safe return flow instead. */
-    public static boolean abortBeforeLift(ServerLevel level,UUID mission){
-        if(mission==null)return false;
-        if(level.getEntity(mission) instanceof MovingPallet rig&&rig.loaded())
-            return false;
-        List<StorageGolem> members=new ArrayList<>();
-        for(var entity:level.getAllEntities()){
-            if(!(entity instanceof StorageGolem worker))continue;
-            if(worker.remotePickupActive()&&mission.equals(worker.remotePickupMission())
-                    ||worker.remoteCourierActive()&&mission.equals(worker.remoteCarrierId()))
-                members.add(worker);
-        }
-        if(members.isEmpty())return false;
-        for(StorageGolem worker:members)
-            worker.finishAbortedRemotePickup(level);
         return true;
     }
 
@@ -162,7 +152,7 @@ public final class RemotePalletPickupCrew {
             return;
         }
         BlockPos aisle=leader.remotePickupRally();
-        if(!threeWideAisle(level,aisle)){
+        if(!compactAisle(level,aisle,leader.remotePickupTarget())){
             leader.reportRemotePickupStatus("PICKUP BLOCKED: RALLY AISLE CHANGED");
             return;
         }
@@ -176,7 +166,7 @@ public final class RemotePalletPickupCrew {
                 leader.reportRemotePickupStatus("PICKUP BLOCKED: MISSING WORKER "+index);
                 return;
             }
-            BlockPos goal=individualGoal(aisle,leader.remotePickupTarget(),index);
+            BlockPos goal=individualGoal(level,aisle,leader.remotePickupTarget(),index);
             if(worker.atRemotePickupGoal(level,goal))readyCount++;
             else waiting=worker.golemName()+" -> "+goal.toShortString();
         }
@@ -208,7 +198,15 @@ public final class RemotePalletPickupCrew {
                 member.remotePickupIndex(),member.golemName());
         if(!bayPickup&&level.getEntity(leader.remotePickupCourier()) instanceof StorageGolem courier)
             rig.setCrewName(3,courier.golemName());
-        rig.setPos(aisle.getX()+.5,aisle.getY(),aisle.getZ()+.5);
+        // The loaded rig must start where the real pallet actually sits,
+        // then PULL the load through a checked aisle. Spawning it at the
+        // 4-6-block staging waypoint effectively teleported the pallet
+        // into the aisle, bypassing any physical extraction.
+        BlockState oldState=level.getBlockState(leader.remotePickupTarget());
+        BlockPos[] footprint=bounds(leader.remotePickupTarget(),oldState);
+        rig.setPos((footprint[0].getX()+footprint[1].getX()+1)*.5,
+                leader.remotePickupTarget().getY(),
+                (footprint[0].getZ()+footprint[1].getZ()+1)*.5);
         if(!level.addFreshEntity(rig)){
             leader.reportRemotePickupStatus("PICKUP BLOCKED: CARRIER SPAWN REJECTED");
             return;
