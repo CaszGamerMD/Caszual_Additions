@@ -44,7 +44,7 @@ assert "if(xp<=0)return;" in tank
 assert "public ItemStack asItem()" in tank
 assert "protected List<ItemStack> getDrops(BlockState state,LootParams.Builder builder)" in tankblock
 assert "super.getDrops(state,builder)" in tankblock
-assert "if(stack.is(XpBlocks.XP_TANK))tank.saveToItem(stack)" in tankblock
+assert "if(stack.is(XpBlocks.XP_TANK.asItem()))tank.saveToItem(stack)" in tankblock
 assert "tank.setStored(XpTankBlockEntity.itemXp(stack))" in tankblock
 assert "level.scheduleTick(pos,this,1)" in tankblock
 assert "getCloneItemStack(LevelReader level,BlockPos pos," in tankblock
