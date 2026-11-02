@@ -50,7 +50,8 @@ assert ">=7" in entity
 assert "for (Direction direction : Direction.values())" in network
 assert "instanceof XpDrainBlockEntity" in network
 assert "XpNetwork.extract" in read("XpRepair.java")
-assert "charger.item()" in charger
+assert "charger.getItem(i)" in charger
+assert "charger.getContainerSize()" in charger
 assert "collector.asItem()" in collector
 for name,min_parts in (("xp_drain",14),("xp_charger",18)):
     data=json.loads((assets/f"models/block/{name}.json").read_text())
