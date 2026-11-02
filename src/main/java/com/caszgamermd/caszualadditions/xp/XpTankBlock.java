@@ -124,7 +124,7 @@ public final class XpTankBlock extends Block implements EntityBlock {
         BlockEntity source=builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
         if(source instanceof XpTankBlockEntity tank)
             for(ItemStack stack:drops)
-                if(stack.is(XpBlocks.XP_TANK))tank.saveToItem(stack);
+                if(stack.is(XpBlocks.XP_TANK.asItem()))tank.saveToItem(stack);
         return drops;
     }
     /** The single carried tank owns exactly the XP it contained when mined. */
