@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Pallet Balloon initial vehicle and speed/seat persistence contract."""
 from pathlib import Path
+import struct
+import zlib
 root=Path(__file__).resolve().parents[1]
 main=root/"src/main/java/com/caszgamermd/caszualadditions/racks"
 balloon=(main/"PalletBalloon.java").read_text()
@@ -31,8 +33,43 @@ assert "StreamCodec.composite(" in payload and "PalletBalloonPilotPayload::new" 
 assert "ClientPlayNetworking.send(new PalletBalloonPilotPayload(forward,turn,lift))" in client
 assert "textures/entity/pallet_balloon.png" in renderer_texture
 assert "caszual_additions:item/pallet_balloon" in item_model
-assert entity_texture.exists() and entity_texture.read_bytes()[:8] == bytes.fromhex("89504e470d0a1a0a")
-assert item_texture.exists() and item_texture.read_bytes()[:8] == bytes.fromhex("89504e470d0a1a0a")
+def validate_png(path, expected_size):
+    """Validate PNG chunk CRCs and the complete compressed image stream."""
+    data=path.read_bytes()
+    signature=bytes.fromhex("89504e470d0a1a0a")
+    assert data.startswith(signature), f"{path}: invalid PNG signature"
+    offset=8
+    width=height=None
+    compressed=bytearray()
+    saw_end=False
+    while offset < len(data):
+        assert offset+12 <= len(data), f"{path}: truncated PNG chunk"
+        length=struct.unpack_from(">I",data,offset)[0]
+        chunk_type=data[offset+4:offset+8]
+        chunk_end=offset+8+length
+        assert chunk_end+4 <= len(data), f"{path}: truncated {chunk_type!r} chunk"
+        chunk_data=data[offset+8:chunk_end]
+        expected_crc=struct.unpack_from(">I",data,chunk_end)[0]
+        actual_crc=zlib.crc32(chunk_type+chunk_data)&0xffffffff
+        assert actual_crc==expected_crc, f"{path}: {chunk_type!r} CRC mismatch"
+        if chunk_type==b"IHDR":
+            assert length==13, f"{path}: invalid IHDR length"
+            width,height=struct.unpack_from(">II",chunk_data,0)
+        elif chunk_type==b"IDAT":
+            compressed.extend(chunk_data)
+        elif chunk_type==b"IEND":
+            assert length==0, f"{path}: invalid IEND"
+            saw_end=True
+            offset=chunk_end+4
+            break
+        offset=chunk_end+4
+    assert saw_end and offset==len(data), f"{path}: missing IEND or trailing bytes"
+    assert (width,height)==expected_size, f"{path}: expected {expected_size}, got {(width,height)}"
+    assert compressed, f"{path}: missing image data"
+    zlib.decompress(bytes(compressed))
+
+validate_png(entity_texture,(360,360))
+validate_png(item_texture,(64,64))
 assert "PalletBalloonNetworking.initialize()" in initializer
 assert "tryBalloonPickup(level, pos, state, player)" in pallet
 assert "createCreativeCopyStack()" in pallet
