@@ -35,7 +35,9 @@ public final class RackContent {
     public static EntityType<StorageGolem> STORAGE_GOLEM_TYPE;
     public static EntityType<MovingPallet> MOVING_PALLET_TYPE;
     public static EntityType<WarehouseForklift> FORKLIFT_TYPE;
-    public static EntityType<PalletJackVehicle> PALLET_JACK_VEHICLE_TYPE;\n    public static EntityType<PalletBalloon> PALLET_BALLOON_TYPE;\n    public static Item PALLET_BALLOON_ITEM;
+    public static EntityType<PalletJackVehicle> PALLET_JACK_VEHICLE_TYPE;
+    public static EntityType<PalletBalloon> PALLET_BALLOON_TYPE;
+    public static Item PALLET_BALLOON_ITEM;
     public static Item FORKLIFT_ITEM,FORKLIFT_CONTROLLER;
     public static Block RACK_COMPUTER;
     public static BlockEntityType<WarehouseComputerBlockEntity> COMPUTER_ENTITY;
