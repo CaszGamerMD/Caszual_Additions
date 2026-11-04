@@ -10,12 +10,14 @@ client=(root/"src/client/java/com/caszgamermd/caszualadditions/racks/PalletBallo
 model=(root/"src/client/java/com/caszgamermd/caszualadditions/racks/PalletBalloonModel.java").read_text()
 assert "getPassengers().size()<4" in balloon
 assert "pallets.add(ItemStack.EMPTY)" in balloon
+assert "double[][] seats={{-1.72,1.35,-1.72}" in balloon
 assert "for(int i=0;i<4;i++)" in balloon
 assert 'out.store("pallet_"+i,ItemStack.CODEC,pallets.get(i))' in balloon
 assert 'in.read("pallet_"+i,ItemStack.CODEC)' in balloon
 assert "return (2.0+18.0*t)/20.0;" in balloon
 assert "Math.clamp((getY()-64.0)/236.0,0.0,1.0)" in balloon
 assert "PALLET_BALLOON_TYPE" in reg and "PALLET_BALLOON_ITEM" in reg
+assert ".sized(5.2f,7.8f).build(balloonKey)" in reg
 assert "EntityType.Builder.<PalletBalloon>of" in reg
 assert "player.startRiding(balloon)" in item
 assert "keyJump.isDown()?1:0" in client
