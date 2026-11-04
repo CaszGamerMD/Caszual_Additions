@@ -1,0 +1,32 @@
+name: Pallet Balloon Test Build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  balloon-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.7.0'
+      - name: Verify Pallet Balloon feature contract
+        run: python3 scripts/pallet_balloon_smoke.py
+      - name: Compile mod JAR
+        run: gradle build --stacktrace
+      - name: Upload Pallet Balloon test JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: caszual-additions-pallet-balloon-0.1.16
+          path: build/libs/caszual-additions-0.1.16.jar
+          if-no-files-found: error
