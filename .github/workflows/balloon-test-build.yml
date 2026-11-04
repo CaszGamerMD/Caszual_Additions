@@ -23,8 +23,8 @@ jobs:
       - name: Verify Pallet Balloon feature contract
         run: python3 scripts/pallet_balloon_smoke.py
       - name: Compile mod JAR
-        run: gradle build --stacktrace
-      - name: Upload Pallet Balloon test JAR
+        run: gradle build --stacktrace 2>&1 | tee balloon-build.log
+      - name: Upload compiler diagnostics\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: pallet-balloon-build-diagnostics\n          path: balloon-build.log\n          if-no-files-found: ignore\n      - name: Upload Pallet Balloon test JAR
         uses: actions/upload-artifact@v4
         with:
           name: caszual-additions-pallet-balloon-0.1.16
