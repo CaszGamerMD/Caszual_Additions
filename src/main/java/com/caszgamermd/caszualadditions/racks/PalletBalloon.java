@@ -178,8 +178,8 @@ public final class PalletBalloon extends PathfinderMob {
             return InteractionResult.SUCCESS;
         }
         if(getPassengers().size()>=4){
-            if(!level().isClientSide())player.displayClientMessage(
-                    Component.literal("Pallet Balloon basket is full (4 players)."),true);
+            if(!level().isClientSide())player.sendSystemMessage(
+                    Component.literal("Pallet Balloon basket is full (4 players)."));
             return InteractionResult.SUCCESS;
         }
         if(!level().isClientSide())player.startRiding(this);
