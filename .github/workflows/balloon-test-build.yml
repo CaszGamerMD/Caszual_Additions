@@ -24,7 +24,14 @@ jobs:
         run: python3 scripts/pallet_balloon_smoke.py
       - name: Compile mod JAR
         run: gradle build --stacktrace 2>&1 | tee balloon-build.log
-      - name: Upload compiler diagnostics\n        if: always()\n        uses: actions/upload-artifact@v4\n        with:\n          name: pallet-balloon-build-diagnostics\n          path: balloon-build.log\n          if-no-files-found: ignore\n      - name: Upload Pallet Balloon test JAR
+      - name: Upload compiler diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pallet-balloon-build-diagnostics
+          path: balloon-build.log
+          if-no-files-found: ignore
+      - name: Upload Pallet Balloon test JAR
         uses: actions/upload-artifact@v4
         with:
           name: caszual-additions-pallet-balloon-0.1.16
