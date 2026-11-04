@@ -107,8 +107,8 @@ public final class PalletBalloon extends PathfinderMob {
             // independently receives normal movement intent from the pilot.
             if(getFirstPassenger() instanceof Player pilot){
                 Vec3 intent=input;
-                if(intent.lengthSqr()<1.0e-5)intent=new Vec3(pilot.getLastClientMoveIntent().x,0,
-                        pilot.getLastClientMoveIntent().z);
+                if(intent.lengthSqr()<1.0e-5)intent=new Vec3(input.x,0,
+                        input.z);
                 serverForward=(float)Math.clamp(intent.z,-1,1);
                 serverTurn=(float)Math.clamp(intent.x,-1,1);
                 serverLift=pilot.isSprinting()?-.55f:(pilot.isJumping()?.55f:0f);
@@ -159,7 +159,7 @@ public final class PalletBalloon extends PathfinderMob {
                 &&blockItem.getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock){
             if(!level().isClientSide()){
                 if(palletCount()>=4||!addPallet(held)){
-                    player.displayClientMessage(Component.literal("Pallet Balloon basket is full (4 pallets)."),true);
+                    player.sendSystemMessage(Component.literal("Pallet Balloon basket is full (4 pallets)."),true);
                 }else{
                     if(!player.getAbilities().instabuild)held.shrink(1);
                     player.displayClientMessage(Component.literal("Pallet loaded into the balloon basket."),true);
@@ -203,7 +203,7 @@ public final class PalletBalloon extends PathfinderMob {
     }
     @Override protected void addAdditionalSaveData(ValueOutput out){
         super.addAdditionalSaveData(out);
-        out.store("damage",net.minecraft.nbt.Tag.TAG_INT,damage);
+        out.store("damage",com.mojang.serialization.Codec.INT,damage);
         for(int i=0;i<4;i++)if(!pallets.get(i).isEmpty())
             out.store("pallet_"+i,ItemStack.CODEC,pallets.get(i));
     }
