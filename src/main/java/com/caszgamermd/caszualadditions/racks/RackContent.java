@@ -293,7 +293,7 @@ public final class RackContent {
                 CaszualAdditions.id("pallet_balloon"));
         PALLET_BALLOON_TYPE=Registry.register(BuiltInRegistries.ENTITY_TYPE,balloonKey,
                 EntityType.Builder.<PalletBalloon>of(PalletBalloon::new,MobCategory.MISC)
-                        .sized(2.8f,5.8f).build(balloonKey));
+                        .sized(5.2f,7.8f).build(balloonKey));
         FabricDefaultAttributeRegistry.register(PALLET_BALLOON_TYPE,PalletBalloon.attributes());
         RackComputerNet.initialize();
     }
