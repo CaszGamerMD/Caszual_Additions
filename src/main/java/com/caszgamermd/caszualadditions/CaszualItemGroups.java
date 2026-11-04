@@ -72,7 +72,7 @@ public final class CaszualItemGroups {
                                     IndustrialPaintContent.BRUSH,
                                     IndustrialPaintContent.REMOVER))add.accept(paintItem);
                             add.accept(RackContent.PORTABLE_WRAPPER);
-                            add.accept(RackContent.PALLET_JACK);
+                            add.accept(RackContent.PALLET_JACK);\n                            add.accept(RackContent.PALLET_BALLOON_ITEM);
                             add.accept(com.caszgamermd.caszualadditions.enchantprinter.EnchantmentPrinterContent.ITEM);
                             add.accept(RackContent.STACK_OF_PALLETS);
                             add.accept(com.caszgamermd.caszualadditions.xp.XpBlocks.XP_COLLECTOR.asItem());
