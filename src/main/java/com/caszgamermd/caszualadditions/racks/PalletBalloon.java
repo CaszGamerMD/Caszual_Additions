@@ -154,7 +154,29 @@ public final class PalletBalloon extends PathfinderMob {
     }
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand){
         if(player.isShiftKeyDown())return InteractionResult.PASS;
-        if(getPassengers().contains(player))return InteractionResult.SUCCESS;
+        ItemStack held=player.getItemInHand(hand);
+        if(held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem
+                &&blockItem.getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock){
+            if(!level().isClientSide()){
+                if(palletCount()>=4||!addPallet(held)){
+                    player.displayClientMessage(Component.literal("Pallet Balloon basket is full (4 pallets)."),true);
+                }else{
+                    if(!player.getAbilities().instabuild)held.shrink(1);
+                    player.displayClientMessage(Component.literal("Pallet loaded into the balloon basket."),true);
+                }
+            }
+            return InteractionResult.SUCCESS;
+        }
+        if(getPassengers().contains(player)){
+            if(!level().isClientSide()&&held.isEmpty()){
+                ItemStack pallet=removePallet();
+                if(!pallet.isEmpty()){
+                    net.minecraft.world.Containers.dropItemStack(level(),getX(),getY()+.5,getZ(),pallet);
+                    player.displayClientMessage(Component.literal("Pallet unloaded from the balloon basket."),true);
+                }
+            }
+            return InteractionResult.SUCCESS;
+        }
         if(getPassengers().size()>=4){
             if(!level().isClientSide())player.displayClientMessage(
                     Component.literal("Pallet Balloon basket is full (4 players)."),true);
