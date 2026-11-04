@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "caszual_additions:item/forklift_controller"
+    "layer0": "caszual_additions:item/pallet_balloon"
   }
 }
