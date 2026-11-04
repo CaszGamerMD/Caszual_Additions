@@ -24,7 +24,7 @@ assert "public ItemStack palletAt(int slot)" in balloon
 assert "Float.isFinite(forward)" in balloon and ".yRot((float)-Math.toRadians(getYRot()))" in balloon
 assert "setServerPilotInput(payload.forward(),payload.turn(),payload.lift())" in network
 assert "PayloadTypeRegistry.serverboundPlay()" in network
-assert "PalletBalloonPilotPayload.CODEC" in payload
+assert "StreamCodec.composite(" in payload and "PalletBalloonPilotPayload::new" in payload
 assert "ClientPlayNetworking.send(new PalletBalloonPilotPayload(forward,turn,lift))" in client
 assert "textures/entity/pallet_balloon.png" in renderer_texture
 assert "caszual_additions:item/pallet_balloon" in item_model
