@@ -159,10 +159,10 @@ public final class PalletBalloon extends PathfinderMob {
                 &&blockItem.getBlock() instanceof com.caszgamermd.caszualadditions.pallet.PalletBlock){
             if(!level().isClientSide()){
                 if(palletCount()>=4||!addPallet(held)){
-                    player.sendSystemMessage(Component.literal("Pallet Balloon basket is full (4 pallets)."),true);
+                    player.sendSystemMessage(Component.literal("Pallet Balloon basket is full (4 pallets)."));
                 }else{
                     if(!player.getAbilities().instabuild)held.shrink(1);
-                    player.displayClientMessage(Component.literal("Pallet loaded into the balloon basket."),true);
+                    player.sendSystemMessage(Component.literal("Pallet loaded into the balloon basket."));
                 }
             }
             return InteractionResult.SUCCESS;
@@ -172,7 +172,7 @@ public final class PalletBalloon extends PathfinderMob {
                 ItemStack pallet=removePallet();
                 if(!pallet.isEmpty()){
                     net.minecraft.world.Containers.dropItemStack(level(),getX(),getY()+.5,getZ(),pallet);
-                    player.displayClientMessage(Component.literal("Pallet unloaded from the balloon basket."),true);
+                    player.sendSystemMessage(Component.literal("Pallet unloaded from the balloon basket."));
                 }
             }
             return InteractionResult.SUCCESS;
