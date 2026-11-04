@@ -97,7 +97,9 @@ public final class PalletBalloon extends PathfinderMob {
     }
     @Override public Vec3 getPassengerRidingPosition(Entity passenger){
         int index=Math.max(0,getPassengers().indexOf(passenger));
-        double[][] seats={{-.45,.82,-.45},{.45,.82,-.45},{-.45,.82,.45},{.45,.82,.45}};
+        // Seats are at the four basket corners, above the pallet deck pads.
+        double[][] seats={{-1.72,1.35,-1.72},{1.72,1.35,-1.72},
+                {-1.72,1.35,1.72},{1.72,1.35,1.72}};
         return position().add(seats[Math.min(3,index)][0],seats[Math.min(3,index)][1],
                 seats[Math.min(3,index)][2]);
     }
