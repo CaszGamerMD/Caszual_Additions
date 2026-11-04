@@ -245,6 +245,45 @@ public final class PalletBlock extends Block implements EntityBlock {
     protected InteractionResult useItemOn(ItemStack held,BlockState state,Level level,
             BlockPos pos,Player player,net.minecraft.world.InteractionHand hand,
             BlockHitResult hit){
+        // A balloon pilot can lift a complete placed pallet directly into the
+        // basket. Snapshot all 216 original slots and pallet metadata before
+        // removing any of the four footprint blocks.
+        if (player.getVehicle() instanceof com.caszgamermd.caszualadditions.racks.PalletBalloon balloon) {
+            if (level.isClientSide()) return InteractionResult.SUCCESS;
+            BlockPos root = rootPos(pos, state);
+            BlockState rootState = level.getBlockState(root);
+            if (!(rootState.getBlock() instanceof PalletBlock)
+                    || rootState.getValue(PART) != 0) return InteractionResult.PASS;
+            PalletBlockEntity carrier = level.getBlockEntity(root) instanceof PalletBlockEntity be
+                    && be.isRoot() ? be : null;
+            if (carrier == null) return InteractionResult.PASS;
+            for (int part = 0; part < 4; part++) {
+                BlockPos cell = partPos(root, part, rootState);
+                BlockState cellState = level.getBlockState(cell);
+                if (cellState.getBlock() != rootState.getBlock()
+                        || cellState.getValue(PART) != part
+                        || cellState.getValue(FACING) != rootState.getValue(FACING)
+                        || cellState.getValue(LEGACY) != rootState.getValue(LEGACY)) {
+                    return InteractionResult.PASS;
+                }
+            }
+            ItemStack packed = carrier.createCreativeCopyStack();
+            if (packed.isEmpty() || !balloon.addPallet(packed)) {
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                        "Pallet Balloon basket is full (4 pallets)."));
+                return InteractionResult.SUCCESS;
+            }
+            if (level instanceof ServerLevel server) {
+                PalletCargoCollisionBlock.clear(server, root, rootState);
+            }
+            for (int part = 0; part < 4; part++) {
+                level.removeBlock(partPos(root, part, rootState), false);
+            }
+            player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                    "Placed pallet lifted into the balloon basket."));
+            return InteractionResult.SUCCESS;
+        }
+
         if(held.is(com.caszgamermd.caszualadditions.racks.RackContent.PORTABLE_WRAPPER)
                 ||held.is(com.caszgamermd.caszualadditions.racks.RackContent.STORAGE_SCANNER_ITEM)
                 ||held.is(com.caszgamermd.caszualadditions.racks.RackContent.STACK_OF_PALLETS)
