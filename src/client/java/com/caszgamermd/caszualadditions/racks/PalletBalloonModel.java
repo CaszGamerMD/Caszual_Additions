@@ -46,14 +46,14 @@ public final class PalletBalloonModel extends EntityModel<LivingEntityRenderStat
                 .texOffs(0,176).addBox(-34,-81,-34,68,24,68)
                 .texOffs(0,176).addBox(-31,-57,-31,62,18,62)
                 .texOffs(0,176).addBox(-25,-39,-25,50,12,50)
-                .texOffs(260,0).addBox(-15,-117,-15,30,6,30)
-                .texOffs(260,40).addBox(-7,-123,-7,14,6,14),
+                .texOffs(300,0).addBox(-15,-117,-15,30,6,30)
+                .texOffs(300,40).addBox(-7,-123,-7,14,6,14),
                 PartPose.offset(0,30,0));
         // Burner and heat shield above the basket.
         root.addOrReplaceChild("burner",CubeListBuilder.create()
-                .texOffs(260,80).addBox(-7,-25,-7,14,5,14)
-                .texOffs(260,120).addBox(-4,-31,-4,8,6,8),
+                .texOffs(300,80).addBox(-7,-25,-7,14,5,14)
+                .texOffs(300,120).addBox(-4,-31,-4,8,6,8),
                 PartPose.offset(0,30,0));
-        return LayerDefinition.create(mesh,320,360);
+        return LayerDefinition.create(mesh,360,360);
     }
 }
