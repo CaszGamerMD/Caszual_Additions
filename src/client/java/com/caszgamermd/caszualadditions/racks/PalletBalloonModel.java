@@ -16,22 +16,27 @@ public final class PalletBalloonModel extends EntityModel<LivingEntityRenderStat
         var root=mesh.getRoot();
         // Four pallet-width basket rails with an open passenger compartment.
         root.addOrReplaceChild("basket",CubeListBuilder.create()
-                .texOffs(0,0).addBox(-24,-15,-24,48,4,48)
-                .texOffs(0,54).addBox(-24,-11,-24,4,11,4)
-                .texOffs(0,54).addBox(20,-11,-24,4,11,4)
-                .texOffs(0,54).addBox(-24,-11,20,4,11,4)
-                .texOffs(0,54).addBox(20,-11,20,4,11,4)
-                .texOffs(0,70).addBox(-24,-11,-24,48,2,3)
-                .texOffs(0,70).addBox(-24,-11,21,48,2,3)
-                .texOffs(0,70).addBox(-24,-11,-21,3,2,42)
-                .texOffs(0,70).addBox(21,-11,-21,3,2,42),
+                .texOffs(0,0).addBox(-36,-15,-36,72,4,72)
+                .texOffs(0,54).addBox(-36,-11,-36,4,11,4)
+                .texOffs(0,54).addBox(32,-11,-36,4,11,4)
+                .texOffs(0,54).addBox(-36,-11,32,4,11,4)
+                .texOffs(0,54).addBox(32,-11,32,4,11,4)
+                .texOffs(0,70).addBox(-36,-11,-36,72,2,3)
+                .texOffs(0,70).addBox(-36,-11,33,72,2,3)
+                .texOffs(0,70).addBox(-36,-11,-33,3,2,66)
+                .texOffs(0,70).addBox(33,-11,-33,3,2,66)
+                // Four separate pallet-sized deck pads in a 2x2 cargo grid.
+                .texOffs(0,0).addBox(-32,-11,-32,29,2,29)
+                .texOffs(0,0).addBox(3,-11,-32,29,2,29)
+                .texOffs(0,0).addBox(-32,-11,3,29,2,29)
+                .texOffs(0,0).addBox(3,-11,3,29,2,29),
                 PartPose.offset(0,30,0));
         // Four suspension cables from the basket corners to the envelope.
         root.addOrReplaceChild("ropes",CubeListBuilder.create()
-                .texOffs(100,0).addBox(-22,-82,-22,2,53,2)
-                .texOffs(100,0).addBox(20,-82,-22,2,53,2)
-                .texOffs(100,0).addBox(-22,-82,20,2,53,2)
-                .texOffs(100,0).addBox(20,-82,20,2,53,2),
+                .texOffs(100,0).addBox(-34,-82,-34,2,53,2)
+                .texOffs(100,0).addBox(32,-82,-34,2,53,2)
+                .texOffs(100,0).addBox(-34,-82,32,2,53,2)
+                .texOffs(100,0).addBox(32,-82,32,2,53,2),
                 PartPose.offset(0,30,0));
         // The bulbous envelope is a stepped, faceted sphere built entirely
         // from vanilla cubes, with radial ribs and a contrasting cap.
