@@ -35,7 +35,7 @@ public final class RackContent {
     public static EntityType<StorageGolem> STORAGE_GOLEM_TYPE;
     public static EntityType<MovingPallet> MOVING_PALLET_TYPE;
     public static EntityType<WarehouseForklift> FORKLIFT_TYPE;
-    public static EntityType<PalletJackVehicle> PALLET_JACK_VEHICLE_TYPE;
+    public static EntityType<PalletJackVehicle> PALLET_JACK_VEHICLE_TYPE;\n    public static EntityType<PalletBalloon> PALLET_BALLOON_TYPE;\n    public static Item PALLET_BALLOON_ITEM;
     public static Item FORKLIFT_ITEM,FORKLIFT_CONTROLLER;
     public static Block RACK_COMPUTER;
     public static BlockEntityType<WarehouseComputerBlockEntity> COMPUTER_ENTITY;
@@ -283,6 +283,16 @@ public final class RackContent {
                 EntityType.Builder.<WarehouseForklift>of(WarehouseForklift::new,MobCategory.MISC)
                         .sized(1.20f,2.6f).build(forkliftKey));
         FabricDefaultAttributeRegistry.register(FORKLIFT_TYPE,WarehouseForklift.attributes());
+        ResourceKey<Item> balloonItemKey=ResourceKey.create(Registries.ITEM,
+                CaszualAdditions.id("pallet_balloon"));
+        PALLET_BALLOON_ITEM=Registry.register(BuiltInRegistries.ITEM,balloonItemKey,
+                new PalletBalloonItem(new Item.Properties().stacksTo(1).setId(balloonItemKey)));
+        ResourceKey<EntityType<?>> balloonKey=ResourceKey.create(Registries.ENTITY_TYPE,
+                CaszualAdditions.id("pallet_balloon"));
+        PALLET_BALLOON_TYPE=Registry.register(BuiltInRegistries.ENTITY_TYPE,balloonKey,
+                EntityType.Builder.<PalletBalloon>of(PalletBalloon::new,MobCategory.MISC)
+                        .sized(2.8f,5.8f).build(balloonKey));
+        FabricDefaultAttributeRegistry.register(PALLET_BALLOON_TYPE,PalletBalloon.attributes());
         RackComputerNet.initialize();
     }
 }
