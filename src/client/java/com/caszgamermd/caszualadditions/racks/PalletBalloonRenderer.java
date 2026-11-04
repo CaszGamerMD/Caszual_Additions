@@ -19,7 +19,7 @@ public final class PalletBalloonRenderer extends MobRenderer<
     public static final ModelLayerLocation LAYER=
             new ModelLayerLocation(CaszualAdditions.id("pallet_balloon"),"main");
     private static final Identifier TEXTURE=
-            CaszualAdditions.id("textures/entity/pallet_balloon.png");
+            CaszualAdditions.id("textures/entity/warehouse_forklift.png");
     private final ItemModelResolver items;
     public PalletBalloonRenderer(EntityRendererProvider.Context context){
         super(context,new PalletBalloonModel(context.bakeLayer(LAYER)),1.4f);
