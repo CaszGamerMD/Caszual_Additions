@@ -155,5 +155,7 @@
   "block.caszual_additions.mailbox": "Blue Mailbox",
   "block.caszual_additions.po_box": "PO Box",
   "item.caszual_additions.mailbox": "Blue Mailbox",
-  "item.caszual_additions.po_box": "PO Box"
+  "item.caszual_additions.po_box": "PO Box",
+  "item.caszual_additions.pallet_balloon": "Pallet Hot-Air Balloon",
+  "entity.caszual_additions.pallet_balloon": "Pallet Hot-Air Balloon"
 }
