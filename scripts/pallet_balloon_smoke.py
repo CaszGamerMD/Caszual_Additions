@@ -15,6 +15,9 @@ network=(main/"PalletBalloonNetworking.java").read_text()
 payload=(main/"PalletBalloonPilotPayload.java").read_text()
 renderer_texture=(root/"src/client/java/com/caszgamermd/caszualadditions/racks/PalletBalloonRenderer.java").read_text()
 item_model=(root/"src/main/resources/assets/caszual_additions/models/item/pallet_balloon.json").read_text()
+entity_texture=root/"src/main/resources/assets/caszual_additions/textures/entity/pallet_balloon.png"
+item_texture=root/"src/main/resources/assets/caszual_additions/textures/item/pallet_balloon.png"
+initializer=(root/"src/main/java/com/caszgamermd/caszualadditions/CaszualAdditions.java").read_text()
 assert "getPassengers().size()<4" in balloon
 assert "pallets.add(ItemStack.EMPTY)" in balloon
 assert "double[][] seats={{-1.72,1.35,-1.72}" in balloon
@@ -28,6 +31,9 @@ assert "StreamCodec.composite(" in payload and "PalletBalloonPilotPayload::new" 
 assert "ClientPlayNetworking.send(new PalletBalloonPilotPayload(forward,turn,lift))" in client
 assert "textures/entity/pallet_balloon.png" in renderer_texture
 assert "caszual_additions:item/pallet_balloon" in item_model
+assert entity_texture.exists() and entity_texture.read_bytes()[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
+assert item_texture.exists() and item_texture.read_bytes()[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
+assert "PalletBalloonNetworking.initialize()" in initializer
 assert "tryBalloonPickup(level, pos, state, player)" in pallet
 assert "createCreativeCopyStack()" in pallet
 assert "PalletCargoCollisionBlock.clear(server, root, rootState)" in pallet
