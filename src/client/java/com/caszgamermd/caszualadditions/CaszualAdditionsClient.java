@@ -59,6 +59,7 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         HeadVendingClient.initialize();
         RackComputerClient.initialize();
         com.caszgamermd.caszualadditions.racks.PalletJackClientMovement.initialize();
+        com.caszgamermd.caszualadditions.racks.PalletBalloonClientMovement.initialize();
         com.caszgamermd.caszualadditions.racks.ScannerControlClient.initialize();
         IndustrialPaintClient.initialize();
         ModelLayerRegistry.registerModelLayer(
@@ -72,6 +73,11 @@ public final class CaszualAdditionsClient implements ClientModInitializer {
         EntityRenderers.register(RackContent.FORKLIFT_TYPE,WarehouseForkliftRenderer::new);
         EntityRenderers.register(RackContent.PALLET_JACK_VEHICLE_TYPE,
                 com.caszgamermd.caszualadditions.racks.PalletJackRenderer::new);
+        ModelLayerRegistry.registerModelLayer(
+                com.caszgamermd.caszualadditions.racks.PalletBalloonRenderer.LAYER,
+                com.caszgamermd.caszualadditions.racks.PalletBalloonModel::layer);
+        EntityRenderers.register(RackContent.PALLET_BALLOON_TYPE,
+                com.caszgamermd.caszualadditions.racks.PalletBalloonRenderer::new);
 
         BlockEntityRenderers.register(
                 QuarterBlocks.QUARTER_BLOCK_ENTITY,
