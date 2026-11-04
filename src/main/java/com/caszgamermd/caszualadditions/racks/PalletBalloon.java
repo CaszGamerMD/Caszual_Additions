@@ -84,6 +84,11 @@ public final class PalletBalloon extends PathfinderMob {
         forwardInput=Math.clamp(forward,-1,1);
         liftInput=Math.clamp(lift,-1,1);
     }
+    public void setServerPilotInput(float forward,float turn,float lift){
+        serverForward=Math.clamp(forward,-1,1);
+        serverTurn=Math.clamp(turn,-1,1);
+        serverLift=Math.clamp(lift,-1,1);
+    }
     public double horizontalSpeed(){
         double t=Math.clamp((getY()-64.0)/236.0,0.0,1.0);
         return (2.0+18.0*t)/20.0;
@@ -126,44 +131,28 @@ public final class PalletBalloon extends PathfinderMob {
                 seats[Math.min(3,index)][2]);
     }
     @Override public void travel(Vec3 input){
-        if(level().isClientSide()){
-            // The client samples the pilot's real key bindings. The server
-            // independently receives normal movement intent from the pilot.
-            if(getFirstPassenger() instanceof Player pilot){
-                Vec3 intent=input;
-                if(intent.lengthSqr()<1.0e-5)intent=new Vec3(input.x,0,
-                        input.z);
-                serverForward=(float)Math.clamp(intent.z,-1,1);
-                serverTurn=(float)Math.clamp(intent.x,-1,1);
-                serverLift=pilot.isSprinting()?-.55f:(pilot.isJumping()?.55f:0f);
-            }
-        }else if(getFirstPassenger() instanceof ServerPlayer pilot){
-            Vec3 intent=pilot.getLastClientMoveIntent();
-            serverForward=(float)Math.clamp(intent.z,-1,1);
-            serverTurn=(float)Math.clamp(intent.x,-1,1);
-            serverLift=pilot.isSprinting()?-.55f:(pilot.isJumping()?.55f:0f);
-        }
-        if(getFirstPassenger() instanceof Player pilot){
+        if(getFirstPassenger() instanceof Player){
             float turn=level().isClientSide()?turnInput:serverTurn;
             float forward=level().isClientSide()?forwardInput:serverForward;
             float lift=level().isClientSide()?liftInput:serverLift;
-            float targetYaw=pilot.getYRot();
-            // Smooth rudder input and pilot look both influence heading.
-            setYRot(getYRot()+turn*1.8f);
-            if(Math.abs(turn)<.01f)setYRot(targetYaw);
+            // Rudder input changes the balloon's heading independently of
+            // the passenger camera, so steering remains predictable.
+            setYRot(getYRot()+turn*2.0f);
             float yaw=(float)Math.toRadians(getYRot());
-            double dx=-Math.sin(yaw)*forward*horizontalSpeed();
-            double dz=Math.cos(yaw)*forward*horizontalSpeed();
-            double dy=lift*.11;
-            Vec3 movement=new Vec3(dx,dy,dz);
-            if(!level().isClientSide())setDeltaMovement(Vec3.ZERO);
-            move(MoverType.SELF,movement);
+            double speed=horizontalSpeed();
+            double dx=-Math.sin(yaw)*forward*speed;
+            double dz=Math.cos(yaw)*forward*speed;
+            // A gentle, fixed vertical rate keeps takeoff and landing smooth.
+            double dy=lift*.09;
+            move(MoverType.SELF,new Vec3(dx,dy,dz));
             if(horizontalCollision||verticalCollision)setDeltaMovement(Vec3.ZERO);
             fallDistance=0;
-            entityData.set(ENVELOPE_HEAT,(float)Math.clamp((getY()-64)/236.0,0,1));
+            if(!level().isClientSide())
+                entityData.set(ENVELOPE_HEAT,(float)Math.clamp((getY()-64)/236.0,0,1));
         }else{
-            // A balloon without a pilot gently loses altitude, never falls.
-            if(!level().isClientSide())move(MoverType.SELF,new Vec3(0,-.015,0));
+            if(!level().isClientSide())setServerPilotInput(0,0,0);
+            if(!level().isClientSide())
+                move(MoverType.SELF,new Vec3(0,-.015,0));
         }
     }
     @Override public void tick(){
