@@ -80,14 +80,14 @@ public final class PalletBalloon extends PathfinderMob {
     }
     public float heat(){return entityData.get(ENVELOPE_HEAT);}
     public void setPilotInput(float forward,float turn,float lift){
-        turnInput=Math.clamp(turn,-1,1);
-        forwardInput=Math.clamp(forward,-1,1);
-        liftInput=Math.clamp(lift,-1,1);
+        turnInput=Float.isFinite(turn)?Math.clamp(turn,-1,1):0;
+        forwardInput=Float.isFinite(forward)?Math.clamp(forward,-1,1):0;
+        liftInput=Float.isFinite(lift)?Math.clamp(lift,-1,1):0;
     }
     public void setServerPilotInput(float forward,float turn,float lift){
-        serverForward=Math.clamp(forward,-1,1);
-        serverTurn=Math.clamp(turn,-1,1);
-        serverLift=Math.clamp(lift,-1,1);
+        serverForward=Float.isFinite(forward)?Math.clamp(forward,-1,1):0;
+        serverTurn=Float.isFinite(turn)?Math.clamp(turn,-1,1):0;
+        serverLift=Float.isFinite(lift)?Math.clamp(lift,-1,1):0;
     }
     public double horizontalSpeed(){
         double t=Math.clamp((getY()-64.0)/236.0,0.0,1.0);
@@ -127,8 +127,10 @@ public final class PalletBalloon extends PathfinderMob {
         // Seats are at the four basket corners, above the pallet deck pads.
         double[][] seats={{-1.72,1.35,-1.72},{1.72,1.35,-1.72},
                 {-1.72,1.35,1.72},{1.72,1.35,1.72}};
-        return position().add(seats[Math.min(3,index)][0],seats[Math.min(3,index)][1],
-                seats[Math.min(3,index)][2]);
+        double[] seat=seats[Math.min(3,index)];
+        Vec3 offset=new Vec3(seat[0],seat[1],seat[2])
+                .yRot((float)-Math.toRadians(getYRot()));
+        return position().add(offset);
     }
     @Override public void travel(Vec3 input){
         if(getFirstPassenger() instanceof Player){
