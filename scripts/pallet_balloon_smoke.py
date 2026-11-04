@@ -31,8 +31,8 @@ assert "StreamCodec.composite(" in payload and "PalletBalloonPilotPayload::new" 
 assert "ClientPlayNetworking.send(new PalletBalloonPilotPayload(forward,turn,lift))" in client
 assert "textures/entity/pallet_balloon.png" in renderer_texture
 assert "caszual_additions:item/pallet_balloon" in item_model
-assert entity_texture.exists() and entity_texture.read_bytes()[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
-assert item_texture.exists() and item_texture.read_bytes()[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
+assert entity_texture.exists() and entity_texture.read_bytes()[:8] == bytes.fromhex("89504e470d0a1a0a")
+assert item_texture.exists() and item_texture.read_bytes()[:8] == bytes.fromhex("89504e470d0a1a0a")
 assert "PalletBalloonNetworking.initialize()" in initializer
 assert "tryBalloonPickup(level, pos, state, player)" in pallet
 assert "createCreativeCopyStack()" in pallet
