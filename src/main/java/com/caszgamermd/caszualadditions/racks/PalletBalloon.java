@@ -34,6 +34,16 @@ public final class PalletBalloon extends PathfinderMob {
             SynchedEntityData.defineId(PalletBalloon.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> ENVELOPE_HEAT =
             SynchedEntityData.defineId(PalletBalloon.class,EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<ItemStack> CARGO_0 =
+            SynchedEntityData.defineId(PalletBalloon.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> CARGO_1 =
+            SynchedEntityData.defineId(PalletBalloon.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> CARGO_2 =
+            SynchedEntityData.defineId(PalletBalloon.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> CARGO_3 =
+            SynchedEntityData.defineId(PalletBalloon.class,EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<?>[] CARGO_DATA =
+            {CARGO_0,CARGO_1,CARGO_2,CARGO_3};
     private final List<ItemStack> pallets=new ArrayList<>(4);
     private float turnInput,forwardInput,liftInput;
     private float serverTurn,serverForward,serverLift;
@@ -57,8 +67,17 @@ public final class PalletBalloon extends PathfinderMob {
         super.defineSynchedData(builder);
         builder.define(CARGO_COUNT,0);
         builder.define(ENVELOPE_HEAT,0f);
+        builder.define(CARGO_0,ItemStack.EMPTY);
+        builder.define(CARGO_1,ItemStack.EMPTY);
+        builder.define(CARGO_2,ItemStack.EMPTY);
+        builder.define(CARGO_3,ItemStack.EMPTY);
     }
     public int palletCount(){return entityData.get(CARGO_COUNT);}
+    @SuppressWarnings("unchecked")
+    public ItemStack palletAt(int slot){
+        if(slot<0||slot>=4)return ItemStack.EMPTY;
+        return entityData.get((EntityDataAccessor<ItemStack>)CARGO_DATA[slot]).copy();
+    }
     public float heat(){return entityData.get(ENVELOPE_HEAT);}
     public void setPilotInput(float forward,float turn,float lift){
         turnInput=Math.clamp(turn,-1,1);
@@ -86,8 +105,11 @@ public final class PalletBalloon extends PathfinderMob {
         }
         return ItemStack.EMPTY;
     }
+    @SuppressWarnings("unchecked")
     private void syncCargo(){
         entityData.set(CARGO_COUNT,(int)pallets.stream().filter(s->!s.isEmpty()).count());
+        for(int i=0;i<4;i++)
+            entityData.set((EntityDataAccessor<ItemStack>)CARGO_DATA[i],pallets.get(i).copy());
     }
     @Override public boolean canAddPassenger(Entity passenger){
         return getPassengers().size()<4&&super.canAddPassenger(passenger);
